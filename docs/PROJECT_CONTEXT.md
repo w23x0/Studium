@@ -10,7 +10,7 @@
 
 1. 完整阅读根目录 `README.md`，它是当前目标、边界、里程碑和工程规则的真相源。
 2. 阅读本文件，了解当前仓库事实、已经形成的项目理解和尚未做出的决定。
-3. 阅读 [2026-07-14 M0 收尾与 M1 基线实施记录](worklogs/2026-07-14-m0-m1-baseline.md)，了解已经执行的修改、验证和已知问题。
+3. 阅读 [2026-07-14 Bifrost 网关与调用审计重构记录](worklogs/2026-07-14-bifrost-gateway-refactor.md)，再按需回看 [M0 收尾与 M1 历史基线](worklogs/2026-07-14-m0-m1-baseline.md)。
 4. 检查 `git status`、现有目录和 `docs/decisions/`；不得跳过已有决策。
 5. 用一句话复述本次目标和修改边界，再开始工作。
 
@@ -93,15 +93,16 @@ Deep 能提供的价值包括：
 当前仓库基线为：
 
 - 活动分支为 `main`，M0 已有独立收尾检查点。
-- M1 技术栈与 LiteLLM 边界由 ADR 0001 和 ADR 0002 固化。
+- M1 技术栈由 ADR 0001 固化；Bifrost 网关与审计边界由 ADR 0003 固化，ADR 0002 已被取代。
 - 唯一活动应用是根目录 Next.js 项目，唯一浏览器后端入口是 `POST /api/chat`。
 - 前后端通过 Zod 共享非流式聊天契约；浏览器只传递 `user` 和 `assistant` 消息。
-- LiteLLM 由 `infra/litellm/` 下的 uv 锁文件管理，使用 Python 3.13，不复制源码且不要求 Docker。
-- 根目录 `npm run dev` 同时管理 Next.js 与 LiteLLM；安装、检查和构建命令以 README 为准。
-- 自动化测试覆盖契约、API、网关错误映射和页面关键交互。
+- Bifrost HTTP Transport `v1.6.3` 以官方 Windows x64 二进制运行；`infra/bifrost/runtime-lock.json` 固定官方 URL、大小和项目观测 SHA-256，不复制第三方源码且不要求 Docker。
+- 根目录 `npm run dev` 同时管理只绑定 loopback 的 Next.js、Bifrost 与只读本地 catalog；安装、检查和构建命令以 README 为准。
+- Studium 的 `src/lib/llm/` 持有网关无关调用契约、错误语义和无正文 JSONL trace；Bifrost 日志不是事实源。
+- 自动化测试覆盖契约、API、Bifrost 协议、取消/超时、响应限制、审计并发安全和页面关键交互。
 - 没有 Git remote、submodule、LFS 文件或 sparse checkout；不存在尚未拉取的隐藏应用代码。
-- M1 不使用数据库或持久化业务数据；没有 CI。
-- `.env`、`.next/`、`node_modules/` 和 uv 虚拟环境均被 Git 忽略，`.env.example` 保持可跟踪。
+- M1 不持久化对话或学习业务数据；Bifrost 为保护不可关闭的管理面使用忽略目录中的加密 SQLite 配置库，Studium 只持久化无正文调用 trace；没有 CI。
+- `.env`、`.env.bifrost`、`.next/`、`node_modules/`、`runtime/` 和 `var/` 均被 Git 忽略；Web 配置与 Bifrost-only secret 分文件加载，对应 example 保持可跟踪。
 
 这个快照只描述更新交接文件时的事实。接手时仍应以实时目录、Git 状态、最新 README、ADR 和测试结果为准。
 
@@ -109,9 +110,9 @@ Deep 能提供的价值包括：
 
 下列事项不能由接手者自行从 Deep 或 `.gitignore` 猜测：
 
-1. LiteLLM 的 `studium-m1` 别名实际映射到哪个上游供应商和模型。
+1. Bifrost 的 `studium-<provider>/studium-m1` 路由实际映射到哪个上游供应商和模型。
 2. M1 真实模型手工验收使用的本地密钥。
-3. 唯一数据根目录的位置和配置方式；M1 尚不产生持久化业务数据。
+3. 后续业务数据的唯一根目录；当前 `runtime/` 只存基础设施运行物，`var/` 只存 Studium 无正文审计，M1 尚不持久化学习业务数据。
 4. 仓库 remote、CI、许可证和发布范围。
 5. M3 的诊断字段、证据格式和可靠性要求。
 6. M4 的闭环关闭条件、用户覆盖机制和持久化模型。
@@ -123,8 +124,8 @@ Deep 能提供的价值包括：
 下一次对话应继续完成 **M1 真实模型验收**：
 
 1. 复核 README、本文件、已有 ADR 和 Git 状态。
-2. 按 ADR 0001 和 ADR 0002 检查唯一应用与 LiteLLM 边界。
-3. 在未跟踪的 `.env` 中配置 `studium-m1` 的实际模型标识和密钥。
+2. 按 ADR 0001 和 ADR 0003 检查唯一应用、Bifrost 安全配置与 Studium 审计边界。
+3. 在未跟踪的 `.env` 中配置 `studium-<provider>/studium-m1` 的实际供应商、模型、密钥和本地鉴权秘密。
 4. 运行自动化验证，并从浏览器完成至少两轮真实模型对话。
 5. 在证据齐全前保持 M1 为进行中，不提前建设 M2 能力。
 

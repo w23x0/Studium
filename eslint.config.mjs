@@ -9,6 +9,6 @@ export default defineConfig([
     ".next/**",
     "coverage/**",
     "htmlcov/**",
-    "infra/litellm/.venv/**",
+    "runtime/**",
   ]),
 ]);

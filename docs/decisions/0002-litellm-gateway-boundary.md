@@ -1,6 +1,6 @@
 # ADR 0002：LiteLLM 网关边界与本地运行方式
 
-- 状态：Accepted
+- 状态：Superseded（已由 ADR 0003 取代）
 - 日期：2026-07-14
 
 ## 背景
