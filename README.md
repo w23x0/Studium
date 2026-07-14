@@ -223,7 +223,7 @@ M1 只实现非流式 `POST /api/chat`：
 }
 ```
 
-请求只接受 `user` 和 `assistant` 消息；至少一条、最多 20 条，每条正文为 1 至 8000 个字符，总正文不超过 32000 个字符。浏览器不能提交 `system` 消息、模型名、网关地址或密钥。
+请求只接受 `user` 和 `assistant` 消息；至少一条、最多 20 条，每条正文为 1 至 8000 个字符，总正文不超过 32000 个字符，最后一条必须来自用户。浏览器不能提交 `system` 消息、模型名、网关地址或密钥。
 
 M1 的退出条件是：
 
@@ -249,4 +249,36 @@ Remote、CI、许可证和应用运行时不属于 M0 的既定退出条件；�
 
 ## 开发入口
 
-M1 骨架建立后，唯一开发入口为根目录的 `npm run dev`。具体安装与配置命令将在实现并实际验证后补充，当前不得把尚未运行的命令当作验收证据。
+### 环境要求
+
+- Node.js 24 LTS 与 npm 11
+- uv 0.11 或兼容版本；uv 按 `infra/litellm/.python-version` 管理 Python 3.13
+
+### 首次安装
+
+```powershell
+npm ci
+uv sync --project infra/litellm --locked
+Copy-Item .env.example .env
+```
+
+编辑未被 Git 跟踪的 `.env`，至少把 `STUDIUM_UPSTREAM_MODEL` 设置为 LiteLLM 支持的真实模型标识，并填写对应的 `STUDIUM_UPSTREAM_API_KEY`。`LLM_MODEL=studium-m1` 是 Studium 使用的固定网关别名，不应改为浏览器输入。
+
+唯一开发入口：
+
+```powershell
+npm run dev
+```
+
+该命令同时启动 Next.js（默认 `http://127.0.0.1:3000`）和 LiteLLM Proxy（默认 `http://127.0.0.1:4000`）。停止命令会同时结束两个子进程。
+
+### 验证命令
+
+```powershell
+npm run lint
+npm run typecheck
+npm run test
+npm run build
+```
+
+当前自动化验证覆盖共享契约、API 成功与失败语义、网关状态映射、页面空状态、多轮请求、加载状态和错误恢复。M1 仍为进行中：仓库尚未配置真实上游模型与密钥，也尚未取得真实模型手工验收证据。

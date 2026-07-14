@@ -1,0 +1,11 @@
+[project]
+name = "studium-litellm"
+version = "0.1.0"
+description = "Locked LiteLLM Proxy runtime for Studium development"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "litellm[proxy]==1.92.0",
+]
+
+[tool.uv]
+package = false
