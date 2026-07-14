@@ -33,6 +33,7 @@ htmlcov/
 node_modules/
 dist/
 build/
+.next/
 .vite/
 coverage/
 *.tsbuildinfo
