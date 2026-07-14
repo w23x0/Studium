@@ -18,7 +18,7 @@ Studium 是 Learning Agent 的第三次实现，也是新的唯一活动开发�
 
 前代项目位于 `C:\Users\Wang\Desktop\Deep`。
 
-`Deep` 保存了前两代实现、实验代码、产品探索、理论资料和历史运行数据，目前由另一个 agent 负责冻结和总结。它是 Studium 的历史档案与参考实现，不是 Studium 的活动代码库。
+`Deep` 保存了前两代实现、实验代码、产品探索、理论资料和历史运行数据，现已冻结。归档总入口是 [Deep 项目归档](../Deep/docs/项目归档/README.md)（本机路径：`C:\Users\Wang\Desktop\Deep\docs\项目归档\README.md`）；需要回看前代成果、版本演进、可复用工程或冻结状态时，从该文档开始。Deep 是 Studium 的历史档案与参考实现，不是 Studium 的活动代码库或运行时依赖。
 
 必须遵守以下边界：
 
