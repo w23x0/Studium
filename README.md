@@ -11,7 +11,8 @@ Studium 是 Learning Agent 的第三次实现，也是新的唯一活动开发�
 - 活动主线：本仓库的 `main` 分支
 - 当前真相源：本 README
 - 新对话与协作者接手入口：[项目上下文与启动交接](docs/PROJECT_CONTEXT.md)
-- 当前实施记录：[2026-07-14 M0 收尾与 M1 基线](docs/worklogs/2026-07-14-m0-m1-baseline.md)
+- 当前实施记录：[2026-07-14 Bifrost 网关与调用审计重构](docs/worklogs/2026-07-14-bifrost-gateway-refactor.md)
+- 历史基线记录：[2026-07-14 M0 收尾与 M1 基线](docs/worklogs/2026-07-14-m0-m1-baseline.md)
 - 当前原则：先完成最小纵向闭环，再扩展资料处理、检索和可视化
 
 在技术栈和第一个接口契约确定前，不创建大规模业务骨架。
@@ -190,7 +191,7 @@ AI 是受约束的工程协作者，不是项目方向的自动决定者。
 
 ### M1 技术边界
 
-M1 使用 Node.js 24 LTS、npm、TypeScript、React 和 Next.js 建立唯一活动应用；浏览器通过同源 Route Handler 调用由 uv 管理的 LiteLLM Proxy。长期决策见 [ADR 0001](docs/decisions/0001-m1-application-stack.md)和 [ADR 0002](docs/decisions/0002-litellm-gateway-boundary.md)。
+M1 使用 Node.js 24 LTS、npm、TypeScript、React 和 Next.js 建立唯一活动应用；浏览器通过同源 Route Handler 调用锁定的 Bifrost HTTP Transport sidecar。应用技术栈见 [ADR 0001](docs/decisions/0001-m1-application-stack.md)，当前网关、安全和审计边界见 [ADR 0003](docs/decisions/0003-bifrost-gateway-and-call-audit.md)；[ADR 0002](docs/decisions/0002-litellm-gateway-boundary.md)只保留为已被取代的 LiteLLM 历史决策。
 
 M1 只实现非流式 `POST /api/chat`：
 
@@ -229,7 +230,7 @@ M1 只实现非流式 `POST /api/chat`：
 M1 的退出条件是：
 
 1. 浏览器能发送消息并显示由真实模型生成的回答，后续消息携带当前页面内的历史形成多轮对话。
-2. 请求只经过唯一的 `POST /api/chat` 后端入口和 LiteLLM 的 `studium-m1` 别名。
+2. 请求只经过唯一的 `POST /api/chat` 后端入口和 Bifrost 的固定 `studium-<provider>/studium-m1` 路由。
 3. 空状态、请求中状态、无效输入、未配置、网关鉴权失败、限流、超时和上游不可用均有明确界面反馈。
 4. 密钥只存在于未跟踪的本地环境变量；日志和浏览器响应不泄露密钥或上游原始错误正文。
 5. 依赖已锁定，构建、类型检查、契约测试和关键 UI 交互测试通过。
@@ -253,17 +254,29 @@ Remote、CI、许可证和应用运行时不属于 M0 的既定退出条件；�
 ### 环境要求
 
 - Node.js 24 LTS 与 npm 11
-- uv 0.11 或兼容版本；uv 按 `infra/litellm/.python-version` 管理 Python 3.13
+- Windows x64；当前 Bifrost 制品锁只覆盖该本地运行基线
 
 ### 首次安装
 
 ```powershell
 npm ci
-uv sync --project infra/litellm --locked
+npm run gateway:install
 Copy-Item .env.example .env
+Copy-Item .env.bifrost.example .env.bifrost
 ```
 
-编辑未被 Git 跟踪的 `.env`，至少把 `STUDIUM_UPSTREAM_MODEL` 设置为 LiteLLM 支持的真实模型标识，并填写对应的 `STUDIUM_UPSTREAM_API_KEY`。`LLM_MODEL=studium-m1` 是 Studium 使用的固定网关别名，不应改为浏览器输入。
+`gateway:install` 从 Bifrost 官方下载地址取得 transport `v1.6.3` 的 Windows x64 二进制，并在写入忽略目录 `runtime/bifrost/` 前核对锁定的文件大小和 Studium 实测 SHA-256。该 hash 是项目自己的观测锁，不是上游签名；Bifrost 当前没有为该文件提供官方 checksum 或 Authenticode 签名。
+
+编辑未被 Git 跟踪的 `.env`，设置 Studium 到网关的 URL、固定模型和虚拟 key；当前经过真实 sidecar 验证的模型值为 `studium-openai/studium-m1`。编辑单独的 `.env.bifrost`，填写实际 `STUDIUM_UPSTREAM_MODEL`、供应商 key、管理密码和配置库加密 key。`studium-` custom-provider 前缀允许启动配置明确禁用 Bifrost 的 provider model-discovery 请求；当前 M1 生成器只接受已验证的 `STUDIUM_UPSTREAM_PROVIDER=openai`，扩展其他 base provider 必须补配置与协议验收。
+
+虚拟 key 必须以 `sk-bf-` 开头并使用强随机值。`.env.bifrost` 只加载到网关启动进程；Next.js 不识别该文件名，Bifrost 子进程也只继承运行所需的最小环境变量集合，因此上游 key、管理密码和 encryption key 不进入 Web 应用环境。
+
+可在启动前单独生成并检查不含秘密的运行配置：
+
+```powershell
+npm run gateway:configure
+npm run gateway:verify
+```
 
 唯一开发入口：
 
@@ -271,7 +284,9 @@ Copy-Item .env.example .env
 npm run dev
 ```
 
-该命令同时启动 Next.js（默认 `http://127.0.0.1:3000`）和 LiteLLM Proxy（默认 `http://127.0.0.1:4000`）。停止命令会同时结束两个子进程。
+该命令启动显式绑定 `http://127.0.0.1:3000` 的 Next.js、只监听 `http://127.0.0.1:4000` 的 Bifrost，以及 launcher 在 `http://127.0.0.1:4001` 提供的只读空 MCP catalog。4001 只用于绕过 Bifrost v1.6.3 在 Windows 上读取 MCP `file://` catalog 的路径缺陷，不是 Studium 产品 API。Bifrost 固定使用 `studium-openai` custom provider、`studium-m1` alias、一次上游 attempt，关闭 model discovery、retry、fallback、调用日志、内容保存、缓存和外部 exporter；停止命令会清理三个监听端口。
+
+模型调用的脱敏 trace 追加到 `var/audit/llm-calls/YYYY-MM-DD.jsonl`。它包含 Studium ID、provider/model、延迟、token、可选成本和安全错误分类，不包含 prompt、回答、system message、密钥或原始上游错误。当前 JSONL 串行器只保证单个 Node.js 进程内的并发安全。
 
 ### 验证命令
 
@@ -280,6 +295,9 @@ npm run lint
 npm run typecheck
 npm run test
 npm run build
+npm run gateway:verify
 ```
 
-当前自动化验证覆盖共享契约、API 成功与失败语义、网关状态映射、页面空状态、多轮请求、加载状态和错误恢复。M1 仍为进行中：仓库尚未配置真实上游模型与密钥，也尚未取得真实模型手工验收证据。
+也可使用 `npm run verify` 顺序执行 lint、类型检查、测试和生产构建。当前自动化验证覆盖共享契约、API 成功与失败语义、Bifrost 请求及错误映射、响应体积、取消与超时、结构化 trace、脱敏审计并发安全，以及页面空状态、多轮请求、加载状态和错误恢复。
+
+M1 仍为进行中：仓库尚未配置真实上游模型与密钥，也尚未取得真实模型的两轮浏览器验收证据。空的本地 pricing catalog 会阻止额外价格目录 egress，但在实际模型价格快照锁定前，审计中的 `cost` 只是可选字段，不能视为可靠成本账本。

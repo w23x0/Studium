@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { chatRequestSchema } from "@/lib/chat-contract";
+import {
+  chatErrorSchema,
+  chatRequestSchema,
+  chatSuccessSchema,
+} from "@/lib/chat-contract";
 
 describe("chatRequestSchema", () => {
   it("accepts a bounded conversation ending with a user message", () => {
@@ -51,5 +55,53 @@ describe("chatRequestSchema", () => {
     });
 
     expect(result.success).toBe(false);
+  });
+
+  it("rejects browser-supplied model routing fields", () => {
+    const result = chatRequestSchema.safeParse({
+      messages: [{ role: "user", content: "问题" }],
+      model: "attacker-selected-model",
+      provider: "attacker-selected-provider",
+    });
+
+    expect(result.success).toBe(false);
+  });
+});
+
+describe("public chat response schemas", () => {
+  it("keeps internal trace data out of the strict success contract", () => {
+    expect(
+      chatSuccessSchema.safeParse({
+        message: { role: "assistant", content: "回答" },
+        requestId: "request-1",
+      }).success,
+    ).toBe(true);
+
+    expect(
+      chatSuccessSchema.safeParse({
+        message: { role: "assistant", content: "回答" },
+        requestId: "request-1",
+        trace: { callId: "call-1" },
+      }).success,
+    ).toBe(false);
+  });
+
+  it.each([
+    "GATEWAY_UNAVAILABLE",
+    "PROVIDER_AUTH_FAILED",
+    "MODEL_NOT_FOUND",
+    "MODEL_CONTEXT_EXCEEDED",
+    "MODEL_CONTENT_REJECTED",
+  ])("accepts the public LLM error code %s", (code) => {
+    expect(
+      chatErrorSchema.safeParse({
+        error: {
+          code,
+          message: "安全的公开错误消息",
+          retryable: false,
+          requestId: "request-1",
+        },
+      }).success,
+    ).toBe(true);
   });
 });

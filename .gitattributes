@@ -3,6 +3,7 @@
 .gitattributes text eol=lf
 .gitignore text eol=lf
 .env.example text eol=lf
+.env.bifrost.example text eol=lf
 .node-version text eol=lf
 .python-version text eol=lf
 

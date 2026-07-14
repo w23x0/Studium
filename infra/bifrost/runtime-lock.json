@@ -1,0 +1,13 @@
+{
+  "transportVersion": "v1.6.3",
+  "source": "https://github.com/maximhq/bifrost/releases/tag/transports/v1.6.3",
+  "artifacts": {
+    "win32-x64": {
+      "url": "https://downloads.getmaxim.ai/bifrost/v1.6.3/windows/amd64/bifrost-http.exe",
+      "fileName": "bifrost-http.exe",
+      "size": 113897984,
+      "sha256": "d1371e06757992c1cbad4a42b619c8763f1ec214b19bd2b6dcb46e9ab1ac2707",
+      "integrityNote": "Observed by Studium on 2026-07-14; upstream publishes no checksum or Windows signature."
+    }
+  }
+}
