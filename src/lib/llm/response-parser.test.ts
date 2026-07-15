@@ -28,7 +28,7 @@ describe("parseGatewayCompletion", () => {
           },
         },
       },
-      new Headers(),
+      new Headers({ "x-bifrost-resolved-model": "studium-m1" }),
       "studium-openai/studium-m1",
     );
 

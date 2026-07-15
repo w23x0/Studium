@@ -18,13 +18,15 @@ import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable, Transform } from "node:stream";
 
+import { normalizeUpstreamBaseUrl } from "./bifrost-upstream-url.mjs";
+
 const ROOT = process.cwd();
 const LOCK_PATH = path.join(ROOT, "infra", "bifrost", "runtime-lock.json");
 const RUNTIME_ROOT = path.join(ROOT, "runtime", "bifrost");
 const APP_DIR = path.join(RUNTIME_ROOT, "app");
 const BIN_DIR = path.join(RUNTIME_ROOT, "bin");
 const CATALOG_HOST = "127.0.0.1";
-const CATALOG_PORT = 4001;
+const CATALOG_PORT = 4101;
 const PLACEHOLDER_FRAGMENTS = ["replace-with", "change-me", "provider-name"];
 const VERIFIED_BASE_PROVIDERS = new Set(["openai"]);
 
@@ -149,6 +151,9 @@ function buildRuntimeConfiguration() {
   }
 
   const upstreamModel = requiredEnvironment("STUDIUM_UPSTREAM_MODEL");
+  const upstreamBaseUrl = normalizeUpstreamBaseUrl(
+    requiredEnvironment("STUDIUM_UPSTREAM_BASE_URL"),
+  );
   requiredEnvironment("STUDIUM_UPSTREAM_API_KEY", { secret: true });
   const gatewayKey = requiredEnvironment("STUDIUM_LLM_GATEWAY_API_KEY", {
     secret: true,
@@ -223,6 +228,7 @@ function buildRuntimeConfiguration() {
           },
         ],
         network_config: {
+          base_url: upstreamBaseUrl,
           default_request_timeout_in_seconds: Math.ceil(timeoutMs / 1000),
           max_retries: 0,
           insecure_skip_verify: false,

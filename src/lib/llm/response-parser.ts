@@ -153,8 +153,8 @@ export function parseGatewayAttemptMetadata(
       metadata.extraFields?.provider ??
       metadata.provider,
     resolvedModel:
-      firstHeader(headers, ["x-bifrost-resolved-model"]) ??
       routing?.resolved_key_alias?.model_id ??
+      firstHeader(headers, ["x-bifrost-resolved-model"]) ??
       metadata.extraFields?.resolved_model_used ??
       metadata.model,
     gatewayLatencyMs: metadata.extraFields?.latency,

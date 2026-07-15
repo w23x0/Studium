@@ -7,7 +7,7 @@ Studium 是 Learning Agent 的第三次实现，也是新的唯一活动开发�
 ## 当前状态
 
 - 建立日期：2026-07-14
-- 当前阶段：M1 实现，真实对话链路
+- 当前阶段：M1 收尾，真实对话成功链路已通过
 - 活动主线：本仓库的 `main` 分支
 - 当前真相源：本 README
 - 新对话与协作者接手入口：[项目上下文与启动交接](docs/PROJECT_CONTEXT.md)
@@ -51,6 +51,8 @@ Studium 是 Learning Agent 的第三次实现，也是新的唯一活动开发�
 - 多 agent 并行修改同一条业务链
 
 这些能力是后续候选项，不是永久删除项。它们必须由已经验证的用户需求和前置里程碑触发。
+
+书籍解析与层级检索的前置核查保存在 [2026-07-14 书籍解析与层级检索候选调研](docs/research/2026-07-14-book-ingestion-and-hierarchical-retrieval.md)。该文件仅作为 M4 稳定后的评估输入，不构成当前需求、技术选型或实施授权。
 
 ## 前代 vibecoding 复盘
 
@@ -182,7 +184,7 @@ AI 是受约束的工程协作者，不是项目方向的自动决定者。
 | 里程碑 | 用户可验证结果 | 状态 |
 | --- | --- | --- |
 | M0 工程基线 | 仓库、规则、忽略项和首个提交建立 | 已完成（2026-07-14） |
-| M1 真实对话 | 浏览器发送消息，经唯一后端调用一个真实模型并返回结果 | 进行中 |
+| M1 真实对话 | 浏览器发送消息，经唯一后端调用一个真实模型并返回结果 | 收尾中（真实成功链路已通过） |
 | M2 资料上下文 | 用户粘贴 Markdown，AI 的回答明确基于该资料 | 未开始 |
 | M3 学习诊断 | 每轮生成结构化诊断，开发者视图能看到判断与证据 | 未开始 |
 | M4 学习闭环 | 会话持久化，可触发闭环检查并保存结果 | 未开始 |
@@ -267,7 +269,7 @@ Copy-Item .env.bifrost.example .env.bifrost
 
 `gateway:install` 从 Bifrost 官方下载地址取得 transport `v1.6.3` 的 Windows x64 二进制，并在写入忽略目录 `runtime/bifrost/` 前核对锁定的文件大小和 Studium 实测 SHA-256。该 hash 是项目自己的观测锁，不是上游签名；Bifrost 当前没有为该文件提供官方 checksum 或 Authenticode 签名。
 
-编辑未被 Git 跟踪的 `.env`，设置 Studium 到网关的 URL、固定模型和虚拟 key；当前经过真实 sidecar 验证的模型值为 `studium-openai/studium-m1`。编辑单独的 `.env.bifrost`，填写实际 `STUDIUM_UPSTREAM_MODEL`、供应商 key、管理密码和配置库加密 key。`studium-` custom-provider 前缀允许启动配置明确禁用 Bifrost 的 provider model-discovery 请求；当前 M1 生成器只接受已验证的 `STUDIUM_UPSTREAM_PROVIDER=openai`，扩展其他 base provider 必须补配置与协议验收。
+编辑未被 Git 跟踪的 `.env`，设置 Studium 到网关的 URL、固定模型和虚拟 key；当前经过真实 sidecar 验证的模型值为 `studium-openai/studium-m1`。编辑单独的 `.env.bifrost`，填写实际 `STUDIUM_UPSTREAM_BASE_URL`、`STUDIUM_UPSTREAM_MODEL`、供应商 key、管理密码和配置库加密 key。上游地址必须是 HTTPS origin，例如 `https://api.example.com`，不能包含 `/v1`、凭据、query 或 fragment；Bifrost 会自行追加 OpenAI-compatible API 路径。`studium-` custom-provider 前缀允许启动配置明确禁用 Bifrost 的 provider model-discovery 请求；当前 M1 生成器只接受已验证的 `STUDIUM_UPSTREAM_PROVIDER=openai`，扩展其他 base provider 必须补配置与协议验收。
 
 虚拟 key 必须以 `sk-bf-` 开头并使用强随机值。`.env.bifrost` 只加载到网关启动进程；Next.js 不识别该文件名，Bifrost 子进程也只继承运行所需的最小环境变量集合，因此上游 key、管理密码和 encryption key 不进入 Web 应用环境。
 
@@ -284,7 +286,7 @@ npm run gateway:verify
 npm run dev
 ```
 
-该命令启动显式绑定 `http://127.0.0.1:3000` 的 Next.js、只监听 `http://127.0.0.1:4000` 的 Bifrost，以及 launcher 在 `http://127.0.0.1:4001` 提供的只读空 MCP catalog。4001 只用于绕过 Bifrost v1.6.3 在 Windows 上读取 MCP `file://` catalog 的路径缺陷，不是 Studium 产品 API。Bifrost 固定使用 `studium-openai` custom provider、`studium-m1` alias、一次上游 attempt，关闭 model discovery、retry、fallback、调用日志、内容保存、缓存和外部 exporter；停止命令会清理三个监听端口。
+该命令启动显式绑定 `http://127.0.0.1:3000` 的 Next.js、只监听 `http://127.0.0.1:4000` 的 Bifrost，以及 launcher 在 `http://127.0.0.1:4101` 提供的只读空 MCP catalog。4101 只用于绕过 Bifrost v1.6.3 在 Windows 上读取 MCP `file://` catalog 的路径缺陷，不是 Studium 产品 API。Bifrost 固定使用 `studium-openai` custom provider、`studium-m1` alias、一次上游 attempt，关闭 model discovery、retry、fallback、调用日志、内容保存、缓存和外部 exporter；停止命令会清理三个监听端口。
 
 模型调用的脱敏 trace 追加到 `var/audit/llm-calls/YYYY-MM-DD.jsonl`。它包含 Studium ID、provider/model、延迟、token、可选成本和安全错误分类，不包含 prompt、回答、system message、密钥或原始上游错误。当前 JSONL 串行器只保证单个 Node.js 进程内的并发安全。
 
@@ -300,4 +302,4 @@ npm run gateway:verify
 
 也可使用 `npm run verify` 顺序执行 lint、类型检查、测试和生产构建。当前自动化验证覆盖共享契约、API 成功与失败语义、Bifrost 请求及错误映射、响应体积、取消与超时、结构化 trace、脱敏审计并发安全，以及页面空状态、多轮请求、加载状态和错误恢复。
 
-M1 仍为进行中：仓库尚未配置真实上游模型与密钥，也尚未取得真实模型的两轮浏览器验收证据。空的本地 pricing catalog 会阻止额外价格目录 egress，但在实际模型价格快照锁定前，审计中的 `cost` 只是可选字段，不能视为可靠成本账本。
+M1 的真实成功链路已于 2026-07-15 通过：未跟踪的本地配置把 `studium-openai/studium-m1` 映射到用户指定 OpenAI-compatible 上游的 `gpt-5.4-mini`，Chrome 实际完成两轮对话并正确使用首轮上下文。JSONL 记录了单 attempt、实际模型、token 与延迟，且不含消息正文或密钥。M1 仍处于收尾：尚未用该真实上游验证失败 envelope 的在线映射；本地 pricing catalog 仍为空，因此 `cost` 缺失是预期行为，不能视为可靠成本账本。
