@@ -47,6 +47,7 @@ ADR 0002 建立了浏览器、Studium 后端与自托管 LLM 网关之间的第�
 - Next.js 的开发与生产启动命令都显式监听 `127.0.0.1:3000`；Bifrost 只监听 `127.0.0.1:4000`。Studium 只接受固定的 `http://127.0.0.1:4000/openai/v1`，不接受 `localhost`、远程地址、URL 内凭据、查询参数或 fragment。
 - Studium 到 Bifrost 的每次推理请求必须使用高熵虚拟 key 鉴权；占位值、过短 key 或不符合约束的 key 在调用前作为配置错误拒绝。
 - Web 进程所需的网关 URL、虚拟 key 和固定模型位于未跟踪的 `.env`；provider key、Bifrost admin 凭据和 encryption key 位于另一个未跟踪的 `.env.bifrost`。Next.js 不加载 `.env.bifrost`，launcher 还会拒绝把 Bifrost-only secret 放回 `.env`。
+- OpenAI-compatible 上游根地址也位于 `.env.bifrost`。launcher 只接受不含凭据、query、fragment 或 API path 的 HTTPS origin，并把规范化结果写入 custom provider 的 `network_config.base_url`；`/v1/chat/completions` 由 Bifrost adapter 追加，因此配置值不能包含 `/v1`。
 - launcher 可读取两份环境文件以生成运行配置，但启动 Bifrost child 时只传入操作系统运行所需变量和五个明确允许的 Bifrost/provider 配置变量，不把完整父进程环境传给第三方二进制。
 - provider key 只从 `.env.bifrost` 注入 Bifrost；运行配置只保存 `env.` 引用，不把真实值写入仓库配置、命令行参数、日志或 Studium 浏览器响应。provider 名称与 alias 不能通过 Bifrost 的 `env.` 引用解析，因此由 Studium launcher 在本地生成不含密钥的运行配置。
 - M1 只允许显式路由 `studium-openai/studium-m1`。它是 `base_provider_type=openai` 的 custom provider，只开放非流式 Chat Completions，`list_models=false`；浏览器和 Route Handler 均不能覆盖路由。v1.6.3 的标准 provider 无法关闭启动阶段的 `/models` 请求，实际启动时会产生两次不必要的外连，因此不采用标准 provider。
@@ -64,7 +65,7 @@ M1 不使用 Bifrost 的控制面或治理平台能力。运行配置必须显�
 - 启用 Bifrost admin username/password 鉴权，凭据来自未跟踪的本地环境变量。v1.6.3 的 UI 和管理路由没有关闭开关，而关闭 config store 会使管理 AuthMiddleware 无法初始化，因此“关闭 config store”不是安全选项。
 - Studium 浏览器代码不直接调用网关，也不把管理 UI、配置 API 或其他非推理端点作为产品入口。loopback 仍允许本机浏览器和其他本地进程连接，因此推理虚拟 key 与管理鉴权都不能省略。
 - `allowed_origins` 设为空。v1.6.3 仍会硬编码允许 localhost Origin，因此 CORS 不是安全边界；推理虚拟 key 和管理鉴权必须始终启用。
-- pricing 与 model-parameter catalog 是仓库内的空 JSON，并通过相对 `file://` URL 读取。MCP catalog 也是空 JSON，但 Bifrost v1.6.3 在 Windows 上不能正确读取其绝对 `file://` URL，因此 Node launcher 在 `127.0.0.1:4001` 提供只读的单文件 HTTP endpoint；Bifrost 本身继续监听 `127.0.0.1:4000`。两个监听都必须随 launcher 退出而清理。
+- pricing 与 model-parameter catalog 是仓库内的空 JSON，并通过相对 `file://` URL 读取。MCP catalog 也是空 JSON，但 Bifrost v1.6.3 在 Windows 上不能正确读取其绝对 `file://` URL，因此 Node launcher 在 `127.0.0.1:4101` 提供只读的单文件 HTTP endpoint；Bifrost 本身继续监听 `127.0.0.1:4000`。两个监听都必须随 launcher 退出而清理。
 
 若未来启用 retry 或 fallback，Studium 必须能获取并记录每次真实 attempt 及进入下一次尝试的原因；不得允许网关暗中重试或切换后只返回最终结果。
 
@@ -115,12 +116,12 @@ Studium 的版本化调用 trace 至少记录：
 - config store 是 Bifrost v1.6.3 管理鉴权所需的基础设施，不保存 Studium 权威调用审计。它不是完整数据库加密；只有 Bifrost 支持的敏感列通过 encryption key 加密，因此文件权限和数据根目录仍须受控。
 - 当前安装基线只覆盖 Windows amd64；其他平台必须增加各自的官方资产、摘要和验证证据，不能复用本摘要。
 - 关闭 retry 和 fallback 会把短暂上游失败直接暴露为一次失败，但 M1 的行为因此可预测且可审计。
-- provider、resolved model、token 和成本取决于 Bifrost 与供应商是否返回相应字段；缺失值保留为空，不推测或伪造。真实模型确定前不承诺成本字段可用。
+- provider、resolved model、token 和成本取决于 Bifrost 与供应商是否返回相应字段；缺失值保留为空，不推测或伪造。2026-07-15 的真实成功响应提供了 resolved model、token 与延迟，但本地价格 catalog 为空且响应没有成本，因此不承诺成本字段可用。
 - 当前 custom-provider 配置只验证 OpenAI-compatible base provider；支持 Anthropic、Gemini 或其他协议需要各自的最小配置和真实兼容性测试。
 - JSONL 只适用于当前单应用进程的本地追加审计。多进程写入、集中采集、保留期限、轮转、文件权限和加密若成为需求，必须另行设计。
 - 无正文审计降低但没有消除隐私风险；时间、模型、token、成本和关联 ID 仍属于本地运行元数据。
 - loopback 网关只移除了额外的第三方中间控制面。使用云 provider 时，提示词和回答仍会离开本机并由该 provider 处理。
-- 在真实 provider key 和模型未配置、两轮浏览器调用未通过前，M1 仍不能标记完成。
+- 真实 provider key、模型和两轮浏览器成功链路已于 2026-07-15 验证；真实上游失败 envelope 的在线映射仍是 M1 收尾项。
 
 ## 未采用方案
 

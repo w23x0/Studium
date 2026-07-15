@@ -2,7 +2,7 @@
 
 ## 记录范围
 
-本记录覆盖 Studium 在 M1 期间把活动 LLM 网关从 LiteLLM 重构为 Bifrost，并建立网关无关调用层和无正文审计的工作。它只记录本次实际完成的修改与验证；本地 sidecar、loopback、拒绝路径、自动化、生产构建与依赖审计已经通过，正确虚拟 key、真实供应商链路、真实 metadata 和两轮浏览器对话仍明确列为待完成。
+本记录覆盖 Studium 在 M1 期间把活动 LLM 网关从 LiteLLM 重构为 Bifrost，并建立网关无关调用层和无正文审计的工作。2026-07-14 完成本地 sidecar、安全边界和自动化；2026-07-15 又完成自定义 OpenAI-compatible 上游接入、真实成功 metadata 和两轮 Chrome 对话。真实上游失败 envelope 的在线映射仍是收尾项。
 
 旧的 `2026-07-14-m0-m1-baseline.md` 保持不变，因为其中 LiteLLM 基线是当时实际发生的历史事实。架构取代关系由 ADR 0002 和 ADR 0003 表达。
 
@@ -141,16 +141,18 @@
 - 在生产构建后使用统一 `npm run start` 重复检查，三个服务仍分别只监听上述 loopback 端口。
 - 终止统一开发命令后再次检查，3000、4000 与 4001 均为零监听，没有残留子进程占用端口。
 
-## 待完成：真实模型验收
+## 2026-07-15：真实成功链路验收
 
-M1 仍为进行中。完成条件保持不变：
+- 用户指定了一个 OpenAI-compatible HTTPS 上游。launcher 新增 `STUDIUM_UPSTREAM_BASE_URL`，只接受不含凭据、query、fragment 或 API path 的 HTTPS origin，并把它写入 provider `network_config.base_url`。Bifrost 自行追加 `/v1/chat/completions`，避免配置 `/v1` 后形成重复路径。
+- 本机未跟踪配置把固定路由 `studium-openai/studium-m1` 映射到 `gpt-5.4-mini`；真实上游 key 只保留在 `.env.bifrost`。旧 smoke 虚拟 key、管理密码和 encryption key 已替换为系统随机值。
+- 原辅助端口 `4001` 在验收时被本机 QQ 占用；没有终止用户进程，而是把只读空 MCP catalog helper 调整到 `127.0.0.1:4101`。产品端口仍是 Next.js `3000` 与 Bifrost `4000`。
+- 生成的 Bifrost JSON 只含 secret 的 `env.` 引用；真实启动后 `3000`、`4000` 和 `4101` 都只监听 `127.0.0.1`，health 与页面均返回 200。
+- 先经与浏览器相同的 `POST /api/chat` 完成两轮上下文调用，再用本机 Chrome 实际填写文本框并发送两轮：页面渲染四条消息，第一轮返回 `remembered`，第二轮正确返回首轮代号 `ORCHID-815`，无错误提示且发送后清空输入框。
+- 真实响应表明 Bifrost 的 `x-bifrost-resolved-model` 是内部 alias，而 `extra_fields.routing_info.resolved_key_alias.model_id` 才是实际 `gpt-5.4-mini`。parser 已调整优先级并增加回归测试，后续审计不再把 `studium-m1` 误记为实际模型。
+- 成功 JSONL 记录均为一个 attempt，包含 `studium-openai`、`gpt-5.4-mini`、input/output token、总耗时和 gateway latency。审计不含测试代号、消息正文或任何 key；固定配置继续保持 retry 0、无 fallback。
+- 上游没有返回成本，本地 pricing catalog 仍为空，因此 `cost` 正确保持缺失。没有可信价格证据前不补估算值。
+- 全量验证结果：ESLint、TypeScript、76/76 Vitest、Next.js 生产构建、Bifrost v1.6.3 制品完整性校验和 `npm audit` 全部通过；依赖审计为 0 vulnerabilities。跟踪文件与生成文件的凭据扫描均为 0 命中，临时 Chrome profile 和开发日志已清理，验收进程退出后相关端口无残留。
 
-1. 明确一个受支持的真实 provider 和实际模型。
-2. 在未跟踪的 `.env.bifrost` 中设置真实 provider key、管理密码和 encryption key，并在 `.env` 中生成随机虚拟 key。
-3. 根据实际模型锁定最小 pricing 快照；若没有可信价格数据，明确保持 cost 缺失。
-4. 从浏览器完成至少两轮真实对话，确认上下文连续、错误处理正常，并保存脱敏证据。
-5. 用真实成功与失败响应核对 Studium parser 对 `x-request-id`、`extra_fields.routing_info`、`extra_fields.latency`、`usage.cost.total_cost` 和失败 metadata 的解释。
-6. 核对 Studium JSONL 中的 provider、resolved model、token、延迟与可用成本，同时确认没有消息正文或密钥。
-7. 通过真实上游行为确认没有隐式 retry 或 fallback；不能用静态配置和 mock 测试替代这项验收。
+## 仍待完成：M1 收尾
 
-真实验收通过前不得把 M1 标记完成，也不开始 M2 的 Markdown 资料上下文。
+真实成功链路已经通过。尚未在线触发并核对该上游的失败 envelope；错误分类、失败审计和 UI 恢复目前由自动化覆盖，不能表述为已用该真实服务验证。当前用户指定上游是否作为长期 provider 也尚未决定。在这两点明确前保持 M1 为收尾中，不开始 M2 的 Markdown 资料上下文。
