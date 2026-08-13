@@ -1,13 +1,14 @@
 {
   "meta": {
     "schema": 1,
-    "current_round": 6,
-    "root_topic": "M08/M09 存储选型候选空间缺口补全",
+    "current_round": 7,
+    "root_topic": "Studium 理科知识载体选型",
     "as_of": "2026-08-13",
     "decision_points": [
-      "属性图系（Neo4j/Cypher/NebulaGraph 等引擎）到底该不该进入 L1 语义层/查询层",
-      "图数据库作为查询层的组合方案是否已到触发条件",
-      "RDF 1.2 + TriG + ShEx 的 L1 推荐是否站得住（对比引擎方案后复审）"
+      "六族储存结构（形式化库/MKM/图谱/教学/认知/GraphRAG）哪些进入 Studium 知识组织、怎么取舍",
+      "五家族表示形式（类型论/因果/概率程序/程序合成/向量）系统化与 M08 结合",
+      "这些结构如何服务 M08 检索/M05 导航/M04 诊断/记忆调度",
+      "以 06-M08 §8 借什么不借什么为基线，验证深化"
     ]
   },
   "tasks": [
@@ -370,6 +371,132 @@
       "created": "2026-08-13",
       "updated": "2026-08-13",
       "verdict": "accepted"
+    },
+    {
+      "id": "V1",
+      "parent": null,
+      "topic": "形式化数学库与依赖图（储存结构 A 族：mathlib/MML/Metamath + premise selection）",
+      "questions": [
+        "mathlib/MML/Metamath 的依赖图结构（引用坍缩、依赖查询、premise selection）对组织理科知识提供什么可移植模式？",
+        "06-M08 §8 借「证明作为对象」的取用结论是否成立——依赖图能否作为 M08 知识图谱的结构参考？",
+        "形式化库「机器可证」与 Studium「锚点判等=原文对应」红线有何借鉴或冲突（形式化证推导 vs 锚点证对应）？"
+      ],
+      "candidates": [],
+      "keywords": [
+        "mathlib 依赖图 premise selection 结构",
+        "形式化库 依赖图 M08 结构 借鉴"
+      ],
+      "bounds": [
+        "不评估 Lean/Coq 作为运行时；只评估依赖图/前驱选择/库结构对 Studium 的适配",
+        "以 06-M08 §8 取用结论为基线，深化验证而非重复",
+        "不改变红线"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/V1_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/V1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/V1",
+      "env": "",
+      "data": "",
+      "retries": 1,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted",
+      "rework": "rejected->整改(伪句替换)->复核通过"
+    },
+    {
+      "id": "V2",
+      "parent": null,
+      "topic": "MKM 理论图（储存结构 B 族：MMT/OMDoc/biform）",
+      "questions": [
+        "MMT/OMDoc 的模块化理论图 + 查询语言（QMT）对理科知识组织提供什么结构启示？",
+        "biform 理论图（公理+算法混合）能否表达 M08 需要的「概念+方法+可迁移结构」？",
+        "MKM 的版本化存储（TNTBase）与存储选型 L2 FHIR 式（v1.3）有何可借鉴/冲突？"
+      ],
+      "candidates": [],
+      "keywords": [
+        "MMT OMDoc 理论图 biform 查询",
+        "MKM 理论图 模块化 理科知识"
+      ],
+      "bounds": [
+        "不评估 MKM 软件栈；只评估结构模式",
+        "理论图若进入需与已定 L1 RDF 整合（v1.3），不另起格式",
+        "不改变红线"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/V2_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/V2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/V2",
+      "env": "",
+      "data": "",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
+    },
+    {
+      "id": "V4",
+      "parent": null,
+      "topic": "教学结构与知识空间理论（储存结构 D 族：KST/课程图/知识追踪）",
+      "questions": [
+        "KST 闭包系统的「知识态」能否作为 M04 诊断的模型基础（结合 M04 阈值概念跨闭环判断）？",
+        "课程图/前驱关系挖掘（LectureBank 等）对 M08 前置关系、M05 路线规划的适配？",
+        "知识追踪（DKT/SAKT）对 M09 个人模型的适配（与存储选型 FHIR 式版本化如何结合）？"
+      ],
+      "candidates": [],
+      "keywords": [
+        "KST 知识态 闭包系统 诊断 适配",
+        "课程图 前驱关系 学习路径 知识追踪"
+      ],
+      "bounds": [
+        "不评估具体实现；只评估结构适配",
+        "知识态若进入需服务 M04/M05 已收口的边界，不推翻",
+        "不改变红线"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/V4_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/V4_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/V4",
+      "env": "",
+      "data": "",
+      "retries": 1,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted",
+      "rework": "rejected->整改->复核通过"
+    },
+    {
+      "id": "V6",
+      "parent": null,
+      "topic": "GraphRAG 与图检索（储存结构 F 族：图何时真有用）",
+      "questions": [
+        "「图何时真的有用」（2506.05690 负面结果视角）对 Studium M07/M08 检索的启示？",
+        "GraphRAG 图+向量混合与「锚点判等+向量只定向不结案」红线的适配？",
+        "图检索与存储选型「查询层等触发」（S2/v1.3）结论的关系——图索引何时值得建？"
+      ],
+      "candidates": [],
+      "keywords": [
+        "GraphRAG 图检索 负面结果 何时有用",
+        "图检索 M07 M08 向量 定向"
+      ],
+      "bounds": [
+        "不评估运行时/编排框架",
+        "不做性能基准",
+        "以 S2「查询层等触发」结论为基线，验证图索引触发条件"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/V6_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/V6_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/V6",
+      "env": "",
+      "data": "",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
     }
   ],
   "conflicts": [],
@@ -474,6 +601,29 @@
         "L2": "accepted"
       },
       "log": "R6 派发 L2：L2 版本层选型（FHIR _history vs 时态属性图双区间二选一）——存储选型最后未决项；L2 条件性选 FHIR _history 式，5 项设计待定移交产品"
+    },
+    {
+      "round": 7,
+      "asOf": "2026-08-13",
+      "dispatched": [
+        "V1",
+        "V2",
+        "V4",
+        "V6"
+      ],
+      "recovered": [
+        "V1",
+        "V2",
+        "V4",
+        "V6"
+      ],
+      "verdicts": {
+        "V1": "accepted(整改后复核)",
+        "V2": "accepted",
+        "V4": "accepted(整改后复核)",
+        "V6": "accepted"
+      },
+      "log": "R7 知识载体主线第一轮：派发 V1(形式化库依赖图)/V2(MKM理论图)/V4(教学结构KST)/V6(GraphRAG图检索)；V2/V6 accepted；V1(伪句冒充原文)/V4(BKT标级错误) rejected 回炉——引擎首个回炉事件；V1/V4 回炉整改后均复核通过——引擎首个 rejected->rework->accepted 闭环"
     }
   ]
 }
