@@ -1,7 +1,7 @@
 {
   "meta": {
     "schema": 1,
-    "current_round": 4,
+    "current_round": 5,
     "root_topic": "M08/M09 存储选型候选空间缺口补全",
     "as_of": "2026-08-13",
     "decision_points": [
@@ -450,6 +450,16 @@
         "M4": "accepted"
       },
       "log": "引擎 v3 第四轮：派发迁移路径实测 M1(yaml-ld)/M2(RMLMapper)/M3(双写影子读)/M4(rdf-canonize 指纹)；回收 4/4 全 accepted（审计复跑），到叶归档"
+    },
+    {
+      "round": 5,
+      "asOf": "2026-08-13",
+      "dispatched": [
+        "SYN2"
+      ],
+      "recovered": [],
+      "verdicts": {},
+      "log": "R5 收口合成：E-SYN 把 M1-M4 迁移路径实测并入 决策点_v1.1 → v1.2"
     }
   ]
 }
