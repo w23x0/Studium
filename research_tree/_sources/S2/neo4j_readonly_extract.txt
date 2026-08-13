@@ -1,0 +1,8 @@
+SOURCE: https://neo4j.com/docs/operations-manual/current/configuration/configuration-settings/ (Neo4j Operations Manual, fetched 2026-08-13)
+EXTRACT (server.databases.read_only section):
+
+"server.databases.default_to_read_only
+Description: Whether or not any database on this instance is read_only by default. If false, individual databases may be marked as read_only using server.database.read_only. If true, individual databases may be marked as writable using server.databases.writable. Valid values: A boolean. Default value: false
+
+server.databases.read_only
+Description: List of databases for which to prevent write queries. Databases not included in this list maybe read_only anyway depending upon the value of server.databases.default_to_read_only. Valid values: A comma-separated set where each element is a ..."

@@ -1,0 +1,5 @@
+SOURCE: https://www.postgresql.org/docs/current/rules-materializedviews.html (fetched 2026-08-13 via WebFetch)
+"Materialized views in PostgreSQL use the rule system like views do, but persist the results in a table-like form."
+REFRESH MATERIALIZED VIEW mymatview; "the materialized view cannot subsequently be directly updated"; query stored like a view's query.
+"While access to the data stored in a materialized view is often much faster than accessing the underlying tables directly ...
+the data is not always current; yet sometimes current data is not needed." Nightly-refresh example with CREATE UNIQUE INDEX + REFRESH.

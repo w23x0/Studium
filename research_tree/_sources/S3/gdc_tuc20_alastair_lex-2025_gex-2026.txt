@@ -1,0 +1,187 @@
+                    LEX-095
+
+Graph Data Council
+20th TUC London
+
+LEX 2025
+GEX? 2026
+
+Alastair Green
+6 September 2025
+TEXT2GRAPHQUERY includes LEX and "openGQL"
+
+GDC is moving LEX and GQL Implementation activities into the TEXT2GRAPHQUERY
+project, which is a defining use case, and one which needs strong schema. LEX is an
+existing project, running so far from Nov 22 to Feb 25, and restarting this August. GQL
+Implementation covers ANTLR grammar, GQL code editor etc., starting 2024.
+
+The charter defines LEX output as a PG schema definition language
+  Extends GQL graph types (compatible with GQL and SQL/PGQ)
+  Concrete and definite, not speculative or exploratory ("Will, not could")
+  Ensure PG users are broadly level with SQL and SHACL users
+  Connects to the pre-existing world of conceptual data modelling (ERA)
+
+Assumes RDF languages/vocabularies cannot be used directly with GQL graphs
+      That's a defining condition of our charter (and has been there since we started)
+There is a need for property graph schema: GraphRAG
+
+Debunking Urban Myths about RDF and Explaining How Ontologies Help GraphRAG
+LDBC founding member Graphwise (Ontotext) President Atanas Kiryakov, 4 September 2025
+
+RDF BONUS 1: Schema languages with formal semantics that LLMs like
+
+The lack of proper schema language in LPG is a major limitation for GraphRAG - you
+have nothing to pass to the LLM to help it understand the data in the graph and be
+able to query it. Both precision and recall will suffer when arbitrary information is
+placed on nodes and edges without formal schemes.
+
+All major LLMs know and "understand" RDF, RDF Schema, OWL SKOS and SHACL. One of the most efficient retrieval
+methods in GraphDB's Talk-to-you-graph tool is the SPARQL one - you only need to tell the model where your ontology is and
+it generates decent SPARQL queries, sets the parameters using vector-based entity retrieval, executes the query and
+combines the results with those from other retrieval methods. Overall, the RDF stack offers the most efficient method for
+passing domain knowledge to an LLM.
+There is a need for property graph schema: Text2Graph
+
+SPIDER 2.0: EVALUATING LANGUAGE MODELS ON REAL-WORLD ENTERPRISE
+TEXT-TO-SQL WORKFLOWS
+There need for property graph schema is obvious
+
+There are many things that can be said and done at the level of schema, that are
+simpler, more efficient and more comprehensible than things said and done at the
+level of the instance. GraphAr yet another reminder.
+
+      It is not an accident that SQL is schema-centric
+      And SQLite is also not an accident: data is often chaotic
+
+Property graphs are an opening for the full spectrum (water to ice)
+
+LEX can be the first manifestation of that concept, which is explored in
+PG-Schema. This could take the form of OPEN and CLOSED element types.
+The "Ontology Gaps"
+
+What SQL/PGQ and GQL can do that Cypher can't
+       Define a graph schema (node and edge types), and define keys for them
+
+What SQL can do that GQL can't
+       Keys, domains, CHECK constraints, FKs, Information Schema, typed DML
+
+What JSON Schema can do that GQL can't
+       Intra-record constraints
+       (X-field validations, ranges, string formats ~ SHACL Core Constraints)
+
+What RDFS/SHACL and PG-Schema can do that GQL can't
+       Sub-classing, sub-graph shapes
+
+What EERM/UML can do that GQL can't
+       Cardinality constraints on elements and relations, N-ary relations, sub-typing(classing)
+LEX strawman (early 2025) DDL and YAML
+
+LEX-080r1 Graph Schema --
+Strawman in DDL and YAML
+
+Gives a syntactic view of
+possible LEX additions to
+GQL, adding YAML to DDL
+
+Schema = type + constraints
+
+CREATE SCHEMA TYPE ...
+
+          LEX schema =
+         GQL graph type
+     + missing constraints
+grasch-lex
+
+A Python library for TEXT2GRAPH (and anyone else) to use
+In development, not ready for use, contributions welcome
+LEX 2025  GEX 2026
+
+KG and RAG have put a fire under the PG world, with respect to schema
+
+Practical response should be "broadly level" with SHACL and SQL
+
+  GQL:2024 Catalog, Graph Types, Element Type Identifier/Name Labels
+                                                +
+
+                     1: SQL Keys + Information Schema Graph
+                                                +
+
+      2: Subtypes + JSON data and constraints, ER/UML Cardinalities
+                                                +
+
+                 3? Foreign Keys, Subgraph Types , N-ary relations
+LEX 2025.11 SQL-style Keys
+
+                            Specify a set of property names
+                              for a node type's content type
+                            and an edge type's content type
+                                 Reference to endpoints?
+
+                    Issue of correspondence to keys in SQL/PGQ
+                    GQL Graph types/LEX schema should allow
+          PGQ schema to be specified (ignoring SQL view definition)
+
+                     Microsoft submission to WG3/LEX coming
+                    LEX-096 Key and unique constraints in GQL
+LEX 2025.12 Content Types and preparing for subtyping
+
+                               Separate out content types
+            Sharing of content across nodes/edges, including ABTs
+
+                          Organize content types in a lattice
+                Introduce ANY CONTENT, OPEN (extensible) types
+
+                           Structural subtyping  More later
+                   Element types identifiers map to type lattices
+       Full syntactic exploitation of type ids (key label sets | type keys)
+              Extension/Intersection type syntax, union type syntax
+LEX 2025.13 Information Schema Graph ("system graph")
+LEX 2025.21 Subtyping
+
+                    Organize node and edge types into lattices
+
+                     Syntax to allow easy definition of subtypes
+         (extension of existing types/explicit statements of inclusion)
+
+                    Syntax to allow rules to specify supertypes:
+                         Both as inclusive or proper subtypes
+LEX 2025.22 JSON data and constraints                    Node (or edge):
+                                                         a graph Element
+                                         Content record
+
+                      Id   Key
+                          Labels
+Constrained by
+content type in           Other   (Nested) Properties
+node type in              labels
+graph type
+                                                         Constrained
+                                                         by JSON
+                                                         Schema
+LEX 2025.23 ER/UML Multiplicities/Participation
+
+                     Min/Max of Nodes and Edges
+                    Participation of Nodes in Edges
+LEX 2025.31 Foreign Keys
+
+                         Foreign Keys, as in SQL
+                      Allow a FK in a node type to
+            refer to a key in a node type's content type
+              Or between an edge type's content type
+               in which case it constrains a half edge
+LEX 2025.32 Subgraph Types + Referential Integrity Graphs
+
+                Comparable to SHACL shapes graph
+  Could be viewed as generalization of node and edge types
+
+                  RIGs (Referential Integrity Graphs)
+                               are an example
+
+                   Extended patterns = GQL queries
+LEX 2025.33 N-ary relations
+
+        Schema description of N-ary relations with roles
+ Mapping to a reifier for the relation, and edges between the
+
+                endpoints and the reifier for the roles
+

@@ -64,8 +64,9 @@ tmp/
 *.pkl
 .obsidian/workspace.json
 research_tree/findings/raw/
-**/_sources/
-**/_research/
+# 原始抓取存档只在 docs/图工程调研 下忽略；research_tree/_sources 是引擎证据快照，进 git
+docs/图工程调研/**/_sources/
+docs/图工程调研/**/_research/
 # research_tree/logs: runtime traces + raw evidence; keep only md dispatch/process logs
 research_tree/logs/**
 !research_tree/logs/**/

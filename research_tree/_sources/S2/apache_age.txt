@@ -1,0 +1,4 @@
+SOURCE: https://github.com/apache/age (fetched 2026-08-13 via WebFetch)
+"Apache AGE is an extension for PostgreSQL that enables users to leverage a graph database on top of the existing relational databases."
+AGE = "A Graph Extension", inspired by Bitnine's AgensGraph. Badge: Release v1.8.0. "AGE supports Postgres 11, 12, 13, 14, 15, 16, 17 & 18."
+Features: Cypher Query (openCypher), Hybrid Querying (SQL and/or Cypher), Full PostgreSQL. Full write support (CREATE vertices/edges).

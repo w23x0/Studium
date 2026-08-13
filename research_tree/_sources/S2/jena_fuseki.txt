@@ -1,0 +1,5 @@
+SOURCE: https://jena.apache.org/documentation/fuseki2/ (fetched 2026-08-13 via curl)
+"Apache Jena Fuseki is a SPARQL server. It can run as a standalone server, or embedded in an application.
+Fuseki provides the SPARQL 1.1 protocols for query and update as well as the SPARQL Graph Store protocol.
+Fuseki is integrated with TDB to provide a robust, transactional, persistent storage layer. Fuseki also incorporates Jena text query."
+RDF-side read/query service over RDF data (loadable from RDF files).

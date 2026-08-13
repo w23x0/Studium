@@ -1,0 +1,6 @@
+SOURCE: https://github.com/apache/incubator-graphar (fetched 2026-08-13 via WebFetch)
+GraphAr (Graph Archive): Apache incubator project, standardized system-independent file format for storing/retrieving property graph data.
+"a project that aims to make it easier for diverse applications and systems ... to build and access graph data conveniently and efficiently."
+Use cases: importing/exporting, persistent storage, "serve as a direct data source for graph processing applications."
+"Utilize Apache Spark to quickly manipulate and transform your graphar format data." C++/Java/Spark/PySpark libraries.
+Layouts: ordered_by_source (CSR), ordered_by_dest (CSC), unordered_by_source (COO), unordered_by_dest (COO).

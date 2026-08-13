@@ -1,0 +1,6 @@
+SOURCE: https://martinfowler.com/bliki/CQRS.html (fetched 2026-08-13 via WebFetch)
+"You can use a different model to update information than the model you use to read information."
+Separate models for update (command) and display (query); read side is a query model, write side is the source of truth.
+Sync mechanisms: shared DB, or separate DBs (query-side = real-time ReportingDatabase), or EventPosters/MemoryImages under event sourcing,
+or "EagerReadDerivation to simplify your query-side models."
+Caution: "adds risky complexity" — use selectively, not system-wide.
