@@ -57,3 +57,16 @@ Desktop.ini
 *.bak
 *.swp
 *~
+
+# Studium research phase: raw evidence and intermediate artifacts
+# (PDFs, scraped pages, venvs — regenerable from URLs recorded in findings/, not versioned)
+tmp/
+*.pkl
+.obsidian/workspace.json
+research_tree/findings/raw/
+**/_sources/
+**/_research/
+# research_tree/logs: runtime traces + raw evidence; keep only md dispatch/process logs
+research_tree/logs/**
+!research_tree/logs/**/
+!research_tree/logs/**/*.md

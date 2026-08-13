@@ -1,0 +1,89 @@
+{"src":"zh-102","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"The set V is called a linear space if it satisfies the following ten axioms which we list in three groups."}}
+{"src":"zh-103","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"The set V is called a linear space if it satisfies the following ten axioms which we list in three groups."}}
+{"src":"zh-104","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"which we list in three groups"}}
+{"src":"zh-105","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"which we list in three groups"}}
+{"src":"zh-106","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"which we list in three groups"}}
+{"src":"zh-108","rel":"is-a","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"Linear spaces, as defined above, are sometimes called real linear spaces"}}
+{"src":"zh-109","rel":"is-a","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"the resulting structure is called a complex linear space"}}
+{"src":"zh-108","rel":"contrasts","dst":"zh-109","origin":"source","evidence":{"file":"15.02.md","quote":"If real number is replaced by complex number in Axioms 2, 7, 8, and 9, the resulting structure is called a complex linear space."}}
+{"src":"zh-101","rel":"requires","dst":"zh-107","origin":"model"}
+{"src":"zh-103","rel":"requires","dst":"zh-107","origin":"source","evidence":{"file":"15.02.md","quote":"For every x in V and every real number a there corresponds an element in V called the product of a and x"}}
+{"src":"zh-108","rel":"requires","dst":"zh-107","origin":"source","evidence":{"file":"15.02.md","quote":"A real linear space has real numbers as scalars"}}
+{"src":"zh-109","rel":"requires","dst":"zh-107","origin":"source","evidence":{"file":"15.02.md","quote":"a complex linear space has complex numbers as scalars"}}
+{"src":"zh-110","rel":"is-a","dst":"zh-101","origin":"model"}
+{"src":"zh-111","rel":"is-a","dst":"zh-110","origin":"source","evidence":{"file":"15.03.md","quote":"The reader can easily verify that each of the following sets is a function space."}}
+{"src":"zh-112","rel":"is-a","dst":"zh-110","origin":"source","evidence":{"file":"15.03.md","quote":"The reader can easily verify that each of the following sets is a function space."}}
+{"src":"zh-117","rel":"is-a","dst":"zh-101","origin":"model"}
+{"src":"zh-113","rel":"requires","dst":"zh-101","origin":"source","evidence":{"file":"15.04.md","quote":"In any linear space there is one and only one zero element."}}
+{"src":"zh-113","rel":"requires","dst":"zh-104","origin":"source","evidence":{"file":"15.04.md","quote":"Axiom 5 tells us that there is at least one zero element."}}
+{"src":"zh-114","rel":"requires","dst":"zh-105","origin":"source","evidence":{"file":"15.04.md","quote":"Axiom 6 tells us that each x has at least one negative, namely $(-1)x$"}}
+{"src":"zh-114","rel":"requires","dst":"zh-101","origin":"model"}
+{"src":"zh-116","rel":"requires","dst":"zh-114","origin":"model"}
+{"src":"zh-116","rel":"requires","dst":"zh-105","origin":"model"}
+{"src":"zh-115","rel":"requires","dst":"zh-107","origin":"source","evidence":{"file":"15.04.md","quote":"let $a$ and $b$ denote arbitrary scalars"}}
+{"src":"zh-115","rel":"requires","dst":"zh-101","origin":"source","evidence":{"file":"15.04.md","quote":"In a given linear space, let $x$ and $y$ denote arbitrary elements"}}
+{"src":"zh-102","rel":"contrasts","dst":"zh-103","origin":"model"}
+{"src":"zh-115","rel":"requires","dst":"zh-104","origin":"model"}
+{"src":"zh-202","rel":"requires","dst":"zh-201","origin":"source","evidence":{"file":"15.06.md","quote":"Then S is a subspace if and only if S satisfies the closure axioms."}}
+{"src":"zh-204","rel":"requires","dst":"zh-203","origin":"source","evidence":{"file":"15.06.md","quote":"The set of all finite linear combinations of elements of S satisfies the closure axioms and hence is a subspace of V."}}
+{"src":"zh-204","rel":"is-a","dst":"zh-201","origin":"source","evidence":{"file":"15.06.md","quote":"satisfies the closure axioms and hence is a subspace of V."}}
+{"src":"zh-205","rel":"other","dst":"zh-204","origin":"source","evidence":{"file":"15.06.md","quote":"and denote it by $L(S)$"},"rel_note":"zh-205 是 zh-204(由 S 张成的子空间)的记号"}
+{"src":"zh-207","rel":"contrasts","dst":"zh-206","origin":"source","evidence":{"file":"15.07.md","quote":"The set $S$ is called independent if it is not dependent."}}
+{"src":"zh-207","rel":"requires","dst":"zh-206","origin":"source","evidence":{"file":"15.07.md","quote":"The set $S$ is called independent if it is not dependent."}}
+{"src":"zh-208","rel":"requires","dst":"zh-207","origin":"source","evidence":{"file":"15.07.md","quote":"Let S be an independent set consisting of k elements in a linear space V"}}
+{"src":"zh-208","rel":"requires","dst":"zh-204","origin":"source","evidence":{"file":"15.07.md","quote":"let $L(S)$ be the subspace spanned by S"}}
+{"src":"zh-208","rel":"implies","dst":"zh-206","origin":"source","evidence":{"file":"15.07.md","quote":"Then every set of $k + 1$ elements in $L(S)$ is dependent."}}
+{"src":"zh-209","rel":"requires","dst":"zh-207","origin":"source","evidence":{"file":"15.08.md","quote":"is called a finite basis for V if S is independent and spans V."}}
+{"src":"zh-209","rel":"requires","dst":"zh-204","origin":"model"}
+{"src":"zh-210","rel":"requires","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"The space V is called finite dimensional if it has a finite basis"}}
+{"src":"zh-211","rel":"contrasts","dst":"zh-210","origin":"source","evidence":{"file":"15.08.md","quote":"Otherwise V is called infinite dimensional."}}
+{"src":"zh-212","rel":"requires","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"Then every finite basis for $V$ has the same number of elements."}}
+{"src":"zh-212","rel":"requires","dst":"zh-210","origin":"source","evidence":{"file":"15.08.md","quote":"Let $V$ be a finite-dimensional linear space."}}
+{"src":"zh-212","rel":"requires","dst":"zh-208","origin":"source","evidence":{"file":"15.08.md","quote":"Theorem 15.5 tells us that every set of $k + 1$ elements in V is dependent."}}
+{"src":"zh-213","rel":"requires","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"If a linear space V has a basis of n elements, the integer n is called the dimension of V."}}
+{"src":"zh-213","rel":"requires","dst":"zh-212","origin":"model"}
+{"src":"zh-214","rel":"other","dst":"zh-213","origin":"source","evidence":{"file":"15.08.md","quote":"We write $n = \\dim V$ ."},"rel_note":"zh-214 是 zh-213(维数)的记号"}
+{"src":"zh-215","rel":"requires","dst":"zh-213","origin":"source","evidence":{"file":"15.08.md","quote":"Let $V$ be a finite-dimensional linear space with $\\dim V = n$ ."}}
+{"src":"zh-215","rel":"requires","dst":"zh-207","origin":"source","evidence":{"file":"15.08.md","quote":"Any set of independent elements in $V$ is a subset of some basis for $V$ ."}}
+{"src":"zh-215","rel":"implies","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"Any set of n independent elements is a basis for V."}}
+{"src":"zh-216","rel":"requires","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"consider a basis whose elements $e_1, \\ldots, e_n$ are taken in a given order."}}
+{"src":"zh-216","rel":"requires","dst":"zh-213","origin":"model"}
+{"src":"zh-217","rel":"requires","dst":"zh-216","origin":"source","evidence":{"file":"15.08.md","quote":"are called the components of x relative to the ordered basis $(e_{1},\\ldots,e_{n})$ ."}}
+{"src":"zh-217","rel":"requires","dst":"zh-213","origin":"model"}
+{"src":"zh-303","rel":"requires","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"A real linear space with an inner product is called a real Euclidean space."}}
+{"src":"zh-304","rel":"requires","dst":"zh-302","origin":"source","evidence":{"file":"15.10.md","quote":"A complex linear space with an inner product is called a complex Euclidean space."}}
+{"src":"zh-303","rel":"is-a","dst":"zh-305","origin":"source","evidence":{"file":"15.10.md","quote":"the space can be real or complex."}}
+{"src":"zh-304","rel":"is-a","dst":"zh-305","origin":"source","evidence":{"file":"15.10.md","quote":"the space can be real or complex."}}
+{"src":"zh-302","rel":"contrasts","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"satisfying the same axioms as those for a real inner product, except that the symmetry axiom is replaced by the relation"}}
+{"src":"zh-301","rel":"generalizes","dst":"zh-306","origin":"source","evidence":{"file":"15.10.md","quote":"We shall introduce first a generalization of the dot product, which we call an inner product"}}
+{"src":"zh-307","rel":"is-a","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"Define an inner product of two functions $f$ and $g$ by the formula"}}
+{"src":"zh-307","rel":"contrasts","dst":"zh-306","origin":"source","evidence":{"file":"15.10.md","quote":"This formula is analogous to Equation (15.5) which defines the dot product of two vectors in $V_{n}$"}}
+{"src":"zh-308","rel":"requires","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"The inner product can be used to introduce the metric concept of length in any Euclidean space."}}
+{"src":"zh-308","rel":"requires","dst":"zh-305","origin":"model"}
+{"src":"zh-313","rel":"other","dst":"zh-308","origin":"source","evidence":{"file":"15.10.md","quote":"is called the norm of the element $x$"},"rel_note":"zh-313 是 zh-308(范数)所用的记号 ||x||。"}
+{"src":"zh-312","rel":"other","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"we write $(x, y)$ instead of $x \\cdot y$ for inner products"},"rel_note":"zh-312 是 zh-301(内积)所用的记号 (x, y)。"}
+{"src":"zh-309","rel":"requires","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"In a Euclidean space V, every inner product satisfies the Cauchy–Schwarz inequality:"}}
+{"src":"zh-309","rel":"applies-to","dst":"zh-305","origin":"source","evidence":{"file":"15.10.md","quote":"In a Euclidean space V, every inner product satisfies the Cauchy–Schwarz inequality:"}}
+{"src":"zh-309","rel":"implies","dst":"zh-310","origin":"source","evidence":{"file":"15.10.md","quote":"The Cauchy-Schwarz inequality shows that $|(x,y)| \\leq \\| x\\| \\| y\\|$"}}
+{"src":"zh-310","rel":"part-of","dst":"zh-311","origin":"source","evidence":{"file":"15.10.md","quote":"(d) $\\|x + y\\| \\leq \\|x\\| + \\|y\\|$ (triangle inequality)."}}
+{"src":"zh-311","rel":"applies-to","dst":"zh-308","origin":"source","evidence":{"file":"15.10.md","quote":"In a Euclidean space, every norm has the following properties"}}
+{"src":"zh-310","rel":"requires","dst":"zh-308","origin":"source","evidence":{"file":"15.10.md","quote":"every norm has the following properties"}}
+{"src":"zh-306","rel":"requires","dst":"zh-312","origin":"model"}
+{"src":"zh-311","rel":"requires","dst":"zh-309","origin":"source","evidence":{"file":"15.10.md","quote":"The Cauchy-Schwarz inequality shows that"}}
+{"src": "zh-342", "rel": "requires", "dst": "zh-341", "origin": "source", "evidence": {"file": "15.11.md", "quote": "A subset S of V is called an orthogonal set if $(x, y) = 0$ for every pair of distinct elements x and y in S."}}
+{"src": "zh-343", "rel": "is-a", "dst": "zh-342", "origin": "source", "evidence": {"file": "15.11.md", "quote": "An orthogonal set is called orthonormal if each of its elements has norm 1."}}
+{"src": "zh-314", "rel": "requires", "dst": "zh-342", "origin": "source", "evidence": {"file": "15.11.md", "quote": "every orthogonal set of nonzero elements is independent"}}
+{"src": "zh-314", "rel": "implies", "dst": "zh-315", "origin": "source", "evidence": {"file": "15.11.md", "quote": "every orthogonal set consisting of n nonzero elements is a basis for V."}}
+{"src": "zh-315", "rel": "requires", "dst": "zh-342", "origin": "model"}
+{"src": "zh-316", "rel": "is-a", "dst": "zh-315", "origin": "model"}
+{"src": "zh-316", "rel": "is-a", "dst": "zh-343", "origin": "model"}
+{"src": "zh-317", "rel": "requires", "dst": "zh-315", "origin": "source", "evidence": {"file": "15.11.md", "quote": "$S = \\{e_1, \\ldots, e_n\\}$ is an orthogonal basis for $V$"}}
+{"src": "zh-317", "rel": "implies", "dst": "zh-318", "origin": "source", "evidence": {"file": "15.11.md", "quote": "then its components relative to the ordered basis"}}
+{"src": "zh-318", "rel": "requires", "dst": "zh-315", "origin": "model"}
+{"src": "zh-319", "rel": "requires", "dst": "zh-316", "origin": "source", "evidence": {"file": "15.11.md", "quote": "assume that $\\{e_1, \\ldots, e_n\\}$ is an orthonormal basis for $V$"}}
+{"src": "zh-319", "rel": "implies", "dst": "zh-320", "origin": "source", "evidence": {"file": "15.11.md", "quote": "(x, y) = \\sum_ {i = 1} ^ {n} (x, e _ {i}) (\\overline {{y , e _ {i}}}) \\quad \\text {(Parseval's formula)}"}}
+{"src": "zh-320", "rel": "requires", "dst": "zh-316", "origin": "model"}
+{"src": "zh-321", "rel": "is-a", "dst": "zh-320", "origin": "source", "evidence": {"file": "15.11.md", "quote": "When x = y, Equation (15.11) reduces to (15.12)."}}
+{"src": "zh-319", "rel": "implies", "dst": "zh-321", "origin": "source", "evidence": {"file": "15.11.md", "quote": "In particular, when $x = y$ , we have"}}
+{"src": "zh-343", "rel": "requires", "dst": "zh-341", "origin": "model"}
+{"src": "zh-341", "rel": "other", "dst": "zh-315", "origin": "model", "rel_note": "正交(两元素)是构造正交基所用的核心关系:正交基定义要求基元素两两正交。"}

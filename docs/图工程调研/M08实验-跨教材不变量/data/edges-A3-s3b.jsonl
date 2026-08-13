@@ -1,0 +1,17 @@
+{"src": "zh-342", "rel": "requires", "dst": "zh-341", "origin": "source", "evidence": {"file": "15.11.md", "quote": "A subset S of V is called an orthogonal set if $(x, y) = 0$ for every pair of distinct elements x and y in S."}}
+{"src": "zh-343", "rel": "is-a", "dst": "zh-342", "origin": "source", "evidence": {"file": "15.11.md", "quote": "An orthogonal set is called orthonormal if each of its elements has norm 1."}}
+{"src": "zh-314", "rel": "requires", "dst": "zh-342", "origin": "source", "evidence": {"file": "15.11.md", "quote": "every orthogonal set of nonzero elements is independent"}}
+{"src": "zh-314", "rel": "implies", "dst": "zh-315", "origin": "source", "evidence": {"file": "15.11.md", "quote": "every orthogonal set consisting of n nonzero elements is a basis for V."}}
+{"src": "zh-315", "rel": "requires", "dst": "zh-342", "origin": "model"}
+{"src": "zh-316", "rel": "is-a", "dst": "zh-315", "origin": "model"}
+{"src": "zh-316", "rel": "is-a", "dst": "zh-343", "origin": "model"}
+{"src": "zh-317", "rel": "requires", "dst": "zh-315", "origin": "source", "evidence": {"file": "15.11.md", "quote": "$S = \\{e_1, \\ldots, e_n\\}$ is an orthogonal basis for $V$"}}
+{"src": "zh-317", "rel": "implies", "dst": "zh-318", "origin": "source", "evidence": {"file": "15.11.md", "quote": "then its components relative to the ordered basis"}}
+{"src": "zh-318", "rel": "requires", "dst": "zh-315", "origin": "model"}
+{"src": "zh-319", "rel": "requires", "dst": "zh-316", "origin": "source", "evidence": {"file": "15.11.md", "quote": "assume that $\\{e_1, \\ldots, e_n\\}$ is an orthonormal basis for $V$"}}
+{"src": "zh-319", "rel": "implies", "dst": "zh-320", "origin": "source", "evidence": {"file": "15.11.md", "quote": "(x, y) = \\sum_ {i = 1} ^ {n} (x, e _ {i}) (\\overline {{y , e _ {i}}}) \\quad \\text {(Parseval's formula)}"}}
+{"src": "zh-320", "rel": "requires", "dst": "zh-316", "origin": "model"}
+{"src": "zh-321", "rel": "is-a", "dst": "zh-320", "origin": "source", "evidence": {"file": "15.11.md", "quote": "When x = y, Equation (15.11) reduces to (15.12)."}}
+{"src": "zh-319", "rel": "implies", "dst": "zh-321", "origin": "source", "evidence": {"file": "15.11.md", "quote": "In particular, when $x = y$ , we have"}}
+{"src": "zh-343", "rel": "requires", "dst": "zh-341", "origin": "model"}
+{"src": "zh-341", "rel": "other", "dst": "zh-315", "origin": "model", "rel_note": "正交(两元素)是构造正交基所用的核心关系:正交基定义要求基元素两两正交。"}

@@ -1,0 +1,230 @@
+{"id": "d:angle-cosine-equation", "verdict": "KEEP", "cause": 0, "reason": "增量在于指出角是被隐式定义的:theta 是该方程的解而非公式的值,由此才产生两条良定义义务,parent 只把方程写出来没有点明这一点。"}
+{"id": "d:angle-requires-nonzero-elements", "verdict": "FIX", "cause": 0, "reason": "内容有增量(把非零追溯到 15.9(b)/正定性,把区间追溯到 cos 在 [0,pi] 上单射),但 atomic:true 名不副实:非零(分母有定义)与区间(解唯一)是两条互相独立、各有不同依据的可验证命题,应拆为两个原子节点。"}
+{"id": "d:angle-well-defined-because-quotient-lies-in-minus-one-to-one", "verdict": "KEEP", "cause": 0, "reason": "给出可迁移的判断:任何以 cos theta = 商 形式给的定义都要先证商落在 [-1,1],这里 Cauchy-Schwarz 是承重依赖,缺了它定义对某些 x,y 空洞。"}
+{"id": "d:angle-defined-only-in-real-euclidean-space", "verdict": "KEEP", "cause": 0, "reason": "增量是一条范围对照:范数在任意欧氏空间可定义而角只在实空间可定义,并给出原因(复情形分子非实),这是本节实复分歧的唯一真实定义级差异,parent 只写了「real」二字不给理由。"}
+{"id": "d:approximation-problem-is-to-minimize-the-distance", "verdict": "KILL", "cause": 5, "reason": "把 parent statement 的第一句原样重说一遍(给 x 与有限维 S 求 S 中距 x 最近的元),连「有限维」这一限定都与 parent 相同,删掉后学习者从 parent 完全无损。"}
+{"id": "d:trivial-case-when-x-already-lies-in-s", "verdict": "KEEP", "cause": 0, "reason": "提供 parent 层没有的退化情形判据:x 属于 S 时解就是 x、距离为 0,这是检验后续投影公式是否正确的边界测试点。"}
+{"id": "d:nearest-point-by-dropping-a-perpendicular", "verdict": "KEEP", "cause": 0, "reason": "把「最小化距离」这一分析问题转成「作垂线」这一正交条件,是 15.14 全节从度量转向正交的动机接口,parent 只说投影是解而不说为什么会想到正交。"}
+{"id": "d:cauchy-schwarz-inequality-statement", "verdict": "KEEP", "cause": 0, "reason": "增量是公理用量的分离:不等式一半只需正半定,严格正定只在等号一半才被用到,这是 parent 合并陈述看不出来的可迁移判断。"}
+{"id": "d:cauchy-schwarz-equality-condition", "verdict": "KEEP", "cause": 0, "reason": "本节唯一的双条件,并指出等号刻画正是严格正定性的唯一使用点;删掉它则「相依」这一几何刻画无法从不等式本身推出。"}
+{"id": "d:cauchy-schwarz-in-norm-form", "verdict": "KEEP", "cause": 0, "reason": "指出该形式是后文两处的实际调用形态(控制三角不等式交叉项、把角的商压进 [-1,1]),给出的是「用哪一形式」的操作性判断,不只是开平方。"}
+{"id": "d:complex-cauchy-schwarz-reduces-to-modulus-squared", "verdict": "KEEP", "cause": 0, "reason": "补上实证明搬到复空间时留下的缺口:实证明只给出 (x,y)(y,x) <= (x,x)(y,y),需要 (1') 与 z zbar = |z|^2 才补成模平方,这是一条 parent 层不可见的证明修补步骤。"}
+{"id": "d:cauchy-schwarz-proof-inherited-from-theorem-12-3", "verdict": "KEEP", "cause": 0, "reason": "给出全章的方法论判据:定理 12.3 的证明只用到定理 12.2 列出的性质而不用分量公式,所以同一证明在任意实欧氏空间成立;这是「公理化即免费迁移」的范式,不是 parent 的改写。"}
+{"id": "d:cauchy-schwarz-for-integrals", "verdict": "KEEP", "cause": 0, "reason": "给出一个具体可迁移的实例化收益:仅靠核验积分内积满足公理便无代价地得到积分形式不等式,是公理化路线的兑付点。"}
+{"id": "d:unitary-space-alias", "verdict": "KILL", "cause": 5, "reason": "parent statement 与 parent 锚点里已逐字含有「the term unitary space is also used」,子节点只把这半句摘出来重说,零增量,是典型的把 parent 语句切成语法碎片。"}
+{"id": "d:hermitian-symmetry-axiom", "verdict": "KEEP", "cause": 0, "reason": "增量是「它禁止什么」:朴素对称 + 复齐次会迫使 (cx,cx)=c^2(x,x),与严格正定不相容,所以 (1') 不是任意选择而是被逼出来的;parent 只说「替换成共轭对称」。"}
+{"id": "d:complex-homogeneity-allows-complex-scalars", "verdict": "KEEP", "cause": 0, "reason": "点出这是第二处独立修改,并说明正是「第一变元可取复标量」与「换位取共轭」两者相乘才引发第二变元的共轭齐次,是链式反应的触发条件。"}
+{"id": "d:conjugate-homogeneity-in-second-argument", "verdict": "KEEP", "cause": 0, "reason": "给出关键判断:第二变元的行为不是公理而是被 (1')+(3) 逼出的推论,读者据此知道复内积只有一处可自由约定;parent 把它与公理并列陈述掩盖了这一区分。"}
+{"id": "d:basis-expansion-of-an-element-exists-by-spanning", "verdict": "KEEP", "cause": 0, "reason": "把展开式的存在性单独归因于张成条款、明确独立性在此不起作用,这条归因分离是后面唯一性证明能只用独立性的前提。"}
+{"id": "d:components-are-the-coefficient-tuple-of-the-expansion", "verdict": "KILL", "cause": 5, "reason": "只是把 parent statement 的命名句换词重说(系数组即分量),parent 锚点已逐字包含该命名;其唯一有信息量的部分「分量依附于(元素, 有序基)这一对」已由 d:components-depend-on-the-ordering-not-only-on-the-basis 更充分地承担。"}
+{"id": "d:components-depend-on-the-ordering-not-only-on-the-basis", "verdict": "KEEP", "cause": 0, "reason": "给出可操作判断:置换有序基会置换一切元素的分量,故分量是关于「有序基」而非「基集合」的函数,并解释了 Apostol 为何先引入有序基。"}
+{"id": "d:dependence-existential-quantifier", "verdict": "KILL", "cause": 5, "reason": "只是把 parent 定义中的「there is」改写成「这是一个存在性陈述」,没有给出任何 parent 层看不到的判断;其可操作内容(一条见证关系即足)已由 d:dependence-witness-must-be-exhibited-not-merely-counted 带实例承担,后者信息量更大。"}
+{"id": "d:dependence-finiteness-of-the-witnessing-family", "verdict": "KEEP", "cause": 0, "reason": "指出去掉有限性会要求求无穷多项之和,而无拓扑的线性空间中该式根本无法解析,给的是「为什么这条不能删」的失效分析。"}
+{"id": "d:dependence-distinctness-of-the-chosen-elements", "verdict": "KEEP", "cause": 0, "reason": "带反例:去掉互异性后取 x1=x2=x, c1=1, c2=-1 使任何非空集都相依,是一条可验证的失效构造。"}
+{"id": "d:dependence-coefficients-not-all-zero", "verdict": "KEEP", "cause": 0, "reason": "带反例:去掉该条后全零系数使一切集合(含空集与单点集)相依,概念退化为无信息,是独立于互异性的另一处失效点。"}
+{"id": "d:dependence-target-is-the-zero-element", "verdict": "KEEP", "cause": 0, "reason": "给出对照判断:把目标 O 换成任意 y,条件就从相依性变成 y 属于 S 的张成,这条辨析把两个易混定义分开。"}
+{"id": "d:dependence-witness-must-be-exhibited-not-merely-counted", "verdict": "KEEP", "cause": 0, "reason": "给出相依性证明的实际形态:摆出一条带非零系数的显式恒等式(例 5 的 cos^2+sin^2-1=O),是可迁移的操作判据。"}
+{"id": "d:dependence-from-one-element-being-a-scalar-multiple-of-another", "verdict": "KEEP", "cause": 0, "reason": "给出最省力的充分条件(例 2),只需检查两个元素即可判定相依,是实际判定时首先要试的一步。"}
+{"id": "d:dependence-definition-not-restricted-to-finite-sets", "verdict": "KEEP", "cause": 0, "reason": "分离两个不同的有限性问题(S 本身可无限 vs 见证族必有限),这正是例 6 能谈无限独立集的前提;与 d:dependence-finiteness-of-the-witnessing-family 侧重不同,后者讲见证族,此条讲定义域。"}
+{"id": "d:finite-dimensional-defined-by-existence-of-a-finite-basis", "verdict": "KEEP", "cause": 0, "reason": "增量是指出定义在「基」上是存在量化的,因此在给 V 挂上一个数之前必须先有定理15.6;parent 只写「有有限基」不点明这一义务。"}
+{"id": "d:zero-space-declared-finite-dimensional-by-fiat", "verdict": "KEEP", "cause": 0, "reason": "指出第二个析取项不是第一项的推论,并给出原因:零空间唯一的独立子集是空集,故只能靠规定纳入;这是 parent 并列书写时看不见的。"}
+{"id": "d:linear-combination-finiteness-of-the-index-set", "verdict": "KEEP", "cause": 0, "reason": "给出失效分析:裸线性空间只有二元加法、无收敛概念,故无限项之和无定义,有限性不是方便而是可解析性条件。"}
+{"id": "d:linear-combination-summands-drawn-from-s", "verdict": "KEEP", "cause": 0, "reason": "点出被组合元属于 S 而组合结果属于 V 这一不对称,由此说明张成是在 S 上的构造而非 S 的性质,是后面 L(S) 是子空间的读法前提。"}
+{"id": "d:linear-combination-coefficients-are-arbitrary-scalars", "verdict": "KEEP", "cause": 0, "reason": "给出与相依性定义相差恰好一条子句的对照:这里系数可以全为零,那里禁止全零;这条辨析防止把「组合为零」与「相依」混为一谈。"}
+{"id": "d:fourier-coefficients-are-inner-products-with-the-orthonormal-system", "verdict": "KILL", "cause": 5, "reason": "parent statement 已逐字含「(f, phi_k) 由 f 与正交规范三角系作内积得到,且是投影 f_n 的系数」,子节点原句重述并自认「nothing but the coefficients supplied by the projection formula」,零增量。"}
+{"id": "d:fourier-coefficients-in-cosine-and-sine-form", "verdict": "KEEP", "cause": 0, "reason": "给出 parent 没有显示的具体形态:代入显式三角函数后得到带 1/pi 因子的经典 a_k、b_k 积分,这是把本章记号接到标准 Fourier 级数文献的可迁移对照物。"}
+{"id": "d:gram-schmidt-base-step-y1-equals-x1", "verdict": "KEEP", "cause": 0, "reason": "增量在于给出基例的验证方式:k=1 时结论 (a)(b) 因 L(y_1,...,y_0) 为空而空真成立,所以起点无需减法;这是归纳法能启动的实际理由。"}
+{"id": "d:gram-schmidt-inductive-step-defines-y-r-plus-one", "verdict": "KEEP", "cause": 0, "reason": "把「递推式的形状」与「系数的取值」分离:此步只写出 y_{r+1} = x_{r+1} - sum a_i y_i 并把 a_i 留待确定,而 parent 直接给出成品公式,掩盖了系数是被正交性要求反解出来的;atomic:false 与其下三个子步骤一致。"}
+{"id": "d:explicit-gram-schmidt-formulas-for-an-independent-input", "verdict": "KILL", "cause": 5, "reason": "与 parent statement 同一公式 (15.15) 逐项相同,只是把它再显示一遍;其唯一新内容「输入独立时不必分情形」是 d:zero-earlier-element-makes-the-coefficient-irrelevant 的补集,后者含实际的分情形处理,信息量更大。"}
+{"id": "d:gram-schmidt-works-in-infinite-dimensional-spaces", "verdict": "KEEP", "cause": 0, "reason": "给出适用范围判断:定理对有限或无限序列均陈述、证明逐步归纳,故不需要有限维假设,Legendre 例即无限维实例;这是使用该构造时真正需要知道的边界。"}
+{"id": "d:exponential-independence-hypothesis-distinct-exponents", "verdict": "KEEP", "cause": 0, "reason": "给出前提不可去的失效模式:指数相等则两函数相等,按标量倍数判据立刻相依,把前提与例2的判据接了起来。"}
+{"id": "d:exponential-independence-proof-is-induction-on-n", "verdict": "FIX", "cause": 5, "reason": "本身无增量:parent statement 已含「The proof is by induction on n, multiplying by e^{-a_M x} and letting x tend to infinity」,子节点给出的信息是 parent 的真子集(只剩「对 n 归纳」)。但它是其下 7 个证明步骤节点的挂载枢纽,不宜直接删除,应改写为真正的架构说明(基例/消去一项/降阶调用假设三段的骨架与依赖),或与 parent 合并并把 7 个子节点重挂到 parent。"}
+{"id": "d:exponential-independence-uses-no-inner-product", "verdict": "KEEP", "cause": 0, "reason": "负空间节点,给出可迁移的工具清单判断:只用到实数序、指数加法律、指数非零与一次极限,不用内积/范数/正交/维数计数,因此结论在全体实值函数空间中成立而非只在欧氏空间中成立。"}
+{"id": "d:independence-defined-as-negation-of-dependence", "verdict": "KILL", "cause": 5, "reason": "parent statement 首句即「independent if it is not dependent」,子节点原样重说;其唯一附加语「独立性的性质都靠否定相依性四条子句得到」已由 d:independence-universal-quantifier-over-choices 实际执行,后者信息量更大。"}
+{"id": "d:independence-universal-quantifier-over-choices", "verdict": "KEEP", "cause": 0, "reason": "给出证明形态的判断:量词翻转后独立性证明必须处理任意一条为零的关系,而不能像相依性那样摆出一条见证,这是两个概念在操作上的分水岭。"}
+{"id": "d:independence-vanishing-combination-forces-vanishing-coefficients", "verdict": "KEEP", "cause": 0, "reason": "给出本章一切独立性证明实际核验的那条蕴涵式(sum c_i x_i = O 推出全部 c_i = 0),是后续 15.10、15.11、唯一性证明直接调用的工作形式。"}
+{"id": "d:independence-of-the-empty-set", "verdict": "KEEP", "cause": 0, "reason": "空真边界情形:无元素可选故无见证族,由此空集独立;这正是零空间能套进基与维数机制的接口。"}
+{"id": "d:dependence-terminology-transferred-from-sets-to-elements", "verdict": "KILL", "cause": 5, "reason": "parent statement 已含「The term is also applied to the elements themselves」,子节点只是把这句摘出;纯命名约定无数学内容,与被杀的 d:unitary-space-alias 同类。"}
+{"id": "d:independence-of-an-infinite-set-reduces-to-its-finite-subsets", "verdict": "KEEP", "cause": 0, "reason": "给出可操作归约:证无限集独立只需对每个 n 证前 n+1 个元独立,理由是任何见证关系都是有限的;这是例6 实际采用的路线。"}
+{"id": "d:zero-element-of-a-function-space-is-a-pointwise-identity", "verdict": "KEEP", "cause": 0, "reason": "解释函数空间中 O 的所指(处处为零的函数),从而「组合等于 O」是对每个自变量值成立的恒等式,这正是两个函数空间独立性证明得以代入具体点的依据。"}
+{"id": "d:powers-independence-by-differentiating-and-evaluating-at-zero", "verdict": "KEEP", "cause": 0, "reason": "给出逐个提取系数的具体技术(取 t=0 得 c_0,求导再取 0 得 c_1,反复),并指明它是分析手段而非代数手段,需要恒等式可求导。"}
+{"id": "d:infinite-dimensional-defined-as-the-residual-case", "verdict": "KILL", "cause": 5, "reason": "parent statement 即「不是有限维就叫无限维」,子节点原样重说;附加语「故每个证明都要一次排除所有有限候选」是学习者从 parent 立刻能想到的直接推论,且该缺口已由两条 operational criterion 兄弟节点正面填补。"}
+{"id": "d:infinite-dimensional-operational-criterion-no-finite-spanning-set", "verdict": "KEEP", "cause": 0, "reason": "给出可检验判据并定位失效环节:多项式空间的无限维性坏在张成而不坏在独立性(无限幂集张成、无有限集张成),这是实际判定时要查的那一栏。"}
+{"id": "d:infinite-dimensional-operational-criterion-arbitrarily-large-independent-sets", "verdict": "KEEP", "cause": 0, "reason": "给出等价的正面判据(对每个 n 都能造出 n 个独立元)并附等价性证明路径(若有 k 元基则由定理15.5 任意 k+1 元相依,与 n=k+1 矛盾),是剩余式定义之外唯一可正面施工的入口。"}
+{"id": "d:infinite-dimensional-example-space-of-all-polynomials", "verdict": "KILL", "cause": 5, "reason": "与 d:infinite-dimensional-operational-criterion-no-finite-spanning-set 重复,后者用同一例4 且带失效定位;本节点内容(例4 的空间名字)parent statement 已给,余下只是跨节指认同一对象。"}
+{"id": "d:inner-product-real-valued-and-quantifiers", "verdict": "KEEP", "cause": 0, "reason": "锁定公理陈述前的两件事:取值是唯一实数、公理对所有 x,y,z 与所有实标量成立;并指出「实」正是复情形唯一要放松的那一栏,是实复对照的支点。"}
+{"id": "d:inner-product-axiomatic-not-formula", "verdict": "KEEP", "cause": 0, "reason": "给出方法论承诺的具体兑付范围:因为只列性质不给公式,15.8、15.9、15.10–15.12 全部只依赖公理,故在没有分量和的函数空间模型中同样成立。"}
+{"id": "d:metric-properties-motivate-the-inner-product", "verdict": "KEEP", "cause": 0, "reason": "确立本节的依赖次序 内积 -> 范数 -> 角,并给出「度量性质」的所指(依赖长度与角度的可测性);parent 完全不提这一编排理由。"}
+{"id": "d:inner-product-not-unique-on-a-given-space", "verdict": "KEEP", "cause": 0, "reason": "带显式反例(V_2 上 2x1y1+x1y2+x2y1+x2y2 满足全部公理却不等于点积),据此得出欧氏空间是「线性空间 + 选定内积」而非线性空间的属性,这是范数/正交性都随内积而变的根源。"}
+{"id": "d:inner-product-symmetry-axiom", "verdict": "KEEP", "cause": 0, "reason": "给出「去掉它会坏什么」:第二变元的线性无法传到第一变元,(x+y,z) 不能展开,三角不等式开头的四项展开与 15.10/15.11 中「与 x_1 作内积」一步全部失效。"}
+{"id": "d:inner-product-additivity-axiom", "verdict": "KEEP", "cause": 0, "reason": "指出 Apostol 只在第二变元上设公理,第一变元的可加性并非公理;并列出去掉它会死掉的证明(15.10、15.11、Parseval)。"}
+{"id": "d:inner-product-homogeneity-axiom", "verdict": "KEEP", "cause": 0, "reason": "给出失效清单(||cx||=|c|||x||、15.10/15.11 中提取系数、推论 (O,y)=0),把一条公理与它在后文的三处承重点对应起来。"}
+{"id": "d:inner-product-positivity-axiom", "verdict": "KEEP", "cause": 0, "reason": "把「严格」与「半」正定的差别具体化为五处失效点(15.9(b)、||x||=0 的刻画、角的分母、15.10 中除以 (x_1,x_1)、15.11 中除以 (e_j,e_j)),是全章最有判断力的边界分析之一。"}
+{"id": "d:additivity-in-first-argument-derived", "verdict": "KEEP", "cause": 0, "reason": "纠正一个易犯的归因错误:第一变元可加性不是公理而是「对称-可加-对称」三明治的推论,由此说明对称公理为何在后续证明中承重。"}
+{"id": "d:integral-inner-product-formula", "verdict": "KEEP", "cause": 0, "reason": "给出符号形式并指出这是公理系统的首个「元素不是 n 元组」的模型,是把内积概念从坐标直觉里解耦的实例;parent 只用散文描述该积分。"}
+{"id": "d:integral-inner-product-analogy-with-component-sum", "verdict": "KEEP", "cause": 0, "reason": "增量是给出正定性在该模型中为何成立(连续且不恒为零的 f 使 f^2 的积分为正),并由此说明这是点积的推广而非无关抽象,parent 只陈述类比不给验证。"}
+{"id": "d:legendre-sequence-orthogonalizes-the-monomials", "verdict": "KILL", "cause": 5, "reason": "parent statement 已逐字含「对 x_n(t)=t^n 在 [-1,1] 积分内积下施行正交化定理得到 y_0,y_1,...」,子节点原句重述;附加语「本章的无限维实例」与 d:gram-schmidt-works-in-infinite-dimensional-spaces 重复。"}
+{"id": "d:vanishing-projection-terms-in-the-legendre-computation", "verdict": "KEEP", "cause": 0, "reason": "给出具体计算判断:(x_1,y_0)=∫t dt=0 使该投影项不必减,故 y_1=t;并把它归因于奇次被积函数在对称区间上积分为零,这是后续手算 y_n 时可反复使用的省力判据。"}
+{"id": "d:legendre-normalizing-constant-from-y-n-to-p-n", "verdict": "KEEP", "cause": 0, "reason": "把「构造」与「约定」分开:常数因子只是标准化约定,缩放保正交所以 P_n 与 y_n 的正交性同真,读者据此知道该常数不影响任何结论。"}
+{"id": "d:span-is-the-set-of-all-finite-linear-combinations", "verdict": "KILL", "cause": 5, "reason": "parent statement 与 parent 锚点的首句即此句,子节点只把它切出来重说,唯一附加语「张成的一切性质都从这一描述读出」是空话,不含失效分析或依赖指认。"}
+{"id": "d:span-is-a-subspace-via-the-closure-test", "verdict": "KEEP", "cause": 0, "reason": "给出推理路线而非结论:教材不直接断言 L(S) 是子空间,而是核验封闭性再调用定理15.4,这也是全书第一次使用 15.4,是「判别法用在哪」的具体样例。"}
+{"id": "d:span-of-the-empty-set-is-the-zero-subspace", "verdict": "KEEP", "cause": 0, "reason": "边界情形加失效分析:无此约定则 L(空集) 为空集,连子空间都不是;这是零空间维数为 0 与空集独立性能够自洽的接口。"}
+{"id": "d:norm-definition-as-square-root", "verdict": "KEEP", "cause": 0, "reason": "增量是良定义分析:根号下非负(故实平方根存在)与取非负分支(故 ||x||>=0 是构造而非定理)是两件同时被断言的事,parent 只说「非负数」不点明它由何担保。"}
+{"id": "d:norm-depends-on-choice-of-inner-product", "verdict": "KILL", "cause": 5, "reason": "parent statement 已逐字含「内积可有多种定义,故范数依赖内积的选择」;其唯一附加语(定理15.9 对每种选择都成立)已由 d:theorem-15-9-holds-for-every-inner-product 承担,后者是该点的正式节点。"}
+{"id": "d:norm-is-the-metric-concept-of-length", "verdict": "KILL", "cause": 5, "reason": "与 d:metric-properties-motivate-the-inner-product 重复:两者的核心都是「长度不是外加结构而是由内积制造,故范数性质都要回溯到公理」,后者还给出 内积->范数->角 的完整依赖次序,信息量更大;且本句 parent statement 已含。"}
+{"id": "d:normalized-legendre-polynomials-are-y-n-over-its-norm", "verdict": "KEEP", "cause": 0, "reason": "增量是一条具体的易错点提示:规范化的是正交化输出 y_n 而不是重标定后的 P_n,parent 给了公式却不点明这一区别。"}
+{"id": "d:normalizing-converts-an-orthogonal-basis-into-an-orthonormal-one", "verdict": "KEEP", "cause": 0, "reason": "增量是指认教材一句话背后隐藏两条各自可验证的义务(缩放后范数为 1、缩放不破坏正交性),并据此把自己标为非原子;这正是 D 层该做的义务显式化。"}
+{"id": "d:ordered-basis-adds-an-ordering-to-a-basis", "verdict": "KEEP", "cause": 0, "reason": "给出集合与元组的区分判断:基是集合故无序,次序是附加数据,置换后是同一基的另一个有序基;这防止把 {e1,e2} 与 (e1,e2) 当成同一对象。"}
+{"id": "d:gram-schmidt-turns-a-basis-into-an-orthogonal-basis", "verdict": "KEEP", "cause": 0, "reason": "给出拼装路线:张成来自结论 (b),独立性来自非零判据加定理15.10;parent 只给结论,读者看不出「为什么 y 是基而不只是正交集」。"}
+{"id": "d:orthogonal-complement-is-a-name-reserved-for-subspaces", "verdict": "KEEP", "cause": 0, "reason": "给出术语与数学的分离判断:S 垂直无论如何都存在且都是子空间,只有称呼受限;这防止误以为必须 S 是子空间才能谈 S 垂直的子空间性。"}
+{"id": "d:s-perp-closure-follows-from-linearity-in-the-first-argument", "verdict": "KEEP", "cause": 0, "reason": "把教材留作练习的验证补出来并定位到具体公理:第一变元的可加性与齐次性给出封闭性,再引子空间判别法,且全程不用 S 的任何性质。"}
+{"id": "d:orthogonality-to-a-set-equals-orthogonality-to-its-span", "verdict": "KEEP", "cause": 0, "reason": "给出教材未明写的等价 S 垂直 = L(S) 垂直,并由此解释为何 S 是否子空间无关紧要(过渡到张成什么也不改变),是这条定理的结构性理由。"}
+{"id": "d:orthogonality-is-vanishing-of-the-inner-product", "verdict": "KEEP", "cause": 0, "reason": "增量是范围判断:定义不经由角,故在复空间同样可用,且由 Hermite 对称 (x,y)=0 与 (y,x)=0 等价,关系仍对称;这解释了为何正交性比角走得更远。"}
+{"id": "d:zero-element-orthogonal-to-every-element", "verdict": "KEEP", "cause": 0, "reason": "把该事实归因到齐次性公理取 c=0 的推论,并指出它正是定理15.10 必须补「非零」假设的原因(含 O 的集合按定义正交却相依)。"}
+{"id": "d:zero-is-the-only-self-orthogonal-element", "verdict": "KILL", "cause": 5, "reason": "与 d:zero-is-the-only-element-orthogonal-to-itself 重复:同一句锚点、同一 name_zh、同一断言;后者带子节点 d:positivity-axiom-forbids-nonzero-self-orthogonal-elements 承担「依据是正定性公理」这一推理,并指明 15.13(c) 与 15.15 两处承重使用点,信息量更大。合并时应把本节点关于半正定形式会使 15.10 失效的观察并入。"}
+{"id": "d:zero-is-the-only-element-orthogonal-to-itself", "verdict": "KEEP", "cause": 0, "reason": "给出承重点定位:该唯一性在定理15.13(c) 的唯一性一半与定理15.15 的唯一性一半这两处被实际使用,是读者判断「哪里离不开严格正定」的指路牌;atomic:false 与其下的公理依据节点一致。"}
+{"id": "d:dimension-defined-as-the-element-count-of-a-basis", "verdict": "KEEP", "cause": 0, "reason": "指出定义按字面读只是 (空间, 基) 这一对的属性,由此显式提出一项待偿的良定义义务,parent 的陈述读不出这一点。"}
+{"id": "d:dimension-well-definedness-requires-all-bases-to-be-equinumerous", "verdict": "KEEP", "cause": 0, "reason": "偿付上一条义务并点名依据(定理15.6);给出「维数不靠定义本身而靠定义加定理15.6」这一可迁移判断。"}
+{"id": "d:dimension-of-the-zero-space-is-zero-by-convention", "verdict": "KEEP", "cause": 0, "reason": "分辨这是独立规定而非推论,并给出使其与一般定义相容的条件(空集独立且张成零空间),parent 只写结论。"}
+{"id": "d:dim-of-vn-is-n-via-unit-coordinate-vectors", "verdict": "KEEP", "cause": 0, "reason": "把「维数只能靠展示一个基并计数来算」这一方法论点显式化,并给出具体见证基。"}
+{"id": "d:dim-of-polynomials-of-degree-at-most-n-is-n-plus-one", "verdict": "KEEP", "cause": 0, "reason": "标出 n 与 n+1 的差一陷阱及其来源(常数项也算一个基元素),这是本例最容易出错处。"}
+{"id": "d:dim-of-a-second-order-de-solution-space-is-two", "verdict": "KEEP", "cause": 0, "reason": "把独立性核验挂回 15.07 例7 的指数函数结论(指数 -1 与 3 互异),给出跨节的依赖链而非重述维数值。"}
+{"id": "d:distance-is-the-norm-of-the-difference", "verdict": "KEEP", "cause": 0, "reason": "给出下游用途:15.14、15.15 的所有极小化陈述因此都是关于范数的陈述,故可由勾股公式一次解决;这是 parent 的定义句里没有的论证路线。"}
+{"id": "d:dot-product-component-sum-formula", "verdict": "KEEP", "cause": 0, "reason": "写出式 (15.5) 并指出 C(a,b) 上的积分内积是同一模式的替换(函数值换分量、积分换求和),给出可迁移的构造法。"}
+{"id": "d:dot-product-satisfies-the-inner-product-axioms", "verdict": "KEEP", "cause": 0, "reason": "把例1 认定为公理系统的非空性检验(推广确实包含其模型),这是「点积是内积」这句话的功能,不只是事实。"}
+{"id": "d:euclidean-space-unqualified-covers-real-and-complex", "verdict": "KEEP", "cause": 0, "reason": "把阅读约定落到具体承重点:定理15.8-15.12 必须按复情形读,这解释了三角不等式证明与 Parseval 公式中共轭为何出现。"}
+{"id": "d:finite-basis-independence-clause", "verdict": "KEEP", "cause": 0, "reason": "给出该子句的失效后果(去掉后仍可张成但系数不再唯一),即把子句与「表示唯一性」这一具体职能绑定。"}
+{"id": "d:finite-basis-spanning-clause", "verdict": "KEEP", "cause": 0, "reason": "给出对偶的失效后果(去掉后只表示自身张成内的元素),与独立性子句形成存在性/唯一性的分工。"}
+{"id": "d:finite-basis-two-clauses-are-logically-independent", "verdict": "KEEP", "cause": 0, "reason": "两向非蕴含均带见证集({O,i,-i,j,-j,i+j} 张成不独立;单个非零向量独立不张成),使「基是两条要求的合取」成为可验证结论。"}
+{"id": "d:finite-basis-finiteness-clause", "verdict": "KEEP", "cause": 0, "reason": "分出第三条独立子句并给出它的下游用途:正是有限性使定理15.6 里的元素计数成为良定义的整数。"}
+{"id": "d:uniqueness-splits-the-competitor-into-span-plus-multiple", "verdict": "KEEP", "cause": 0, "reason": "给出许可依据而非只给动作:是性质 (b) 把 y'_{r+1} 放进 L(y_1..y_{r+1}) 才允许这样拆,并把唯一性目标转化为单一命题 z_r = O。"}
+{"id": "d:z-r-is-orthogonal-to-itself", "verdict": "KEEP", "cause": 0, "reason": "定位到性质 (a) 的两次使用与一次作差,说明为何自正交这一非平凡结论会出现在这里,是整段唯一性论证的转手点。"}
+{"id": "d:orthogonal-set-condition-on-distinct-pairs-only", "verdict": "KEEP", "cause": 0, "reason": "指出「distinct」是承重词:对角线被豁免,故 (x,x) 无任何断言,正交集可以含 O、元素也不必非零,这正是定理15.10 必须外加非零假设的缺口。"}
+{"id": "d:trigonometric-orthogonal-system", "verdict": "KEEP", "cause": 0, "reason": "给出具体系统 u_0=1、u_{2n-1}=cos nx、u_{2n}=sin nx 及其正交关系,并展示非零假设是被逐个手工核验而非默认成立的;parent 只提「例:三角函数系」。"}
+{"id": "d:orthogonal-to-a-set-means-orthogonal-to-every-member", "verdict": "KILL", "cause": 5, "reason": "parent statement 与 parent 锚点即此句(与 S 正交即与 S 的每个元素正交),子节点原样重说;其唯一附加语「全称量词使之能借张成集使用」由 d:orthogonality-to-a-set-equals-orthogonality-to-its-span 正式承担。"}
+{"id": "d:s-perp-is-defined-for-an-arbitrary-subset", "verdict": "KEEP", "cause": 0, "reason": "给出前提强度判断:定义只要求 S 是子集,没有任何结构假设,这正是「S 垂直总是子空间」这一结论有内容的原因。"}
+{"id": "d:orthonormal-set-adds-unit-norm", "verdict": "KEEP", "cause": 0, "reason": "给出两条立即可用的推论:正交规范集不能含 O 故由定理15.10 自动独立;(e_j,e_j)=1 正是把公式 (15.8) 压成 (15.9) 的那一步。"}
+{"id": "d:normalizing-an-orthogonal-set", "verdict": "KEEP", "cause": 0, "reason": "补出两条被教材省略的前提:除法要求 ||u_n|| 非零(回到正定性公理),正交性在缩放下保持(靠齐次性把标量提出),使这一步从口头操作变成可核验步骤。"}
+{"id": "d:parseval-requires-an-orthonormal-basis", "verdict": "KEEP", "cause": 0, "reason": "给出假设强弱对照:比定理15.11 的正交基严格更强,若只有正交基则公式会带 1/(e_i,e_i) 因子,所以单位范数买到的正是 (15.11) 的干净双线性形式。"}
+{"id": "d:parseval-formula-statement", "verdict": "KEEP", "cause": 0, "reason": "给出 (15.11) 的显式形式并指明共轭落在第二个变元的分量上,这是抄写该公式时最常出错的位置;同时给出「取正交规范基后任何欧氏空间都像 V_n 那样计算」的判断。"}
+{"id": "d:parseval-proof-pair-expansion-with-y", "verdict": "KEEP", "cause": 0, "reason": "指出整个证明只有一步「与 y 作内积再用线性性」,并把它认定为 15.10、15.11 之后同一技术的第三次出现,是本章可迁移的证明模板。"}
+{"id": "d:parseval-conjugate-comes-from-hermitian-symmetry", "verdict": "KEEP", "cause": 0, "reason": "纠正一处容易归错因的地方:共轭不是来自共轭齐次性,而是最后一步用 (1') 把 (e_i,y) 改写成 (y,e_i) 的共轭所产生的记账结果。"}
+{"id": "d:parseval-norm-form", "verdict": "KEEP", "cause": 0, "reason": "给出 (15.12) 并指明一次代入同时发生两处压缩(共轭相乘成模平方、(x,x) 成 ||x||^2),并把它认定为抽象勾股定理与经典 Fourier Parseval 恒等式的共同源头。"}
+{"id": "d:parseval-attribution-note", "verdict": "KILL", "cause": 5, "reason": "史注型附加物,不构成对 parent 的任何下延:它既不拆解公式,也不给出可迁移判断,「先在具体函数空间发现后被认作公理推论」这一暗示已由 d:inner-product-axiomatic-not-formula 与 d:cauchy-schwarz-for-integrals 正面承担。"}
+{"id": "d:projection-along-an-element-needs-a-nonzero-direction", "verdict": "KEEP", "cause": 0, "reason": "把定义中的 y != O 追到它的作用点:它保证 (y,y) != 0,因而正是 Gram-Schmidt 系数公式合法的前提;parent 只写出该前提不说它在下游保护什么。"}
+{"id": "d:each-gram-schmidt-step-subtracts-projections", "verdict": "KILL", "cause": 5, "reason": "parent statement 第二句即「Gram-Schmidt 每步用 x_{r+1} 减去它沿前面各 y_i 的投影」,子节点原句重述;附加语「这解释了商式系数为何出现」未给出任何 parent 之外的依据。"}
+{"id": "d:projection-on-a-subspace-is-defined-through-an-orthonormal-basis", "verdict": "KEEP", "cause": 0, "reason": "点明定义是相对于所选正交规范基而非内蕴给出的,由此产生一条良定义义务(其兄弟节点负责偿付),这条义务在 parent 的陈述中不可见。"}
+{"id": "d:projection-is-the-s-component-of-the-orthogonal-decomposition", "verdict": "KEEP", "cause": 0, "reason": "给出同一性的理由:投影的定义式与定理15.15 存在性证明中构造 s 的式子逐项相同,所以两者是同一元素,这正是定理15.16 能改口说「投影」的许可证。"}
+{"id": "d:projection-does-not-depend-on-the-chosen-orthonormal-basis", "verdict": "KEEP", "cause": 0, "reason": "补出教材未写的良定性论证:不同正交规范基给出同一个 s,依据是定理15.15 的唯一性一半;缺此则投影定义依赖基的选取,后面一切关于「投影」的陈述都不合法。"}
+{"id": "d:pythagorean-expansion-of-the-squared-norm", "verdict": "KEEP", "cause": 0, "reason": "把这一步的依据定位到公理层:只用分配律与范数定义即把 ||x||^2 展成两个平方项加两个交叉项,展开与消项是两件不同的事,这里只做展开。"}
+{"id": "d:pythagorean-cross-terms-vanish-by-orthogonality", "verdict": "KEEP", "cause": 0, "reason": "给出消项的确切理由(s 属于 S 而 s 垂直属于 S 垂直),这是勾股公式与「正交」二字之间唯一的连接点,也是它在非正交分解下失效的原因。"}
+{"id": "d:spanning-set-is-not-unique", "verdict": "KEEP", "cause": 0, "reason": "给出结构判断:张成是集合到子空间的多对一关系,故张成集不是子空间的不变量;这正是接下来要问「最少几个元素」的前提。"}
+{"id": "d:spanning-set-need-not-be-independent", "verdict": "KEEP", "cause": 0, "reason": "带具体见证集 {O,i,-i,j,-j,i+j}:它张成 V_2 却含零元与重复方向,由此说明基为何必须外加第二条子句。"}
+{"id": "d:spanning-set-may-be-infinite", "verdict": "KEEP", "cause": 0, "reason": "分离两种有限性:S 本身的势与每个组合的项数互不相干,全体多项式由无限幂集张成即为实例,防止把「有限线性组合」误读为「有限张成集」。"}
+{"id": "d:minimal-spanning-set-question", "verdict": "KILL", "cause": 5, "reason": "parent statement 已含「Apostol 问哪些空间能被有限集张成、最少需要几个元素」,子节点原样重说;它是动机指针而非判断,删掉后从 parent 无损。"}
+{"id": "d:subspace-nonempty-requirement", "verdict": "KEEP", "cause": 0, "reason": "指出非空性与封闭性是两件独立的事,并给出它在下游的实际用途:提供见证元 x,由它造出零元与负元(定理15.4 充分性的关键)。"}
+{"id": "d:subspace-inherits-the-operations-of-the-ambient-space", "verdict": "KEEP", "cause": 0, "reason": "给出对照:S 必须在继承的运算下成为线性空间,而不是在另行发明的运算下;这防止把「作为集合坐在 V 里、但自带别的运算的线性空间」误认为子空间。"}
+{"id": "d:subspace-satisfies-all-linear-space-axioms", "verdict": "KEEP", "cause": 0, "reason": "把定义翻译成实际的核验负担(全部十条公理都要在 S 中成立),从而使定理15.4 把负担压到两条封闭性这件事有了可度量的意义。"}
+{"id": "d:15-10-nonzero-hypothesis-is-essential", "verdict": "KEEP", "cause": 0, "reason": "给出反例族(含 O 的集合总是正交集却总是相关集)证明假设不可去,并定位其在证明中的唯一消耗点(除以 (x_1,x_1))。"}
+{"id": "d:15-10-proof-setup-vanishing-finite-combination", "verdict": "KEEP", "cause": 0, "reason": "区分「组合有限」与「S 有限」:S 可以是无限的(三角系),无限集的独立性按定义就是关于有限子集的陈述,这是读该证明时的真实误区。"}
+{"id": "d:15-10-proof-pair-with-a-single-element", "verdict": "KEEP", "cause": 0, "reason": "把一行文字拆成被消耗的三条依据(加性拆和、齐次性提系数、(O,x_1)=0),并指出两条规则中总有一条只是公理的推论而非公理本身。"}
+{"id": "d:15-10-proof-divide-by-nonzero-self-inner-product", "verdict": "KEEP", "cause": 0, "reason": "给出失效模式:该步靠正定性公理,若换成半正定形式此步与定理一起失效,这是 parent 陈述里看不到的边界。"}
+{"id": "d:15-10-proof-repeat-for-each-index", "verdict": "KEEP", "cause": 0, "reason": "给出重复的许可依据(前两步没用到下标 1 的任何特殊性),说明单系数结论如何靠下标对称升级为独立性。"}
+{"id": "d:15-10-n-orthogonal-nonzero-elements-form-a-basis", "verdict": "KEEP", "cause": 0, "reason": "点名第二子句的力量来源:它靠定理15.7(b) 做维数计数,不含任何内积内容,这一依赖在 parent 的子句里不可见。"}
+{"id": "d:existence-of-an-orthogonal-basis-deferred", "verdict": "KEEP", "cause": 0, "reason": "记下 15.11 事实上是条件性的:正交基的存在性推迟到 15.13 才证,防止把它读成存在性已知,是诚实的依赖登记。"}
+{"id": "d:15-11-hypotheses-finite-dimension-and-orthogonal-basis", "verdict": "KEEP", "cause": 0, "reason": "说明未假设什么(不要求正交规范、不要求范数已知),并把两条前提分工:基给存在性、正交性给可计算性。"}
+{"id": "d:orthogonal-basis-component-formula", "verdict": "KEEP", "cause": 0, "reason": "首句与 parent 陈述重合,但给出正交性买到的具体好处:每个分量由一次内积单独得到,无需解线性方程组、不涉其他分量;同时是分量公式子树的挂载点。"}
+{"id": "d:15-11-proof-pair-with-basis-element", "verdict": "KEEP", "cause": 0, "reason": "指出这一步与定理15.10 第二步是同一手法作用于表示式而非零组合,给出可迁移的证明模板识别。"}
+{"id": "d:15-11-denominator-nonzero-by-positivity", "verdict": "KEEP", "cause": 0, "reason": "补出教材未写的两环链条:基元素不能为 O(含 O 的集合相关)、非零元的 (e_j,e_j)>0(正定性),因此 (15.8) 暗中依赖严格正定。"}
+{"id": "d:orthogonalization-conclusion-a-orthogonal-to-earlier-span", "verdict": "KEEP", "cause": 0, "reason": "给出强度对照:(a) 断言的不是与前面各 y_j 逐个正交,而是与整个张成子空间正交,这一区别是 parent 逐字子句掩盖的真实难点,也是其两个子节点(逐元正交、由生成元推广)的分工依据。"}
+{"id": "d:orthogonalization-conclusion-b-spans-agree", "verdict": "KEEP", "cause": 0, "reason": "给出 (b) 的职能判断(它才使正交化序列可替代原序列),并指出集合等式的两半论据不同(y_{r+1} 是差、x_{r+1} 是和),为下层两个包含关系分工;内容偏薄。"}
+{"id": "d:theorem-15-14-is-a-corollary-not-a-new-proof", "verdict": "KILL", "cause": 5, "reason": "parent statement 第二句即「它作为定理15.13 的推论得到:先正交化有限基再规范化」,子节点原样重说;附加语「本定理不贡献独立论证」与之同义,删掉后从 parent 无损。"}
+{"id": "d:finite-dimensionality-supplies-a-finite-basis-to-orthogonalize", "verdict": "KEEP", "cause": 0, "reason": "定位有限维假设的唯一使用点(只为提供可喂入构造的有限基),并指出构造本身与维数无关,这是 parent 未给的假设消耗分析。"}
+{"id": "d:orthogonal-decomposition-existence", "verdict": "FIX", "cause": 5, "reason": "statement 是 parent 存在性一句的重述(取 S 的正交规范基、令 s 为投影之和),真正的增量只写在 atomic_reason 里(存在性分成取基、定义 s、验 s 属于 S、验 s 垂直属于 S 垂直四项独立义务)。修法:把这四项义务提进 statement 使之成为真正的架构陈述,或并入 parent 并把 5 个子节点改挂 parent。"}
+{"id": "d:orthogonal-decomposition-uniqueness", "verdict": "KEEP", "cause": 0, "reason": "给出 parent 没有的范围判断:唯一性这一半不用有限维、不用基,故它在无限维子空间上依然成立,这决定了定理15.15 哪一半是真正受限的。"}
+{"id": "d:approximation-inequality-with-equality-only-at-the-projection", "verdict": "FIX", "cause": 5, "reason": "statement 与 parent 陈述重合(不等式加等号条件,并称投影是唯一最佳逼近),「等号条款把极小升级为严格唯一极小」即 parent 末句的同义说法。真实增量在 atomic_reason(证明分勾股拆分与非负项判零两步)。修法:把两步验证结构写进 statement,或并入 parent 并把 4 个子节点改挂 parent。"}
+{"id": "d:thm-15-4-hypothesis-nonempty-subset", "verdict": "KEEP", "cause": 0, "reason": "带反例说明该前提承重:空集空洞地满足两条封闭性却没有零元,故非空性不是装饰。"}
+{"id": "d:thm-15-4-necessity-direction", "verdict": "KILL", "cause": 5, "reason": "parent 第二条锚点逐字即此句(子空间满足全部公理,故特别地满足封闭性);附加语「纯粹是特例化、不用定义以外的东西」是从该句立即可得的观察,属把 iff 按语法切成两半而其中一半无增量。"}
+{"id": "d:thm-15-4-sufficiency-direction", "verdict": "KEEP", "cause": 0, "reason": "给出具体计数与分组:封闭性单独逼出其余八条,其中一部分从 V 免费继承,而公理5、6 必须显式构造;parent 只说「继承或由封闭性得出」,未指明是哪两条需要造。"}
+{"id": "d:thm-15-5-hypothesis-independent-set-of-k-elements", "verdict": "KEEP", "cause": 0, "reason": "解释门槛数的来源:独立性正是使 k 成为紧门槛的原因,故定理说的是 k+1 而不是更小的数。"}
+{"id": "d:thm-15-5-conclusion-any-k-plus-one-elements-of-the-span-are-dependent", "verdict": "KEEP", "cause": 0, "reason": "澄清取元范围这一真实误区:k+1 个元取自 L(S) 而非 V、也不必属于 S,只需能表为 S 中元素的有限组合。"}
+{"id": "d:thm-15-5-proof-delegated-to-theorem-12-8", "verdict": "KEEP", "cause": 0, "reason": "增量只在末句:维数理论的承重墙在第15章内没有证明。前半与 parent 陈述重合,与兄弟节点 d:thm-15-5-generality-transfer-uses-only-the-linear-space-axioms 同出于 parent 的一句话,建议合并考量。"}
+{"id": "d:thm-15-5-generality-transfer-uses-only-the-linear-space-axioms", "verdict": "KEEP", "cause": 0, "reason": "点明迁移机制是对旧证明做依赖审计(只用到 V_n 是线性空间)而非新计算,这是可迁移到任何「旧证明照搬」场合的判断。"}
+{"id": "d:thm-15-6-hypothesis-finite-dimensional-space", "verdict": "KEEP", "cause": 0, "reason": "给出范围边界:等势结论只对有限维空间、只比较有限基,对无限基不作断言(本章也未引入),防止越界引用。"}
+{"id": "d:thm-15-6-setup-two-bases-with-counts-k-and-m", "verdict": "KILL", "cause": 5, "reason": "parent 第二条锚点逐字即此句;「两个基都是任意的所以结论是全称的」是全称实例化的常规观察,从 parent 立即可得,属证明的语法切分。"}
+{"id": "d:thm-15-6-apply-theorem-15-5-to-the-first-basis", "verdict": "KEEP", "cause": 0, "reason": "把基定义的两条子句各自的用途分开:独立性用于满足定理15.5 的前提,张成性用于把 L(S) 认同为 V,后者容易被漏看。"}
+{"id": "d:thm-15-6-upgrade-from-k-plus-one-to-more-than-k", "verdict": "KEEP", "cause": 0, "reason": "补出教材沉默的一步:从「恰 k+1 个」到「多于 k 个」要用「含相关子集的集合相关」(15.07 例1),是有名依赖的补洞节点。"}
+{"id": "d:thm-15-6-first-inequality-m-at-most-k", "verdict": "KEEP", "cause": 0, "reason": "做假设记账:此处只用到 T 的独立性,张成性尚未动用,这为下一节点指出的隐藏用处埋好对照。"}
+{"id": "d:thm-15-6-symmetry-step-requires-t-to-span", "verdict": "KEEP", "cause": 0, "reason": "揭出被「同样的论证」一语掩盖的隐藏前提:这里是 T 的张成性唯一一次被使用,否则不能把 T 放到 S 的位置。"}
+{"id": "d:thm-15-6-conclusion-by-antisymmetry", "verdict": "KEEP", "cause": 0, "reason": "给出架构判断:整个证明唯一的非代数输入是整数序的反对称性,这是 parent 只说「用两次定理15.5」时看不到的。"}
+{"id": "d:thm-15-7-hypothesis-dim-v-equals-n", "verdict": "KEEP", "cause": 0, "reason": "指出 n 的绑定:(b) 中的 n 只能指维数,否则该子句无意义,防止把它误读为对任意 n 成立。"}
+{"id": "d:thm-15-7a-independent-sets-extend-to-bases", "verdict": "KEEP", "cause": 0, "reason": "给出强度判断:(a) 对基是存在性的,不说是哪个基、也不给找法,属非构造性结论,这一点 parent 的逐字子句读不出。"}
+{"id": "d:thm-15-7b-n-independent-elements-form-a-basis", "verdict": "KEEP", "cause": 0, "reason": "给出可操作判断:计数达到维数后独立性单独逼出张成性,因此计数对了就免去核验张成的义务;同时是下层反证子节点的挂载点。"}
+{"id": "d:thm-15-7-proofs-delegated-to-theorem-12-10", "verdict": "KEEP", "cause": 0, "reason": "增量在末句:第15章内 15.7 的证明是空的,章内唯一可用配料是定理15.5,这界定了后续推理能引用什么。"}
+{"id": "d:n-plus-one-elements-in-an-n-dimensional-space-are-dependent", "verdict": "KEEP", "cause": 0, "reason": "给出一条 parent 未陈述的等价形式,并说明其全部证明就是把定理15.5 实例化在一个基上,是可直接引用的独立结论。"}
+{"id": "d:dimension-theory-uses-no-metric-notions", "verdict": "KEEP", "cause": 0, "reason": "负向界定 15.5-15.7 只用线性空间公理、计数有限性与整数序,不含内积、范数、正交、距离、坐标、完备性,这正是 15.10 之后能叠在这一层上而非并列的原因。"}
+{"id": "d:theorem-15-9-holds-for-every-inner-product", "verdict": "KEEP", "cause": 0, "reason": "把全称量词读成结论:(a)-(d) 是任何内积选择下都留存的性质,故它们才是抽象范数的正确公理,这一「为什么这四条」的判断 parent 未给。"}
+{"id": "d:norm-vanishes-at-the-zero-element", "verdict": "KEEP", "cause": 0, "reason": "指出方向性(教材只给 x=O 一侧,逆命题是 (b) 的逆否),并定位依赖:此性质靠齐次性取 c=0,与正定性无关。"}
+{"id": "d:norm-positivity-property", "verdict": "KEEP", "cause": 0, "reason": "指出这是四条中唯一与公理一一对应者,并列出它在半正定退化时连带失效的三处(以范数刻画 O、夹角公式分母、(15.8) 分母)。"}
+{"id": "d:norm-homogeneity-property", "verdict": "KEEP", "cause": 0, "reason": "拆出两次提取(第一槽齐次性、再借对称性或 (1') 提第二个 c)并解释绝对值/模的来源,故恒等式写 |c| 而非 c。"}
+{"id": "d:norm-properties-abc-follow-at-once-from-the-axioms", "verdict": "KEEP", "cause": 0, "reason": "给出证明深度的分类:(a)-(c) 是单条公理的一步翻译,(d) 是唯一需要辅助定理(Cauchy-Schwarz)的性质,这一不对称本身是信息。"}
+{"id": "d:triangle-inequality-statement", "verdict": "KEEP", "cause": 0, "reason": "指出它是四条中唯一离开公理去调用定理者,并揭出一处沉默依赖:证明需要第一变元的加性,而这不是公理而是加性 (2) 加对称性 (1) 的推论。"}
+{"id": "d:triangle-inequality-proof-expand-norm-squared", "verdict": "KEEP", "cause": 0, "reason": "拆出被一条等式链掩盖的两处公理使用:两个槽都要拆和(第一槽需加性加对称性),以及末步用 (1') 把 (y,x) 写成共轭,后者正是复情形仍然成立的原因。"}
+{"id": "d:cross-term-sum-is-real", "verdict": "KEEP", "cause": 0, "reason": "说明这句为何不是装饰:(d) 左侧是实数,不先确认交叉项为实就无法谈不等式;并指出实、复两个证明因此合为一个。"}
+{"id": "d:triangle-inequality-proof-bound-cross-terms-by-cauchy-schwarz", "verdict": "KEEP", "cause": 0, "reason": "定位依赖接点:没有 Cauchy-Schwarz 的界,第一步的展开根本给不出任何不等式;并写出配成完全平方再开方的具体路径。"}
+{"id": "d:triangle-inequality-equality-sufficient-conditions", "verdict": "KEEP", "cause": 0, "reason": "给出与定理15.8 等号条款的强度对照(此处只是充分条件、原文不是充要),并指出 c>0 而非 c 非零才是它区别于 Cauchy-Schwarz 相依条件之处。"}
+{"id": "d:uniqueness-of-components-assume-two-representations", "verdict": "KILL", "cause": 5, "reason": "证明的语法首步,内容已含于 parent statement 的「相减第二个表示」;唯一附加语「不假设两个表示如何不同」是标准全称实例化观察,删掉后学习者从 parent 可自行想到。"}
+{"id": "d:uniqueness-of-components-subtract-to-get-a-vanishing-relation", "verdict": "KEEP", "cause": 0, "reason": "给出这一步的功能判断:相减把唯一性问题转化为独立性问题,且只用线性空间公理(不涉内积),这是可迁移的技术识别。"}
+{"id": "d:uniqueness-of-components-apply-independence", "verdict": "KEEP", "cause": 0, "reason": "做子句记账:唯一性只消耗基定义的独立性子句,存在性只消耗张成子句,这一对照 parent 未给。"}
+{"id": "d:uniqueness-of-components-conclusion-tuple-determined-by-x", "verdict": "KEEP", "cause": 0, "reason": "点出结论的实际用途:正是它许可把分量当作 x 的函数看待(良定义),而非仅陈述两个元组相等。"}
+{"id": "d:vanishing-new-element-exhibits-a-dependence", "verdict": "KILL", "cause": 5, "reason": "parent statement 首句与第一条锚点逐字即此推理链(y_{r+1}=O 则 x_{r+1} 是前面各 y 而后各 x 的组合,故相依);子节点无任何 parent 之外的依据或边界。"}
+{"id": "d:independent-input-forces-nonzero-output", "verdict": "KILL", "cause": 5, "reason": "parent statement 第二句(Equivalently 之后)即此句,且节点自己的 atomic_reason 承认它只是上一节点的逆否、教材以 In other words 引出、没有新推理内容,属层级塌缩。"}
+{"id": "d:weight-function-must-be-positive", "verdict": "KEEP", "cause": 0, "reason": "给出失效模式:若 w 变号或在子区间为零,则非零连续 f 可使 (f,f) 为零或为负,公理 (4) 单独失效而 (1)-(3) 仍成立,这是 parent 只说「正函数」时看不到的。"}
+{"id": "d:exponential-weight-makes-improper-integral-converge", "verdict": "KEEP", "cause": 0, "reason": "指出权函数在例5 中承担双重职责:正性给公理 (4),衰减给积分值本身的良定义,而在无界区间上后者是公理可核验的前提。"}
+{"id": "d:approximation-proof-starts-from-the-orthogonal-decomposition", "verdict": "KEEP", "cause": 0, "reason": "指出这次引用是有限维假设进入定理15.16 的唯一通道,是可追踪的依赖登记,parent 只陈述不等式。"}
+{"id": "d:x-minus-t-splits-orthogonally", "verdict": "KEEP", "cause": 0, "reason": "给出配项加两处归属判断(s-t 属于 S、x-s 属于 S 垂直),并说明正是「认出这是正交分解」才许可使用勾股公式。"}
+{"id": "d:pythagorean-split-of-the-approximation-error", "verdict": "KEEP", "cause": 0, "reason": "把定理的实质定为一个等式而非不等式:任何竞争者的误差恰好超出 s 处误差 ||s-t||^2,这是量化判断而非重述。"}
+{"id": "d:equality-holds-exactly-when-t-equals-s", "verdict": "KEEP", "cause": 0, "reason": "给出把等式转成不等式并钉住等号情形的机制(平方范数非负,取等迫使 ||s-t||^2=0),该推导不在 parent statement 中;但 name_zh 与 parent 的等号子句同名,建议改名以免看似塌缩。"}
+{"id": "d:strict-minimality-rests-on-positivity-of-the-norm", "verdict": "KEEP", "cause": 0, "reason": "把严格性落到定理15.9(b) 并给出失效模式:无正定性则只得到非严格极小,是本子树纵向到底的位置。"}
+{"id": "d:exponential-law-used-in-the-shift", "verdict": "KEEP", "cause": 0, "reason": "识别一处来自线性代数之外的输入(指数加法律),并指出没有它这次乘法根本不产生化简,是 parent 未点明的依赖。"}
+{"id": "d:exponential-nonvanishing-used-for-reversibility", "verdict": "KILL", "cause": 5, "reason": "parent statement 已写「该步合法且可逆,因为指数函数恒不为零」,子节点原样重说;附加语「这是使规范化成为等价而非弱化的沉默前提」与 parent 的『可逆』同义。附注(属审计 A 范围):该节点 anchors 为空。"}
+{"id": "d:exponential-independence-base-case-n-equals-one", "verdict": "KEEP", "cause": 0, "reason": "把 parent 的「n=1 平凡」兑现为具体内容(c e^{ax} 恒为零迫使 c=0,依据是指数恒不为零),平凡二字掩盖的那一步在此被写出。"}
+{"id": "d:exponential-independence-arbitrary-vanishing-relation-is-the-starting-point", "verdict": "KILL", "cause": 5, "reason": "纯语法开场:「独立性是全称命题所以要从任意为零的关系出发、关系是被假设而非被造出」是标准全称实例化观察,从 parent 出发学习者必然自己写出;与 d:thm-15-6-setup-two-bases-with-counts-k-and-m、d:uniqueness-of-components-assume-two-representations 同型。"}
+{"id": "d:exponential-independence-select-the-largest-exponent", "verdict": "KEEP", "cause": 0, "reason": "给出取最大值这一步的合法性依据(实数全序加指标集有限故最大值存在),并说明该选择的目的是让其余指数严格变小。"}
+{"id": "d:exponential-independence-multiply-by-a-normalizing-exponential", "verdict": "KEEP", "cause": 0, "reason": "parent 只说「归纳步把 n 降到 n-1」,本节点给出实现该降阶的具体可逆操作,并指出它把第 M 项压成常数 c_M,是下面两条非代数输入的挂载点。"}
+{"id": "d:exponential-independence-negativity-of-the-shifted-exponents", "verdict": "KEEP", "cause": 0, "reason": "定位互异性假设的消耗点并给出失效模式:若指数相等则平移后指数为零、该项不衰减,极限论证随之失效。"}
+{"id": "d:exponential-independence-limit-argument-isolates-one-coefficient", "verdict": "KEEP", "cause": 0, "reason": "标出全证明的决定性一步是分析性的(用极限与指数衰减,这些概念不在线性空间公理内),这是本例为何不能纯代数处理的答案。"}
+{"id": "d:exponential-independence-delete-the-killed-term-and-recurse", "verdict": "KEEP", "cause": 0, "reason": "补出归纳假设可用的前提检查:删去第 M 项后剩下的 n-1 个指数仍互异,故递归封闭;parent 只说降到 n-1 而未验此前提。"}
+{"id": "d:inner-product-of-the-new-element-with-an-earlier-one", "verdict": "KEEP", "cause": 0, "reason": "给出使系数可解的关键:归纳正交性假设把和式消到只剩两项,从而把 a_j 的选取变成一元方程,这是 parent 所说「待定标量」如何被定下来的机制。"}
+{"id": "d:coefficient-that-cancels-the-projection-component", "verdict": "KEEP", "cause": 0, "reason": "写出 a_j 的显式解并把其合法性挂到 (y_j,y_j) != 0 即正定性公理上,是可执行步骤而非重述。"}
+{"id": "d:zero-earlier-element-makes-the-coefficient-irrelevant", "verdict": "KEEP", "cause": 0, "reason": "处理 y_j = O 的分支并给出结构性判断:正因为这一分支有解,定理15.13 才不需要对 x 序列加独立性假设。"}
+{"id": "d:self-inner-product-is-real-in-complex-case", "verdict": "KEEP", "cause": 0, "reason": "补出教材未写的隐藏步骤:(1') 取 y=x 得 (x,x) 为实,这才使原封不动保留的正定性公理在复空间里有意义,与 parent 用 (cx,cx)=c^2(x,x) 的论证路线不同、互补。"}
+{"id": "d:zero-element-has-zero-inner-product", "verdict": "KEEP", "cause": 0, "reason": "给出承重点定位:它使零元在 15.11 中与一切元素正交,并在每次「把为零的组合与基元素作内积」时被隐式使用;parent 只把它列为丢掉公理3 会损失的东西之一。"}
+{"id": "d:normalized-element-has-norm-one", "verdict": "KEEP", "cause": 0, "reason": "parent 只点名这两条事实,本节点把其中一条落到具体依据(定理15.9(c) 绝对齐次性给范数为1、15.9(b) 正定性给除法合法),补出教材未写的一步。"}
+{"id": "d:rescaling-preserves-orthogonality", "verdict": "KEEP", "cause": 0, "reason": "写出 (c_i y_i, c_j y_j) = c_i c_j (y_i, y_j) = 0 的两次齐次性应用,并指出教材在 15.11 与 15.13 两处无声使用它,是有使用点的补洞节点。"}
+{"id": "d:orthonormal-basis-component-is-the-inner-product", "verdict": "KEEP", "cause": 0, "reason": "给出 (15.8) 到 (15.9) 的机制(单位范数抹掉分母)与其代价回收判断:这正是规范化的收益所在,也是 Parseval 公式能纯用内积表达的原因;parent statement 未涉 (15.9)。"}
+{"id": "d:finite-dimensionality-supplies-a-finite-orthonormal-basis", "verdict": "KEEP", "cause": 0, "reason": "定位有限维假设在定理15.15 中的唯一消耗点(引用定理15.14 取有限正交规范基,使定义 s 的有限和有意义),并指出唯一性一半与勾股公式都不用它。"}
+{"id": "d:s-defined-as-the-sum-of-projections-along-the-basis-elements", "verdict": "KEEP", "cause": 0, "reason": "写出 (15.18) 的显式构造(s 与 s 垂直同时定下)并把每项认作 x 沿 e_i 的投影,parent 只说「由正交规范基显式写出」而无公式。"}
+{"id": "d:s-lies-in-s-because-it-is-a-linear-combination-of-the-basis", "verdict": "KEEP", "cause": 0, "reason": "偿付四项验证义务之一并点名依据(基张成 S),同时指出 x = s + s 垂直 是由 s 垂直 的定义直接成立而非另需论证。"}
+{"id": "d:s-perp-is-orthogonal-to-each-basis-element", "verdict": "KEEP", "cause": 0, "reason": "给出可核验计算((s 垂直, e_j) = (x,e_j) - (s,e_j) 并由定义读出两者相等),并指出正交规范性是使 (s,e_j) 压成单个系数的原因。"}
+{"id": "d:orthogonality-to-the-basis-extends-to-all-of-s", "verdict": "KEEP", "cause": 0, "reason": "把这一步认作 Gram-Schmidt 证明中同一张成推广桥的第二次使用(此处作用于基而非部分列表),给出手法复用识别;内容与跨父节点 d:orthogonality-to-generators-extends-to-their-span 高度重叠,合并时应保留后者为通用引理、此处改为引用。"}
+{"id": "d:uniqueness-reduces-to-a-single-vanishing-difference", "verdict": "KEEP", "cause": 0, "reason": "给出化归动作(相减得 s-t = t垂直-s垂直,故两个等式都归到 s-t=O 一个命题),这是 parent 未写的证明结构。"}
+{"id": "d:the-difference-lies-in-both-s-and-s-perp", "verdict": "KEEP", "cause": 0, "reason": "指出同一元素同时落在 S 与 S 垂直 中,且这一双重归属只靠两者对差封闭,故自正交结论是被迫出现的而非巧合。"}
+{"id": "d:uniqueness-concludes-by-self-orthogonality", "verdict": "KEEP", "cause": 0, "reason": "点明唯一性论证的偿付点在「零元是唯一自正交元素」这一句,并给出由此回到 s=t 再到 s垂直=t垂直 的收束次序。"}
+{"id": "d:new-element-is-well-defined-and-orthogonal-to-all-earlier-ones", "verdict": "KEEP", "cause": 0, "reason": "给出两点 parent 没有的内容:两分支合起来后所有 a_i 都被定下故 y_{r+1} 良定义;减去投影一次性买到对前面全部元素的正交而非只对最后一个,理由是消项后各 j 的方程互不耦合。"}
+{"id": "d:orthogonality-to-generators-extends-to-their-span", "verdict": "KEEP", "cause": 0, "reason": "把「对生成元正交推出对张成子空间正交」提为通用桥并点出两处使用点(此处与定理15.15 从 e_j 到整个 S),这正是 parent 中 not merely...but 的那一步差距的偿付。"}
+{"id": "d:span-inclusion-y-inside-x", "verdict": "KEEP", "cause": 0, "reason": "给出一侧包含的完整论据(前 r 个由归纳假设落在较小空间、y_{r+1} 是该空间中两元之差),并指出全程只用到子空间对差的封闭性。"}
+{"id": "d:span-inclusion-x-inside-y", "verdict": "KEEP", "cause": 0, "reason": "给出反向包含的机制:同一条 (15.13) 反读即把 x_{r+1} 表为 L(y_1..y_{r+1}) 中两元之和,解释了为何一条式子同时服务两个方向。"}
+{"id": "d:orthonormal-expansion-formula", "verdict": "KEEP", "cause": 0, "reason": "给出 (15.10) 这一自再生形式(元素自身对基的内积充当其系数),并指出它才是与 y 配对导出 Parseval 公式的那个恒等式;parent 只到 (15.9) 的系数层。"}
+{"id": "d:thm-15-4-zero-element-obtained-by-taking-the-scalar-zero", "verdict": "KEEP", "cause": 0, "reason": "给出具体构造(取 a=0 得 0x 属于 S,再引定理15.3(a) 认定 0x=O),把 parent 只命名的义务兑现为可执行的两步。"}
+{"id": "d:thm-15-4-negative-obtained-by-taking-the-scalar-minus-one", "verdict": "KEEP", "cause": 0, "reason": "给出具体构造(取 a=-1)并指出 x+(-1)x=O 这一恒等式是从 V 借来的而非在 S 内新证,是假设来源的诚实记账。"}
+{"id": "d:thm-15-4-identities-inherited-from-the-ambient-space", "verdict": "KEEP", "cause": 0, "reason": "给出继承的逻辑理由(全称等式对子集自动成立)并点名适用的六条公理,说明此处除「S 是 V 的子集」外不用 S 的任何性质。"}
+{"id": "d:thm-15-4-remaining-obligations-zero-and-negative", "verdict": "KEEP", "cause": 0, "reason": "增量在机制而非清单:存在性陈述不随子集限制而保持,这才是公理5、6 需要真干活的原因;parent 只说这两条须构造而未给理由。"}
+{"id": "d:thm-15-4-witness-element-supplied-by-nonemptiness", "verdict": "KEEP", "cause": 0, "reason": "定位非空性在整个证明中唯一的承重使用点(提供固定见证元 x 供两处构造使用),与 d:thm-15-4-hypothesis-nonempty-subset 的空集反例互补而不重复。"}
+{"id": "d:thm-15-4-closure-under-scalar-multiplication-is-the-active-axiom", "verdict": "KEEP", "cause": 0, "reason": "给出一条负向发现:充分性方向全程只用公理2(数乘封闭),加法封闭的公理1 从未被调用,这是从 parent 出发想不到的。"}
+{"id": "d:thm-15-4-conclusion-s-is-a-subspace", "verdict": "KILL", "cause": 5, "reason": "纯收束句:「十条公理都验过了所以 S 是子空间」不含任何 parent 之外的判断,是把证明的结尾语法性地切出来单列;删掉后学习者从 parent 与其余四个兄弟节点必然自行得出。"}
+{"id": "d:adjoining-an-element-outside-the-span-preserves-independence", "verdict": "KEEP", "cause": 0, "reason": "提出并证明一条 parent 明确缺少的引理(为零的关系中 y 的系数必为零,否则 y 成为其余元的组合),并指出它同时驱动 15.7(a) 的扩张与 15.7(b) 的反证。附注(属审计 A 范围):该节点 anchors 为空。"}
+{"id": "d:thm-15-7b-argument-adjoining-an-outside-element-breaks-the-count", "verdict": "KEEP", "cause": 0, "reason": "补出第15章内本来没有的证明:若 n 个独立元不张成 V 则可添界外元得到 n+1 个独立元,与「任意 n+1 个元相关」矛盾,并指明矛盾点是一个计数上界。附注(属审计 A 范围):该节点 anchors 为空。"}
+{"id": "d:trigonometric-system-norms", "verdict": "KEEP", "cause": 0, "reason": "给出具体计算值(||u_0||=sqrt(2pi) 而其余为 sqrt(pi)),并用 u_0 与其余项的不对称解释标准化后为何出现两个不同分母,同时是「正交集一般不是正交规范集」的具体实例。"}
+{"id": "d:normalized-trigonometric-system", "verdict": "KEEP", "cause": 0, "reason": "写出标准化后的显式函数族,并指出它正是使 Parseval 公式 (15.11) 获得经典 Fourier 含义的那个系统,连接抽象结论与经典结果。"}
+{"id": "d:positivity-axiom-forbids-nonzero-self-orthogonal-elements", "verdict": "KEEP", "cause": 0, "reason": "把自正交唯一性还原为正定性公理的逆否,并给出「该事实不含正定性之外的内容,所以教材能一句话引用」这一到底判断,是本子树的纵向终点。"}

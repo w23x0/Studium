@@ -1,0 +1,42 @@
+{"src": "apostol:cx-inhomogeneous-endpoint-condition-breaks-closure", "rel": "requires", "dst": "d:axiom-1-closure-under-addition", "origin": "model"}
+{"src": "apostol:cx-inhomogeneous-endpoint-condition-breaks-closure", "rel": "requires", "dst": "d:axiom-5-existence-of-zero-element", "origin": "model"}
+{"src": "apostol:cx-inhomogeneous-endpoint-condition-breaks-closure", "rel": "contrasts", "dst": "d:example-11-functions-vanishing-at-a-point", "origin": "model"}
+{"src": "apostol:cx-increasing-functions-fail-under-negative-scalars", "rel": "requires", "dst": "d:axiom-2-closure-under-multiplication-by-real-numbers", "origin": "model"}
+{"src": "apostol:cx-increasing-functions-fail-under-negative-scalars", "rel": "requires", "dst": "d:axiom-6-existence-of-negatives", "origin": "model"}
+{"src": "apostol:cx-integral-inequality-breaks-the-scalar-axioms", "rel": "requires", "dst": "d:axiom-2-closure-under-multiplication-by-real-numbers", "origin": "model"}
+{"src": "apostol:cx-integral-inequality-breaks-the-scalar-axioms", "rel": "contrasts", "dst": "apostol:cx-increasing-functions-fail-under-negative-scalars", "origin": "model"}
+{"src": "apostol:cx-union-of-two-coordinate-planes-fails-additive-closure", "rel": "requires", "dst": "d:axiom-1-closure-under-addition", "origin": "model"}
+{"src": "apostol:cx-union-of-two-coordinate-planes-fails-additive-closure", "rel": "contrasts", "dst": "apostol:theorem-15-4-subspace-criterion", "origin": "model"}
+{"src": "apostol:cx-affine-line-missing-the-origin", "rel": "requires", "dst": "d:axiom-5-existence-of-zero-element", "origin": "model"}
+{"src": "apostol:cx-affine-line-missing-the-origin", "rel": "requires", "dst": "d:axiom-1-closure-under-addition", "origin": "model"}
+{"src": "apostol:cx-affine-line-missing-the-origin", "rel": "contrasts", "dst": "apostol:cx-union-of-two-coordinate-planes-fails-additive-closure", "origin": "model"}
+{"src": "apostol:cx-scalar-product-that-kills-the-second-coordinate", "rel": "requires", "dst": "d:axiom-10-existence-of-identity", "origin": "model"}
+{"src": "apostol:cx-scalar-product-that-kills-the-second-coordinate", "rel": "requires", "dst": "d:axiom-6-names-the-negative-as-minus-one-times-x", "origin": "model"}
+{"src": "apostol:cx-scalar-product-that-kills-the-second-coordinate", "rel": "contrasts", "dst": "d:axiom-10-is-derivable-from-apostols-form-of-axiom-6", "origin": "model"}
+{"src": "apostol:cx-addition-that-discards-the-second-coordinate-has-no-zero", "rel": "requires", "dst": "d:axiom-5-existence-of-zero-element", "origin": "model"}
+{"src": "apostol:cx-addition-that-discards-the-second-coordinate-has-no-zero", "rel": "requires", "dst": "d:axiom-9-distributive-law-for-addition-of-numbers", "origin": "model"}
+{"src": "apostol:cx-addition-that-keeps-only-the-left-first-coordinate-is-noncommutative", "rel": "requires", "dst": "d:axiom-3-commutative-law-for-addition", "origin": "model"}
+{"src": "apostol:cx-addition-that-keeps-only-the-left-first-coordinate-is-noncommutative", "rel": "requires", "dst": "d:axiom-9-distributive-law-for-addition-of-numbers", "origin": "model"}
+{"src": "apostol:cx-addition-that-keeps-only-the-left-first-coordinate-is-noncommutative", "rel": "contrasts", "dst": "apostol:cx-addition-that-discards-the-second-coordinate-has-no-zero", "origin": "model"}
+{"src": "apostol:cx-a-whole-line-of-right-zeros", "rel": "contrasts", "dst": "apostol:theorem-uniqueness-of-zero-element", "origin": "model"}
+{"src": "apostol:cx-a-whole-line-of-right-zeros", "rel": "requires", "dst": "d:axiom-5-states-the-zero-only-as-a-right-neutral-element", "origin": "model"}
+{"src": "apostol:cx-a-whole-line-of-right-zeros", "rel": "requires", "dst": "d:axiom-3-commutative-law-for-addition", "origin": "model"}
+{"src": "apostol:cx-addition-reading-one-coordinate-from-each-summand", "rel": "requires", "dst": "d:axiom-4-associative-law-for-addition", "origin": "model"}
+{"src": "apostol:cx-addition-reading-one-coordinate-from-each-summand", "rel": "requires", "dst": "d:axiom-3-commutative-law-for-addition", "origin": "model"}
+{"src": "apostol:cx-addition-reading-one-coordinate-from-each-summand", "rel": "contrasts", "dst": "apostol:cx-absolute-value-in-the-scalar-product-destroys-the-identity", "origin": "source", "evidence": {"file": "15.05-exercises.md", "quote": "(d) $(x_{1},x_{2}) + (y_{1},y_{2}) = (|x_{1} + x_{2}|,|y_{1} + y_{2}|),\\qquad a(x_{1},x_{2}) = (|ax_{1}|,|ax_{2}|).$"}}
+{"src": "apostol:cx-absolute-value-in-the-scalar-product-destroys-the-identity", "rel": "requires", "dst": "d:axiom-10-existence-of-identity", "origin": "model"}
+{"src": "apostol:cx-absolute-value-in-the-scalar-product-destroys-the-identity", "rel": "requires", "dst": "d:axiom-9-distributive-law-for-addition-of-numbers", "origin": "model"}
+{"src": "apostol:cx-degree-exactly-k-inside-p-n-still-fails-closure", "rel": "requires", "dst": "d:axiom-1-closure-under-addition", "origin": "model"}
+{"src": "apostol:cx-degree-exactly-k-inside-p-n-still-fails-closure", "rel": "contrasts", "dst": "apostol:theorem-15-4-subspace-criterion", "origin": "model"}
+{"src": "apostol:cx-degree-exactly-k-inside-p-n-still-fails-closure", "rel": "contrasts", "dst": "d:degree-exactly-n-fails-axiom-2-at-the-scalar-zero", "origin": "model"}
+{"src": "apostol:cx-degree-exactly-k-inside-p-n-still-fails-closure", "rel": "contrasts", "dst": "d:degree-exactly-n-is-not-a-linear-space", "origin": "model"}
+{"src": "apostol:cx-degree-exactly-k-inside-p-n-still-fails-closure", "rel": "applies-to", "dst": "apostol:polynomials-of-degree-at-most-n", "origin": "source", "evidence": {"file": "15.09-exercises.md", "quote": "Let $P_{n}$ denote the linear space of all real polynomials of degree $\\leq n$ , where n is fixed."}}
+{"src": "apostol:cx-span-does-not-commute-with-intersection", "rel": "requires", "dst": "apostol:linear-span", "origin": "model"}
+{"src": "apostol:cx-span-does-not-commute-with-intersection", "rel": "requires", "dst": "apostol:linear-span-notation-l-of-s", "origin": "source", "evidence": {"file": "15.09-exercises.md", "quote": "22. In this exercise, $L(S)$ denotes the subspace spanned by a subset $S$ of a linear space $V$ ."}}
+{"src": "apostol:cx-span-does-not-commute-with-intersection", "rel": "contrasts", "dst": "apostol:subspace", "origin": "model"}
+{"src": "apostol:cx-a-basis-for-v-need-not-contain-a-basis-for-a-subspace", "rel": "requires", "dst": "apostol:finite-basis", "origin": "model"}
+{"src": "apostol:cx-a-basis-for-v-need-not-contain-a-basis-for-a-subspace", "rel": "contrasts", "dst": "apostol:theorem-15-7", "origin": "model"}
+{"src": "apostol:cx-a-basis-for-v-need-not-contain-a-basis-for-a-subspace", "rel": "applies-to", "dst": "apostol:subspace", "origin": "source", "evidence": {"file": "15.09-exercises.md", "quote": "24. Let $V$ be a finite-dimensional linear space, and let $S$ be a subspace of $V$ ."}}
+{"src": "apostol:cx-an-identity-hides-a-dependence-among-transcendental-functions", "rel": "requires", "dst": "apostol:dependent-set", "origin": "model"}
+{"src": "apostol:cx-an-identity-hides-a-dependence-among-transcendental-functions", "rel": "contrasts", "dst": "apostol:independence-of-exponential-functions", "origin": "model"}
+{"src": "apostol:cx-an-identity-hides-a-dependence-among-transcendental-functions", "rel": "applies-to", "dst": "apostol:function-space", "origin": "source", "evidence": {"file": "15.09-exercises.md", "quote": "23. Let $V$ be the linear space consisting of all real-valued functions defined on the real line."}}

@@ -1,0 +1,15 @@
+{"src":"strang:particular-solution","rel":"part-of","dst":"strang:complete-solution","origin":"source","evidence":{"file":"3.3.md","quote":"Figure 3.3: Complete solution = one particular solution + all nullspace solutions."}}
+{"src":"strang:reduce-augmented-to-rd","rel":"applies-to","dst":"strang:augmented-matrix","origin":"source","evidence":{"file":"3.3.md","quote":"Elimination on [A b] leads to [R d]. Then Ax = b is equivalent to Rx = d."}}
+{"src":"strang:particular-solution","rel":"requires","dst":"strang:reduce-augmented-to-rd","origin":"model"}
+{"src":"strang:solvability-condition","rel":"requires","dst":"strang:reduce-augmented-to-rd","origin":"source","evidence":{"file":"3.3.md","quote":"Ax = b and Rx = d are solvable only when all zero rows of R have zeros in d."}}
+{"src":"strang:row-combination-consistency","rel":"implies","dst":"strang:solvability-condition","origin":"source","evidence":{"file":"3.3.md","quote":"If a combination of the rows ( on the left side) gives the zero row, then the same combination must give zero on the right side."}}
+{"src":"strang:square-invertible-system","rel":"is-a","dst":"strang:full-column-rank","origin":"source","evidence":{"file":"3.3.md","quote":"Cases 1 and 3 have full column rank"}}
+{"src":"strang:square-invertible-system","rel":"is-a","dst":"strang:full-row-rank","origin":"source","evidence":{"file":"3.3.md","quote":"Cases 1 and 2 have full row rank"}}
+{"src":"strang:full-column-rank","rel":"contrasts","dst":"strang:full-row-rank","origin":"source","evidence":{"file":"3.3.md","quote":"The other extreme case is full row rank."}}
+{"src":"strang:four-possibilities-by-rank","rel":"requires","dst":"strang:full-column-rank","origin":"model"}
+{"src":"strang:four-possibilities-by-rank","rel":"requires","dst":"strang:full-row-rank","origin":"model"}
+{"src":"strang:square-invertible-system","rel":"part-of","dst":"strang:four-possibilities-by-rank","origin":"model"}
+{"src":"strang:complete-solution","rel":"requires","dst":"strang:solvability-condition","origin":"model"}
+{"src":"strang:four-possibilities-by-rank","rel":"requires","dst":"strang:solvability-condition","origin":"model"}
+{"src":"strang:complete-solution","rel":"requires","dst":"strang:augmented-matrix","origin":"model"}
+{"src":"strang:row-combination-consistency","rel":"requires","dst":"strang:reduce-augmented-to-rd","origin":"model"}

@@ -1,0 +1,146 @@
+# 共享引文审查清单（form B 半机械检测）
+
+`tools/check_shared_quotes.py` 的输出。共享引文**多数是合法的**：
+一句定义天然同时支撑概念节点、记号节点和它的直接推论。
+此清单只是把"同一 `(file, quote)` 被多个节点引用"这一唯一可机械发现的
+漂移线索列出来，供人工逐条读 statement 判断，机器无法代替这一步。
+
+- 不同 `(file, quote)` 对：708
+- 被 >= 4 处引用：9
+- 其中涉及 >= 2 个不同节点（form B 审查集）：9
+
+## `15.03.md`
+
+> The set of all polynomials of degree equal to n is not a linear space because the closure axioms are not satisfied.
+
+- **node** `d:for-function-spaces-closure-is-the-only-real-content` (anchors[0], nodes-D1.jsonl:62)
+  - Since the pointwise laws hold automatically, deciding whether a given set of functions is a linear space amounts to asking whether it is closed under pointwise …
+- **node** `d:example-6-all-polynomials-as-a-function-space` (anchors[1], nodes-D1.jsonl:64)
+  - The set of all polynomials, of any degree whatever, is a function space: a sum of polynomials is a polynomial and a real multiple of a polynomial is a polynomia…
+- **node** `d:degree-exactly-n-is-not-a-linear-space` (anchors[0], nodes-D1.jsonl:67)
+  - Requiring the degree to equal n rather than to be at most n destroys the structure, and Apostol attributes the failure to the closure axioms. The set is the sec…
+- **node** `d:degree-exactly-n-fails-axiom-2-at-the-scalar-zero` (anchors[0], nodes-D1.jsonl:69)
+  - For p of degree exactly n, the product 0p is the zero polynomial, which has no degree n and so lies outside the set; hence Axiom 2 fails for the single scalar a…
+- **node** `d:degree-exactly-n-has-no-zero-element` (anchors[0], nodes-D1.jsonl:70)
+  - The only candidate for O under pointwise addition is the zero polynomial, and it is excluded by the requirement of degree exactly n, so Axiom 5 has no witness a…
+- **node** `d:degree-exactly-n-is-not-a-subspace-of-degree-at-most-n` (anchors[0], nodes-D1.jsonl:71)
+  - The polynomials of degree exactly n sit inside the linear space of polynomials of degree at most n and inherit its operations, yet they are not a subspace, sinc…
+- **node** `apostol:polynomials-of-degree-exactly-n` (anchors[0], nodes-A1.jsonl:14)
+  - The set of all polynomials of degree equal to n is not a linear space, because the closure axioms are not satisfied: the sum of two polynomials of degree n need…
+
+## `15.12-exercises.md`
+
+> In each case, determine whether $(x, y)$ is an inner product for $V_{n}$ if $(x, y)$ is defined by the formula given.
+
+- **node** `apostol:cx-inner-product-axiom-diagnosis` (anchors[0], nodes-A2-x2.jsonl:1)
+  - Exercises 1 and 12 ask, for a list of candidate formulas, whether each is an inner product and, if not, exactly which axioms fail. The exercises exhibit several…
+- **node** `apostol:cx-absolute-value-in-second-slot-breaks-symmetry` (anchors[1], nodes-A2-x2.jsonl:2)
+  - The formula (x, y) = sum x_i |y_i| on V_n is not an inner product. Putting the absolute value on only the second factor destroys symmetry, since (x, y) and (y, …
+- **node** `apostol:cx-root-of-sum-of-squared-products-breaks-linearity` (anchors[1], nodes-A2-x2.jsonl:3)
+  - The formula (x, y) = (sum x_i^2 y_i^2)^{1/2} on V_n is symmetric and satisfies (x, x) > 0 for x nonzero, yet it is not an inner product: it is not additive in e…
+- **node** `apostol:cx-absolute-value-of-the-dot-product-breaks-homogeneity` (anchors[1], nodes-A2-x2.jsonl:4)
+  - The formula (x, y) = |sum x_i y_i| is symmetric and strictly positive on nonzero elements, so it passes axioms 1 and 4, but it is not an inner product: homogene…
+- **node** `apostol:cx-polarization-formula-is-twice-the-dot-product` (anchors[1], nodes-A2-x2.jsonl:5)
+  - The candidate (x, y) = sum (x_i + y_i)^2 - sum x_i^2 - sum y_i^2 looks like none of the standard formulas, yet expanding the square collapses it to 2 sum x_i y_…
+- **node** `apostol:cx-product-of-coordinate-sums-is-degenerate` (anchors[1], nodes-A2-x2.jsonl:6)
+  - The formula (x, y) = (sum x_i)(sum y_j) on V_n is symmetric, additive and homogeneous, so it satisfies the first three axioms, but for n >= 2 it fails positivit…
+
+## `15.02.md`
+
+> AXIOM 6. EXISTENCE OF NEGATIVES. For every x in V, the element $(-1)x$ has the property
+
+- **node** `d:axiom-6-existence-of-negatives` (anchors[0], nodes-D1.jsonl:15)
+  - For every x in V the element (-1)x satisfies x + (-1)x = O. It forbids irreversible addition: without it no equation x + y = O need be solvable, subtraction and…
+- **node** `d:axiom-6-names-the-negative-as-minus-one-times-x` (anchors[0], nodes-D1.jsonl:22)
+  - Apostol does not postulate that some y with x + y = O exists; he asserts that the specific element (-1)x has that property. The negative is therefore tied to th…
+- **node** `d:axiom-10-is-derivable-from-apostols-form-of-axiom-6` (anchors[0], nodes-D1.jsonl:23)
+  - Apostol does not remark on this; the derivation below is not in the text. Because Axiom 6 names (-1)x as a negative of x, Axiom 10 is not independent of the res…
+- **node** `apostol:axioms-for-addition` (anchors[2], nodes-A1.jsonl:3)
+  - The second group of axioms (Axioms 3 to 6): addition in V is commutative and associative, there is a zero element O with x + O = x, and every x has the property…
+- **node** `apostol:negative-of-an-element` (anchors[0], nodes-A1.jsonl:9)
+  - By Axiom 6, for every x in V the element (-1)x satisfies x + (-1)x = O, so each x has at least one negative, namely (-1)x.
+
+## `15.10.md`
+
+> (b) $\| x\| >0$ if $x\neq O$ (positivity).
+
+- **node** `d:norm-positivity-property` (anchors[0], nodes-D3.jsonl:31)
+  - Theorem 15.9(b): ||x|| > 0 if x is not O. This is the one norm property that is equivalent to an axiom rather than derived from several: it is the positivity ax…
+- **node** `d:positivity-axiom-forbids-nonzero-self-orthogonal-elements` (anchors[1], nodes-D4.jsonl:15)
+  - The inner-product axiom (x, x) > 0 for x != O immediately yields the implication used above: (x, x) = 0 forces x = O. The self-orthogonality fact therefore carr…
+- **node** `d:normalized-element-has-norm-one` (anchors[1], nodes-D4.jsonl:19)
+  - For y != O the element y/||y|| has norm 1, because the norm is absolutely homogeneous: ||cy|| = |c| ||y||. Positivity of the norm is what makes the division leg…
+- **node** `d:strict-minimality-rests-on-positivity-of-the-norm` (anchors[0], nodes-D4.jsonl:53)
+  - The step from ||s - t||^2 = 0 to s = t is exactly Theorem 15.9(b): the norm of a nonzero element is positive. Without positivity the theorem would only give a n…
+- **node** `apostol:theorem-15-9-properties-of-norms` (anchors[1], nodes-A1.jsonl:55)
+  - THEOREM 15.9: in a Euclidean space, every norm satisfies, for all x, y and all scalars c: (a) ||x|| = 0 if x = O; (b) ||x|| > 0 if x is not O (positivity); (c) …
+
+## `15.10.md`
+
+> (x, x) > 0 \quad i f \quad x \neq O
+
+- **node** `d:inner-product-positivity-axiom` (anchors[0], nodes-D3.jsonl:6)
+  - The fourth axiom: (x, x) > 0 whenever x is not the zero element. What it forbids: semi-definite forms. If the strict inequality is weakened to (x, x) >= 0, one …
+- **node** `d:15-11-denominator-nonzero-by-positivity` (anchors[1], nodes-D3.jsonl:62)
+  - Passing from c_j (e_j, e_j) = (x, e_j) to formula (15.8) requires (e_j, e_j) nonzero. Apostol does not remark on it, but the justification is a two-link chain: …
+- **node** `d:positivity-axiom-forbids-nonzero-self-orthogonal-elements` (anchors[0], nodes-D4.jsonl:15)
+  - The inner-product axiom (x, x) > 0 for x != O immediately yields the implication used above: (x, x) = 0 forces x = O. The self-orthogonality fact therefore carr…
+- **node** `d:strict-minimality-rests-on-positivity-of-the-norm` (anchors[1], nodes-D4.jsonl:53)
+  - The step from ||s - t||^2 = 0 to s = t is exactly Theorem 15.9(b): the norm of a nonzero element is positive. Without positivity the theorem would only give a n…
+- **node** `apostol:inner-product-axioms` (anchors[2], nodes-A1.jsonl:43)
+  - The four properties an inner product is required to satisfy for all x, y, z and all real scalars c: (1) (x,y) = (y,x) (commutativity, or symmetry); (2) (x, y+z)…
+
+## `15.11.md`
+
+> The zero element is orthogonal to every element of V; it is the only element orthogonal to itself.
+
+- **node** `d:zero-element-orthogonal-to-every-element` (anchors[0], nodes-D3.jsonl:45)
+  - Apostol's first remark after the definition: the zero element is orthogonal to every element of V. This is exactly the corollary (O, y) = 0 of the homogeneity a…
+- **node** `d:15-10-nonzero-hypothesis-is-essential` (anchors[1], nodes-D3.jsonl:52)
+  - Theorem 15.10 asserts independence for every orthogonal set OF NONZERO ELEMENTS, and the restriction is genuinely needed, not cosmetic. Adjoining O to an orthog…
+- **node** `d:zero-is-the-only-element-orthogonal-to-itself` (anchors[0], nodes-D4.jsonl:14)
+  - If (x, x) = 0 then x = O, so no nonzero element is orthogonal to itself. Apostol states this in 15.11 and then leans on it at exactly two load-bearing places: t…
+- **node** `x:orthogonality-is-a-vanishing-pairing` (anchors[0], nodes-X.jsonl:11)
+  - Two elements are orthogonal when their pairing is zero. The zero element is orthogonal to everything, and it is the only element orthogonal to itself -- a fact …
+- **node** `apostol:orthogonal-elements` (anchors[1], nodes-A1.jsonl:58)
+  - In a Euclidean space V, two elements x and y are called orthogonal if their inner product is zero. The zero element is orthogonal to every element of V, and it …
+
+## `15.10.md`
+
+> (2) $(x,y + z) = (x,y) + (x,z)$ (distributivity, or linearity).
+
+- **node** `d:inner-product-additivity-axiom` (anchors[0], nodes-D3.jsonl:4)
+  - Axiom (2): (x, y + z) = (x, y) + (x, z) for all x, y, z. Apostol states additivity in the SECOND slot only; additivity in the first slot is not an axiom but a c…
+- **node** `d:additivity-in-first-argument-derived` (anchors[0], nodes-D3.jsonl:8)
+  - (x + y, z) = (x, z) + (y, z) is NOT one of Apostol's axioms. It follows by using symmetry (1) to swap into the second slot, applying additivity (2) there, and s…
+- **node** `d:s-perp-closure-follows-from-linearity-in-the-first-argument` (anchors[1], nodes-D4.jsonl:27)
+  - If x and x' are both orthogonal to every element of S then so are x + x' and cx, because additivity in the second argument (axiom 2) transfers to the first thro…
+- **node** `apostol:inner-product-axioms` (anchors[1], nodes-A1.jsonl:43)
+  - The four properties an inner product is required to satisfy for all x, y, z and all real scalars c: (1) (x,y) = (y,x) (commutativity, or symmetry); (2) (x, y+z)…
+
+## `15.10.md`
+
+> DEFINITION. In a Euclidean space V, the nonnegative number $\|x\|$ defined by the equation
+
+- **node** `d:norm-definition-as-square-root` (anchors[0], nodes-D3.jsonl:28)
+  - Definition: in a Euclidean space V the nonnegative number ||x|| = (x, x)^(1/2) is called the norm of x. Two things are asserted at once and both rest on axioms:…
+- **node** `d:angle-defined-only-in-real-euclidean-space` (anchors[1], nodes-D3.jsonl:43)
+  - Unlike the norm, which Apostol defines in any Euclidean space, the angle is defined only in a real Euclidean space. The reason is visible in (15.6): in a comple…
+- **node** `apostol:norm` (anchors[0], nodes-A1.jsonl:53)
+  - In a Euclidean space V the norm of x is the nonnegative number ||x|| = (x, x)^(1/2). It is the metric notion of length in a Euclidean space, and since an inner …
+- **node** `apostol:norm-notation` (anchors[0], nodes-A1.jsonl:54)
+  - The double-bar symbol ||x|| denotes the norm of the element x, defined by ||x|| = (x, x)^(1/2). Inequalities such as |(x, y)| <= ||x|| ||y|| are stated in this …
+
+## `15.15.md`
+
+> for all $t$ in $S$ ; the equality sign holds if and only if $t = s$ .
+
+- **node** `apostol:theorem-15-16-approximation-theorem` (anchors[2], nodes-A2-s3.jsonl:1)
+  - If S is a finite-dimensional subspace of a Euclidean space V and x is in V, then the projection s of x on S satisfies ||x - s|| <= ||x - t|| for every t in S. E…
+- **node** `d:approximation-inequality-with-equality-only-at-the-projection` (anchors[1], nodes-D4.jsonl:48)
+  - The proof is two steps that discharge the two halves of the claim from a single identity. Step one rewrites x - t = (x - s) + (s - t) and applies the Pythagorea…
+- **node** `d:equality-holds-exactly-when-t-equals-s` (anchors[1], nodes-D4.jsonl:52)
+  - Since ||s - t||^2 >= 0, the identity yields ||x - t||^2 >= ||x - s||^2, and equality forces ||s - t||^2 = 0, that is s = t. The projection is therefore not just…
+- **node** `x:best-approximation-by-the-projection` (anchors[1], nodes-X.jsonl:19)
+  - Among all elements of a finite-dimensional subspace S, the projection of x on S minimises the distance to x, and it is the only minimiser. The proof splits x - …
+

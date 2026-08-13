@@ -1,0 +1,62 @@
+{"id": "strang:complete-solution", "verdict": "KEEP", "cause": 0, "reason": "x = x_p + x_n 与 3.3 开篇第1条要点及 Figure 3.3 标题逐字一致,无过度断言。"}
+{"id": "strang:particular-solution", "verdict": "KEEP", "cause": 0, "reason": "自由变量取零、枢轴变量来自 d,锚点(第51/63行)逐字支撑全部子句。"}
+{"id": "strang:solvability-condition", "verdict": "KEEP", "cause": 0, "reason": "Strang 原文作'only when'(必要),节点写'exactly when'(充要);该加强在数学上成立(R 的零行在 d 中为零即可回代求解),第二锚点覆盖列空间等价说法。"}
+{"id": "strang:reduce-augmented-to-rd", "verdict": "KEEP", "cause": 0, "reason": "[A b]→[R d] 且 Ax=b 与 Rx=d 同解,锚点为 3.3 要点第2条逐字原文。"}
+{"id": "strang:augmented-matrix", "verdict": "KEEP", "cause": 0, "reason": "增广矩阵定义与'行操作同时作用于两边'均有锚点(第15/25/99行)支撑。"}
+{"id": "strang:full-column-rank", "verdict": "KEEP", "cause": 0, "reason": "四条性质逐条对应原文第131-143行编号清单(枢轴列/无自由变量/N(A)={0}/一解或无解)。"}
+{"id": "strang:full-row-rank", "verdict": "KEEP", "cause": 0, "reason": "r=m 的三条主干均对应第198-204行编号清单;括号内解数细分虽不在两条锚点射程内,但与同节第147/217行一致且数学正确。"}
+{"id": "strang:square-invertible-system", "verdict": "KEEP", "cause": 0, "reason": "R=I 无零行、N(A)={0}、x_p=A^{-1}b 为唯一解,全部来自第85行同一段落。"}
+{"id": "strang:four-possibilities-by-rank", "verdict": "KEEP", "cause": 0, "reason": "四种情形的 (r,m,n) 与解数与第217行表格逐格一致,含 r=n<m 给 0 或 1 解。"}
+{"id": "strang:row-combination-consistency", "verdict": "KEEP", "cause": 0, "reason": "行组合得零行则 b 的同组合必为零,否则不相容/b 不在列空间,第366-368行逐字支撑。"}
+{"id": "strang:linear-independence", "verdict": "KEEP", "cause": 0, "reason": "定义逐字来自第58行;'applies to any sequence of vectors in any vector space'有第56行原文支撑,非伪抽象。"}
+{"id": "strang:independent-columns", "verdict": "KEEP", "cause": 0, "reason": "第43行逐字定义 + 第45行 N(A)={0} 等价说法,两个子句各有锚点。"}
+{"id": "strang:linear-dependence", "verdict": "KEEP", "cause": 0, "reason": "三个子句(非平凡组合得零/某向量是其余的组合/二分)分别由第66、128、70行覆盖。"}
+{"id": "strang:full-column-rank-criterion", "verdict": "KEEP", "cause": 0, "reason": "第120行逐字'independent exactly when the rank is r=n',n 个枢轴、无自由变量、仅 x=0 在零空间全部在同一行内。"}
+{"id": "strang:short-wide-matrix-has-dependent-columns", "verdict": "KEEP", "cause": 0, "reason": "n>m 必相关(第124行)、至少 n-m 个自由变量与'任七个 R^5 向量相关'(第122行)均逐字支撑。"}
+{"id": "strang:spanning-a-space", "verdict": "KEEP", "cause": 0, "reason": "span 定义(第136行)与'The columns of a matrix span its column space. They might be dependent.'(第138行)逐字对应。"}
+{"id": "strang:basis", "verdict": "FIX", "cause": 1, "reason": "末句'A space has infinitely many different bases'把 Strang 明确限定在 R^n 的结论(第202行'Thus R^n has infinitely many diferent bases')说成一般结论;同节第334行即反例——零空间 Z 的基是空集,唯一而非无穷多。三条锚点都管不到这一句(形态E)。", "fix": "A basis for a vector space is a sequence of vectors that are linearly independent and that span the space: not too many and not too few. R^n has infinitely many different bases, so a basis is not unique."}
+{"id": "strang:unique-combination-in-a-basis", "verdict": "KEEP", "cause": 0, "reason": "'因为张成所以存在'与'因为独立所以唯一'两个子句分别由第172、174行逐字覆盖。"}
+{"id": "strang:dimension", "verdict": "KEEP", "cause": 0, "reason": "定义(第270行)、degrees of freedom 与 dim R^n=n(第268行)均正确;末句语言告诫逐字见第276行(该句在两条锚点射程外,但为原文事实)。"}
+{"id": "strang:all-bases-have-the-same-size", "verdict": "KEEP", "cause": 0, "reason": "m=n 结论(第254行)与证明骨架(W=VA、A 短宽、Ax=0 有非零解、w 的组合得零)逐条对应第256-264行。"}
+{"id": "strang:standard-basis", "verdict": "KEEP", "cause": 0, "reason": "第182行逐字给出 n 阶单位阵列为标准基与 i,j,k;i,j 独立且张成 R^2 见第180行。"}
+{"id": "strang:row-space", "verdict": "KEEP", "cause": 0, "reason": "行空间定义(3.4:150)、是 C(A^T)(3.5:19)、行空间在 R^n 而列空间在 R^m(3.5:16 与 3.4:156)全部有据。"}
+{"id": "strang:row-space-notation", "verdict": "KEEP", "cause": 0, "reason": "C(A^T) 记号与转置理由逐字支撑;末句 N(A^T) 记号在两条锚点射程外(形态E),但为 3.5:16 原文且 sections 已含 3.5,故非缺陷。"}
+{"id": "strang:basis-of-rn-from-invertible-matrix", "verdict": "KEEP", "cause": 0, "reason": "'exactly when 可逆矩阵的列'(第202行)、Ax=0 只有零解、x=A^{-1}b 总可解(第200行)均逐字;此处'R^n 有无穷多基'限定正确,与节点17的失范恰成对照。"}
+{"id": "strang:basis-by-elimination", "verdict": "KEEP", "cause": 0, "reason": "两条求基路线(作为行消元取 R 非零行 / 作为列消元取 A 的枢轴列)逐字来自第242-244行,含'of A not R'这一关键限定。"}
+{"id": "strang:bases-for-matrix-and-function-spaces", "verdict": "KEEP", "cause": 0, "reason": "2x2 矩阵空间维数4(第286行)、n阶矩阵空间维数 n^2(第308行)、y''=-y 的基 sin x 与 cos x 且维数2(第330行)三项全部逐字可查。"}
+{"id": "strang:four-fundamental-subspaces", "verdict": "KEEP", "cause": 0, "reason": "四个子空间及其所在空间(R^n / R^m)与'秩揭示全部四个维数'逐字来自 3.5:11-16。"}
+{"id": "strang:left-nullspace", "verdict": "KEEP", "cause": 0, "reason": "N(A^T)、y 在 A 左侧、y 组合行给出零行三项分别由 3.5:16、21、168 覆盖。"}
+{"id": "strang:fundamental-theorem-of-linear-algebra-part-1", "verdict": "KEEP", "cause": 0, "reason": "两个空间维数皆 r、两个零空间维数 n-r 与 m-r,与 3.5:136-140 定理陈述逐字一致。"}
+{"id": "strang:rank-theorem", "verdict": "KEEP", "cause": 0, "reason": "列秩=行秩(3.5:118)与'right reason'(相同组合对 A 与 R 同时为零;Ax=0 恰当 Rx=0)逐字见 3.5:122,未误采第120行的 wrong reason。"}
+{"id": "strang:counting-theorem", "verdict": "KEEP", "cause": 0, "reason": "n-r 个自由变量给出零空间维数、维数相加等式、A^T 的计数规则 r+(m-r)=m 分别见 3.5:128、130、134。"}
+{"id": "strang:special-solutions-basis-for-nullspace", "verdict": "KEEP", "cause": 0, "reason": "每个自由变量一个特解、共 n-r 个、因在自由行含单位阵而独立、构成零空间基,逐条对应 3.5:73-75。"}
+{"id": "strang:elimination-preserves-row-space-and-nullspace", "verdict": "KEEP", "cause": 0, "reason": "行空间与零空间在消元下均不变(3.5:110/126)及两条理由(行互为组合、消元不改变解)全部有据。"}
+{"id": "strang:pivot-columns-basis-for-column-space", "verdict": "FIX", "cause": 6, "reason": "形态D/对象漂移:'independent because they start with the r by r identity matrix'在 3.5:59-63 是对 R 的枢轴列说的(结论也只到 C(R)),节点把它挂到 A 的枢轴列上;对 A 这条理由一般为假(如 A=[[2,4],[1,3]] 的前导块并非 I),而节点末句偏偏又强调'必须用 A 的而不是 R 的',自相矛盾。", "fix": "The pivot columns of A are a basis for its column space: the same combinations of the columns are zero for A and for R, so the pivot columns of A inherit independence from those of R, and every free column is a combination of them. The dimension of the column space is r. Note that the pivot columns of A must be used, not those of R."}
+{"id": "strang:pivot-rows-basis-for-row-space", "verdict": "KEEP", "cause": 0, "reason": "与节点34恰成对照:此处 r×r 单位阵的理由正确地留在 R 身上(3.5:49),且'R 与 A 行空间相同'为原文事实,故独立性论证成立。"}
+{"id": "strang:rank-one-matrix", "verdict": "KEEP", "cause": 0, "reason": "A=uv^T、行空间维数1、v^T 与 u 分别为行/列空间的基,逐条对应 3.5:213-217。"}
+{"id": "strang:orthogonal-vectors", "verdict": "KEEP", "cause": 0, "reason": "点积为零即正交,判据 v^T w=0,逐字见 4.1:13(单锚点已足够覆盖两个子句)。"}
+{"id": "strang:pythagorean-law-orthogonality", "verdict": "KEEP", "cause": 0, "reason": "前提 v^T w=0 与结论 ||v||^2+||w||^2=||v+w||^2 同在 4.1:18 的公式内,a^2+b^2=c^2 见 4.1:13。"}
+{"id": "strang:orthogonal-subspaces", "verdict": "KEEP", "cause": 0, "reason": "第35行逐字定义,'for all v in V and all w in W'的全称量词与原文第39行一致,非过度断言。"}
+{"id": "strang:row-space-orthogonal-to-nullspace", "verdict": "KEEP", "cause": 0, "reason": "行空间与零空间在 R^n 内正交(4.1:52)、每行垂直于 Ax=0 的每个解(4.1:29)双锚点各管一句。"}
+{"id": "strang:column-space-orthogonal-to-left-nullspace", "verdict": "KEEP", "cause": 0, "reason": "'always orthogonal'的 always 有第78行原文支撑,非审计方自行加强;在 R^m 内正交见第80行。"}
+{"id": "strang:zero-vector-in-two-orthogonal-subspaces", "verdict": "KEEP", "cause": 0, "reason": "两句分别逐字对应第45行与第155行,'垂直于自身故为零'的理由完整。"}
+{"id": "strang:orthogonal-complement", "verdict": "KEEP", "cause": 0, "reason": "第105行定义 + 第109行'N(A)^perp 恰是行空间'(含 exactly),量词与原文一致。"}
+{"id": "strang:fundamental-theorem-part-2", "verdict": "KEEP", "cause": 0, "reason": "两个互补声明(含所在空间 R^n / R^m)逐字来自第115行,'Part 2'定位见第29/113行。"}
+{"id": "strang:vector-splitting-row-null", "verdict": "KEEP", "cause": 0, "reason": "分解存在性见第117/187行;'uniquely'虽非逐字,但由正交补的直和结构必然成立,且第123行对 x_r 已给唯一性证明,属温和加强而非错误。"}
+{"id": "strang:row-space-to-column-space-invertible", "verdict": "KEEP", "cause": 0, "reason": "'one and only one x_r'(第123行)与'From the row space to the column space, A is invertible'及 r×r(第125行)逐字支撑。"}
+{"id": "strang:orthogonal-complement-notation", "verdict": "KEEP", "cause": 0, "reason": "V^perp 记号与'V perp'读法逐字见第105行。"}
+{"id": "strang:dot-product-notation", "verdict": "KEEP", "cause": 0, "reason": "v·w=v^T w=0 逐字见第13行,正交条件形式见第39行。"}
+{"id": "strang:projection-onto-a-line", "verdict": "KEEP", "cause": 0, "reason": "'投影是该直线上最近点/b 沿该线的部分'(第21、78行)与三步骤'先 x-hat 再 p 再 P'(第76行)逐字对应。"}
+{"id": "strang:projection-coefficient-x-hat", "verdict": "KEEP", "cause": 0, "reason": "x-hat 为使子空间内向量最近的最佳系数(第171行)、直线情形 x-hat=a^T b/a^T a(第90行)均逐字;第171行原文说 column space,直线即 a 的列空间,不构成偏差。"}
+{"id": "strang:projection-of-vector-onto-line-formula", "verdict": "KEEP", "cause": 0, "reason": "p=x-hat·a=(a^T b/a^T a)a 与第95行段落及第297行 REVIEW 第1条逐字一致。"}
+{"id": "strang:error-vector", "verdict": "KEEP", "cause": 0, "reason": "e=b-p(第105行)与 e=b-x-hat·a(第78行)一致;p 与 e 相加得 b 见第231行。"}
+{"id": "strang:error-perpendicular-to-a", "verdict": "KEEP", "cause": 0, "reason": "两个子句(e 垂直于 a、||p||^2+||e||^2=||b||^2)同在第5行要点2内逐字出现。"}
+{"id": "strang:rank-one-projection-matrix", "verdict": "KEEP", "cause": 0, "reason": "P=aa^T/a^T a、列乘行再除以数 a^T a(第133-135行)、m×m 但秩为一(第135行)三项全部逐字。"}
+{"id": "strang:projection-matrix", "verdict": "KEEP", "cause": 0, "reason": "'symmetric matrices with P^2=P'是 Strang 自己对投影矩阵的刻画(第15行),p=Pb 见第23行,非外部框架植入。"}
+{"id": "strang:projection-onto-a-subspace", "verdict": "KEEP", "cause": 0, "reason": "独立列张成的子空间(第165行)、最近组合、三步骤 x-hat→p=A·x-hat→P(第173行)逐条有据。"}
+{"id": "strang:normal-equation", "verdict": "KEEP", "cause": 0, "reason": "'famous form'措辞与 A^T A·x-hat=A^T b 及其由 A^T(b-A·x-hat)=0 改写而来,逐字见第183行。"}
+{"id": "strang:projection-onto-subspace-formula", "verdict": "KEEP", "cause": 0, "reason": "p=A(A^T A)^{-1}A^T b 在第11行要点5与第197行公式(6)两处逐字出现。"}
+{"id": "strang:column-space-projection-matrix", "verdict": "KEEP", "cause": 0, "reason": "P=A(A^T A)^{-1}A^T 与 p=Pb 逐字见第255、291行。"}
+{"id": "strang:projection-matrix-symmetric-idempotent", "verdict": "KEEP", "cause": 0, "reason": "P^T=P 与 P^2=P(第305行)、'投影第二次不改变结果'(第155/261行)双锚点分别管住形式与理由。"}
+{"id": "strang:ata-invertible-iff-independent-columns", "verdict": "KEEP", "cause": 0, "reason": "三个子句(充要条件、N(A^T A)=N(A)、方阵对称可逆)分别见第269、271、283行;第一条锚点因 OCR 把 A^T 分隔而截断成'A is invertible...',但节点 statement 本身写对了 A^T A。"}
+{"id": "strang:error-in-left-nullspace", "verdict": "KEEP", "cause": 0, "reason": "误差垂直于列空间(第227行)、故落在 N(A^T)(第229/231行),'左零空间'命名亦为原文用语。"}
