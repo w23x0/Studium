@@ -1,0 +1,267 @@
+{
+  "meta": {
+    "schema": 1,
+    "current_round": 2,
+    "root_topic": "M08/M09 存储选型候选空间缺口补全",
+    "as_of": "2026-08-13",
+    "decision_points": [
+      "属性图系（Neo4j/Cypher/NebulaGraph 等引擎）到底该不该进入 L1 语义层/查询层",
+      "图数据库作为查询层的组合方案是否已到触发条件",
+      "RDF 1.2 + TriG + ShEx 的 L1 推荐是否站得住（对比引擎方案后复审）"
+    ]
+  },
+  "tasks": [
+    {
+      "id": "S1",
+      "parent": null,
+      "topic": "NebulaGraph 作为 M08/M09 存储候选的评估（此前调研缺口）",
+      "questions": [
+        "NebulaGraph 的存储架构（RocksDB/分片）、查询语言 nGQL、与 GQL/ISO 标准的关系：nGQL 是私有方言还是标准对齐？",
+        "对 522 节点/1433 边起步的个人知识图谱规模是否过度设计？对个人自托管（单机、低运维、无集群）的适配度如何？",
+        "与项目红线逐条对照：锚点逐字 grep -F（二进制存储能否 grep）、不物理删除（删除语义）、开放字段稳定查询审查（schema 演化）、候选池+审计晋升状态机（引擎是否内建）——各自满足/不满足/需自建？",
+        "与调研推荐的 L0 JSONL + L1 RDF 双轨对比：什么具体场景下 NebulaGraph 会优于文本载体方案？"
+      ],
+      "candidates": [
+        "NebulaGraph 官方文档（架构/存储/nGQL）",
+        "nebula-graph.io、vesoft 博客",
+        "nGQL 与 openCypher/GQL 对比",
+        "NebulaGraph 单机部署与资源要求",
+        "图数据库对个人规模 vs 分布式引擎的适配讨论"
+      ],
+      "keywords": [
+        "NebulaGraph 架构 RocksDB 分片 nGQL 存储",
+        "NebulaGraph 单机部署 资源要求 个人使用",
+        "nGQL openCypher GQL 标准 对比",
+        "NebulaGraph delete 删除 语义 图数据库 删除节点"
+      ],
+      "bounds": [
+        "不做性能基准（项目红线：不做评测）",
+        "不评估其他图引擎（Neo4j/Cypher 由 S2/S3 承担；其余不在此任务）",
+        "不改变既有红线，只对照红线评估该候选",
+        "结论须给出『满足/不满足/需自建』的逐条对照，禁止模糊"
+      ],
+      "status": "archived",
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/S1_NebulaGraph评估_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/S1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/S1",
+      "retries": 0,
+      "priority": 1,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
+    },
+    {
+      "id": "S2",
+      "parent": null,
+      "topic": "图数据库作为查询层的组合方案评估（L0/L1/L2 之上叠只读图引擎）",
+      "questions": [
+        "06-M08技术选型 §7 的触发条件（出现三跳以上遍历、或实时交互图查询的真实产品需求）现在是否已出现？M07 检索、M08 导航、学习过程中图上游走的需求逐项核对。",
+        "组合方案形态：L0 JSONL（原文）+ L1 RDF（语义）+ 图数据库查询层（只读物化索引）——数据同步用双写/影子读/物化视图的成本与先例。",
+        "图数据库查询层能带来什么、不能带来什么：审计晋升状态机、时间版本回溯、开放字段稳定审查是否仍需应用层自建。",
+        "在查询层方案下，锚点 grep -F、不物理删除、四图不合并三条红线是否不受影响（原文仍留在 L0，引擎只读）？"
+      ],
+      "candidates": [
+        "Neo4j/APOC 只读查询",
+        "Kuzu（嵌入式图引擎）",
+        "Apache AGE（PostgreSQL 扩展）",
+        "文档库+图索引混合先例（Lucene/ES + 图）",
+        "双写/影子读/outbox 模式（B8c 已查证）"
+      ],
+      "keywords": [
+        "图数据库 查询层 只读索引 混合架构",
+        "JSONL RDF 物化 图数据库 查询层 同步",
+        "embedded graph database read-only query layer",
+        "Kuzu embedded graph query engine personal scale"
+      ],
+      "bounds": [
+        "不评估运行时编排框架（LangGraph/Temporal 等归 M11）",
+        "不做性能基准",
+        "不改变红线；只评估『查询层』是否值得现在上、触发条件是否已到",
+        "结论须给出『现在上 / 等触发 / 明确不上』的可判定建议"
+      ],
+      "status": "archived",
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/S2_图数据库查询层_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/S2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/S2",
+      "retries": 0,
+      "priority": 1,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
+    },
+    {
+      "id": "S3",
+      "parent": null,
+      "topic": "属性图系『观望（等 GQL v2/LEX）』状态复审——2026-08 之后的新进展",
+      "questions": [
+        "GQL v2 是否已决定采用 PG-Schema / LEX 设计（上一轮 B2b U3 标注为『进行中无最终决议』）？查最新进展。",
+        "PG-Schema 是否有标准校验器或正式采纳进展（上一轮结论：无标准校验器，2606.06127 证明图类型校验 combined NP-complete）？",
+        "Neo4j 对 GQL mandatory 特性的覆盖是否扩展（上一轮 F9/F10：Cypher 按 GG01 最小符合、SESSION/CURRENT_GRAPH/AT 未支持）？",
+        "若 GQL v2 / LEX 落地，对『9+other 词表封闭』与『属性图校验』这两个缺口（B2b）的解决前景。"
+      ],
+      "candidates": [
+        "ISO/IEC 39075 后续版本 / GQL v2 工作组进展",
+        "PG-Schema 提案 2025 后新动态、K-CAP 2025 全文",
+        "Neo4j GQL conformance 文档更新",
+        "GQL 标准委员会/博客对 LEX（语言扩展）的讨论"
+      ],
+      "keywords": [
+        "GQL v2 标准 进展 LEX 属性图 2026",
+        "PG-Schema 校验器 正式标准 采纳 进展",
+        "ISO 39075 amendment GQL progress 2026",
+        "Neo4j GQL conformance mandatory features update"
+      ],
+      "bounds": [
+        "不重复 B2b/B2a 已查证的旧结论（只查 2026-08 之后的新进展；旧结论只作对照基线）",
+        "不做实现选型",
+        "结论须标出『新进展 / 无变化 / 未核』，禁止把旧结论当新进展"
+      ],
+      "status": "archived",
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/S3_属性图系复审_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/S3_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/S3",
+      "retries": 0,
+      "priority": 1,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
+    },
+    {
+      "id": "P1",
+      "parent": null,
+      "topic": "原型实测——N-Quads 转义还原 grep 等价性（B1b 待实测）",
+      "questions": [
+        "用 rdflib 7.6.0 把 921 个真实锚点 quote（含中文/LaTeX/全角空格/换行）构造为 RDF 字面量并序列化成 N-Quads，写 ECHAR/UCHAR 转义还原解析器，验证『还原后逐字 == 原始 quote』的通过率是多少？",
+        "与直接对原始 JSONL 跑 grep -F 相比，N-Quads 路径在哪些锚点上会丢/变（转义序列、Unicode、特殊字符）？",
+        "canonical N-Quads（RDFC-1.0 排序）序列化是否可逆还原、逐字判等？"
+      ],
+      "candidates": [
+        "rdflib 7.6.0 的 N-Quads 序列化",
+        "N-Quads 字符串字面量转义规则（B1b 已查证 A 级）",
+        "第15章 nodes-*.jsonl 的真实 quote"
+      ],
+      "keywords": [
+        "N-Quads 转义 还原 grep 原型",
+        "rdflib N-Quads serialization roundtrip"
+      ],
+      "bounds": [
+        "只用真实数据（第15章 nodes-*.jsonl 的 quote，921 个）",
+        "不改变红线；只验证『还原后 grep -F 等价』是否成立",
+        "复现命令必须写入报告（含 venv python 路径）"
+      ],
+      "status": "running",
+      "priority": 2,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P1_NQuads转义还原grep_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P1",
+      "env": "venv_python=tmp/venv_b7a/Scripts/python.exe (rdflib 7.6.0)",
+      "data": "docs/图工程调研/M08实验-第15章分层图谱/data/nodes-*.jsonl",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13"
+    },
+    {
+      "id": "P2",
+      "parent": null,
+      "topic": "原型实测——pySHACL 在 522 节点/921 锚点规模的校验耗时",
+      "questions": [
+        "把第15章 522 节点/1433 边转成 RDF（从简建模：节点=subject、锚点 quote=字面量、关系边=predicate），写一组 SHACL shapes（封闭词表 + 锚点引用存在性），用 pyshacl 0.40.1 跑，实测耗时与内存量级。",
+        "该量级下 pyshacl 是否构成对『JSONL+脚本全表校验』的性能门槛？",
+        "pyshacl 的退出码/违规报告是否适合接入现有 check_graph.py 校验流程？"
+      ],
+      "candidates": [
+        "pyshacl 0.40.1（venv 已有）",
+        "第15章 nodes/edges JSONL",
+        "SHACL 封闭词表 + 引用完整性 shapes（B5b 已查证）"
+      ],
+      "keywords": [
+        "pyshacl 校验 耗时 原型",
+        "SHACL validation performance prototype"
+      ],
+      "bounds": [
+        "不做性能基准横向比较（项目红线）；只测可行性与量级",
+        "建模从简：只做能回答『可行性与量级』的最简 RDF 映射",
+        "复现命令必须写入报告"
+      ],
+      "status": "running",
+      "priority": 2,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P2_pySHACL耗时_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P2",
+      "env": "venv_python=tmp/venv_b7a/Scripts/python.exe (pyshacl 0.40.1, rdflib 7.6.0)",
+      "data": "docs/图工程调研/M08实验-第15章分层图谱/data/nodes-*.jsonl + edges-*.jsonl",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13"
+    },
+    {
+      "id": "P3",
+      "parent": null,
+      "topic": "原型实测——ShEx valueSet '~' 表达 9+other 词表封闭的校验语义",
+      "questions": [
+        "用 shex.js（node v25）写 valueSet 含 '~' 的 shape，验证对『9 固定值 + other』词表的接受/拒绝语义是否符合规范（9 固定值通过、其他值进入 other）。",
+        "CLOSED/EXTRA 与 valueSet '~' 并置时谓词封闭语义是否正确（9 固定谓词 + 额外谓词拒绝/允许）？",
+        "与 pySHACL sh:in/sh:or 对照：ShEx '~' 是否是 9+other 的最短语法路径？"
+      ],
+      "candidates": [
+        "shex.js（node v25.6.1，需 npm install shex 或 npx）",
+        "pyshex（若 pip 可装）",
+        "ShEx valueSet 规范语义（B5b 已查证 A 级）"
+      ],
+      "keywords": [
+        "ShEx valueSet tilde 9+other 校验",
+        "shape expressions closed vocabulary validation"
+      ],
+      "bounds": [
+        "不做性能测试；只验语义",
+        "可用 shex.js 或 pyshex，选可用的；装不成就如实记未核",
+        "复现命令必须写入报告"
+      ],
+      "status": "running",
+      "priority": 2,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P3_ShEx9+other_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P3_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P3",
+      "env": "node v25.6.1 (shex.js via npm/npx) 或 venv pyshex",
+      "data": "构造词表测试（9 固定关系 + other 边界值）",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13"
+    }
+  ],
+  "conflicts": [],
+  "rounds": [
+    {
+      "round": 1,
+      "asOf": "2026-08-13",
+      "dispatched": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "recovered": [
+        "S1",
+        "S2",
+        "S3"
+      ],
+      "verdicts": {
+        "S1": "accepted",
+        "S2": "accepted",
+        "S3": "accepted"
+      },
+      "log": "引擎 v3 第一轮：派发 S1(NebulaGraph评估)/S2(图数据库查询层)/S3(属性图系复审)，run_batch wf_23023619-b0b；回收 3/3 全 accepted，到叶归档，无新拆"
+    },
+    {
+      "round": 2,
+      "asOf": "2026-08-13",
+      "dispatched": [
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "recovered": [],
+      "verdicts": {},
+      "log": "引擎 v3 第二轮：派发原型实测 P1(N-Quads转义还原grep)/P2(pySHACL耗时)/P3(ShEx 9+other)"
+    }
+  ]
+}
