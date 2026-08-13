@@ -1,0 +1,54 @@
+M2 诊断探针记录 (diagnostic probes)
+====================================
+这些探针是 run_tests.py 之外的定向实验，用于查明 T3(原生 .jsonl) 报错的确切机制。
+复现命令均为：
+  java -Xmx512m -jar <JAR> -m mappings/<map>.ttl -o out/<map>.nq -s nquads
+  （JAR = research_tree/tmp/m2/rmlmapper-7.3.3-r374-all.jar, cwd = 本目录）
+
+--- 探针 P1：单行 jsonl，iterator $[*] ---
+数据文件 data/one-line.jsonl = nodes-A2-s1.jsonl 的第 1 行（一个含 arrays 的对象）。
+映射 mappings/probe-oneline-jsonl.ttl = mapping-jsonl.ttl 改源为 one-line.jsonl。
+结果：exit=1，报错：
+  java.lang.IllegalArgumentException: Cannot deserialize value of type
+  `java.util.LinkedHashMap<java.lang.Object,java.lang.Object>` from Array value
+  (token `JsonToken.START_ARRAY`)
+
+--- 探针 P2：同一内容改扩展名 .json，iterator $[*] ---
+数据文件 data/one-line.json（内容与 one-line.jsonl 完全一致）。
+映射 mappings/probe-oneline-json.ttl。
+结果：exit=1，报错与 P1 完全相同。
+  => 结论：失败与扩展名无关，与内容/iterator 有关。
+
+--- 探针 P3：无数组字段的对象根，iterator $[*] ---
+数据文件 data/obj-noarray.json = {"id":"x1","name_en":"plain","node_type":"lemma"}。
+映射 mappings/probe-obj-noarray.ttl。
+结果：exit=0，无报错，但产出 0 条三元组（out/probe-obj-noarray.nq 为空）。
+  => 结论：$[*] 迭代对象根时取得的是对象各字段值（标量），{id} 模板取不到 id，静默产出空。
+
+--- 探针 P4：单元素数组根，iterator $[*] ---
+数据文件 data/arr-one.json = [ {"id":"x1","name_en":"plain","node_type":"lemma"} ]。
+映射 mappings/probe-arr-one.ttl。
+结果：exit=0，产出 2 条三元组：
+  <http://example.org/ch15/node/x1> <http://example.org/ch15/name_en> "plain"@en .
+  <http://example.org/ch15/node/x1> <http://example.org/ch15/node_type> "lemma" .
+
+--- 探针 T7：-t 按 triples map 选择性执行（增量问题相关） ---
+RMLMapper CLI 的 -t/--triplesmaps 参数可按 triples map IRI 选择执行子集：
+  java -Xmx512m -jar <JAR> -m mappings/mapping-full.ttl -o out/T7-triage-nodemap.nq \
+       -s nquads -t http://example.org/ch15/NodeMap
+  => exit=0，93 条（= name_en 11 + name_zh 11 + node_type 11 + statement 11 + section 12 + alias 8 + hasAnchor 29）
+  java -Xmx512m -jar <JAR> -m mappings/mapping-full.ttl -o out/T7-triage-anchormap.nq \
+       -s nquads -t http://example.org/ch15/AnchorMap
+  => exit=0，52 条（= 26 个 anchor 主体 × file+quote）
+  93 + 52 = 145 = 全量，与 T1 完全一致。
+  => 结论：-t 提供的是"按 triples map 的粗粒度部分映射"，不是按行的增量映射。
+
+--- 机制归纳 ---
+RMLMapper 的 JSON 源读取把文件解析为一个 JSON 文档后，用 iterator 逐"行"取对象。
+- $[*] 只有在根是数组时才逐元素迭代；根是对象时会去迭代对象的字段值。
+- 当对象根含数组字段（sections/aliases/anchors）时，$[*] 取出的值里出现数组，
+  Jackson 按 LinkedHashMap(对象) 反序列化数组值 -> "Cannot deserialize ...
+  from Array value" -> 整个映射失败(exit=1)。
+- 原生 .jsonl 即"连续多个顶层 JSON 值"：取到的第一个值是一个含数组字段的对象，
+  $[*] 迭代其字段 -> 触发同一报错。因此 RMLMapper 不能直接吃 .jsonl，
+  必须预处理成单个 JSON 文档（数组形式 [ ... ] 或包裹形式 {"nodes":[...]}）。

@@ -1,0 +1,2 @@
+20:59:06.376 [main] ERROR be.ugent.rml.cli.Main               .run(442) - Cannot deserialize value of type `java.util.LinkedHashMap<java.lang.Object,java.lang.Object>` from Array value (token `JsonToken.START_ARRAY`)
+ at [Source: UNKNOWN; byte offset: #UNKNOWN]

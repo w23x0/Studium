@@ -1,0 +1,34 @@
+{
+ "files_total": 109,
+ "files_parse_failed": 6,
+ "files_processed": 81,
+ "parse_failed_files": [
+  "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\asymptotic-equality-notation.md",
+  "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\decreasing-sequence.md",
+  "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\euler-constant.md",
+  "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\gamma-function.md",
+  "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\mixed-improper-integral-notation.md",
+  "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\riemann-zeta-function.md"
+ ],
+ "with_anchors": true,
+ "nquads_triples_g1": 1132,
+ "nquads_triples_g2": 1132,
+ "byte_equal_nquads": false,
+ "graph_isomorphic": false,
+ "field_stats": {
+  "checked": 616,
+  "ok": 611,
+  "mismatch": 5,
+  "missing": 0
+ },
+ "n_violations": 5,
+ "n_files_with_violation": 5,
+ "passed_files": 76,
+ "overall_pass": false,
+ "timings_sec": {
+  "to_rdf_pass1": 0.0085,
+  "from_rdf": 0.0655,
+  "to_rdf_pass2": 0.0105,
+  "total": 0.019
+ }
+}

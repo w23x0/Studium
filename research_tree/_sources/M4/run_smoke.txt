@@ -1,0 +1,13 @@
+--- input1 canonical ---
+_:c14n0 <http://q> <http://x> .
+_:c14n1 <http://r> _:c14n2 .
+_:c14n2 <http://p> _:c14n0 .
+
+--- input2 canonical ---
+_:c14n0 <http://q> <http://x> .
+_:c14n1 <http://r> _:c14n2 .
+_:c14n2 <http://p> _:c14n0 .
+
+isomorphic output equal: true
+idempotent: true
+output type: string

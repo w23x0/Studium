@@ -1,0 +1,979 @@
+<https://studium.example/L1-基础网络/abel-partial-summation-formula> <https://studium.example/vocab#aliases> _:b0 .
+<https://studium.example/L1-基础网络/abel-partial-summation-formula> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/abel-partial-summation-formula> <https://studium.example/vocab#name> "阿贝尔分部求和公式" .
+<https://studium.example/L1-基础网络/abel-partial-summation-formula> <https://studium.example/vocab#nameEn> "Abel's partial summation formula" .
+<https://studium.example/L1-基础网络/abel-partial-summation-formula> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/abel-partial-summation-formula> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/abel-partial-summation-formula> <https://studium.example/vocab#sections> _:b2 .
+<https://studium.example/L1-基础网络/abel-test> <https://studium.example/vocab#aliases> _:b3 .
+<https://studium.example/L1-基础网络/abel-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/abel-test> <https://studium.example/vocab#name> "阿贝尔判别法" .
+<https://studium.example/L1-基础网络/abel-test> <https://studium.example/vocab#nameEn> "Abel's test" .
+<https://studium.example/L1-基础网络/abel-test> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/abel-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/abel-test> <https://studium.example/vocab#sections> _:b4 .
+<https://studium.example/L1-基础网络/absolute-convergence-implies-convergence> <https://studium.example/vocab#aliases> _:b5 .
+<https://studium.example/L1-基础网络/absolute-convergence-implies-convergence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/absolute-convergence-implies-convergence> <https://studium.example/vocab#name> "绝对收敛蕴涵收敛(定理 10.15)" .
+<https://studium.example/L1-基础网络/absolute-convergence-implies-convergence> <https://studium.example/vocab#nameEn> "Absolute convergence implies convergence (Theorem 10.15)" .
+<https://studium.example/L1-基础网络/absolute-convergence-implies-convergence> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/absolute-convergence-implies-convergence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/absolute-convergence-implies-convergence> <https://studium.example/vocab#sections> _:b6 .
+<https://studium.example/L1-基础网络/absolutely-convergent-series> <https://studium.example/vocab#aliases> _:b7 .
+<https://studium.example/L1-基础网络/absolutely-convergent-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/absolutely-convergent-series> <https://studium.example/vocab#name> "绝对收敛级数" .
+<https://studium.example/L1-基础网络/absolutely-convergent-series> <https://studium.example/vocab#nameEn> "Absolutely convergent series" .
+<https://studium.example/L1-基础网络/absolutely-convergent-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/absolutely-convergent-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/absolutely-convergent-series> <https://studium.example/vocab#sections> _:b8 .
+<https://studium.example/L1-基础网络/alternating-harmonic-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/alternating-harmonic-series> <https://studium.example/vocab#name> "交错调和级数" .
+<https://studium.example/L1-基础网络/alternating-harmonic-series> <https://studium.example/vocab#nameEn> "Alternating harmonic series" .
+<https://studium.example/L1-基础网络/alternating-harmonic-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/alternating-harmonic-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/alternating-harmonic-series> <https://studium.example/vocab#sections> _:b9 .
+<https://studium.example/L1-基础网络/alternating-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/alternating-series> <https://studium.example/vocab#name> "交错级数" .
+<https://studium.example/L1-基础网络/alternating-series> <https://studium.example/vocab#nameEn> "Alternating series" .
+<https://studium.example/L1-基础网络/alternating-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/alternating-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/alternating-series> <https://studium.example/vocab#sections> _:b11 .
+<https://studium.example/L1-基础网络/asymptotic-comparison-theorem> <https://studium.example/vocab#aliases> _:b12 .
+<https://studium.example/L1-基础网络/asymptotic-comparison-theorem> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/asymptotic-comparison-theorem> <https://studium.example/vocab#name> "定理10.10(渐近相等的级数同敛散)" .
+<https://studium.example/L1-基础网络/asymptotic-comparison-theorem> <https://studium.example/vocab#nameEn> "Theorem 10.10 (asymptotically equal series converge or diverge together)" .
+<https://studium.example/L1-基础网络/asymptotic-comparison-theorem> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/asymptotic-comparison-theorem> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/asymptotic-comparison-theorem> <https://studium.example/vocab#sections> _:b13 .
+<https://studium.example/L1-基础网络/asymptotically-equal> <https://studium.example/vocab#aliases> _:b14 .
+<https://studium.example/L1-基础网络/asymptotically-equal> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/asymptotically-equal> <https://studium.example/vocab#name> "渐近相等" .
+<https://studium.example/L1-基础网络/asymptotically-equal> <https://studium.example/vocab#nameEn> "asymptotically equal" .
+<https://studium.example/L1-基础网络/asymptotically-equal> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/asymptotically-equal> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/asymptotically-equal> <https://studium.example/vocab#sections> _:b15 .
+<https://studium.example/L1-基础网络/basic-sequence-limit-formulas> <https://studium.example/vocab#aliases> _:b16 .
+<https://studium.example/L1-基础网络/basic-sequence-limit-formulas> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/basic-sequence-limit-formulas> <https://studium.example/vocab#name> "数列基本极限公式 (10.9)–(10.13)" .
+<https://studium.example/L1-基础网络/basic-sequence-limit-formulas> <https://studium.example/vocab#nameEn> "basic limit formulas for sequences (10.9)-(10.13)" .
+<https://studium.example/L1-基础网络/basic-sequence-limit-formulas> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/basic-sequence-limit-formulas> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/basic-sequence-limit-formulas> <https://studium.example/vocab#sections> _:b17 .
+<https://studium.example/L1-基础网络/binomial-theorem> <https://studium.example/vocab#aliases> _:b18 .
+<https://studium.example/L1-基础网络/binomial-theorem> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/binomial-theorem> <https://studium.example/vocab#name> "二项式定理" .
+<https://studium.example/L1-基础网络/binomial-theorem> <https://studium.example/vocab#nameEn> "binomial theorem" .
+<https://studium.example/L1-基础网络/binomial-theorem> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/binomial-theorem> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/binomial-theorem> <https://studium.example/vocab#sections> _:b19 .
+<https://studium.example/L1-基础网络/bounded-partial-sums-criterion> <https://studium.example/vocab#aliases> _:b20 .
+<https://studium.example/L1-基础网络/bounded-partial-sums-criterion> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/bounded-partial-sums-criterion> <https://studium.example/vocab#name> "定理10.7(非负项级数收敛的有界性准则)" .
+<https://studium.example/L1-基础网络/bounded-partial-sums-criterion> <https://studium.example/vocab#nameEn> "Theorem 10.7 (boundedness criterion for nonnegative series)" .
+<https://studium.example/L1-基础网络/bounded-partial-sums-criterion> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/bounded-partial-sums-criterion> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/bounded-partial-sums-criterion> <https://studium.example/vocab#sections> _:b21 .
+<https://studium.example/L1-基础网络/bounded-sequence> <https://studium.example/vocab#aliases> _:b22 .
+<https://studium.example/L1-基础网络/bounded-sequence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/bounded-sequence> <https://studium.example/vocab#name> "有界数列" .
+<https://studium.example/L1-基础网络/bounded-sequence> <https://studium.example/vocab#nameEn> "bounded sequence" .
+<https://studium.example/L1-基础网络/bounded-sequence> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/bounded-sequence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/bounded-sequence> <https://studium.example/vocab#sections> _:b23 .
+<https://studium.example/L1-基础网络/boundedness-criterion-for-improper-integrals> <https://studium.example/vocab#aliases> _:b24 .
+<https://studium.example/L1-基础网络/boundedness-criterion-for-improper-integrals> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/boundedness-criterion-for-improper-integrals> <https://studium.example/vocab#name> "定理10.23(非负被积函数的有界性判别准则)" .
+<https://studium.example/L1-基础网络/boundedness-criterion-for-improper-integrals> <https://studium.example/vocab#nameEn> "Theorem 10.23" .
+<https://studium.example/L1-基础网络/boundedness-criterion-for-improper-integrals> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/boundedness-criterion-for-improper-integrals> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/boundedness-criterion-for-improper-integrals> <https://studium.example/vocab#sections> _:b25 .
+<https://studium.example/L1-基础网络/comparison-test-for-improper-integrals> <https://studium.example/vocab#aliases> _:b29 .
+<https://studium.example/L1-基础网络/comparison-test-for-improper-integrals> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/comparison-test-for-improper-integrals> <https://studium.example/vocab#name> "定理10.24(瑕积分比较判别法)" .
+<https://studium.example/L1-基础网络/comparison-test-for-improper-integrals> <https://studium.example/vocab#nameEn> "Theorem 10.24" .
+<https://studium.example/L1-基础网络/comparison-test-for-improper-integrals> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/comparison-test-for-improper-integrals> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/comparison-test-for-improper-integrals> <https://studium.example/vocab#sections> _:b30 .
+<https://studium.example/L1-基础网络/comparison-test> <https://studium.example/vocab#aliases> _:b26 .
+<https://studium.example/L1-基础网络/comparison-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/comparison-test> <https://studium.example/vocab#name> "定理10.8(比较判别法)" .
+<https://studium.example/L1-基础网络/comparison-test> <https://studium.example/vocab#nameEn> "Theorem 10.8 (Comparison test)" .
+<https://studium.example/L1-基础网络/comparison-test> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/comparison-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/comparison-test> <https://studium.example/vocab#sections> _:b28 .
+<https://studium.example/L1-基础网络/complex-sequence-convergence> <https://studium.example/vocab#aliases> _:b31 .
+<https://studium.example/L1-基础网络/complex-sequence-convergence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/complex-sequence-convergence> <https://studium.example/vocab#name> "复值数列收敛判别(实部虚部分别收敛)" .
+<https://studium.example/L1-基础网络/complex-sequence-convergence> <https://studium.example/vocab#nameEn> "convergence criterion for complex-valued sequences" .
+<https://studium.example/L1-基础网络/complex-sequence-convergence> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/complex-sequence-convergence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/complex-sequence-convergence> <https://studium.example/vocab#sections> _:b32 .
+<https://studium.example/L1-基础网络/conditionally-convergent-series> <https://studium.example/vocab#aliases> _:b33 .
+<https://studium.example/L1-基础网络/conditionally-convergent-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/conditionally-convergent-series> <https://studium.example/vocab#name> "条件收敛级数" .
+<https://studium.example/L1-基础网络/conditionally-convergent-series> <https://studium.example/vocab#nameEn> "Conditionally convergent series" .
+<https://studium.example/L1-基础网络/conditionally-convergent-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/conditionally-convergent-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/conditionally-convergent-series> <https://studium.example/vocab#sections> _:b34 .
+<https://studium.example/L1-基础网络/convergence-test> <https://studium.example/vocab#aliases> _:b36 .
+<https://studium.example/L1-基础网络/convergence-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/convergence-test> <https://studium.example/vocab#name> "收敛判别法" .
+<https://studium.example/L1-基础网络/convergence-test> <https://studium.example/vocab#nameEn> "tests for convergence" .
+<https://studium.example/L1-基础网络/convergence-test> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/convergence-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/convergence-test> <https://studium.example/vocab#sections> _:b37 .
+<https://studium.example/L1-基础网络/convergent-sequence> <https://studium.example/vocab#aliases> _:b38 .
+<https://studium.example/L1-基础网络/convergent-sequence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/convergent-sequence> <https://studium.example/vocab#name> "收敛数列" .
+<https://studium.example/L1-基础网络/convergent-sequence> <https://studium.example/vocab#nameEn> "convergent sequence" .
+<https://studium.example/L1-基础网络/convergent-sequence> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/convergent-sequence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/convergent-sequence> <https://studium.example/vocab#sections> _:b39 .
+<https://studium.example/L1-基础网络/convergent-series> <https://studium.example/vocab#aliases> _:b40 .
+<https://studium.example/L1-基础网络/convergent-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/convergent-series> <https://studium.example/vocab#name> "收敛级数及其和" .
+<https://studium.example/L1-基础网络/convergent-series> <https://studium.example/vocab#nameEn> "convergent series and its sum" .
+<https://studium.example/L1-基础网络/convergent-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/convergent-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/convergent-series> <https://studium.example/vocab#sections> _:b42 .
+<https://studium.example/L1-基础网络/decimal-expansion-as-series> <https://studium.example/vocab#aliases> _:b43 .
+<https://studium.example/L1-基础网络/decimal-expansion-as-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/decimal-expansion-as-series> <https://studium.example/vocab#name> "十进制展开的级数表示" .
+<https://studium.example/L1-基础网络/decimal-expansion-as-series> <https://studium.example/vocab#nameEn> "decimal expansion as a convergent series" .
+<https://studium.example/L1-基础网络/decimal-expansion-as-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/decimal-expansion-as-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/decimal-expansion-as-series> <https://studium.example/vocab#sections> _:b45 .
+<https://studium.example/L1-基础网络/dirichlet-test> <https://studium.example/vocab#aliases> _:b46 .
+<https://studium.example/L1-基础网络/dirichlet-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/dirichlet-test> <https://studium.example/vocab#name> "狄利克雷判别法" .
+<https://studium.example/L1-基础网络/dirichlet-test> <https://studium.example/vocab#nameEn> "Dirichlet's test" .
+<https://studium.example/L1-基础网络/dirichlet-test> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/dirichlet-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/dirichlet-test> <https://studium.example/vocab#sections> _:b47 .
+<https://studium.example/L1-基础网络/divergent-sequence> <https://studium.example/vocab#aliases> _:b48 .
+<https://studium.example/L1-基础网络/divergent-sequence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/divergent-sequence> <https://studium.example/vocab#name> "发散数列" .
+<https://studium.example/L1-基础网络/divergent-sequence> <https://studium.example/vocab#nameEn> "divergent sequence" .
+<https://studium.example/L1-基础网络/divergent-sequence> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/divergent-sequence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/divergent-sequence> <https://studium.example/vocab#sections> _:b49 .
+<https://studium.example/L1-基础网络/divergent-series> <https://studium.example/vocab#aliases> _:b50 .
+<https://studium.example/L1-基础网络/divergent-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/divergent-series> <https://studium.example/vocab#name> "发散级数" .
+<https://studium.example/L1-基础网络/divergent-series> <https://studium.example/vocab#nameEn> "divergent series" .
+<https://studium.example/L1-基础网络/divergent-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/divergent-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/divergent-series> <https://studium.example/vocab#sections> _:b51 .
+<https://studium.example/L1-基础网络/dominated-integral> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/dominated-integral> <https://studium.example/vocab#name> "积分的控制(优积分)" .
+<https://studium.example/L1-基础网络/dominated-integral> <https://studium.example/vocab#nameEn> "Dominate (for integrals)" .
+<https://studium.example/L1-基础网络/dominated-integral> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/dominated-integral> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/dominated-integral> <https://studium.example/vocab#sections> _:b53 .
+<https://studium.example/L1-基础网络/dominates> <https://studium.example/vocab#aliases> _:b54 .
+<https://studium.example/L1-基础网络/dominates> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/dominates> <https://studium.example/vocab#name> "优超(级数间的控制关系)" .
+<https://studium.example/L1-基础网络/dominates> <https://studium.example/vocab#nameEn> "dominates" .
+<https://studium.example/L1-基础网络/dominates> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/dominates> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/dominates> <https://studium.example/vocab#sections> _:b55 .
+<https://studium.example/L1-基础网络/doubly-infinite-integral> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/doubly-infinite-integral> <https://studium.example/vocab#name> "双侧无穷积分的收敛" .
+<https://studium.example/L1-基础网络/doubly-infinite-integral> <https://studium.example/vocab#nameEn> "Convergence of the integral from minus infinity to infinity" .
+<https://studium.example/L1-基础网络/doubly-infinite-integral> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/doubly-infinite-integral> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/doubly-infinite-integral> <https://studium.example/vocab#sections> _:b56 .
+<https://studium.example/L1-基础网络/fibonacci-numbers> <https://studium.example/vocab#aliases> _:b57 .
+<https://studium.example/L1-基础网络/fibonacci-numbers> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/fibonacci-numbers> <https://studium.example/vocab#name> "斐波那契数" .
+<https://studium.example/L1-基础网络/fibonacci-numbers> <https://studium.example/vocab#nameEn> "Fibonacci numbers" .
+<https://studium.example/L1-基础网络/fibonacci-numbers> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/fibonacci-numbers> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/fibonacci-numbers> <https://studium.example/vocab#sections> _:b58 .
+<https://studium.example/L1-基础网络/gauss-test> <https://studium.example/vocab#aliases> _:b59 .
+<https://studium.example/L1-基础网络/gauss-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/gauss-test> <https://studium.example/vocab#name> "高斯判别法" .
+<https://studium.example/L1-基础网络/gauss-test> <https://studium.example/vocab#nameEn> "Gauss' test" .
+<https://studium.example/L1-基础网络/gauss-test> <https://studium.example/vocab#nodeType> "method" .
+<https://studium.example/L1-基础网络/gauss-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/gauss-test> <https://studium.example/vocab#sections> _:b60 .
+<https://studium.example/L1-基础网络/geometric-exponential-partial-sum-bound> <https://studium.example/vocab#aliases> _:b62 .
+<https://studium.example/L1-基础网络/geometric-exponential-partial-sum-bound> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/geometric-exponential-partial-sum-bound> <https://studium.example/vocab#name> "复指数几何级数部分和的恒等式与估计(定理 10.19)" .
+<https://studium.example/L1-基础网络/geometric-exponential-partial-sum-bound> <https://studium.example/vocab#nameEn> "Partial-sum identity and bound for the series of complex exponentials (Theorem 10.19)" .
+<https://studium.example/L1-基础网络/geometric-exponential-partial-sum-bound> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/geometric-exponential-partial-sum-bound> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/geometric-exponential-partial-sum-bound> <https://studium.example/vocab#sections> _:b63 .
+<https://studium.example/L1-基础网络/geometric-series-manipulation> <https://studium.example/vocab#aliases> _:b65 .
+<https://studium.example/L1-基础网络/geometric-series-manipulation> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/geometric-series-manipulation> <https://studium.example/vocab#name> "由几何级数推导新级数的方法" .
+<https://studium.example/L1-基础网络/geometric-series-manipulation> <https://studium.example/vocab#nameEn> "deriving new series from the geometric series" .
+<https://studium.example/L1-基础网络/geometric-series-manipulation> <https://studium.example/vocab#nodeType> "method" .
+<https://studium.example/L1-基础网络/geometric-series-manipulation> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L1-基础网络/geometric-series-manipulation> <https://studium.example/vocab#sections> _:b66 .
+<https://studium.example/L1-基础网络/geometric-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/geometric-series> <https://studium.example/vocab#name> "几何级数(等比级数)" .
+<https://studium.example/L1-基础网络/geometric-series> <https://studium.example/vocab#nameEn> "geometric series" .
+<https://studium.example/L1-基础网络/geometric-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/geometric-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/geometric-series> <https://studium.example/vocab#sections> _:b64 .
+<https://studium.example/L1-基础网络/gregory-series> <https://studium.example/vocab#aliases> _:b67 .
+<https://studium.example/L1-基础网络/gregory-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/gregory-series> <https://studium.example/vocab#name> "格雷戈里级数(反正切级数)" .
+<https://studium.example/L1-基础网络/gregory-series> <https://studium.example/vocab#nameEn> "Gregory's series (arctangent series)" .
+<https://studium.example/L1-基础网络/gregory-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/gregory-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/gregory-series> <https://studium.example/vocab#sections> _:b69 .
+<https://studium.example/L1-基础网络/harmonic-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/harmonic-series> <https://studium.example/vocab#name> "调和级数" .
+<https://studium.example/L1-基础网络/harmonic-series> <https://studium.example/vocab#nameEn> "harmonic series" .
+<https://studium.example/L1-基础网络/harmonic-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/harmonic-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/harmonic-series> <https://studium.example/vocab#sections> _:b70 .
+<https://studium.example/L1-基础网络/improper-integral-second-kind> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/improper-integral-second-kind> <https://studium.example/vocab#name> "第二类瑕积分" .
+<https://studium.example/L1-基础网络/improper-integral-second-kind> <https://studium.example/vocab#nameEn> "Improper integral of the second kind" .
+<https://studium.example/L1-基础网络/improper-integral-second-kind> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/improper-integral-second-kind> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/improper-integral-second-kind> <https://studium.example/vocab#sections> _:b73 .
+<https://studium.example/L1-基础网络/improper-integral> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/improper-integral> <https://studium.example/vocab#name> "瑕积分(广义积分)" .
+<https://studium.example/L1-基础网络/improper-integral> <https://studium.example/vocab#nameEn> "Improper integral" .
+<https://studium.example/L1-基础网络/improper-integral> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/improper-integral> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/improper-integral> <https://studium.example/vocab#sections> _:b72 .
+<https://studium.example/L1-基础网络/increasing-sequence> <https://studium.example/vocab#aliases> _:b74 .
+<https://studium.example/L1-基础网络/increasing-sequence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/increasing-sequence> <https://studium.example/vocab#name> "递增数列" .
+<https://studium.example/L1-基础网络/increasing-sequence> <https://studium.example/vocab#nameEn> "increasing sequence" .
+<https://studium.example/L1-基础网络/increasing-sequence> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/increasing-sequence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/increasing-sequence> <https://studium.example/vocab#sections> _:b76 .
+<https://studium.example/L1-基础网络/infinite-integral> <https://studium.example/vocab#aliases> _:b77 .
+<https://studium.example/L1-基础网络/infinite-integral> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/infinite-integral> <https://studium.example/vocab#name> "无穷积分(第一类瑕积分)" .
+<https://studium.example/L1-基础网络/infinite-integral> <https://studium.example/vocab#nameEn> "Infinite integral (improper integral of the first kind)" .
+<https://studium.example/L1-基础网络/infinite-integral> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/infinite-integral> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/infinite-integral> <https://studium.example/vocab#sections> _:b78 .
+<https://studium.example/L1-基础网络/infinite-sequence> <https://studium.example/vocab#aliases> _:b79 .
+<https://studium.example/L1-基础网络/infinite-sequence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/infinite-sequence> <https://studium.example/vocab#name> "无穷序列(数列)" .
+<https://studium.example/L1-基础网络/infinite-sequence> <https://studium.example/vocab#nameEn> "infinite sequence" .
+<https://studium.example/L1-基础网络/infinite-sequence> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/infinite-sequence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/infinite-sequence> <https://studium.example/vocab#sections> _:b81 .
+<https://studium.example/L1-基础网络/infinite-series> <https://studium.example/vocab#aliases> _:b82 .
+<https://studium.example/L1-基础网络/infinite-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/infinite-series> <https://studium.example/vocab#name> "无穷级数" .
+<https://studium.example/L1-基础网络/infinite-series> <https://studium.example/vocab#nameEn> "infinite series" .
+<https://studium.example/L1-基础网络/infinite-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/infinite-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/infinite-series> <https://studium.example/vocab#sections> _:b83 .
+<https://studium.example/L1-基础网络/integral-comparison-estimate> <https://studium.example/vocab#aliases> _:b85 .
+<https://studium.example/L1-基础网络/integral-comparison-estimate> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/integral-comparison-estimate> <https://studium.example/vocab#name> "用积分比较估计部分和" .
+<https://studium.example/L1-基础网络/integral-comparison-estimate> <https://studium.example/vocab#nameEn> "estimating partial sums by comparison with an integral" .
+<https://studium.example/L1-基础网络/integral-comparison-estimate> <https://studium.example/vocab#nodeType> "method" .
+<https://studium.example/L1-基础网络/integral-comparison-estimate> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L1-基础网络/integral-comparison-estimate> <https://studium.example/vocab#sections> _:b86 .
+<https://studium.example/L1-基础网络/integral-test> <https://studium.example/vocab#aliases> _:b87 .
+<https://studium.example/L1-基础网络/integral-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/integral-test> <https://studium.example/vocab#name> "定理10.11(积分判别法)" .
+<https://studium.example/L1-基础网络/integral-test> <https://studium.example/vocab#nameEn> "Theorem 10.11 (Integral test)" .
+<https://studium.example/L1-基础网络/integral-test> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/integral-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/integral-test> <https://studium.example/vocab#sections> _:b89 .
+<https://studium.example/L1-基础网络/leibniz-rule> <https://studium.example/vocab#aliases> _:b90 .
+<https://studium.example/L1-基础网络/leibniz-rule> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/leibniz-rule> <https://studium.example/vocab#name> "莱布尼茨判别法(莱布尼茨法则)" .
+<https://studium.example/L1-基础网络/leibniz-rule> <https://studium.example/vocab#nameEn> "Leibniz's rule" .
+<https://studium.example/L1-基础网络/leibniz-rule> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/leibniz-rule> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/leibniz-rule> <https://studium.example/vocab#sections> _:b92 .
+<https://studium.example/L1-基础网络/limit-comparison-test-for-improper-integrals> <https://studium.example/vocab#aliases> _:b97 .
+<https://studium.example/L1-基础网络/limit-comparison-test-for-improper-integrals> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/limit-comparison-test-for-improper-integrals> <https://studium.example/vocab#name> "定理10.25(瑕积分极限比较判别法)" .
+<https://studium.example/L1-基础网络/limit-comparison-test-for-improper-integrals> <https://studium.example/vocab#nameEn> "Theorem 10.25. Limit comparison test" .
+<https://studium.example/L1-基础网络/limit-comparison-test-for-improper-integrals> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/limit-comparison-test-for-improper-integrals> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/limit-comparison-test-for-improper-integrals> <https://studium.example/vocab#sections> _:b98 .
+<https://studium.example/L1-基础网络/limit-comparison-test> <https://studium.example/vocab#aliases> _:b94 .
+<https://studium.example/L1-基础网络/limit-comparison-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/limit-comparison-test> <https://studium.example/vocab#name> "定理10.9(极限比较判别法)" .
+<https://studium.example/L1-基础网络/limit-comparison-test> <https://studium.example/vocab#nameEn> "Theorem 10.9 (Limit comparison test)" .
+<https://studium.example/L1-基础网络/limit-comparison-test> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/limit-comparison-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/limit-comparison-test> <https://studium.example/vocab#sections> _:b96 .
+<https://studium.example/L1-基础网络/limit-of-a-sequence> <https://studium.example/vocab#aliases> _:b99 .
+<https://studium.example/L1-基础网络/limit-of-a-sequence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/limit-of-a-sequence> <https://studium.example/vocab#name> "数列的极限" .
+<https://studium.example/L1-基础网络/limit-of-a-sequence> <https://studium.example/vocab#nameEn> "limit of a sequence" .
+<https://studium.example/L1-基础网络/limit-of-a-sequence> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/limit-of-a-sequence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/limit-of-a-sequence> <https://studium.example/vocab#sections> _:b100 .
+<https://studium.example/L1-基础网络/logarithmic-series> <https://studium.example/vocab#aliases> _:b101 .
+<https://studium.example/L1-基础网络/logarithmic-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/logarithmic-series> <https://studium.example/vocab#name> "对数级数(墨卡托级数)" .
+<https://studium.example/L1-基础网络/logarithmic-series> <https://studium.example/vocab#nameEn> "logarithmic series (Mercator's series)" .
+<https://studium.example/L1-基础网络/logarithmic-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/logarithmic-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/logarithmic-series> <https://studium.example/vocab#sections> _:b103 .
+<https://studium.example/L1-基础网络/monotonic-sequence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/monotonic-sequence> <https://studium.example/vocab#name> "单调数列" .
+<https://studium.example/L1-基础网络/monotonic-sequence> <https://studium.example/vocab#nameEn> "monotonic sequence" .
+<https://studium.example/L1-基础网络/monotonic-sequence> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/monotonic-sequence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/monotonic-sequence> <https://studium.example/vocab#sections> _:b104 .
+<https://studium.example/L1-基础网络/nth-term-test> <https://studium.example/vocab#aliases> _:b105 .
+<https://studium.example/L1-基础网络/nth-term-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/nth-term-test> <https://studium.example/vocab#name> "定理10.6(收敛级数的第n项趋于0)" .
+<https://studium.example/L1-基础网络/nth-term-test> <https://studium.example/vocab#nameEn> "Theorem 10.6 (nth term of a convergent series tends to 0)" .
+<https://studium.example/L1-基础网络/nth-term-test> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/nth-term-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/nth-term-test> <https://studium.example/vocab#sections> _:b108 .
+<https://studium.example/L1-基础网络/partial-integral> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/partial-integral> <https://studium.example/vocab#name> "部分积分(部分和的类比)" .
+<https://studium.example/L1-基础网络/partial-integral> <https://studium.example/vocab#nameEn> "Partial integrals" .
+<https://studium.example/L1-基础网络/partial-integral> <https://studium.example/vocab#nodeType> "notation" .
+<https://studium.example/L1-基础网络/partial-integral> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/partial-integral> <https://studium.example/vocab#sections> _:b109 .
+<https://studium.example/L1-基础网络/partial-sum> <https://studium.example/vocab#aliases> _:b110 .
+<https://studium.example/L1-基础网络/partial-sum> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/partial-sum> <https://studium.example/vocab#name> "第 n 部分和" .
+<https://studium.example/L1-基础网络/partial-sum> <https://studium.example/vocab#nameEn> "nth partial sum" .
+<https://studium.example/L1-基础网络/partial-sum> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/partial-sum> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/partial-sum> <https://studium.example/vocab#sections> _:b111 .
+<https://studium.example/L1-基础网络/permutation-of-positive-integers> <https://studium.example/vocab#aliases> _:b113 .
+<https://studium.example/L1-基础网络/permutation-of-positive-integers> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/permutation-of-positive-integers> <https://studium.example/vocab#name> "正整数集的置换" .
+<https://studium.example/L1-基础网络/permutation-of-positive-integers> <https://studium.example/vocab#nameEn> "Permutation of P" .
+<https://studium.example/L1-基础网络/permutation-of-positive-integers> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/permutation-of-positive-integers> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/permutation-of-positive-integers> <https://studium.example/vocab#sections> _:b114 .
+<https://studium.example/L1-基础网络/positive-negative-part-notation> <https://studium.example/vocab#aliases> _:b115 .
+<https://studium.example/L1-基础网络/positive-negative-part-notation> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/positive-negative-part-notation> <https://studium.example/vocab#name> "级数项的正部与负部记号" .
+<https://studium.example/L1-基础网络/positive-negative-part-notation> <https://studium.example/vocab#nameEn> "Positive and negative parts $a_n^+$, $a_n^-$" .
+<https://studium.example/L1-基础网络/positive-negative-part-notation> <https://studium.example/vocab#nodeType> "notation" .
+<https://studium.example/L1-基础网络/positive-negative-part-notation> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/positive-negative-part-notation> <https://studium.example/vocab#sections> _:b116 .
+<https://studium.example/L1-基础网络/positive-negative-parts-theorem> <https://studium.example/vocab#aliases> _:b117 .
+<https://studium.example/L1-基础网络/positive-negative-parts-theorem> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/positive-negative-parts-theorem> <https://studium.example/vocab#name> "正部与负部级数的敛散性(定理 10.21)" .
+<https://studium.example/L1-基础网络/positive-negative-parts-theorem> <https://studium.example/vocab#nameEn> "Divergence/convergence of positive and negative parts (Theorem 10.21)" .
+<https://studium.example/L1-基础网络/positive-negative-parts-theorem> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/positive-negative-parts-theorem> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/positive-negative-parts-theorem> <https://studium.example/vocab#sections> _:b118 .
+<https://studium.example/L1-基础网络/power-series> <https://studium.example/vocab#aliases> _:b119 .
+<https://studium.example/L1-基础网络/power-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/power-series> <https://studium.example/vocab#name> "幂级数" .
+<https://studium.example/L1-基础网络/power-series> <https://studium.example/vocab#nameEn> "power series" .
+<https://studium.example/L1-基础网络/power-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/power-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/power-series> <https://studium.example/vocab#sections> _:b121 .
+<https://studium.example/L1-基础网络/proper-integral> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/proper-integral> <https://studium.example/vocab#name> "常义积分(正常积分)" .
+<https://studium.example/L1-基础网络/proper-integral> <https://studium.example/vocab#nameEn> "Proper integral" .
+<https://studium.example/L1-基础网络/proper-integral> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/proper-integral> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/proper-integral> <https://studium.example/vocab#sections> _:b122 .
+<https://studium.example/L1-基础网络/raabe-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/raabe-test> <https://studium.example/vocab#name> "拉贝判别法" .
+<https://studium.example/L1-基础网络/raabe-test> <https://studium.example/vocab#nameEn> "Raabe's test" .
+<https://studium.example/L1-基础网络/raabe-test> <https://studium.example/vocab#nodeType> "method" .
+<https://studium.example/L1-基础网络/raabe-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/raabe-test> <https://studium.example/vocab#sections> _:b123 .
+<https://studium.example/L1-基础网络/racecourse-paradox> <https://studium.example/vocab#aliases> _:b125 .
+<https://studium.example/L1-基础网络/racecourse-paradox> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/racecourse-paradox> <https://studium.example/vocab#name> "芝诺赛道悖论" .
+<https://studium.example/L1-基础网络/racecourse-paradox> <https://studium.example/vocab#nameEn> "Zeno's racecourse paradox" .
+<https://studium.example/L1-基础网络/racecourse-paradox> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/racecourse-paradox> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/racecourse-paradox> <https://studium.example/vocab#sections> _:b127 .
+<https://studium.example/L1-基础网络/ratio-test> <https://studium.example/vocab#aliases> _:b128 .
+<https://studium.example/L1-基础网络/ratio-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/ratio-test> <https://studium.example/vocab#name> "定理10.13(比值判别法)" .
+<https://studium.example/L1-基础网络/ratio-test> <https://studium.example/vocab#nameEn> "Theorem 10.13 (Ratio test)" .
+<https://studium.example/L1-基础网络/ratio-test> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/ratio-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/ratio-test> <https://studium.example/vocab#sections> _:b130 .
+<https://studium.example/L1-基础网络/rearrangement-absolute-convergence-theorem> <https://studium.example/vocab#aliases> _:b131 .
+<https://studium.example/L1-基础网络/rearrangement-absolute-convergence-theorem> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/rearrangement-absolute-convergence-theorem> <https://studium.example/vocab#name> "绝对收敛级数的重排定理(定理 10.20)" .
+<https://studium.example/L1-基础网络/rearrangement-absolute-convergence-theorem> <https://studium.example/vocab#nameEn> "Rearrangement theorem for absolutely convergent series (Theorem 10.20)" .
+<https://studium.example/L1-基础网络/rearrangement-absolute-convergence-theorem> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/rearrangement-absolute-convergence-theorem> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/rearrangement-absolute-convergence-theorem> <https://studium.example/vocab#sections> _:b132 .
+<https://studium.example/L1-基础网络/rearrangement-of-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/rearrangement-of-series> <https://studium.example/vocab#name> "级数的重排" .
+<https://studium.example/L1-基础网络/rearrangement-of-series> <https://studium.example/vocab#nameEn> "Rearrangement of a series" .
+<https://studium.example/L1-基础网络/rearrangement-of-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/rearrangement-of-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/rearrangement-of-series> <https://studium.example/vocab#sections> _:b133 .
+<https://studium.example/L1-基础网络/recursion-formula> <https://studium.example/vocab#aliases> _:b134 .
+<https://studium.example/L1-基础网络/recursion-formula> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/recursion-formula> <https://studium.example/vocab#name> "递推公式" .
+<https://studium.example/L1-基础网络/recursion-formula> <https://studium.example/vocab#nameEn> "recursion formula" .
+<https://studium.example/L1-基础网络/recursion-formula> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/recursion-formula> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/recursion-formula> <https://studium.example/vocab#sections> _:b135 .
+<https://studium.example/L1-基础网络/riemann-rearrangement-theorem> <https://studium.example/vocab#aliases> _:b136 .
+<https://studium.example/L1-基础网络/riemann-rearrangement-theorem> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/riemann-rearrangement-theorem> <https://studium.example/vocab#name> "黎曼重排定理(定理 10.22)" .
+<https://studium.example/L1-基础网络/riemann-rearrangement-theorem> <https://studium.example/vocab#nameEn> "Riemann's rearrangement theorem (Theorem 10.22)" .
+<https://studium.example/L1-基础网络/riemann-rearrangement-theorem> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/riemann-rearrangement-theorem> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/riemann-rearrangement-theorem> <https://studium.example/vocab#sections> _:b137 .
+<https://studium.example/L1-基础网络/root-test> <https://studium.example/vocab#aliases> _:b138 .
+<https://studium.example/L1-基础网络/root-test> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/root-test> <https://studium.example/vocab#name> "定理10.12(根值判别法)" .
+<https://studium.example/L1-基础网络/root-test> <https://studium.example/vocab#nameEn> "Theorem 10.12 (Root test)" .
+<https://studium.example/L1-基础网络/root-test> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/root-test> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/root-test> <https://studium.example/vocab#sections> _:b140 .
+<https://studium.example/L1-基础网络/sequence-notation> <https://studium.example/vocab#aliases> _:b141 .
+<https://studium.example/L1-基础网络/sequence-notation> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/sequence-notation> <https://studium.example/vocab#name> "数列记号 {f(n)}" .
+<https://studium.example/L1-基础网络/sequence-notation> <https://studium.example/vocab#nameEn> "sequence notation {f(n)}" .
+<https://studium.example/L1-基础网络/sequence-notation> <https://studium.example/vocab#nodeType> "notation" .
+<https://studium.example/L1-基础网络/sequence-notation> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/sequence-notation> <https://studium.example/vocab#sections> _:b142 .
+<https://studium.example/L1-基础网络/series-of-nonnegative-terms> <https://studium.example/vocab#aliases> _:b143 .
+<https://studium.example/L1-基础网络/series-of-nonnegative-terms> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/series-of-nonnegative-terms> <https://studium.example/vocab#name> "非负项级数" .
+<https://studium.example/L1-基础网络/series-of-nonnegative-terms> <https://studium.example/vocab#nameEn> "series of nonnegative terms" .
+<https://studium.example/L1-基础网络/series-of-nonnegative-terms> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/series-of-nonnegative-terms> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/series-of-nonnegative-terms> <https://studium.example/vocab#sections> _:b144 .
+<https://studium.example/L1-基础网络/series-sum-notation> <https://studium.example/vocab#aliases> _:b145 .
+<https://studium.example/L1-基础网络/series-sum-notation> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/series-sum-notation> <https://studium.example/vocab#name> "级数求和记号 Σ a_k" .
+<https://studium.example/L1-基础网络/series-sum-notation> <https://studium.example/vocab#nameEn> "series notation Σ a_k" .
+<https://studium.example/L1-基础网络/series-sum-notation> <https://studium.example/vocab#nodeType> "notation" .
+<https://studium.example/L1-基础网络/series-sum-notation> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/series-sum-notation> <https://studium.example/vocab#sections> _:b147 .
+<https://studium.example/L1-基础网络/series-tail-invariance> <https://studium.example/vocab#aliases> _:b148 .
+<https://studium.example/L1-基础网络/series-tail-invariance> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/series-tail-invariance> <https://studium.example/vocab#name> "级数增删有限项不改变敛散性" .
+<https://studium.example/L1-基础网络/series-tail-invariance> <https://studium.example/vocab#nameEn> "invariance of convergence under omitting or adding finitely many terms" .
+<https://studium.example/L1-基础网络/series-tail-invariance> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/series-tail-invariance> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/series-tail-invariance> <https://studium.example/vocab#sections> _:b149 .
+<https://studium.example/L1-基础网络/telescoping-property> <https://studium.example/vocab#aliases> _:b150 .
+<https://studium.example/L1-基础网络/telescoping-property> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/telescoping-property> <https://studium.example/vocab#name> "有限和的裂项(套叠)性质" .
+<https://studium.example/L1-基础网络/telescoping-property> <https://studium.example/vocab#nameEn> "telescoping property of finite sums" .
+<https://studium.example/L1-基础网络/telescoping-property> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/telescoping-property> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/telescoping-property> <https://studium.example/vocab#sections> _:b151 .
+<https://studium.example/L1-基础网络/telescoping-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/telescoping-series> <https://studium.example/vocab#name> "裂项级数(套叠级数)" .
+<https://studium.example/L1-基础网络/telescoping-series> <https://studium.example/vocab#nameEn> "telescoping series" .
+<https://studium.example/L1-基础网络/telescoping-series> <https://studium.example/vocab#nodeType> "concept" .
+<https://studium.example/L1-基础网络/telescoping-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/telescoping-series> <https://studium.example/vocab#sections> _:b152 .
+<https://studium.example/L1-基础网络/theorem-10-1-monotonic-convergence> <https://studium.example/vocab#aliases> _:b153 .
+<https://studium.example/L1-基础网络/theorem-10-1-monotonic-convergence> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/theorem-10-1-monotonic-convergence> <https://studium.example/vocab#name> "定理 10.1(单调数列收敛判别准则)" .
+<https://studium.example/L1-基础网络/theorem-10-1-monotonic-convergence> <https://studium.example/vocab#nameEn> "Theorem 10.1 (monotonic convergence criterion)" .
+<https://studium.example/L1-基础网络/theorem-10-1-monotonic-convergence> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/theorem-10-1-monotonic-convergence> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/theorem-10-1-monotonic-convergence> <https://studium.example/vocab#sections> _:b154 .
+<https://studium.example/L1-基础网络/theorem-10-2-linearity> <https://studium.example/vocab#aliases> _:b155 .
+<https://studium.example/L1-基础网络/theorem-10-2-linearity> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/theorem-10-2-linearity> <https://studium.example/vocab#name> "定理 10.2(收敛级数的线性性质)" .
+<https://studium.example/L1-基础网络/theorem-10-2-linearity> <https://studium.example/vocab#nameEn> "Theorem 10.2 (linearity of convergent series)" .
+<https://studium.example/L1-基础网络/theorem-10-2-linearity> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/theorem-10-2-linearity> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/theorem-10-2-linearity> <https://studium.example/vocab#sections> _:b157 .
+<https://studium.example/L1-基础网络/theorem-10-3-convergent-plus-divergent> <https://studium.example/vocab#aliases> _:b158 .
+<https://studium.example/L1-基础网络/theorem-10-3-convergent-plus-divergent> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/theorem-10-3-convergent-plus-divergent> <https://studium.example/vocab#name> "定理 10.3(收敛级数与发散级数之和发散)" .
+<https://studium.example/L1-基础网络/theorem-10-3-convergent-plus-divergent> <https://studium.example/vocab#nameEn> "Theorem 10.3 (convergent plus divergent series diverges)" .
+<https://studium.example/L1-基础网络/theorem-10-3-convergent-plus-divergent> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/theorem-10-3-convergent-plus-divergent> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/theorem-10-3-convergent-plus-divergent> <https://studium.example/vocab#sections> _:b159 .
+<https://studium.example/L1-基础网络/theorem-10-4-telescoping> <https://studium.example/vocab#aliases> _:b160 .
+<https://studium.example/L1-基础网络/theorem-10-4-telescoping> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/theorem-10-4-telescoping> <https://studium.example/vocab#name> "定理 10.4(裂项级数的收敛性)" .
+<https://studium.example/L1-基础网络/theorem-10-4-telescoping> <https://studium.example/vocab#nameEn> "Theorem 10.4 (convergence of telescoping series)" .
+<https://studium.example/L1-基础网络/theorem-10-4-telescoping> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/theorem-10-4-telescoping> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/theorem-10-4-telescoping> <https://studium.example/vocab#sections> _:b161 .
+<https://studium.example/L1-基础网络/theorem-10-5-geometric-series> <https://studium.example/vocab#aliases> _:b162 .
+<https://studium.example/L1-基础网络/theorem-10-5-geometric-series> <https://studium.example/vocab#layer> "L1" .
+<https://studium.example/L1-基础网络/theorem-10-5-geometric-series> <https://studium.example/vocab#name> "定理 10.5(几何级数的和)" .
+<https://studium.example/L1-基础网络/theorem-10-5-geometric-series> <https://studium.example/vocab#nameEn> "Theorem 10.5 (sum of the geometric series)" .
+<https://studium.example/L1-基础网络/theorem-10-5-geometric-series> <https://studium.example/vocab#nodeType> "theorem" .
+<https://studium.example/L1-基础网络/theorem-10-5-geometric-series> <https://studium.example/vocab#origin> "source" .
+<https://studium.example/L1-基础网络/theorem-10-5-geometric-series> <https://studium.example/vocab#sections> _:b163 .
+<https://studium.example/L2/L2-S01> <https://studium.example/vocab#kind> "method" .
+<https://studium.example/L2/L2-S01> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S01> <https://studium.example/vocab#name> "正项级数收敛判定决策链(以定理10.7为根、双基准标尺校准的升级式判别系统)" .
+<https://studium.example/L2/L2-S01> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S01> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S02> <https://studium.example/vocab#kind> "method" .
+<https://studium.example/L2/L2-S02> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S02> <https://studium.example/vocab#name> "变号与复项级数的两段式判定法(绝对收敛优先 → Abel分部求和引擎族)" .
+<https://studium.example/L2/L2-S02> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S02> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S03> <https://studium.example/vocab#kind> "method" .
+<https://studium.example/L2/L2-S03> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S03> <https://studium.example/vocab#name> "部分和↔部分积分移植字典(正项判别系统向瑕积分的成批转移及其精确失效点)" .
+<https://studium.example/L2/L2-S03> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S03> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S04> <https://studium.example/vocab#kind> "method" .
+<https://studium.example/L2/L2-S04> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S04> <https://studium.example/vocab#name> "级数精确求和的生成系统(裂项恒等式为唯一核心 + 线性/代换/逐项微积分四组合子)" .
+<https://studium.example/L2/L2-S04> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S04> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S05> <https://studium.example/vocab#kind> "structure_model" .
+<https://studium.example/L2/L2-S05> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S05> <https://studium.example/vocab#name> "级数-数列互译同构:部分和算子与差分算子构成一对互逆翻译" .
+<https://studium.example/L2/L2-S05> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S05> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S06> <https://studium.example/vocab#kind> "structure_model" .
+<https://studium.example/L2/L2-S06> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S06> <https://studium.example/vocab#name> "正项级数判别法 = 基准尺度族上的比较,判别力由基准分辨率决定" .
+<https://studium.example/L2/L2-S06> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S06> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S08> <https://studium.example/vocab#kind> "structure_model" .
+<https://studium.example/L2/L2-S08> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S08> <https://studium.example/vocab#name> "Abel 求和结构:振荡有界性兑换单调衰减的收敛制造机" .
+<https://studium.example/L2/L2-S08> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S08> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S10> <https://studium.example/vocab#kind> "proof_pattern" .
+<https://studium.example/L2/L2-S10> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S10> <https://studium.example/vocab#name> "单调有界归结论证(Monotone–Bounded Reduction to Axiom 10)" .
+<https://studium.example/L2/L2-S10> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S10> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S13> <https://studium.example/vocab#kind> "proof_pattern" .
+<https://studium.example/L2/L2-S13> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S13> <https://studium.example/vocab#name> "Abel 分部求和重组:振荡×衰减 → 有界×可裂项(Summation-by-Parts Transfer)" .
+<https://studium.example/L2/L2-S13> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S13> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S14> <https://studium.example/vocab#kind> "proof_pattern" .
+<https://studium.example/L2/L2-S14> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S14> <https://studium.example/vocab#name> "通项不趋零反证:发散的第 n 项论证(Divergence via Non-Vanishing Terms)" .
+<https://studium.example/L2/L2-S14> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S14> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S17> <https://studium.example/vocab#kind> "problem_pattern" .
+<https://studium.example/L2/L2-S17> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S17> <https://studium.example/vocab#name> "幂级数求和:对母恒等式施算子链(代换 / 乘 x / 逐项微分 / 逐项积分 / 线性组合)" .
+<https://studium.example/L2/L2-S17> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S17> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S18> <https://studium.example/vocab#kind> "problem_pattern" .
+<https://studium.example/L2/L2-S18> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S18> <https://studium.example/vocab#name> "任意项级数:门槛检验→绝对收敛→条件收敛的两阶段判定流程(含渐近拆分补救)" .
+<https://studium.example/L2/L2-S18> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S18> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L2/L2-S19> <https://studium.example/vocab#kind> "problem_pattern" .
+<https://studium.example/L2/L2-S19> <https://studium.example/vocab#layer> "L2" .
+<https://studium.example/L2/L2-S19> <https://studium.example/vocab#name> "部分和-积分双向夹逼:同一矩形不等式的三种读法(判敛 / Riemann 和极限 / 渐近展开与常数相消)" .
+<https://studium.example/L2/L2-S19> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L2/L2-S19> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L3/L3-S02> <https://studium.example/vocab#kind> "thinking_framework" .
+<https://studium.example/L3/L3-S02> <https://studium.example/vocab#layer> "L3" .
+<https://studium.example/L3/L3-S02> <https://studium.example/vocab#name> "标尺测量认知:判定 = 在“基准族 × 耦合精度”二维网格上给未知对象定位,“不可判”是分辨率读数而非失败" .
+<https://studium.example/L3/L3-S02> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L3/L3-S02> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L3/L3-S03> <https://studium.example/vocab#kind> "thinking_framework" .
+<https://studium.example/L3/L3-S03> <https://studium.example/vocab#layer> "L3" .
+<https://studium.example/L3/L3-S03> <https://studium.example/vocab#name> "同构—字典—类比三级迁移:按保真度分级的跨域定理搬运策略,保真度等级决定认识义务(引用/查表/重证)" .
+<https://studium.example/L3/L3-S03> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L3/L3-S03> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L3/L3-S05> <https://studium.example/vocab#kind> "unification" .
+<https://studium.example/L3/L3-S05> <https://studium.example/vocab#layer> "L3" .
+<https://studium.example/L3/L3-S05> <https://studium.example/vocab#name> "单调累积泛函的双模型理论:级数与瑕积分是同一公理化收敛理论的两个模型,可移植性由『证明是否使用增量的原子性』先验判定" .
+<https://studium.example/L3/L3-S05> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L3/L3-S05> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L3/L3-S08> <https://studium.example/vocab#kind> "transfer" .
+<https://studium.example/L3/L3-S08> <https://studium.example/vocab#layer> "L3" .
+<https://studium.example/L3/L3-S08> <https://studium.example/vocab#name> "sup-范数提升:正项判别系统整体迁移为一致收敛判定(Weierstrass M-判别法与 Cauchy–Hadamard 半径公式)" .
+<https://studium.example/L3/L3-S08> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L3/L3-S08> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L3/L3-S09> <https://studium.example/vocab#kind> "transfer" .
+<https://studium.example/L3/L3-S09> <https://studium.example/vocab#layer> "L3" .
+<https://studium.example/L3/L3-S09> <https://studium.example/vocab#name> "Abel 分部求和引擎的双出口迁移:幂级数边界行为(Abel 极限定理/Abel 可和性)与 Fourier 级数点态收敛(定理10.19 = Dirichlet 核估计)" .
+<https://studium.example/L3/L3-S09> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L3/L3-S09> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L3/L3-S10> <https://studium.example/vocab#kind> "transfer" .
+<https://studium.example/L3/L3-S10> <https://studium.example/vocab#layer> "L3" .
+<https://studium.example/L3/L3-S10> <https://studium.example/vocab#name> "级数-积分字典的测度论升格:计数测度视角、单调收敛定理作为统一引擎、原子性作为字典失效点的精确解释" .
+<https://studium.example/L3/L3-S10> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L3/L3-S10> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L3/L3-S11> <https://studium.example/vocab#kind> "transfer" .
+<https://studium.example/L3/L3-S11> <https://studium.example/vocab#layer> "L3" .
+<https://studium.example/L3/L3-S11> <https://studium.example/vocab#name> "矩形夹逼精度阶梯的向上延伸:Euler–Maclaurin 展开、Stirling 公式与 ζ 的正规化(『和 − 积分 → 常数』现象的一般化)" .
+<https://studium.example/L3/L3-S11> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L3/L3-S11> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L4/L4-S03> <https://studium.example/vocab#kind> "meta_structure" .
+<https://studium.example/L4/L4-S03> <https://studium.example/vocab#layer> "L4" .
+<https://studium.example/L4/L4-S03> <https://studium.example/vocab#name> "升维消歧:构造包络对象 U 把『原始翻译对』改写为『U 的两个投影』,保真度等级 = 投影所保公共结构量,从而失效清单可计算、认识义务可赎买" .
+<https://studium.example/L4/L4-S03> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L4/L4-S03> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L4/L4-S05> <https://studium.example/vocab#kind> "epistemic_framework" .
+<https://studium.example/L4/L4-S05> <https://studium.example/vocab#layer> "L4" .
+<https://studium.example/L4/L4-S05> <https://studium.example/vocab#name> "二值判定的坐标化与边界残差:收敛/发散谓词嵌入参数族后,边界读数有两条典范续行——换更细仪器,或对当前参照取残差;残差的收敛值是新对象的出生点" .
+<https://studium.example/L4/L4-S05> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L4/L4-S05> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L5/L5-S01> <https://studium.example/vocab#kind> "meta_structure" .
+<https://studium.example/L5/L5-S01> <https://studium.example/vocab#layer> "L5" .
+<https://studium.example/L5/L5-S01> <https://studium.example/vocab#name> "失效残差同一性:包络对象 U 的非公共结构(L4-S03 的失效清单量)与参照残差(L4-S05 的新对象原料)是同一个量的负读与正读;残差收敛时铸为对象并回装为仪器,恰好构成义务赎买的资金流" .
+<https://studium.example/L5/L5-S01> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L5/L5-S01> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L5/L5-S02> <https://studium.example/vocab#kind> "meta_structure" .
+<https://studium.example/L5/L5-S02> <https://studium.example/vocab#layer> "L5" .
+<https://studium.example/L5/L5-S02> <https://studium.example/vocab#name> "判决重构的双算子分解:坐标化 K 与实体化 R 是可分离的两个算子;L4-S05 = R∘K、L4-S03 = K∘R,合成顺序由初始赤字类型强制,且两条合成都以 R 的产物充任或扩充 K 的参照而闭环" .
+<https://studium.example/L5/L5-S02> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L5/L5-S02> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L5/L5-S05> <https://studium.example/vocab#kind> "epistemic_framework" .
+<https://studium.example/L5/L5-S05> <https://studium.example/vocab#layer> "L5" .
+<https://studium.example/L5/L5-S05> <https://studium.example/vocab#name> "对象出生的许可结构:新对象只能出生在语言已能个体化的位置——存在包络 U 使对象与某已坐标化参照同为投影且非公共部分稳定;振荡型发散无匹配参照故不出生对象,条件收敛的『值』随次序参照撤走而消失" .
+<https://studium.example/L5/L5-S05> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L5/L5-S05> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L6/L6-S02> <https://studium.example/vocab#kind> "meta_structure" .
+<https://studium.example/L6/L6-S02> <https://studium.example/vocab#layer> "L6" .
+<https://studium.example/L6/L6-S02> <https://studium.example/vocab#name> "个体化锚的基数与独立性分级:铸出物的地位是其独立个体化锚数目的函数——0 锚是空转命名,1 锚只得相对个体化(对象随唯一锚撤除而蒸发),至少 2 条相互独立的生产线交汇才获得跨语境实在性;该变量在三个成员的边界条款中各现一个取值而互不知晓" .
+<https://studium.example/L6/L6-S02> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L6/L6-S02> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L6/L6-S03> <https://studium.example/vocab#kind> "epistemic_framework" .
+<https://studium.example/L6/L6-S03> <https://studium.example/vocab#layer> "L6" .
+<https://studium.example/L6/L6-S03> <https://studium.example/vocab#name> "许可前沿的自推进:L5-S05 许可条件的两个存在量词(∃包络 U、∃已坐标化参照)恰是两个可补给的资源槽,L5-S02 的两种合成序各自专供一槽,L5-S01 的资金流是补给的输送带——故『何处可出生对象』不是静态清单而是随管线每次运行单调扩张的前沿" .
+<https://studium.example/L6/L6-S03> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L6/L6-S03> <https://studium.example/vocab#status> "candidate-audited" .
+<https://studium.example/L7/L7-R02> <https://studium.example/vocab#kind> "epistemic_framework" .
+<https://studium.example/L7/L7-R02> <https://studium.example/vocab#layer> "L7" .
+<https://studium.example/L7/L7-R02> <https://studium.example/vocab#name> "许可的双通道扩张:前沿状态是二元组(仪器库 B, 锚数函数 g)——铸造运行扩张 B(外延通道),焊接恒等式提升 g(内涵通道),两通道各自独立扩张许可集且互不可替代" .
+<https://studium.example/L7/L7-R02> <https://studium.example/vocab#origin> "model" .
+<https://studium.example/L7/L7-R02> <https://studium.example/vocab#status> "candidate-audited" .
+_:b0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.16" .
+_:b0 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b1 .
+_:b1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "Abel's formula" .
+_:b1 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b10 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.21" .
+_:b10 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b100 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b100 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b101 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "Mercator's series" .
+_:b101 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b102 .
+_:b102 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "power series for log(1+x)" .
+_:b102 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b103 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.8" .
+_:b103 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b104 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.3" .
+_:b104 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b105 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.6" .
+_:b105 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b106 .
+_:b106 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "nth-term test" .
+_:b106 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b107 .
+_:b107 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "necessary condition for convergence" .
+_:b107 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b108 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.11" .
+_:b108 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b109 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b109 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b11 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.17" .
+_:b11 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b110 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "partial sums s_n" .
+_:b110 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b111 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.1" .
+_:b111 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b112 .
+_:b112 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.5" .
+_:b112 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b113 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "one-to-one mapping of P onto itself" .
+_:b113 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b114 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.21" .
+_:b114 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b115 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "formula (10.59)" .
+_:b115 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b116 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.21" .
+_:b116 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b117 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.21" .
+_:b117 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b118 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.21" .
+_:b118 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b119 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "real power series" .
+_:b119 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b120 .
+_:b12 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.10" .
+_:b12 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b120 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "coefficients of a power series" .
+_:b120 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b121 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.8" .
+_:b121 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b122 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b122 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b123 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.15" .
+_:b123 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b124 .
+_:b124 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.16" .
+_:b124 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b125 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "Zeno's paradox" .
+_:b125 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b126 .
+_:b126 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "the racecourse paradox" .
+_:b126 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b127 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.1" .
+_:b127 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b128 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.13" .
+_:b128 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b129 .
+_:b129 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "RATIO TEST" .
+_:b129 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b13 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.12" .
+_:b13 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b130 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.15" .
+_:b130 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b131 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.20" .
+_:b131 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b132 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.21" .
+_:b132 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b133 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.21" .
+_:b133 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b134 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "recursive definition of a sequence" .
+_:b134 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b135 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b135 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b136 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.22" .
+_:b136 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b137 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.21" .
+_:b137 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b138 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.12" .
+_:b138 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b139 .
+_:b139 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "ROOT TEST" .
+_:b139 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b14 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "asymptotic equality" .
+_:b14 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b140 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.15" .
+_:b140 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b141 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "subscript notation a_n" .
+_:b141 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b142 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b142 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b143 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "series having nonnegative terms" .
+_:b143 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b144 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.12" .
+_:b144 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b145 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "sum symbol for series" .
+_:b145 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b146 .
+_:b146 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "dummy index" .
+_:b146 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b147 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.5" .
+_:b147 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b148 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "tail behavior of series" .
+_:b148 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b149 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.5" .
+_:b149 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b15 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.12" .
+_:b15 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b150 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "telescoping property" .
+_:b150 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b151 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.7" .
+_:b151 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b152 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.7" .
+_:b152 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b153 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.1" .
+_:b153 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b154 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.3" .
+_:b154 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b155 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.2" .
+_:b155 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b156 .
+_:b156 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "linearity property of convergent series" .
+_:b156 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b157 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.6" .
+_:b157 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b158 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.3" .
+_:b158 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b159 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.6" .
+_:b159 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b16 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "formulas (10.9) through (10.13)" .
+_:b16 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b160 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.4" .
+_:b160 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b161 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.7" .
+_:b161 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b162 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.5" .
+_:b162 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b163 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.8" .
+_:b163 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b17 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b17 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b18 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "binomial series (special case)" .
+_:b18 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b19 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.1" .
+_:b19 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.19" .
+_:b2 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b20 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.7" .
+_:b20 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b21 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.12" .
+_:b21 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b22 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "unbounded sequence" .
+_:b22 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b23 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.3" .
+_:b23 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b24 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "boundedness criterion for improper integrals with nonnegative integrand" .
+_:b24 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b25 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b25 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b26 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.8" .
+_:b26 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b27 .
+_:b27 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "COMPARISON TEST" .
+_:b27 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b28 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.12" .
+_:b28 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b29 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "comparison test for improper integrals" .
+_:b29 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.18" .
+_:b3 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b30 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b30 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b31 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "real and imaginary part convergence" .
+_:b31 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b32 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b32 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b33 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "conditional convergence" .
+_:b33 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b34 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.18" .
+_:b34 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b35 .
+_:b35 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.21" .
+_:b35 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b36 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "convergence tests" .
+_:b36 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b37 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.11" .
+_:b37 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b38 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "sequence converges to L" .
+_:b38 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b39 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b39 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b4 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.19" .
+_:b4 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b40 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "sum of a series" .
+_:b40 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b41 .
+_:b41 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "series converges" .
+_:b41 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b42 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.5" .
+_:b42 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b43 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "decimal expansion in the scale of b" .
+_:b43 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b44 .
+_:b44 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "base-b expansion" .
+_:b44 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b45 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.10" .
+_:b45 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b46 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.17" .
+_:b46 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b47 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.19" .
+_:b47 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b48 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "sequence diverges" .
+_:b48 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b49 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b49 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b5 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.15" .
+_:b5 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b50 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "series diverges" .
+_:b50 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b51 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.1" .
+_:b51 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b52 .
+_:b52 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.5" .
+_:b52 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b53 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b53 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b54 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "domination of series" .
+_:b54 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b55 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.12" .
+_:b55 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b56 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b56 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b57 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "Fibonacci sequence" .
+_:b57 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b58 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b58 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b59 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "Gauss's test" .
+_:b59 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b6 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.18" .
+_:b6 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b60 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.15" .
+_:b60 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b61 .
+_:b61 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.16" .
+_:b61 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b62 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.19" .
+_:b62 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b63 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.19" .
+_:b63 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b64 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.8" .
+_:b64 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b65 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "substitution, multiplication, differentiation and integration of power series" .
+_:b65 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b66 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.8" .
+_:b66 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b67 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "power series for arctan x" .
+_:b67 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b68 .
+_:b68 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "inverse tangent series" .
+_:b68 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b69 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.8" .
+_:b69 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b7 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "absolute convergence" .
+_:b7 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b70 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.1" .
+_:b70 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b71 .
+_:b71 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.5" .
+_:b71 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b72 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b72 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b73 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b73 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b74 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "f(n) increasing" .
+_:b74 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b75 .
+_:b75 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "$f(n)\nearrow$" .
+_:b75 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b76 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.3" .
+_:b76 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b77 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "improper integral of the first kind" .
+_:b77 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b78 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b78 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b79 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "sequence" .
+_:b79 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b80 .
+_:b8 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.18" .
+_:b8 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b80 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "nth term of a sequence" .
+_:b80 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b81 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.2" .
+_:b81 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b82 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "series" .
+_:b82 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b83 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.1" .
+_:b83 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b84 .
+_:b84 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.5" .
+_:b84 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b85 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "integral estimate for partial sums" .
+_:b85 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b86 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.1" .
+_:b86 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b87 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.11" .
+_:b87 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b88 .
+_:b88 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "INTEGRAL TEST" .
+_:b88 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b89 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.13" .
+_:b89 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b9 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.17" .
+_:b9 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b10 .
+_:b90 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.14" .
+_:b90 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b91 .
+_:b91 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "Leibniz's rule for alternating series" .
+_:b91 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b92 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.17" .
+_:b92 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b93 .
+_:b93 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.19" .
+_:b93 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b94 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "THEOREM 10.9" .
+_:b94 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> _:b95 .
+_:b95 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "LIMIT COMPARISON TEST" .
+_:b95 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b96 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.12" .
+_:b96 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b97 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "limit comparison test for improper integrals" .
+_:b97 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b98 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "10.23" .
+_:b98 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .
+_:b99 <http://www.w3.org/1999/02/22-rdf-syntax-ns#first> "limit L of {f(n)}" .
+_:b99 <http://www.w3.org/1999/02/22-rdf-syntax-ns#rest> <http://www.w3.org/1999/02/22-rdf-syntax-ns#nil> .

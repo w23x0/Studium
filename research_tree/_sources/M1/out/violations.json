@@ -1,0 +1,61 @@
+[
+ {
+  "file": "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\geometric-exponential-partial-sum-bound.md",
+  "field": "anchors",
+  "orig": [
+   "For every real $\\theta$ not an integer multiple of $\\pi$ , we have the identity",
+   "An important example of a divergent series with bounded partial sums is the geometric series"
+  ],
+  "got": [
+   "For every real $\\\theta$ not an integer multiple of $\\pi$ , we have the identity",
+   "An important example of a divergent series with bounded partial sums is the geometric series"
+  ],
+  "reason": "value-diff"
+ },
+ {
+  "file": "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\harmonic-series.md",
+  "field": "anchors",
+  "orig": [
+   "1 + \\frac {1}{2} + \\frac {1}{3} + \\dots + \\frac {1}{n} \\geq \\log (n + 1).\\tag{10.8}"
+  ],
+  "got": [
+   "1 + \\frac {1}{2} + \\frac {1}{3} + \\dots + \\frac {1}{n} \\geq \\log (n + 1).\\\tag{10.8}"
+  ],
+  "reason": "value-diff"
+ },
+ {
+  "file": "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\increasing-sequence.md",
+  "field": "anchors",
+  "orig": [
+   "We indicate this briefly by writing $f(n)\\nearrow$"
+  ],
+  "got": [
+   "We indicate this briefly by writing $f(n)\\\nearrow$"
+  ],
+  "reason": "value-diff"
+ },
+ {
+  "file": "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\limit-comparison-test.md",
+  "field": "anchors",
+  "orig": [
+   "Then $\\sum a_{n}$ converges if and only if $\\sum b_{n}$ converges.",
+   "However, if $\\lim_{n\\to \\infty}a_n / b_n = 0$ , we conclude only that convergence of $\\sum b_{n}$ implies convergence of $\\sum a_{n}$ ."
+  ],
+  "got": [
+   "Then $\\sum a_{n}$ converges if and only if $\\sum b_{n}$ converges.",
+   "However, if $\\lim_{n\\\to \\infty}a_n / b_n = 0$ , we conclude only that convergence of $\\sum b_{n}$ implies convergence of $\\sum a_{n}$ ."
+  ],
+  "reason": "value-diff"
+ },
+ {
+  "file": "docs\\图工程调研\\M08实验-Apostol微积分卷1\\obsidian\\L1-基础网络\\theorem-10-1-monotonic-convergence.md",
+  "field": "anchors",
+  "orig": [
+   "Assume $f(n) \\nearrow$ and let $L$ denote the least upper bound of the set of function values."
+  ],
+  "got": [
+   "Assume $f(n) \\\nearrow$ and let $L$ denote the least upper bound of the set of function values."
+  ],
+  "reason": "value-diff"
+ }
+]

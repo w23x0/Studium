@@ -1,0 +1,2 @@
+java.lang.IllegalArgumentException: Cannot deserialize value of type `java.util.LinkedHashMap<java.lang.Object,java.lang.Object>` from Array value (token `JsonToken.START_ARRAY`)
+ at [Source: UNKNOWN; byte offset: #UNKNOWN]

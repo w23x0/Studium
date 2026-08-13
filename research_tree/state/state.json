@@ -1,7 +1,7 @@
 {
   "meta": {
     "schema": 1,
-    "current_round": 3,
+    "current_round": 4,
     "root_topic": "M08/M09 存储选型候选空间缺口补全",
     "as_of": "2026-08-13",
     "decision_points": [
@@ -230,6 +230,146 @@
       "created": "2026-08-13",
       "updated": "2026-08-13",
       "verdict": "accepted"
+    },
+    {
+      "id": "M1",
+      "parent": null,
+      "topic": "原型实测——yaml-ld 全链路迁移原型（B7a U1：真实 frontmatter 语义无损往返 + 双真相消解）",
+      "questions": [
+        "python-yaml-ld 能否把真实带 frontmatter 的 md 文件语义无损转成 RDF 并往返（YAML→RDF→YAML）？用 docs 下真实文件实测。",
+        "双真相风险（YAML 保留 vs RDF 派生）在迁移路径上如何消解/避免——迁移后权威载体是哪一个、如何验证不漂移？",
+        "迁移产出的 RDF 能否回到可 grep 文本（守住 L0 锚点红线）？"
+      ],
+      "candidates": [
+        "python-yaml-ld（venv 已装）",
+        "真实带 frontmatter 的 md（docs/ 下找）",
+        "B7a 已查证的 Basic profile 语义（WD 2026-07-28）"
+      ],
+      "keywords": [
+        "yaml-ld 迁移 往返 原型",
+        "YAML-LD roundtrip frontmatter"
+      ],
+      "bounds": [
+        "只验语义无损与双真相消解，不做性能",
+        "用真实文件（docs 下任意带 frontmatter 的 md）",
+        "复现命令必须写入报告"
+      ],
+      "status": "archived",
+      "priority": 3,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/M1_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/M1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/M1",
+      "env": "tmp/venv_b7a/Scripts/python.exe (yaml_ld, rdflib 7.6.0)",
+      "data": "docs 下真实带 frontmatter 的 md 文件",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
+    },
+    {
+      "id": "M2",
+      "parent": null,
+      "topic": "原型实测——RMLMapper 对 JSONL 源实际运行（B8b U6）",
+      "questions": [
+        "RMLMapper（java 17）对 JSONL 源（嵌套 JSON 结构）的实际映射运行是否可行？用第15章真实 JSONL 子集实测。",
+        "增量映射（只映射新增行）如何做、RMLMapper 是否支持？",
+        "映射产出 RDF 的规模/结构与 JSONL 原源的对应关系？"
+      ],
+      "candidates": [
+        "RMLMapper jar（GitHub releases/Maven 下载）",
+        "第15章 nodes-*.jsonl 小文件（如 nodes-A2-s1.jsonl 11 行）",
+        "RML/YARRRML 规则（B8b 已查证非正式标准）"
+      ],
+      "keywords": [
+        "RMLMapper JSONL RDF 映射 原型",
+        "RML mapping JSON source run"
+      ],
+      "bounds": [
+        "只跑通可行性与产出正确性，不做性能基准",
+        "jar 下载失败则如实记未核并说明",
+        "复现命令必须写入报告"
+      ],
+      "status": "archived",
+      "priority": 3,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/M2_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/M2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/M2",
+      "env": "java 17 (OpenJDK Temurin-17.0.20)，node v25 可选",
+      "data": "第15章 nodes-*.jsonl 子集",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
+    },
+    {
+      "id": "M3",
+      "parent": null,
+      "topic": "原型实测——双写/影子读迁移原型（B8c：JSONL→目标载体回放一致性）",
+      "questions": [
+        "从 L0 JSONL 重建目标载体（RDF）的回放原型：用 522 节点/1433 边全量实测回放时间与一致性。",
+        "影子读验证（新旧并行比对）如何落地：JSONL+脚本结果 vs 重建 RDF 结果逐条比对，差异如何暴露？",
+        "双写 vs 影子读 vs 从源重建三者的成本结构（用实测数字支撑）。"
+      ],
+      "candidates": [
+        "影子读（GitHub Scientist 语义，B8c 已查证）",
+        "事件溯源 Complete Rebuild（Fowler，S2 已核）",
+        "第15章 nodes/edges 全量"
+      ],
+      "keywords": [
+        "双写 影子读 迁移 回放 一致性 原型",
+        "shadow read rebuild consistency migration"
+      ],
+      "bounds": [
+        "只验一致性与可行性，不做性能基准",
+        "用第15章全量数据（522/1433）实测回放",
+        "复现命令必须写入报告"
+      ],
+      "status": "archived",
+      "priority": 3,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/M3_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/M3_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/M3",
+      "env": "tmp/venv_b7a/Scripts/python.exe (rdflib 7.6.0)",
+      "data": "docs/图工程调研/M08实验-第15章分层图谱/data/nodes-*.jsonl + edges-*.jsonl",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
+    },
+    {
+      "id": "M4",
+      "parent": null,
+      "topic": "原型实测——rdflib canonical 替代实现（rdf-canonize npm）在 921 锚点的指纹实测",
+      "questions": [
+        "rdf-canonize 5.0.0（node）是否真正实现 RDFC-1.0（对比 P1 证实的 rdflib canonicalize 静默 no-op）？用 P1 生成的 anchors_921.nq 实测。",
+        "921 锚点 N-Quads 的 canonical 指纹是否稳定（不随三元组插入顺序漂移）且可复现？",
+        "canonical 指纹用于迁移校验的可行性：指纹比对能否替代全量重读？"
+      ],
+      "candidates": [
+        "rdf-canonize 5.0.0（npm，w3c-ccg）",
+        "P1 已生成的 research_tree/_sources/P1/anchors_921.nq",
+        "RDFC-1.0 规范（B1b 已查证）"
+      ],
+      "keywords": [
+        "rdf-canonize RDFC-1.0 指纹 原型",
+        "canonical N-Quads fingerprint stable"
+      ],
+      "bounds": [
+        "只验指纹稳定性与可复现性，不做性能",
+        "用 P1 的 anchors_921.nq 真实数据",
+        "复现命令必须写入报告"
+      ],
+      "status": "archived",
+      "priority": 3,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/M4_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/M4_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/M4",
+      "env": "node v25.6.1 + npm rdf-canonize@5.0.0",
+      "data": "research_tree/_sources/P1/anchors_921.nq",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-13",
+      "verdict": "accepted"
     }
   ],
   "conflicts": [],
@@ -287,6 +427,29 @@
         "SYN1": "done"
       },
       "log": "R3 收口合成：E-SYN 汇总 6 发现，产出 存储选型决策点_v1.1.md（D2 修正 ShEx ~、P1/P2/P3 实测并入、缺口三分类重排）"
+    },
+    {
+      "round": 4,
+      "asOf": "2026-08-13",
+      "dispatched": [
+        "M1",
+        "M2",
+        "M3",
+        "M4"
+      ],
+      "recovered": [
+        "M1",
+        "M2",
+        "M3",
+        "M4"
+      ],
+      "verdicts": {
+        "M1": "accepted",
+        "M2": "accepted",
+        "M3": "accepted",
+        "M4": "accepted"
+      },
+      "log": "引擎 v3 第四轮：派发迁移路径实测 M1(yaml-ld)/M2(RMLMapper)/M3(双写影子读)/M4(rdf-canonize 指纹)；回收 4/4 全 accepted（审计复跑），到叶归档"
     }
   ]
 }

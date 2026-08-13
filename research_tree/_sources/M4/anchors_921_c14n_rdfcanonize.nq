@@ -1,0 +1,921 @@
+<urn:anchor:0> <urn:quote> "THEOREM 15.13. ORTHOGONALIZATION THEOREM. Let $x_1, x_2, \\ldots,$ be a finite or infinite sequence of elements in a Euclidean space $V$ ," .
+<urn:anchor:100> <urn:quote> "[Hint: Use the Cauchy-Schwarz inequality to estimate the integral $\\int_0^M e^{-t}|f(t)g(t)|dt.$ ]" .
+<urn:anchor:101> <urn:quote> "(a) Prove that this improper integral converges absolutely for all polynomials $f$ and $g$ ." .
+<urn:anchor:102> <urn:quote> "13. Let $V$ consist of all infinite sequences $\\{x_{n}\\}$ of real numbers for which the series $\\sum x_{n}^{2}$ converges." .
+<urn:anchor:103> <urn:quote> "(x, y) = \\sum_ {n = 1} ^ {\\infty} x _ {n} y _ {n}." .
+<urn:anchor:104> <urn:quote> "(b) Prove that $V$ is a linear space with $(x, y)$ as an inner product." .
+<urn:anchor:105> <urn:quote> "(d) Compute $(x,y)$ if $x_{n} = 2^{n}$ and $y_{n} = 1 / n!$ for $n\\geq 1$" .
+<urn:anchor:106> <urn:quote> "13. Let $V$ consist of all infinite sequences $\\{x_{n}\\}$ of real numbers for which the series $\\sum x_{n}^{2}$ converges." .
+<urn:anchor:107> <urn:quote> "11. In the linear space of all real polynomials, define $(f,g) = \\int_0^\\infty e^{-t}f(t)g(t)dt$ ." .
+<urn:anchor:108> <urn:quote> "(b) If $x_{n}(t) = t^{n}$ for $n = 0, 1, 2, \\ldots$ , prove that $(x_{n}, x_{m}) = (m + n)!$ ." .
+<urn:anchor:109> <urn:quote> "(a) Prove that the integral for $(f,g)$ converges absolutely for each pair of functions $f$ and $g$ in $V$ ." .
+<urn:anchor:10> <urn:quote> "The set $\\{y_{1}, y_{2}\\}$ is an orthogonal basis for this subspace." .
+<urn:anchor:110> <urn:quote> "16. Prove that the following identities are valid in every Euclidean space." .
+<urn:anchor:111> <urn:quote> "(a) $\\| x + y\\|^2 = \\| x\\|^2 + \\| y\\|^2 + (x, y) + (y, x)$ ." .
+<urn:anchor:112> <urn:quote> "(c) $\\| x + y\\|^2 + \\| x - y\\|^2 = 2\\| x\\|^2 + 2\\| y\\|^2.$" .
+<urn:anchor:113> <urn:quote> "16. Prove that the following identities are valid in every Euclidean space." .
+<urn:anchor:114> <urn:quote> "17. Prove that the space of all complex-valued functions continuous on an interval $[a, b]$ becomes a unitary space" .
+<urn:anchor:115> <urn:quote> "(f, g) = \\int_ {a} ^ {b} w (t) f (t) \\overline {{g (t)}} d t," .
+<urn:anchor:116> <urn:quote> "where $w$ is a fixed positive function, continuous on $[a, b]$ ." .
+<urn:anchor:117> <urn:quote> "1. In each case, find an orthonormal basis for the subspace of $V_{3}$ spanned by the given vectors." .
+<urn:anchor:118> <urn:quote> "x _ {1} = (1, 1, 1), \\quad x _ {2} = (1, 0, 1), \\quad x _ {3} = (3, 2, 3)." .
+<urn:anchor:119> <urn:quote> "x _ {1} = (1, 1, 0, 1), \\quad x _ {2} = (1, 0, 2, 1), \\quad x _ {3} = (1, 2, - 2, 1)." .
+<urn:anchor:11> <urn:quote> "We can also convert this to an orthonormal basis by normalizing each element $y_{i}$ , that is, by dividing it by its norm." .
+<urn:anchor:120> <urn:quote> "x _ {1} = (1 1, 0, 0), \\quad x _ {2} = (0, 1, 1, 0), \\quad x _ {3} = (0, 0, 1, 1), \\quad x _ {4} = (1, 0, 0, 1)." .
+<urn:anchor:121> <urn:quote> "2. In each case, find an orthonormal basis for the subspace of $V_{4}$ spanned by the given vectors." .
+<urn:anchor:122> <urn:quote> "1. In each case, find an orthonormal basis for the subspace of $V_{3}$ spanned by the given vectors." .
+<urn:anchor:123> <urn:quote> "2. In each case, find an orthonormal basis for the subspace of $V_{4}$ spanned by the given vectors." .
+<urn:anchor:124> <urn:quote> "with inner product $(x, y) = \\int_{0}^{\\pi} x(t)y(t)dt$ , let $x_n(t) = \\cos nt$ for $n = 0, 1, 2, \\ldots$ ." .
+<urn:anchor:125> <urn:quote> "form an orthonormal set spanning the same subspace as $x_0, x_1, x_2, \\ldots$ ." .
+<urn:anchor:126> <urn:quote> "y _ {0} (t) = \\frac {1}{\\sqrt {\\pi}}" .
+<urn:anchor:127> <urn:quote> "with inner product $(x, y) = \\int_{0}^{\\pi} x(t)y(t)dt$ , let $x_n(t) = \\cos nt$ for $n = 0, 1, 2, \\ldots$ ." .
+<urn:anchor:128> <urn:quote> "4. In the linear space of all real polynomials, with inner product $(x, y) = \\int_0^1 x(t)y(t)dt$ , let $x_n(t) = t^n$ for $n = 0, 1, 2, \\ldots$ ." .
+<urn:anchor:129> <urn:quote> "y _ {0} (t) = 1, \\quad y _ {1} (t) = \\sqrt {3} (2 t - 1), \\quad y _ {2} (t) = \\sqrt {5} (6 t ^ {2} - 6 t + 1)" .
+<urn:anchor:12> <urn:quote> "In $V_{4}$ , find an orthonormal basis for the subspace spanned by the three vectors" .
+<urn:anchor:130> <urn:quote> "form an orthonormal set spanning the same subspace as $\\{x_0, x_1, x_2\\}$ ." .
+<urn:anchor:131> <urn:quote> "let $f(x) = 1 / x$ and show that the constant polynomial $g$ nearest to $f$ is $g = \\frac{1}{2} \\log 3$ . Compute $\\| g - f \\|^2$ for this $g$ ." .
+<urn:anchor:132> <urn:quote> "let $f(x) = e^x$ and show that the constant polynomial $g$ nearest to $f$ is $g = \\frac{1}{2}(e^2 - 1)$ . Compute $\\| g - f \\|^2$ for this $g$ ." .
+<urn:anchor:133> <urn:quote> "8. In the real linear space $C(-1,1)$ with inner product $(f,g) = \\int_{-1}^{1} f(x)g(x) dx$ , let $f(x) = e^x$ and find the linear polynomial $g$ nearest to $f$ ." .
+<urn:anchor:134> <urn:quote> "9. In the real linear space $C(0, 2\\pi)$ with inner product $(f, g) = \\int_0^{2\\pi} f(x)g(x) dx$ , let $f(x) = x$ ." .
+<urn:anchor:135> <urn:quote> "In the subspace spanned by $u_0(x) = 1$ , $u_1(x) = \\cos x$ , $u_2(x) = \\sin x$ , find the trigonometric polynomial nearest to $f$ ." .
+<urn:anchor:136> <urn:quote> "5. All $f$ with $f(1) = 1 + f(0)$ ." .
+<urn:anchor:137> <urn:quote> "In Exercises 3, 4, and 5, each function has domain containing 0 and 1." .
+<urn:anchor:138> <urn:quote> "6. All step functions defined on [0, 1]. 11. All increasing functions." .
+<urn:anchor:139> <urn:quote> "In Exercises 7 through 12, each domain contains all real numbers." .
+<urn:anchor:13> <urn:quote> "Dividing each of $y_{1}$ and $y_{2}$ by its norm we get an orthonormal basis consisting of the two vectors" .
+<urn:anchor:140> <urn:quote> "14. All $f$ integrable on $[0, 1]$ with $\\int_0^1 f(x) dx \\geq 0$ ." .
+<urn:anchor:141> <urn:quote> "13. All $f$ integrable on $[0, 1]$ with $\\int_0^1 f(x) dx = 0$ ." .
+<urn:anchor:142> <urn:quote> "23. All vectors $(x, y, z)$ in $V_{3}$ with $x = 0$ or $y = 0$ ." .
+<urn:anchor:143> <urn:quote> "For those that are not, tell which axioms fail to hold." .
+<urn:anchor:144> <urn:quote> "25. All vectors $(x, y, z)$ in $V_{3}$ with $3x + 4y = 1$ , $z = 0$ ." .
+<urn:anchor:145> <urn:quote> "24. All vectors $(x, y, z)$ in $V_{3}$ with $y = 5x$ ." .
+<urn:anchor:146> <urn:quote> "(a) $(x_{1},x_{2}) + (y_{1},y_{2}) = (x_{1} + y_{1},x_{2} + y_{2}),\\qquad a(x_{1},x_{2}) = (ax_{1},0).$" .
+<urn:anchor:147> <urn:quote> "(b) Prove that Axiom 10 cannot be deduced from the other axioms if Axiom 6 is replaced by Axiom 6': For every x in V there is an element y in V such that $x + y = O$ ." .
+<urn:anchor:148> <urn:quote> "(b) $(x_{1},x_{2}) + (y_{1},y_{2}) = (x_{1} + y_{1},0),$ $a(x_{1},x_{2}) = (ax_{1},ax_{2}).$" .
+<urn:anchor:149> <urn:quote> "If the set is not a linear space, indicate which axioms are violated." .
+<urn:anchor:14> <urn:quote> "THEOREM 15.14. Every finite-dimensional Euclidean space has an orthonormal basis." .
+<urn:anchor:150> <urn:quote> "(c) $(x_{1},x_{2}) + (y_{1},y_{2}) = (x_{1},x_{2} + y_{2}),$ $a(x_{1},x_{2}) = (ax_{1},ax_{2}).$" .
+<urn:anchor:151> <urn:quote> "31. Let $S$ be the set of all ordered pairs $(x_{1}, x_{2})$ of real numbers." .
+<urn:anchor:152> <urn:quote> "(c) $(x_{1},x_{2}) + (y_{1},y_{2}) = (x_{1},x_{2} + y_{2}),$ $a(x_{1},x_{2}) = (ax_{1},ax_{2}).$" .
+<urn:anchor:153> <urn:quote> "If the set is not a linear space, indicate which axioms are violated." .
+<urn:anchor:154> <urn:quote> "(d) $(x_{1},x_{2}) + (y_{1},y_{2}) = (|x_{1} + x_{2}|,|y_{1} + y_{2}|),\\qquad a(x_{1},x_{2}) = (|ax_{1}|,|ax_{2}|).$" .
+<urn:anchor:155> <urn:quote> "In each case determine whether or not $S$ is a linear space with the operations of addition and multiplication by scalars defined as indicated." .
+<urn:anchor:156> <urn:quote> "(d) $(x_{1},x_{2}) + (y_{1},y_{2}) = (|x_{1} + x_{2}|,|y_{1} + y_{2}|),\\qquad a(x_{1},x_{2}) = (|ax_{1}|,|ax_{2}|).$" .
+<urn:anchor:157> <urn:quote> "If the set is not a linear space, indicate which axioms are violated." .
+<urn:anchor:158> <urn:quote> "15. $f(0) = f(1)$ . 20. $f$ has degree $k$ , where $k < n$ , or $f = 0$ ." .
+<urn:anchor:159> <urn:quote> "14. $f(0) + f'(0) = 0$ . 19. $f$ has degree $\\leq k$ , where $k < n$ , or $f = 0$ ." .
+<urn:anchor:15> <urn:quote> "Therefore, as a corollary of Theorem 15.13 we have the following." .
+<urn:anchor:160> <urn:quote> "(g) Give an example in which $L(S \\cap T) \\neq L(S) \\cap L(T)$ ." .
+<urn:anchor:161> <urn:quote> "(f) If $S$ and $T$ are subsets of $V$ , then $L(S \\cap T) \\subseteq L(S) \\cap L(T)$ ." .
+<urn:anchor:162> <urn:quote> "(d) A basis for V need not contain a basis for S." .
+<urn:anchor:163> <urn:quote> "(c) Every basis for $S$ is part of a basis for $V$ ." .
+<urn:anchor:164> <urn:quote> "(e) $\\{e^{x}, e^{-x}, \\cosh x\\}$ ." .
+<urn:anchor:165> <urn:quote> "(h) $\\{1, \\cos 2x, \\sin^{2} x\\}$ ." .
+<urn:anchor:166> <urn:quote> "(g) $\\{\\cos^{2} x, \\sin^{2} x\\}$ ." .
+<urn:anchor:167> <urn:quote> "Briefly, a linear space is a set of elements of any kind on which certain operations (called addition and multiplication by numbers) can be performed." .
+<urn:anchor:168> <urn:quote> "If we specify the set V and tell how to add its elements and how to multiply them by numbers, we get a concrete example of a linear space." .
+<urn:anchor:169> <urn:quote> "In defining a linear space, we do not specify the nature of the elements nor do we tell how the operations are to be performed on them." .
+<urn:anchor:16> <urn:quote> "If $x$ and $y$ are elements in a Euclidean space, with $y \\neq O$ , the element" .
+<urn:anchor:170> <urn:quote> "Let V denote a nonempty set of objects, called elements. The set V is called a linear space if it satisfies the following ten axioms which we list in three groups." .
+<urn:anchor:171> <urn:quote> "Instead, we require that the operations have certain properties which we take as axioms for a linear space." .
+<urn:anchor:172> <urn:quote> "Let V denote a nonempty set of objects, called elements. The set V is called a linear space if it satisfies the following ten axioms which we list in three groups." .
+<urn:anchor:173> <urn:quote> "We turn now to a detailed description of these axioms." .
+<urn:anchor:174> <urn:quote> "When a theorem is deduced from the axioms of a linear space, we obtain, in one stroke, a result valid for each concrete example." .
+<urn:anchor:175> <urn:quote> "These examples and many others illustrate how the linear space concept permeates algebra, geometry, and analysis." .
+<urn:anchor:176> <urn:quote> "Sometimes a linear space is referred to as a linear vector space or simply a vector space; the numbers used as multipliers are also called scalars." .
+<urn:anchor:177> <urn:quote> "When we use the term linear space without further designation, it is to be understood that the space can be real or complex." .
+<urn:anchor:178> <urn:quote> "Although we shall deal primarily with examples of real linear spaces, all the theorems are valid for complex linear spaces as well." .
+<urn:anchor:179> <urn:quote> "First of all, the real numbers themselves are such objects. Other examples are real-valued functions, the complex numbers, infinite series, vectors in n-space, and vector-valued functions." .
+<urn:anchor:17> <urn:quote> "is called the projection of x along y." .
+<urn:anchor:180> <urn:quote> "we discuss a general mathematical concept, called a linear space, which includes all these examples and many others as special cases." .
+<urn:anchor:181> <urn:quote> "AXIOM 1. CLOSURE UNDER ADDITION. For every pair of elements x and y in V there corresponds a unique element in V called the sum of x and y, denoted by $x + y$ ." .
+<urn:anchor:182> <urn:quote> "AXIOM 2. CLOSURE UNDER MULTIPLICATION BY REAL NUMBERS. For every x in V and every real number a there corresponds an element in V called the product of a and x, denoted by ax." .
+<urn:anchor:183> <urn:quote> "AXIOM 3. COMMUTATIVE LAW. For all x and y in V, we have $x + y = y + x$ ." .
+<urn:anchor:184> <urn:quote> "AXIOM 4. ASSOCIATIVE LAW. For all $x, y$ , and $z$ in $V$ , we have $(x + y) + z = x + (y + z)$ ." .
+<urn:anchor:185> <urn:quote> "AXIOM 5. EXISTENCE OF ZERO ELEMENT. There is an element in V, denoted by O, such that" .
+<urn:anchor:186> <urn:quote> "x + O = x \\quad f o r a l l x i n V." .
+<urn:anchor:187> <urn:quote> "AXIOM 6. EXISTENCE OF NEGATIVES. For every x in V, the element $(-1)x$ has the property" .
+<urn:anchor:188> <urn:quote> "AXIOM 7. ASSOCIATIVE LAW. For every x in V and all real numbers a and b, we have" .
+<urn:anchor:189> <urn:quote> "AXIOM 8. DISTRIBUTIVE LAW FOR ADDITION IN $V$ . For all $x$ and $y$ in $V$ and all real $a$ , we have" .
+<urn:anchor:18> <urn:quote> "In the Gram-Schmidt process (15.15), we construct the element $y_{r+1}$ by subtracting from $x_{r+1}$ the projection of $x_{r+1}$ along each of the earlier elements $y_{1},\\ldots,y_{r}$ ." .
+<urn:anchor:190> <urn:quote> "AXIOM 9. DISTRIBUTIVE LAW FOR ADDITION OF NUMBERS. For all $x$ in $V$ and all real $a$ and $b$ , we have" .
+<urn:anchor:191> <urn:quote> "AXIOM 10. EXISTENCE OF IDENTITY. For every x in V, we have 1x = x." .
+<urn:anchor:192> <urn:quote> "AXIOM 1. CLOSURE UNDER ADDITION. For every pair of elements x and y in V there corresponds a unique element in V called the sum of x and y, denoted by $x + y$ ." .
+<urn:anchor:193> <urn:quote> "AXIOM 2. CLOSURE UNDER MULTIPLICATION BY REAL NUMBERS. For every x in V and every real number a there corresponds an element in V called the product of a and x, denoted by ax." .
+<urn:anchor:194> <urn:quote> "x + O = x \\quad f o r a l l x i n V." .
+<urn:anchor:195> <urn:quote> "y _ {2} + (x + y _ {1}) = (y _ {2} + x) + y _ {1} = O + y _ {1} = y _ {1} + O = y _ {1}." .
+<urn:anchor:196> <urn:quote> "AXIOM 6. EXISTENCE OF NEGATIVES. For every x in V, the element $(-1)x$ has the property" .
+<urn:anchor:197> <urn:quote> "Therefore $y_{1} = y_{2}$ , so $x$ has exactly one negative, the element $(-1)x$ ." .
+<urn:anchor:198> <urn:quote> "AXIOM 6. EXISTENCE OF NEGATIVES. For every x in V, the element $(-1)x$ has the property" .
+<urn:anchor:199> <urn:quote> "AXIOM 10. EXISTENCE OF IDENTITY. For every x in V, we have 1x = x." .
+<urn:anchor:19> <urn:quote> "We can also convert this to an orthonormal basis by normalizing each element $y_{i}$ , that is, by dividing it by its norm." .
+<urn:anchor:1> <urn:quote> "(a) The element $y_{k}$ is orthogonal to every element in the subspace $L(y_{1},\\ldots ,y_{k - 1})$ ." .
+<urn:anchor:200> <urn:quote> "If real number is replaced by complex number in Axioms 2, 7, 8, and 9, the resulting structure is called a complex linear space." .
+<urn:anchor:201> <urn:quote> "Linear spaces, as defined above, are sometimes called real linear spaces to emphasize the fact that we are multiplying the elements of V by real numbers." .
+<urn:anchor:202> <urn:quote> "Even though the elements of V are complex numbers, this is a real linear space because the scalars are real." .
+<urn:anchor:203> <urn:quote> "THEOREM 15.3. In a given linear space, let $x$ and $y$ denote arbitrary elements and let $a$ and $b$ denote arbitrary scalars." .
+<urn:anchor:204> <urn:quote> "Proof of (a). Let $z = 0x$ . We wish to prove that $z = O$ . Adding $z$ to itself and using Axiom 9, we find that" .
+<urn:anchor:205> <urn:quote> "z + z = 0 x + 0 x = (0 + 0) x = 0 x = z." .
+<urn:anchor:206> <urn:quote> "Proof of (b). Let $z = aO$ , add $z$ to itself, and use Axiom 8." .
+<urn:anchor:207> <urn:quote> "Proof of (c). Let $z = (-a)x$ . Adding $z$ to $ax$ and using Axiom 9, we find that" .
+<urn:anchor:208> <urn:quote> "z + a x = (- a) x + a x = (- a + a) x = 0 x = O," .
+<urn:anchor:209> <urn:quote> "(d) If $ax = O$ , then either $a = 0$ or $x = O$ ." .
+<urn:anchor:20> <urn:quote> "Dividing each of $y_{1}$ and $y_{2}$ by its norm we get an orthonormal basis consisting of the two vectors" .
+<urn:anchor:210> <urn:quote> "(e) If $ax = ay$ and $a \\neq 0$ , then $x = y$ ." .
+<urn:anchor:211> <urn:quote> "(f) If $ax = bx$ and $x \\neq O$ , then $a = b$ ." .
+<urn:anchor:212> <urn:quote> "(g) $-(x + y) = (-x) + (-y) = -x - y.$" .
+<urn:anchor:213> <urn:quote> "(h) $x + x = 2x, x + x + x = 3x$ , and in general, $\\sum_{i=1}^{n} x = nx$ ." .
+<urn:anchor:214> <urn:quote> "We shall prove (a), (b), and (c) and leave the proofs of the other properties as exercises." .
+<urn:anchor:215> <urn:quote> "Proof of (a). Let $z = 0x$ . We wish to prove that $z = O$ . Adding $z$ to itself and using Axiom 9, we find that" .
+<urn:anchor:216> <urn:quote> "z + z = 0 x + 0 x = (0 + 0) x = 0 x = z." .
+<urn:anchor:217> <urn:quote> "Now add -z to both members to get z = O." .
+<urn:anchor:218> <urn:quote> "Proof of (b). Let $z = aO$ , add $z$ to itself, and use Axiom 8." .
+<urn:anchor:219> <urn:quote> "Proof of (c). Let $z = (-a)x$ . Adding $z$ to $ax$ and using Axiom 9, we find that" .
+<urn:anchor:21> <urn:quote> "Then (15.13) shows that $x_{r+1}$ is a linear combination of $y_{1},\\ldots,y_{r}$ , and hence of $x_{1},\\ldots,x_{r}$ , so the elements $x_{1},\\ldots,x_{r+1}$ are dependent." .
+<urn:anchor:220> <urn:quote> "z + a x = (- a) x + a x = (- a + a) x = 0 x = O," .
+<urn:anchor:221> <urn:quote> "so z is the negative of ax, $z = -(ax)$ . Similarly, if we add $a(-x)$ to ax and use Axiom 8 and property (b), we find that $a(-x) = -(ax)$ ." .
+<urn:anchor:222> <urn:quote> "so z is the negative of ax, $z = -(ax)$ . Similarly, if we add $a(-x)$ to ax and use Axiom 8 and property (b), we find that $a(-x) = -(ax)$ ." .
+<urn:anchor:223> <urn:quote> "If we specify the set V and tell how to add its elements and how to multiply them by numbers, we get a concrete example of a linear space." .
+<urn:anchor:224> <urn:quote> "The reader can easily verify that each of the following examples satisfies all the axioms for a real linear space." .
+<urn:anchor:225> <urn:quote> "The reader can easily verify that each of the following sets is a function space." .
+<urn:anchor:226> <urn:quote> "EXAMPLE 1. Let $V = \\mathbf{R}$ , the set of all real numbers, and let $x + y$ and $ax$ be ordinary addition and multiplication of real numbers." .
+<urn:anchor:227> <urn:quote> "let $x + y$ and $ax$ be ordinary addition and multiplication of real numbers." .
+<urn:anchor:228> <urn:quote> "The reader can easily verify that each of the following examples satisfies all the axioms for a real linear space." .
+<urn:anchor:229> <urn:quote> "EXAMPLE 1. Let $V = \\mathbf{R}$ , the set of all real numbers, and let $x + y$ and $ax$ be ordinary addition and multiplication of real numbers." .
+<urn:anchor:22> <urn:quote> "if the first k elements $x_{1},\\ldots,x_{k}$ are independent, then the corresponding elements $y_{1},\\ldots,y_{k}$ are nonzero" .
+<urn:anchor:230> <urn:quote> "EXAMPLE 2. Let V = C, the set of all complex numbers, define $x + y$ to be ordinary addition of complex numbers" .
+<urn:anchor:231> <urn:quote> "Even though the elements of V are complex numbers, this is a real linear space because the scalars are real." .
+<urn:anchor:232> <urn:quote> "define $x + y$ to be ordinary addition of complex numbers, and define ax to be multiplication of the complex number x by the real number a." .
+<urn:anchor:233> <urn:quote> "Even though the elements of V are complex numbers, this is a real linear space because the scalars are real." .
+<urn:anchor:234> <urn:quote> "EXAMPLE 3. Let $V = V_{n}$ , the vector space of all n-tuples of real numbers, with addition and multiplication by scalars defined in the usual way in terms of components." .
+<urn:anchor:235> <urn:quote> "Other examples are real-valued functions, the complex numbers, infinite series, vectors in n-space, and vector-valued functions." .
+<urn:anchor:236> <urn:quote> "with addition and multiplication by scalars defined in the usual way in terms of components." .
+<urn:anchor:237> <urn:quote> "with addition and multiplication by scalars defined in the usual way in terms of components." .
+<urn:anchor:238> <urn:quote> "EXAMPLE 4. Let V be the set of all vectors in $V_{n}$ orthogonal to a given nonzero vector N." .
+<urn:anchor:239> <urn:quote> "Let V be the set of all vectors in $V_{n}$ orthogonal to a given nonzero vector N." .
+<urn:anchor:23> <urn:quote> "Since $y_{3}=O$ , the three vectors $x_{1}, x_{2}, x_{3}$ must be dependent." .
+<urn:anchor:240> <urn:quote> "Let V be the set of all vectors in $V_{n}$ orthogonal to a given nonzero vector N." .
+<urn:anchor:241> <urn:quote> "AXIOM 1. CLOSURE UNDER ADDITION. For every pair of elements x and y in V there corresponds a unique element in V called the sum of x and y, denoted by $x + y$ ." .
+<urn:anchor:242> <urn:quote> "If n = 2, this linear space is a line through O with N as a normal vector. If n = 3, it is a plane through O with N as normal vector." .
+<urn:anchor:243> <urn:quote> "The elements of V are real-valued functions, with addition of two functions f and g defined in the usual way:" .
+<urn:anchor:244> <urn:quote> "for every real x in the intersection of the domains of f and g." .
+<urn:anchor:245> <urn:quote> "EXAMPLE 9. The set of all functions differentiable at a given point." .
+<urn:anchor:246> <urn:quote> "Multiplication of a function f by a real scalar a is defined as follows: af is that function whose value at each x in the domain of f is $af(x)$ ." .
+<urn:anchor:247> <urn:quote> "The zero element is the function whose values are everywhere zero." .
+<urn:anchor:248> <urn:quote> "Multiplication of a function f by a real scalar a is defined as follows: af is that function whose value at each x in the domain of f is $af(x)$ ." .
+<urn:anchor:249> <urn:quote> "The elements of V are real-valued functions, with addition of two functions f and g defined in the usual way:" .
+<urn:anchor:24> <urn:quote> "EXAMPLE 2. The Legendre polynomials. In the linear space of all polynomials, with the inner product $(x, y) = \\int_{-1}^{1} x(t) y(t) dt$" .
+<urn:anchor:250> <urn:quote> "The zero element is the function whose values are everywhere zero." .
+<urn:anchor:251> <urn:quote> "The set of all polynomials of degree equal to n is not a linear space because the closure axioms are not satisfied." .
+<urn:anchor:252> <urn:quote> "EXAMPLE 5. The set of all functions defined on a given interval." .
+<urn:anchor:253> <urn:quote> "EXAMPLE 6. The set of all polynomials." .
+<urn:anchor:254> <urn:quote> "The set of all polynomials of degree equal to n is not a linear space because the closure axioms are not satisfied." .
+<urn:anchor:255> <urn:quote> "EXAMPLE 7. The set of all polynomials of degree $\\leq n$ , where n is fixed." .
+<urn:anchor:256> <urn:quote> "(Whenever we consider this set it is understood that the zero polynomial is also included.)" .
+<urn:anchor:257> <urn:quote> "The set of all polynomials of degree equal to n is not a linear space because the closure axioms are not satisfied." .
+<urn:anchor:258> <urn:quote> "For example, the sum of two polynomials of degree n need not have degree n." .
+<urn:anchor:259> <urn:quote> "The set of all polynomials of degree equal to n is not a linear space because the closure axioms are not satisfied." .
+<urn:anchor:25> <urn:quote> "When the orthogonalization theorem is applied to this sequence it yields another sequence of polynomials $y_0, y_1, y_2, \\ldots$" .
+<urn:anchor:260> <urn:quote> "The set of all polynomials of degree equal to n is not a linear space because the closure axioms are not satisfied." .
+<urn:anchor:261> <urn:quote> "The set of all polynomials of degree equal to n is not a linear space because the closure axioms are not satisfied." .
+<urn:anchor:262> <urn:quote> "THEOREM 15.4. Let S be a nonempty subset of a linear space V. Then S is a subspace if and only if S satisfies the closure axioms." .
+<urn:anchor:263> <urn:quote> "EXAMPLE 8. The set of all functions continuous on a given interval." .
+<urn:anchor:264> <urn:quote> "If the interval is $[a, b]$ , we denote this space by $C(a, b)$ ." .
+<urn:anchor:265> <urn:quote> "EXAMPLE 9. The set of all functions differentiable at a given point." .
+<urn:anchor:266> <urn:quote> "EXAMPLE 10. The set of all functions integrable on a given interval." .
+<urn:anchor:267> <urn:quote> "EXAMPLE 11. The set of all functions f defined at 1 with $f(1)=0$ ." .
+<urn:anchor:268> <urn:quote> "The number 0 is essential in this example. If we replace 0 by a nonzero number c, we violate the closure axioms." .
+<urn:anchor:269> <urn:quote> "EXAMPLE 12. The set of all solutions of a homogeneous linear differential equation $y'' + ay' + by = 0$ , where a and b are given constants." .
+<urn:anchor:26> <urn:quote> "The first few polynomials are easily calculated by the Gram-Schmidt process." .
+<urn:anchor:270> <urn:quote> "Here again 0 is essential. The set of solutions of a nonhomogeneous differential equation does not satisfy the closure axioms." .
+<urn:anchor:271> <urn:quote> "These examples and many others illustrate how the linear space concept permeates algebra, geometry, and analysis." .
+<urn:anchor:272> <urn:quote> "Sometimes special knowledge of one particular example helps to anticipate or interpret results valid for other examples and reveals relationships which might otherwise escape notice." .
+<urn:anchor:273> <urn:quote> "Given a linear space V, let S be a nonempty subset of V." .
+<urn:anchor:274> <urn:quote> "If S is also a linear space, with the same operations of addition and multiplication by scalars, then S is called a subspace of V." .
+<urn:anchor:275> <urn:quote> "If S is a subspace, it satisfies all the axioms for a linear space" .
+<urn:anchor:276> <urn:quote> "Let S be a nonempty subset of a linear space V." .
+<urn:anchor:277> <urn:quote> "Now we show that if S satisfies the closure axioms it satisfies the others as well." .
+<urn:anchor:278> <urn:quote> "laws for addition (Axioms 3 and 4) and the axioms for multiplication by scalars (Axioms 7 through 10) are automatically satisfied in S because they hold for all elements of V." .
+<urn:anchor:279> <urn:quote> "It remains to verify Axioms 5 and 6, the existence of a zero element in S, and the existence of a negative for each element in S." .
+<urn:anchor:27> <urn:quote> "given by $\\varphi_{n} = y_{n}/\\|y_{n}\\|$ are called the normalized Legendre polynomials." .
+<urn:anchor:280> <urn:quote> "Let $x$ be any element of $S$ . (S has at least one element since $S$ is not empty.)" .
+<urn:anchor:281> <urn:quote> "By Axiom 2, $ax$ is in $S$ for every scalar $a$ ." .
+<urn:anchor:282> <urn:quote> "Taking $a = 0$ , it follows that $0x$ is in $S$ . But $0x = O$ , by Theorem 15.3(a), so $O \\in S$ , and Axiom 5 is satisfied." .
+<urn:anchor:283> <urn:quote> "Taking $a = -1$ , we see that $(-1)x$ is in $S$ . But $x + (-1)x = O$ since both $x$ and $(-1)x$ are in $V$ , so Axiom 6 is satisfied in $S$ ." .
+<urn:anchor:284> <urn:quote> "x = \\sum_ {i = 1} ^ {k} c _ {i} x _ {i}," .
+<urn:anchor:285> <urn:quote> "where $x_{1},\\ldots,x_{k}$ are all in S and $c_{1},\\ldots,c_{k}$ are scalars, is called a finite linear combination of elements of S." .
+<urn:anchor:286> <urn:quote> "$c_{1},\\ldots,c_{k}$ are scalars, is called a finite linear combination of elements of S" .
+<urn:anchor:287> <urn:quote> "satisfies the closure axioms and hence is a subspace of V. We call this the subspace spanned by S, or the linear span of S" .
+<urn:anchor:288> <urn:quote> "If S is empty, we define $L(S)$ to be $\\{O\\}$ , the set consisting of the zero element alone." .
+<urn:anchor:289> <urn:quote> "Different sets may span the same subspace. For example, the space $V_{2}$ is spanned by each of the following sets of vectors:" .
+<urn:anchor:28> <urn:quote> "The polynomials in the corresponding orthonormal sequence $\\varphi_{0}$ , $\\varphi_{1}$ , $\\varphi_{2}$ , $\\ldots$" .
+<urn:anchor:290> <urn:quote> "$\\{i,j\\}$ , $\\{i,j,i+j\\}$ , $\\{O,i,-i,j,-j,i+j\\}$ ." .
+<urn:anchor:291> <urn:quote> "The space of all polynomials is spanned by the infinite set of polynomials $\\{1, t, t^{2}, \\ldots\\}$ ." .
+<urn:anchor:292> <urn:quote> "is called dependent if there is a finite set of distinct elements in S" .
+<urn:anchor:293> <urn:quote> "if there is a finite set of distinct elements in S, say $x_{1}, \\ldots, x_{k}$" .
+<urn:anchor:294> <urn:quote> "and corresponding set of scalars $c_{1}, \\ldots, c_{k}$ , not all zero, such that" .
+<urn:anchor:295> <urn:quote> "\\sum_ {i = 1} ^ {k} c _ {i} x _ {i} = O." .
+<urn:anchor:296> <urn:quote> "The Pythagorean identity shows that $u_{1} + u_{2} - u_{3} = O$ , so the three functions $u_{1}, u_{2}, u_{3}$ are dependent." .
+<urn:anchor:297> <urn:quote> "EXAMPLE 2. If one element in S is a scalar multiple of another, then S is dependent." .
+<urn:anchor:298> <urn:quote> "In this case, for all choices of distinct elements $x_{1},\\ldots ,x_{k}$ in $S$ and scalars $c_{1},\\ldots ,c_{k}$ ," .
+<urn:anchor:299> <urn:quote> "\\sum_ {i = 1} ^ {k} c _ {i} x _ {i} = O \\quad i m p l i e s \\quad c _ {1} = c _ {2} = \\dots = c _ {k} = 0." .
+<urn:anchor:29> <urn:quote> "We wish to consider the following type of approximation problem: Given an element x in V, to determine an element in S whose distance from x is as small as possible." .
+<urn:anchor:2> <urn:quote> "(b) The subspace spanned by $y_{1}, \\ldots, y_{k}$ is the same as that spanned by $x_{1}, \\ldots, x_{k}$ :" .
+<urn:anchor:300> <urn:quote> "EXAMPLE 4. The empty set is independent." .
+<urn:anchor:301> <urn:quote> "However, the present definition is not restricted to finite sets." .
+<urn:anchor:302> <urn:quote> "The set $S = \\{u_{0}, u_{1}, u_{2}, \\ldots\\}$ is independent. To prove this, it suffices to show that for each $n$ the $n + 1$ polynomials" .
+<urn:anchor:303> <urn:quote> "A relation of the form $\\sum c_{k} u_{k} = O$ means that" .
+<urn:anchor:304> <urn:quote> "When $t = 0$ , this gives $c_0 = 0$ . Differentiating (15.1) and setting $t = 0$ , we find that $c_1 = 0$ . Repeating the process, we find that each coefficient $c_k$ is zero." .
+<urn:anchor:305> <urn:quote> "EXAMPLE 7. If $a_1, \\ldots, a_n$ are distinct real numbers, the $n$ exponential functions" .
+<urn:anchor:306> <urn:quote> "We can prove this by induction on $n$ . The result holds trivially when $n = 1$ . Therefore, assume it is true for $n - 1$ exponential functions and consider scalars" .
+<urn:anchor:307> <urn:quote> "The result holds trivially when $n = 1$ ." .
+<urn:anchor:308> <urn:quote> "Let $a_{M}$ be the largest of the n numbers $a_{1},\\ldots ,a_{n}$ ." .
+<urn:anchor:309> <urn:quote> "Multiplying both members of (15.2) by $e^{-a_M x}$ , we obtain" .
+<urn:anchor:30> <urn:quote> "We prove next that the projection of $x$ on $S$ is the solution to the approximation problem stated at the beginning of this section." .
+<urn:anchor:310> <urn:quote> "\\sum_ {k = 1} ^ {n} c _ {k} e ^ {(a _ {k} - a _ {M}) x} = 0.\\tag{15.3}" .
+<urn:anchor:311> <urn:quote> "If $k \\neq M$ , the number $a_k - a_M$ is negative." .
+<urn:anchor:312> <urn:quote> "Therefore, when $x \\to +\\infty$ in Equation (15.3), each term with $k \\neq M$ tends to zero and we find that $c_M = 0$ ." .
+<urn:anchor:313> <urn:quote> "Deleting the $M$ th term from (15.2) and applying the induction hypothesis, we find that each of the remaining $n - 1$ coefficients $c_k$ is zero." .
+<urn:anchor:314> <urn:quote> "Let S be an independent set consisting of k elements in a linear space V" .
+<urn:anchor:315> <urn:quote> "and let $L(S)$ be the subspace spanned by S. Then every set of $k + 1$ elements in $L(S)$ is dependent." .
+<urn:anchor:316> <urn:quote> "When $V = V_{n}$ , Theorem 15.5 reduces to Theorem 12.8." .
+<urn:anchor:317> <urn:quote> "we find that it is based only on the fact that $V_{n}$ is a linear space and nc on any other special property of $V_{n}$ ." .
+<urn:anchor:318> <urn:quote> "A finite set S of elements in a linear space V is called a finite basis for V if S is independent and spans V." .
+<urn:anchor:319> <urn:quote> "is called a finite basis for V if S is independent and spans V" .
+<urn:anchor:31> <urn:quote> "The distance between two elements x and y is defined to be the norm $\\|x - y\\|$" .
+<urn:anchor:320> <urn:quote> "$\\{i,j\\}$ , $\\{i,j,i+j\\}$ , $\\{O,i,-i,j,-j,i+j\\}$ ." .
+<urn:anchor:321> <urn:quote> "A finite set S of elements in a linear space V is called a finite basis for V" .
+<urn:anchor:322> <urn:quote> "The space V is called finite dimensional if it has a finite basis, or if V consists of O alone." .
+<urn:anchor:323> <urn:quote> "or if V consists of O alone. Otherwise V is called infinite dimensional." .
+<urn:anchor:324> <urn:quote> "If S is empty, we define $L(S)$ to be $\\{O\\}$ , the set consisting of the zero element alone." .
+<urn:anchor:325> <urn:quote> "Although the infinite set $\\{1, t, t^{2}, \\ldots\\}$ spans this space, no finite set of polynomials spans the space." .
+<urn:anchor:326> <urn:quote> "Let $V$ be a finite-dimensional linear space. Then every finite basis for $V$ has the same number of elements." .
+<urn:anchor:327> <urn:quote> "Since S is independent and spans V, Theorem 15.5 tells us that every set of $k + 1$ elements in V is dependent." .
+<urn:anchor:328> <urn:quote> "Therefore, every set of more than k elements in V is dependent." .
+<urn:anchor:329> <urn:quote> "Since T is an independent set, we must have $m \\leq k$ ." .
+<urn:anchor:32> <urn:quote> "An element in V is said to be orthogonal to S if it is orthogonal to every element of S." .
+<urn:anchor:330> <urn:quote> "The same argument with S and T interchanged shows that $k \\leq m$ ." .
+<urn:anchor:331> <urn:quote> "The same argument with S and T interchanged shows that $k \\leq m$ . Therefore k = m." .
+<urn:anchor:332> <urn:quote> "If a linear space V has a basis of n elements, the integer n is called the dimension of V." .
+<urn:anchor:333> <urn:quote> "Then every finite basis for $V$ has the same number of elements." .
+<urn:anchor:334> <urn:quote> "If $V = \\{O\\}$ , we say V has dimension 0." .
+<urn:anchor:335> <urn:quote> "EXAMPLE 1. The space $V_{n}$ has dimension $n$ . One basis is the set of $n$ unit coordinate vectors." .
+<urn:anchor:336> <urn:quote> "The space of all polynomials $p(t)$ of degree $\\leq n$ has dimension $n + 1$ . One basis is the set of $n + 1$ polynomials" .
+<urn:anchor:337> <urn:quote> "One basis consists of the two functions $u_1(x) = e^{-x}$ , $u_2(x) = e^{3x}$ ." .
+<urn:anchor:338> <urn:quote> "Let $V$ be a finite-dimensional linear space with $\\dim V = n$ . Then we have the following:" .
+<urn:anchor:339> <urn:quote> "(a) Any set of independent elements in $V$ is a subset of some basis for $V$ ." .
+<urn:anchor:33> <urn:quote> "Let S be a subset of a Euclidean space V." .
+<urn:anchor:340> <urn:quote> "(b) Any set of n independent elements is a basis for V." .
+<urn:anchor:341> <urn:quote> "The proof of (a) is identical to that of part (b) of Theorem 12.10. The proof of (b) is identical to that of part (c) of Theorem 12.10." .
+<urn:anchor:342> <urn:quote> "Then every set of $k + 1$ elements in $L(S)$ is dependent." .
+<urn:anchor:343> <urn:quote> "it is based only on the fact that $V_{n}$ is a linear space and nc on any other special property of $V_{n}$" .
+<urn:anchor:344> <urn:quote> "consider a basis whose elements $e_1, \\ldots, e_n$ are taken in a given order. We denote such an ordered basis as an $n$ -tuple $(e_1, \\ldots, e_n)$ ." .
+<urn:anchor:345> <urn:quote> "If $x \\in V$ , we can express $x$ as a linear combination of these basis elements:" .
+<urn:anchor:346> <urn:quote> "are called the components of x relative to the ordered basis $(e_{1},\\ldots,e_{n})$ ." .
+<urn:anchor:347> <urn:quote> "then by subtraction from (15.4), we find that $\\sum_{i=1}^{n}(c_{i}-d_{i})e_{i}=O$ ." .
+<urn:anchor:348> <urn:quote> "But since the basis elements are independent, this implies $c_{i}=d_{i}$ for each i" .
+<urn:anchor:349> <urn:quote> "The coefficients in this equation determine an n-tuple of numbers $(c_{1},\\ldots,c_{n})$ that is uniquely determined by x." .
+<urn:anchor:34> <urn:quote> "The set of all elements orthogonal to S is denoted by $S^{\\perp}$ and is called" .
+<urn:anchor:350> <urn:quote> "DEFINITION. A real linear space V is said to have an inner product if for each pair of elements x and y in V there corresponds a unique real " .
+<urn:anchor:351> <urn:quote> "satisfying the following axioms for all choices of x, y, z in V and all real scalars c." .
+<urn:anchor:352> <urn:quote> "we define the product axiomatically rather than by a specific formula" .
+<urn:anchor:353> <urn:quote> "The reader should verify that each of the following satisfies all the axioms for an inner product." .
+<urn:anchor:354> <urn:quote> "(1) $(x,y) = (y,x)$ (commutativity, or symmetry)." .
+<urn:anchor:355> <urn:quote> "(2) $(x,y + z) = (x,y) + (x,z)$ (distributivity, or linearity)." .
+<urn:anchor:356> <urn:quote> "Note: Taking $c = 0$ in (3), we find that $(O, y) = 0$ for all $y$ ." .
+<urn:anchor:357> <urn:quote> "In the homogeneity axiom, the scalar multiplier c can be any complex number." .
+<urn:anchor:358> <urn:quote> "(x, x) > 0 \\quad i f \\quad x \\neq O" .
+<urn:anchor:359> <urn:quote> "Note: Taking $c = 0$ in (3), we find that $(O, y) = 0$ for all $y$ ." .
+<urn:anchor:35> <urn:quote> "In case S is a subspace, then $S^{\\perp}$ is called the orthogonal complement of S." .
+<urn:anchor:360> <urn:quote> "(2) $(x,y + z) = (x,y) + (x,z)$ (distributivity, or linearity)." .
+<urn:anchor:361> <urn:quote> "\\begin{array}{r} \\| x + y \\| ^ {2} = (x + y, x + y) = (x, x) + (y, y) + (x, y) + (y, x) \\\\ = \\| x \\| ^ {2} + \\| y \\| ^ {2} + (x, y) + (\\overline {{x , y}}). \\end{array}" .
+<urn:anchor:362> <urn:quote> "cept that the symmetry axiom is replaced by the relation" .
+<urn:anchor:363> <urn:quote> "(x, y) = \\overline {{(y , x)}},\\tag{1'}" .
+<urn:anchor:364> <urn:quote> "where $(y, x)$ denotes the complex conjugate of $(y, x)$ ." .
+<urn:anchor:365> <urn:quote> "In the homogeneity axiom, the scalar multiplier c can be any complex number." .
+<urn:anchor:366> <urn:quote> "From the homogeneity axiom and $(1')$ , we get" .
+<urn:anchor:367> <urn:quote> "(x, c y) = \\overline {{(c y , x)}} = \\bar {c} (\\overline {{y , x}}) = \\bar {c} (x, y)." .
+<urn:anchor:368> <urn:quote> "In a complex linear space, an inner product $(x, y)$ is a complex number satisfying the same axioms as those for a real inner produ" .
+<urn:anchor:369> <urn:quote> "(x, y) = \\overline {{(y , x)}},\\tag{1'}" .
+<urn:anchor:36> <urn:quote> "If S is a plane through the origin, as shown in Figure 15.2, then $S^{\\perp}$ is a line through the origin perpendicular to this plane." .
+<urn:anchor:370> <urn:quote> "(x, y) (y, x) = (x, y) \\overline {{(x , y)}} = | (x, y) | ^ {2}." .
+<urn:anchor:371> <urn:quote> "When we apply this proof in a complex Euclidean space, we obtain the inequality $(x, y)(y, x) \\leq (x, x)(y, y)$ , which is the same as the Cauchy-Schwarz inequality since" .
+<urn:anchor:372> <urn:quote> "en we use the term Euclidean space without further designation, it is to be understood that the space can be real or complex." .
+<urn:anchor:373> <urn:quote> "theorems of this chapter are valid for complex Euclidean spaces as well." .
+<urn:anchor:374> <urn:quote> "those properties that rely on the possibility of measuring lengths of line segments and angles between lines are called metric properti" .
+<urn:anchor:375> <urn:quote> "In our study of $V_{n}$ , we defined lengths and angles in terms of the dot product" .
+<urn:anchor:376> <urn:quote> "We shall introduce first a generalization of the dot product, which we call an inner product, and then define length and angle in terms of the inner product." .
+<urn:anchor:377> <urn:quote> "(x, y) = 2 x _ {1} y _ {1} + x _ {1} y _ {2} + x _ {2} y _ {1} + x _ {2} y _ {2}." .
+<urn:anchor:378> <urn:quote> "This example shows that there may be more than one inner product in a given linear space." .
+<urn:anchor:379> <urn:quote> "x \\cdot y = \\sum_ {i = 1} ^ {n} x _ {i} y _ {i}.\\tag{15.5}" .
+<urn:anchor:37> <urn:quote> "It is a simple exercise to verify that $S^{\\perp}$ is a subspace of V, whether or not S itself is one." .
+<urn:anchor:380> <urn:quote> "EXAMPLE 1. In $V_{n}$ let $(x, y) = x \\cdot y$ , the usual dot product of $x$ and $y$ ." .
+<urn:anchor:381> <urn:quote> "The reader should verify that each of the following satisfies all the axioms for an inner product." .
+<urn:anchor:382> <urn:quote> "EXAMPLE 3. Let $C(a, b)$ denote the linear space of all real-valued functions continuous on an interval $[a, b]$ ." .
+<urn:anchor:383> <urn:quote> "(f, g) = \\int_ {a} ^ {b} f (t) g (t) d t." .
+<urn:anchor:384> <urn:quote> "This formula is analogous to Equation (15.5) which defines the dot product of two vectors in $V_{n}$ ." .
+<urn:anchor:385> <urn:quote> "The function values $f(t)$ and $g(t)$ play the role of the components $x_{i}$ and $y_{i}$ , and integration takes the place of summation." .
+<urn:anchor:386> <urn:quote> "(f, g) = \\int_ {a} ^ {b} w (t) f (t) g (t) d t," .
+<urn:anchor:387> <urn:quote> "where w is a fixed positive function in $C(a, b)$ . The function w is called a weight function. In Example 3 we have $w(t) = 1$ for all t." .
+<urn:anchor:388> <urn:quote> "(f, g) = \\int_ {0} ^ {\\infty} e ^ {- t} f (t) g (t) d t." .
+<urn:anchor:389> <urn:quote> "Because of the exponential factor, this improper integral converges for every choice of polynomials f and g." .
+<urn:anchor:38> <urn:quote> "First we prove that an orthogonal decomposition (15.16) actually exists." .
+<urn:anchor:390> <urn:quote> "THEOREM 15.8. In a Euclidean space V, every inner product satisfies the Cauchy–Schwarz inequality:" .
+<urn:anchor:391> <urn:quote> "| (x, y) | ^ {2} \\leq (x, x) (y, y) \\quad f o r a l l x a n d y i n V." .
+<urn:anchor:392> <urn:quote> "Moreover, the equality sign holds if and only if x and y are dependent." .
+<urn:anchor:393> <urn:quote> "the proof was a consequence of the properties of the dot product listed in Theorem 12.2 and did not depend on the particular definition used to deduce these properties" .
+<urn:anchor:394> <urn:quote> "Therefore, the very same proof is valid in any real Euclidean space." .
+<urn:anchor:395> <urn:quote> "When the Cauchy-Schwarz inequality is expressed in terms of norms, it becomes" .
+<urn:anchor:396> <urn:quote> "| (x, y) | \\leq \\| x \\| \\| y \\|." .
+<urn:anchor:397> <urn:quote> "EXAMPLE. Applying Theorem 15.8 to the space $C(a, b)$ with the inner product $(f, g) = \\int_{a}^{b} f(t) g(t) dt$ , we find that the Cauchy-Schwarz inequality becomes" .
+<urn:anchor:398> <urn:quote> "\\left(\\int_ {a} ^ {b} f (t) g (t) d t\\right) ^ {2} \\leq \\left(\\int_ {a} ^ {b} f ^ {2} (t) d t\\right) \\left(\\int_ {a} ^ {b} g ^ {2} (t) d t\\right)." .
+<urn:anchor:399> <urn:quote> "DEFINITION. In a Euclidean space V, the nonnegative number $\\|x\\|$ defined by the equation" .
+<urn:anchor:39> <urn:quote> "Next we prove that the orthogonal decomposition (15.16) is unique." .
+<urn:anchor:3> <urn:quote> "The construction is called the Gram-Schmidt orthogonalization process, in honor of J. P. Gram" .
+<urn:anchor:400> <urn:quote> "is called the norm of the element $x$ ." .
+<urn:anchor:401> <urn:quote> "THEOREM 15.9. In a Euclidean space, every norm has the following properties for all elements $x$ and $y$ and all scalars $c$ :" .
+<urn:anchor:402> <urn:quote> "Proof. Properties (a), (b) and (c) follow at once from the axioms for an inner product. To prove (d), we note that" .
+<urn:anchor:403> <urn:quote> "THEOREM 15.9. In a Euclidean space, every norm has the following properties for all elements $x$ and $y$ and all scalars $c$ :" .
+<urn:anchor:404> <urn:quote> "(b) $\\| x\\| >0$ if $x\\neq O$ (positivity)." .
+<urn:anchor:405> <urn:quote> "(c) $\\| cx\\| = |c|\\| x\\|$ (homogeneity)." .
+<urn:anchor:406> <urn:quote> "Proof. Properties (a), (b) and (c) follow at once from the axioms for an inner product. To prove (d), we note that" .
+<urn:anchor:407> <urn:quote> "(d) $\\|x + y\\| \\leq \\|x\\| + \\|y\\|$ (triangle inequality)." .
+<urn:anchor:408> <urn:quote> "\\begin{array}{r} \\| x + y \\| ^ {2} = (x + y, x + y) = (x, x) + (y, y) + (x, y) + (y, x) \\\\ = \\| x \\| ^ {2} + \\| y \\| ^ {2} + (x, y) + (\\overline {{x , y}}). \\end{array}" .
+<urn:anchor:409> <urn:quote> "The sum $(x,y) + (\\overline{x,y})$ is real" .
+<urn:anchor:40> <urn:quote> "THEOREM 15.15. ORTHOGONAL DECOMPOSITION THEOREM. Let V be a Euclidean space and let S be a finite-dimensional subspace of V." .
+<urn:anchor:410> <urn:quote> "The sum $(x,y) + (\\overline{x,y})$ is real. The Cauchy-Schwarz inequality shows that $|(x,y)| \\leq \\| x\\| \\| y\\|$ and $|(\\overline{x,y})| \\leq \\| x\\| \\| y\\|$ , so we have" .
+<urn:anchor:411> <urn:quote> "\\| x + y \\| ^ {2} \\leq \\| x \\| ^ {2} + \\| y \\| ^ {2} + 2 \\| x \\| \\| y \\| = (\\| x \\| + \\| y \\|) ^ {2}." .
+<urn:anchor:412> <urn:quote> "The equality sign holds in (d) if $x = O$ , if $y = O$ , or if $y = cx$ for some $c > 0$ ." .
+<urn:anchor:413> <urn:quote> "\\| x + y \\| = \\| x + c x \\| = (1 + c) \\| x \\| = \\| x \\| + \\| c x \\| = \\| x \\| + \\| y \\|." .
+<urn:anchor:414> <urn:quote> "\\cos \\theta = \\frac {(x , y)}{\\| x \\| \\| y \\|}.\\tag{15.6}" .
+<urn:anchor:415> <urn:quote> "the angle between two nonzero elements x and y is defined to be that number" .
+<urn:anchor:416> <urn:quote> "in the interval $0 \\leq \\theta \\leq \\pi$ which satisfies the equation" .
+<urn:anchor:417> <urn:quote> "Note: The Cauchy-Schwarz inequality shows that the quotient on the right of (15.6) lies in the interval $[-1, 1]$ ," .
+<urn:anchor:418> <urn:quote> "so there is exactly one $\\theta$ in $[0, \\pi]$ whose cosine is equal to this quotient." .
+<urn:anchor:419> <urn:quote> "In a real Euclidean space V, the angle between two nonzero elements x and y is defined to be that number $\\theta$ in the interval $0 \\leq \\theta \\leq \\pi$ which satisfies the equation" .
+<urn:anchor:41> <urn:quote> "Then every element x in V can be represented uniquely as a sum of two elements, one in S and one in $S^{\\perp}$" .
+<urn:anchor:420> <urn:quote> "DEFINITION. In a Euclidean space V, the nonnegative number $\\|x\\|$ defined by the equation" .
+<urn:anchor:421> <urn:quote> "DEFINITION. In a Euclidean space V, two elements x and y are called orthogonal if their inner product is zero." .
+<urn:anchor:422> <urn:quote> "The zero element is orthogonal to every element of V; it is the only element orthogonal to itself." .
+<urn:anchor:423> <urn:quote> "A subset S of V is called an orthogonal set if $(x, y) = 0$ for every pair of distinct elements x and y in S." .
+<urn:anchor:424> <urn:quote> "An orthogonal set is called orthonormal if each of its elements has norm 1." .
+<urn:anchor:425> <urn:quote> "Dividing each $u_{n}$ by its norm, we obtain an orthonormal set $\\{\\varphi_0,\\varphi_1,\\varphi_2,\\ldots \\}$ where $\\varphi_{n} = u_{n} / \\| u_{n}\\|$ ." .
+<urn:anchor:426> <urn:quote> "u _ {0} (x) = 1, \\quad u _ {2 n - 1} (x) = \\cos n x, \\quad u _ {2 n} (x) = \\sin n x, \\quad \\text {for} \\quad n = 1, 2, \\dots ." .
+<urn:anchor:427> <urn:quote> "so S is an orthogonal set. Since no member of S is the zero element, S is independent." .
+<urn:anchor:428> <urn:quote> "(u _ {2 n - 1}, u _ {2 n - 1}) = \\int_ {0} ^ {2 \\pi} \\cos^ {2} n x d x = \\pi , \\quad (u _ {2 n}, u _ {2 n}) = \\int_ {0} ^ {2 \\pi} \\sin^ {2} n x d x = \\pi ." .
+<urn:anchor:429> <urn:quote> "Therefore, $\\| u_0\\| = \\sqrt{2\\pi}$ and $\\| u_n\\| = \\sqrt{\\pi}$ for $n\\geq 1$ ." .
+<urn:anchor:42> <urn:quote> "Moreover, the norm of $x$ is given by the Pythagorean formula" .
+<urn:anchor:430> <urn:quote> "\\varphi_ {0} (x) = \\frac {1}{\\sqrt {2 \\pi}}, \\quad \\varphi_ {2 n - 1} (x) = \\frac {\\cos n x}{\\sqrt {\\pi}}, \\quad \\varphi_ {2 n} (x) = \\frac {\\sin n x}{\\sqrt {\\pi}}, \\quad \\text {for} \\quad n \\geq 1." .
+<urn:anchor:431> <urn:quote> "THEOREM 15.10. In a Euclidean space V, every orthogonal set of nonzero elements is independent." .
+<urn:anchor:432> <urn:quote> "The zero element is orthogonal to every element of V; it is the only element orthogonal to itself." .
+<urn:anchor:433> <urn:quote> "Proof. Let S be an orthogonal set of nonzero elements in V, and suppose some finite linear combination of elements of S is zero, say" .
+<urn:anchor:434> <urn:quote> "\\sum_ {i = 1} ^ {k} c _ {i} x _ {i} = O," .
+<urn:anchor:435> <urn:quote> "Taking the dot product of each member with $x_{1}$ and using the fact that $(x_{1}, x_{i}) = 0$ if $i \\neq 1$ , we find that $c_{1}(x_{1}, x_{1}) = 0$ ." .
+<urn:anchor:436> <urn:quote> "But $(x_{1}, x_{1}) \\neq 0$ since $x_{1} \\neq O$ so $c_{1} = 0$ ." .
+<urn:anchor:437> <urn:quote> "Repeating the argument with $x_{1}$ replaced by $x_{j}$ , we find that each $c_{j} = 0$ . This proves that S is independent." .
+<urn:anchor:438> <urn:quote> "In particular, in a finite-dimensional Euclidean space with dim V = n, every orthogonal set consisting of n nonzero elements is a basis for V." .
+<urn:anchor:439> <urn:quote> "If dim V = n and if S consists of n elements, Theorem 15.7(b) shows that S is a basis for V." .
+<urn:anchor:43> <urn:quote> "the remaining terms being zero since $s$ and $s^{\\perp}$ are orthogonal. This proves (15.17)." .
+<urn:anchor:440> <urn:quote> "In Section 15.13 we shall prove that every finite-dimensional Euclidean space has an orthogonal basis." .
+<urn:anchor:441> <urn:quote> "THEOREM 15.11. Let $V$ be a finite-dimensional Euclidean space with dimension $n$ , and assume that $S = \\{e_1, \\ldots, e_n\\}$ is an orthogonal basis for $V$ ." .
+<urn:anchor:442> <urn:quote> "x = \\sum_ {i = 1} ^ {n} c _ {i} e _ {i},\\tag{15.7}" .
+<urn:anchor:443> <urn:quote> "then its components relative to the ordered basis $(e_1, \\ldots, e_n)$ are given by the formulas" .
+<urn:anchor:444> <urn:quote> "c _ {j} = \\frac {(x , e _ {j})}{(e _ {j} , e _ {j})} \\quad f o r \\quad j = 1, 2, \\dots , n.\\tag{15.8}" .
+<urn:anchor:445> <urn:quote> "Proof. Taking the inner product of each member of (15.7) with $e_{j}$ , we obtain" .
+<urn:anchor:446> <urn:quote> "(x, e _ {j}) = \\sum_ {i = 1} ^ {n} c _ {i} (e _ {i}, e _ {j}) = c _ {j} (e _ {j}, e _ {j})" .
+<urn:anchor:447> <urn:quote> "since $(e_i, e_j) = 0$ if $i \\neq j$ . This implies (15.8), and when $(e_j, e_j) = 1$ , we obtain (15.9)." .
+<urn:anchor:448> <urn:quote> "(x, x) > 0 \\quad i f \\quad x \\neq O" .
+<urn:anchor:449> <urn:quote> "In particular, if $S$ is an orthonormal basis, each $c_{j}$ is given by" .
+<urn:anchor:44> <urn:quote> "is called the projection of $x$ on the subspace $S$" .
+<urn:anchor:450> <urn:quote> "c _ {j} = (x, e _ {j}).\\tag{15.9}" .
+<urn:anchor:451> <urn:quote> "If $\\{e_1, \\ldots, e_n\\}$ is an orthonormal basis, Equation (15.7) can be written in the form" .
+<urn:anchor:452> <urn:quote> "x = \\sum_ {i = 1} ^ {n} (x, e _ {i}) e _ {i}.\\tag{15.10}" .
+<urn:anchor:453> <urn:quote> "THEOREM 15.12. Let $V$ be a finite-dimensional Euclidean space of dimension $n$ , and assume that $\\{e_1, \\ldots, e_n\\}$ is an orthonormal basis for $V$ ." .
+<urn:anchor:454> <urn:quote> "THEOREM 15.11. Let $V$ be a finite-dimensional Euclidean space with dimension $n$ , and assume that $S = \\{e_1, \\ldots, e_n\\}$ is an orthogonal basis for $V$ ." .
+<urn:anchor:455> <urn:quote> "(x, y) = \\sum_ {i = 1} ^ {n} (x, e _ {i}) (\\overline {{y , e _ {i}}}) \\quad \\text {(Parseval's formula)}.\\tag{15.11}" .
+<urn:anchor:456> <urn:quote> "The next theorem shows that in a finite-dimensional Euclidean space with an orthonormal basis the inner product of two elements can be computed in terms of their components." .
+<urn:anchor:457> <urn:quote> "Proof. Taking the inner product of both members of Equation (15.10) with y and using the linearity property of the inner product, we obtain (15.11)." .
+<urn:anchor:458> <urn:quote> "(x, y) = \\sum_ {i = 1} ^ {n} (x, e _ {i}) (\\overline {{y , e _ {i}}}) \\quad \\text {(Parseval's formula)}.\\tag{15.11}" .
+<urn:anchor:459> <urn:quote> "(x, y) = \\overline {{(y , x)}},\\tag{1'}" .
+<urn:anchor:45> <urn:quote> "Let $S$ be a finite-dimensional subspace of a Euclidean space $V$ , and let $\\{e_1, \\ldots, e_n\\}$ be an orthonormal basis for $S$ ." .
+<urn:anchor:460> <urn:quote> "\\| x \\| ^ {2} = \\sum_ {i = 1} ^ {n} | (x, e _ {i}) | ^ {2}.\\tag{15.12}" .
+<urn:anchor:461> <urn:quote> "When x = y, Equation (15.11) reduces to (15.12)." .
+<urn:anchor:462> <urn:quote> "(a) The element $y_{k}$ is orthogonal to every element in the subspace $L(y_{1},\\ldots ,y_{k - 1})$ ." .
+<urn:anchor:463> <urn:quote> "Then there is a corresponding sequence of elements $y_1, y_2, \\ldots,$ in $V$ which has the following properties for each integer $k$ :" .
+<urn:anchor:464> <urn:quote> "(b) The subspace spanned by $y_{1}, \\ldots, y_{k}$ is the same as that spanned by $x_{1}, \\ldots, x_{k}$ :" .
+<urn:anchor:465> <urn:quote> "we must show that $L(y_{1},\\ldots ,y_{r + 1}) = L(x_{1},\\ldots ,x_{r + 1})$ , given that $L(y_{1},\\ldots ,y_{r}) = L(x_{1},\\ldots ,x_{r})$ ." .
+<urn:anchor:466> <urn:quote> "We construct the elements $y_1, y_2, \\ldots$ , by induction. To start the process, we take $y_1 = x_1$ ." .
+<urn:anchor:467> <urn:quote> "Now assume we have constructed $y_1, \\ldots, y_r$ so that (a) and (b) are satisfied when $k = r$ . Then we define $y_{r+1}$ by the equation" .
+<urn:anchor:468> <urn:quote> "y _ {r + 1} = x _ {r + 1} - \\sum_ {i = 1} ^ {r} a _ {i} y _ {i},\\tag{15.13}" .
+<urn:anchor:469> <urn:quote> "where the scalars $a_{1},\\ldots,a_{r}$ are to be determined." .
+<urn:anchor:46> <urn:quote> "THEOREM 15.16. APPROXIMATION THEOREM. Let S be a finite-dimensional subspace of a Euclidean space V, and let x be any element of V." .
+<urn:anchor:470> <urn:quote> "For $j\\leq r$ , the inner product of $y_{r+1}$ with $y_{j}$ is given by" .
+<urn:anchor:471> <urn:quote> "(y _ {r + 1}, y _ {j}) = (x _ {r + 1}, y _ {j}) - \\sum_ {i = 1} ^ {r} a _ {i} (y _ {i}, y _ {j}) = (x _ {r + 1}, y _ {j}) - a _ {j} (y _ {j}, y _ {j})," .
+<urn:anchor:472> <urn:quote> "since $(y_{i},y_{j}) = 0$ if $i\\neq j$ ." .
+<urn:anchor:473> <urn:quote> "If $y_{j}\\neq O$ , we can make $y_{r + 1}$ orthogonal to $y_{j}$ by taking" .
+<urn:anchor:474> <urn:quote> "a _ {j} = \\frac {(x _ {r + 1} , y _ {j})}{(y _ {j} , y _ {j})}.\\tag{15.14}" .
+<urn:anchor:475> <urn:quote> "If $y_{j} = O$ , then $y_{r+1}$ is orthogonal to $y_{j}$ for any choice of $a_{j}$ , and in this case we choose $a_{j} = 0$ ." .
+<urn:anchor:476> <urn:quote> "Thus, the element $y_{r+1}$ is well defined and is orthogonal to each of the earlier elements $y_{1}, \\ldots, y_{r}$ ." .
+<urn:anchor:477> <urn:quote> "Therefore, it is orthogonal to every element in the subspace" .
+<urn:anchor:478> <urn:quote> "Therefore $s^\\perp$ is orthogonal to every element in $S$ , which means that $s^\\perp \\in S^\\perp$ ." .
+<urn:anchor:479> <urn:quote> "The new element $y_{r + 1}$ given by (15.13) is a difference of two elements in $L(x_{1},\\ldots ,x_{r + 1})$ so it, too, is in $L(x_{1},\\ldots ,x_{r + 1})$ ." .
+<urn:anchor:47> <urn:quote> "Then the projection of x on S is nearer to x than any other element of S." .
+<urn:anchor:480> <urn:quote> "Equation (15.13) shows that $x_{r+1}$ is the sum of two elements in $L(y_1, \\ldots, y_{r+1})$ so a similar argument gives the inclusion in the other direction:" .
+<urn:anchor:481> <urn:quote> "Therefore, assume (c) is true for $k = r$ and consider the element $y_{r + 1}'$ . Because of (b), this element is in" .
+<urn:anchor:482> <urn:quote> "y _ {r + 1} ^ {\\prime} = \\sum_ {i = 1} ^ {r + 1} c _ {i} y _ {i} = z _ {r} + c _ {r + 1} y _ {r + 1}," .
+<urn:anchor:483> <urn:quote> "where $z_{r} \\in L(y_{1}, \\ldots, y_{r})$ . We wish to prove that $z_{r} = O$ ." .
+<urn:anchor:484> <urn:quote> "By property (a), both $y_{r+1}'$ and $c_{r+1}y_{r+1}$ are orthogonal to $z_{r}$ . Therefore, their difference, $z_{r}$ , is orthogonal to $z_{r}$ ." .
+<urn:anchor:485> <urn:quote> "In other words, $z_{r}$ is orthogonal to itself, so $z_{r} = O$ ." .
+<urn:anchor:486> <urn:quote> "The zero element is orthogonal to every element of V; it is the only element orthogonal to itself." .
+<urn:anchor:487> <urn:quote> "Since the zero element is the only element orthogonal to itself, we must have $s - t = O$ ." .
+<urn:anchor:488> <urn:quote> "In other words, $z_{r}$ is orthogonal to itself, so $z_{r} = O$ ." .
+<urn:anchor:489> <urn:quote> "(x, x) > 0 \\quad i f \\quad x \\neq O" .
+<urn:anchor:48> <urn:quote> "for all $t$ in $S$ ; the equality sign holds if and only if $t = s$ ." .
+<urn:anchor:490> <urn:quote> "(b) $\\| x\\| >0$ if $x\\neq O$ (positivity)." .
+<urn:anchor:491> <urn:quote> "whose proof shows how to construct orthogonal sets in any Euclidean space, finite or infinite dimensional" .
+<urn:anchor:492> <urn:quote> "consider the infinite sequence $x_0, x_1, x_2, \\ldots$ , where $x_n(t) = t^n$ ." .
+<urn:anchor:493> <urn:quote> "If $x$ and $y$ are elements in a Euclidean space, with $y \\neq O$ , the element" .
+<urn:anchor:494> <urn:quote> "is called the projection of x along y." .
+<urn:anchor:495> <urn:quote> "We can also convert this to an orthonormal basis by normalizing each element $y_{i}$ , that is, by dividing it by its norm." .
+<urn:anchor:496> <urn:quote> "(c) $\\| cx\\| = |c|\\| x\\|$ (homogeneity)." .
+<urn:anchor:497> <urn:quote> "(b) $\\| x\\| >0$ if $x\\neq O$ (positivity)." .
+<urn:anchor:498> <urn:quote> "An orthogonal set is called orthonormal if each of its elements has norm 1." .
+<urn:anchor:499> <urn:quote> "(x, c y) = \\overline {{(c y , x)}} = \\bar {c} (\\overline {{y , x}}) = \\bar {c} (x, y)." .
+<urn:anchor:49> <urn:quote> "15.15 Best approximation of elements in a Euclidean space by elements in a finite-dimensional subspace" .
+<urn:anchor:4> <urn:quote> "These formulas describe the Gram-Schmidt process for constructing an orthogonal set of nonzero elements $y_{1}, \\ldots, y_{k}$ which spans the same subspace as a given independent set" .
+<urn:anchor:500> <urn:quote> "Dividing each $u_{n}$ by its norm, we obtain an orthonormal set $\\{\\varphi_0,\\varphi_1,\\varphi_2,\\ldots \\}$ where $\\varphi_{n} = u_{n} / \\| u_{n}\\|$ ." .
+<urn:anchor:501> <urn:quote> "In particular, if $x_{1}, \\ldots, x_{k}$ is a basis for a finite-dimensional Euclidean space, then $y_{1}, \\ldots, y_{k}$ is an orthogonal basis for the same space." .
+<urn:anchor:502> <urn:quote> "Every finite-dimensional linear space has a finite basis. If the space is Euclidean, we can always construct an orthogonal basis." .
+<urn:anchor:503> <urn:quote> "\\left(y _ {0}, y _ {0}\\right) = \\int_ {- 1} ^ {1} d t = 2 \\quad \\text { and } \\quad \\left(x _ {1}, y _ {0}\\right) = \\int_ {- 1} ^ {1} t d t = 0," .
+<urn:anchor:504> <urn:quote> "y _ {1} (t) = x _ {1} (t) - \\frac {(x _ {1} , y _ {0})}{(y _ {0} , y _ {0})} y _ {0} (t) = x _ {1} (t) = t." .
+<urn:anchor:505> <urn:quote> "P _ {n} (t) = \\frac {(2 n) !}{2 ^ {n} (n !) ^ {2}} y _ {n} (t) = \\frac {1}{2 ^ {n} n !} \\frac {d ^ {n}}{d t ^ {n}} (t ^ {2} - 1) ^ {n}" .
+<urn:anchor:506> <urn:quote> "are known as the Legendre polynomials." .
+<urn:anchor:507> <urn:quote> "given by $\\varphi_{n} = y_{n}/\\|y_{n}\\|$ are called the normalized Legendre polynomials." .
+<urn:anchor:508> <urn:quote> "The polynomials in the corresponding orthonormal sequence $\\varphi_{0}$ , $\\varphi_{1}$ , $\\varphi_{2}$ , $\\ldots$ ," .
+<urn:anchor:509> <urn:quote> "DEFINITION. Let S be a subset of a Euclidean space V." .
+<urn:anchor:50> <urn:quote> "This is the polynomial of degree $\\leq n$ for which the norm $\\| f - f_n\\|$ is smallest." .
+<urn:anchor:510> <urn:quote> "The set of all elements orthogonal to S is denoted by $S^{\\perp}$ and is called" .
+<urn:anchor:511> <urn:quote> "It is a simple exercise to verify that $S^{\\perp}$ is a subspace of V, whether or not S itself is one." .
+<urn:anchor:512> <urn:quote> "(2) $(x,y + z) = (x,y) + (x,z)$ (distributivity, or linearity)." .
+<urn:anchor:513> <urn:quote> "(1) $(x,y) = (y,x)$ (commutativity, or symmetry)." .
+<urn:anchor:514> <urn:quote> "Therefore, it is orthogonal to every element in the subspace" .
+<urn:anchor:515> <urn:quote> "An element in V is said to be orthogonal to S if it is orthogonal to every element of S." .
+<urn:anchor:516> <urn:quote> "In case S is a subspace, then $S^{\\perp}$ is called the orthogonal complement of S." .
+<urn:anchor:517> <urn:quote> "First we prove that an orthogonal decomposition (15.16) actually exists." .
+<urn:anchor:518> <urn:quote> "Given x, define the elements s and $s^{\\perp}$ as follows:" .
+<urn:anchor:519> <urn:quote> "Since S is finite-dimensional, it has a finite orthonormal basis, say $\\{e_{1},\\ldots,e_{n}\\}$ ." .
+<urn:anchor:51> <urn:quote> "The $2n + 1$ elements $\\varphi_0, \\varphi_1, \\ldots, \\varphi_{2n}$ span a subspace $S$ of dimension $2n + 1$ . The elements of $S$ are called trigonometric polynomials." .
+<urn:anchor:520> <urn:quote> "Let V be a Euclidean space and let S be a finite-dimensional subspace of V." .
+<urn:anchor:521> <urn:quote> "s = \\sum_ {i = 1} ^ {n} (x, e _ {i}) e _ {i}, \\quad s ^ {\\perp} = x - s.\\tag{15.18}" .
+<urn:anchor:522> <urn:quote> "Note that each term $(x, e_{i})e_{i}$ is the projection of x along $e_{i}$ . The element s is the sum of the projections of x along each basis element." .
+<urn:anchor:523> <urn:quote> "Since s is a linear combination of the basis elements, s lies in S." .
+<urn:anchor:524> <urn:quote> "The definition of $s^{\\perp}$ shows that Equation (15.16) holds." .
+<urn:anchor:525> <urn:quote> "(s ^ {\\perp}, e _ {j}) = (x - s, e _ {j}) = (x, e _ {j}) - (s, e _ {j})." .
+<urn:anchor:526> <urn:quote> "But from (15.18), we find that $(s, e_j) = (x, e_j)$ , so $s^\\perp$ is orthogonal to $e_j$ ." .
+<urn:anchor:527> <urn:quote> "Therefore $s^\\perp$ is orthogonal to every element in $S$ , which means that $s^\\perp \\in S^\\perp$ ." .
+<urn:anchor:528> <urn:quote> "Next we prove that the orthogonal decomposition (15.16) is unique." .
+<urn:anchor:529> <urn:quote> "Suppose that $x$ has two such representations, say" .
+<urn:anchor:52> <urn:quote> "The numbers $(f, \\varphi_k)$ are called Fourier coefficients of $f$ ." .
+<urn:anchor:530> <urn:quote> "From (15.19), we have $s - t = t^{\\perp} - s^{\\perp}$ , so we need only prove that $s - t = O$ ." .
+<urn:anchor:531> <urn:quote> "x = s + s ^ {\\perp} \\quad \\text { and } \\quad x = t + t ^ {\\perp},\\tag{15.19}" .
+<urn:anchor:532> <urn:quote> "But $s - t \\in S$ and $t^{\\perp} - s^{\\perp} \\in S^{\\perp}$ so $s - t$ is both orthogonal to $t^{\\perp} - s^{\\perp}$ and equal to $t^{\\perp} - s^{\\perp}$ ." .
+<urn:anchor:533> <urn:quote> "Since the zero element is the only element orthogonal to itself, we must have $s - t = O$ ." .
+<urn:anchor:534> <urn:quote> "This shows that the decomposition is unique." .
+<urn:anchor:535> <urn:quote> "\\| x \\| ^ {2} = (x, x) = (s + s ^ {\\perp}, s + s ^ {\\perp}) = (s, s) + (s ^ {\\perp}, s ^ {\\perp})," .
+<urn:anchor:536> <urn:quote> "Finally, we prove that the norm of $x$ is given by the Pythagorean formula. We have" .
+<urn:anchor:537> <urn:quote> "the remaining terms being zero since $s$ and $s^{\\perp}$ are orthogonal." .
+<urn:anchor:538> <urn:quote> "\\| x \\| ^ {2} = \\| s \\| ^ {2} + \\| s ^ {\\perp} \\| ^ {2}.\\tag{15.17}" .
+<urn:anchor:539> <urn:quote> "Let $S$ be a finite-dimensional subspace of a Euclidean space $V$ , and let $\\{e_1, \\ldots, e_n\\}$ be an orthonormal basis for $S$ ." .
+<urn:anchor:53> <urn:quote> "f _ {n} = \\sum_ {k = 0} ^ {2 n} (f, \\varphi_ {k}) \\varphi_ {k}, \\quad \\text {where} \\quad (f, \\varphi_ {k}) = \\int_ {0} ^ {2 \\pi} f (x) \\varphi_ {k} (x) d x." .
+<urn:anchor:540> <urn:quote> "is called the projection of $x$ on the subspace $S$ ." .
+<urn:anchor:541> <urn:quote> "is called the projection of $x$ on the subspace $S$ ." .
+<urn:anchor:542> <urn:quote> "We prove next that the projection of $x$ on $S$ is the solution to the approximation problem stated at the beginning of this section." .
+<urn:anchor:543> <urn:quote> "Next we prove that the orthogonal decomposition (15.16) is unique." .
+<urn:anchor:544> <urn:quote> "Let $S$ be a finite-dimensional subspace of a Euclidean space $V$ , and let $\\{e_1, \\ldots, e_n\\}$ be an orthonormal basis for $S$ ." .
+<urn:anchor:545> <urn:quote> "The distance between two elements x and y is defined to be the norm $\\|x - y\\|$ ." .
+<urn:anchor:546> <urn:quote> "If $x \\in S$ , then clearly $s = x$ is the solution." .
+<urn:anchor:547> <urn:quote> "Given x in V, the problem is to find, in the plane S, that point s nearest to x." .
+<urn:anchor:548> <urn:quote> "If $x$ is not in $S$ , then the nearest point $s$ is obtained by dropping a perpendicular from $x$ to the plane." .
+<urn:anchor:549> <urn:quote> "This simple example suggests an approach to the general approximation problem and motivates the discussion that follows." .
+<urn:anchor:54> <urn:quote> "EXAMPLE 1. Approximation of continuous functions on $[0, 2\\pi]$ by trigonometric polynomials." .
+<urn:anchor:550> <urn:quote> "Then the projection of x on S is nearer to x than any other element of S." .
+<urn:anchor:551> <urn:quote> "for all $t$ in $S$ ; the equality sign holds if and only if $t = s$ ." .
+<urn:anchor:552> <urn:quote> "By Theorem 15.15 we can write $x = s + s^{\\perp}$ , where $s \\in S$ and $s^{\\perp} \\in S^{\\perp}$ ." .
+<urn:anchor:553> <urn:quote> "Let S be a finite-dimensional subspace of a Euclidean space V, and let x be any element of V." .
+<urn:anchor:554> <urn:quote> "Since $s - t \\in S$ and $x - s = s^{-} \\in S^{\\perp}$ , this is an orthogonal decomposition of $x - t$ , so its norm is given by the Pythagorean formula" .
+<urn:anchor:555> <urn:quote> "Then, for any $t$ in $S$ , we have" .
+<urn:anchor:556> <urn:quote> "\\| x - t \\| ^ {2} = \\| x - s \\| ^ {2} + \\| s - t \\| ^ {2}." .
+<urn:anchor:557> <urn:quote> "so its norm is given by the Pythagorean formula" .
+<urn:anchor:558> <urn:quote> "But $\\| s - t\\|^2 \\geq 0$ , so we have $\\| x - t\\|^2 \\geq \\| x - s\\|^2$ , with equality holding if and only if $s = t$ ." .
+<urn:anchor:559> <urn:quote> "for all $t$ in $S$ ; the equality sign holds if and only if $t = s$ ." .
+<urn:anchor:55> <urn:quote> "define an inner product by the equation $(f, g) = \\int_{0}^{2\\pi} f(x)g(x) dx$ ." .
+<urn:anchor:560> <urn:quote> "(b) $\\| x\\| >0$ if $x\\neq O$ (positivity)." .
+<urn:anchor:561> <urn:quote> "(x, x) > 0 \\quad i f \\quad x \\neq O" .
+<urn:anchor:562> <urn:quote> "Using the formulas in (15.20), we can rewrite (15.21) in the form" .
+<urn:anchor:563> <urn:quote> "a _ {k} = \\frac {1}{\\pi} \\int_ {0} ^ {2 \\pi} f (x) \\cos k x d x, \\quad b _ {k} = \\frac {1}{\\pi} \\int_ {0} ^ {2 \\pi} f (x) \\sin k x d x" .
+<urn:anchor:564> <urn:quote> "Taking $x = O_1$ and $O = O_2$ in Axiom 5, we obtain $O_1 + O_2 = O_1$ . Similarly, taking $x = O_2$ and $O = O_1$ , we find $O_2 + O_1 = O_2$ ." .
+<urn:anchor:565> <urn:quote> "AXIOM 5. EXISTENCE OF ZERO ELEMENT. There is an element in V, denoted by O, such that" .
+<urn:anchor:566> <urn:quote> "Suppose x has two negatives, say $y_{1}$ and $y_{2}$ . Then $x + y_{1} = O$ and $x + y_{2} = O$ ." .
+<urn:anchor:567> <urn:quote> "y _ {2} + (x + y _ {1}) = y _ {2} + O = y _ {2}," .
+<urn:anchor:568> <urn:quote> "y _ {2} + (x + y _ {1}) = (y _ {2} + x) + y _ {1} = O + y _ {1} = y _ {1} + O = y _ {1}." .
+<urn:anchor:569> <urn:quote> "Adding $y_{2}$ to both members of the first equation and using Axioms 5, 4, and 3, we find that" .
+<urn:anchor:56> <urn:quote> "The approximation theorem tells us that the trigonometric polynomial in (15.22) approximates f better than any other trigonometric polynomial in S" .
+<urn:anchor:570> <urn:quote> "y _ {2} + (x + y _ {1}) = (y _ {2} + x) + y _ {1} = O + y _ {1} = y _ {1} + O = y _ {1}." .
+<urn:anchor:571> <urn:quote> "x + O = x \\quad f o r a l l x i n V." .
+<urn:anchor:572> <urn:quote> "When $V = V_{n}$ , Theorem 15.5 reduces to Theorem 12.8." .
+<urn:anchor:573> <urn:quote> "Therefore the proof given for Theorem 12.8 is valid for any linear space $V$ ." .
+<urn:anchor:574> <urn:quote> "The proof of (a) is identical to that of part (b) of Theorem 12.10." .
+<urn:anchor:575> <urn:quote> "The proof of (b) is identical to that of part (c) of Theorem 12.10." .
+<urn:anchor:576> <urn:quote> "When we proved the corresponding result for vectors in $V_{n}$ (Theorem 12.3), we were careful to point out that" .
+<urn:anchor:577> <urn:quote> "Therefore, the very same proof is valid in any real Euclidean space." .
+<urn:anchor:578> <urn:quote> "the proof was a consequence of the properties of the dot product listed in Theorem 12.2 and did not depend on the particular definition used to deduce these properties" .
+<urn:anchor:579> <urn:quote> "the vector space of all n-tuples of real numbers, with addition and multiplication by scalars defined in the usual way in terms of components" .
+<urn:anchor:57> <urn:quote> "EXAMPLE 2. Approximation of continuous functions on $[-1, 1]$ by polynomials of degree $\\leq n$ ." .
+<urn:anchor:580> <urn:quote> "These ideas were encountered in Chapter 12 in our study of the vector space $V_{n}$ . Now we extend them to general linear spaces." .
+<urn:anchor:581> <urn:quote> "If S is a finite set, the foregoing definition agrees with that given in Chapter 12 for the space $V_{n}$ ." .
+<urn:anchor:582> <urn:quote> "These ideas were encountered in Chapter 12 in our study of the vector space $V_{n}$ . Now we extend them to general linear spaces." .
+<urn:anchor:583> <urn:quote> "One example is complex vector space $V_{n}(\\mathbf{C})$ discussed briefly in Section 12.16." .
+<urn:anchor:584> <urn:quote> "We shall encounter these polynomials again in Volume II in our further study of differential equations, and we shall prove that" .
+<urn:anchor:585> <urn:quote> "EXAMPLE 3. The space of solutions of the differential equation $y'' - 2y' - 3y = 0$ has dimension 2." .
+<urn:anchor:586> <urn:quote> "One basis consists of the two functions $u_1(x) = e^{-x}$ , $u_2(x) = e^{3x}$ ." .
+<urn:anchor:587> <urn:quote> "EXAMPLE 1. The space $V_{n}$ has dimension $n$ . One basis is the set of $n$ unit coordinate vectors." .
+<urn:anchor:588> <urn:quote> "When a theorem is deduced from the axioms of a linear space, we obtain, in one stroke, a result valid for each concrete example." .
+<urn:anchor:589> <urn:quote> "The words \"independence\" and \"basis\" and \"dimension\" are not at all restricted to column vectors." .
+<urn:anchor:58> <urn:quote> "span a subspace S of dimension $n + 1$ consisting of all polynomials of degree $\\leq n$ ." .
+<urn:anchor:590> <urn:quote> "We call this the subspace spanned by S, or the linear span of S, and denote it by $L(S)$ ." .
+<urn:anchor:591> <urn:quote> "Different sets may span the same subspace." .
+<urn:anchor:592> <urn:quote> "DEFINITION A set of vectors spans a space if their linear combinations fill the space." .
+<urn:anchor:593> <urn:quote> "The set $S$ is called independent if it is not dependent. In this case, for all choices of distinct elements $x_{1},\\ldots ,x_{k}$ in $S$ and scalars $c_{1},\\ldots ,c_{k}$ ," .
+<urn:anchor:594> <urn:quote> "DEFINITION The columns of A are linearly independent when the only solution to Ax = 0 is x = 0." .
+<urn:anchor:595> <urn:quote> "DEFINITION The sequence of vectors $v _ { 1 } , \\ldots , v _ { n }$ is linearly independent if the only combination that gives the zero vector is" .
+<urn:anchor:596> <urn:quote> "EXAMPLE 3. If $O \\in S$ , then $S$ is dependent." .
+<urn:anchor:597> <urn:quote> "EXAMPLE 4. The empty set is independent." .
+<urn:anchor:598> <urn:quote> "We can never allow the zero vector into a basis, because then linear independence is lost." .
+<urn:anchor:599> <urn:quote> "DEFINITION. A finite set S of elements in a linear space V is called a finite basis for V if S is independent and spans V." .
+<urn:anchor:59> <urn:quote> "This is the polynomial of degree $\\leq n$ for which the norm $\\| f - f_n\\|$ is smallest." .
+<urn:anchor:5> <urn:quote> "In the Gram-Schmidt process (15.15), we construct the element $y_{r+1}$ by subtracting from $x_{r+1}$ the projection of $x_{r+1}$ along each of the earlier elements $y_{1},\\ldots,y_{r}$ ." .
+<urn:anchor:600> <urn:quote> "DEFINITION A basis for a vector space is a sequence of vectors with two properties:" .
+<urn:anchor:601> <urn:quote> "Note about the language of linear algebra We never say \"the rank of a space\" or \"the dimension of a basis\" or \"the basis of a matrix\"." .
+<urn:anchor:602> <urn:quote> "The coefficients in this equation determine an n-tuple of numbers $(c_{1},\\ldots,c_{n})$ that is uniquely determined by x." .
+<urn:anchor:603> <urn:quote> "There is one and only one way to write v as a combination of the basis vectors." .
+<urn:anchor:604> <urn:quote> "THEOREM 15.6. Let $V$ be a finite-dimensional linear space. Then every finite basis for $V$ has the same number of elements." .
+<urn:anchor:605> <urn:quote> "If $\\pmb { v } _ { 1 } , \\ldots , \\pmb { v } _ { m }$ and $w _ { 1 } , \\ldots , w _ { n }$ are both bases for the same vector space, then $m = n$" .
+<urn:anchor:606> <urn:quote> "DEFINITION. If a linear space V has a basis of n elements, the integer n is called the dimension of V." .
+<urn:anchor:607> <urn:quote> "The main theorem in this chapter connects rank and dimension. The rank of a matrix is the number of pivots. The dimension of a subspace is the number of vectors in a basis." .
+<urn:anchor:608> <urn:quote> "Rank Theorem: The number of independent columns =the number of independent rows" .
+<urn:anchor:609> <urn:quote> "But since the basis elements are independent, this implies $c_{i}=d_{i}$ for each i" .
+<urn:anchor:60> <urn:quote> "Therefore the linear polynomial $f_{1}(t)$ which is nearest to $\\sin \\pi t$ on $[-1, 1]$ is" .
+<urn:anchor:610> <urn:quote> "3. The nullspace N(A) contains only the zero vector x = 0." .
+<urn:anchor:611> <urn:quote> "## $A ^ { \\mathrm { T } }$ A is invertible if and only if A has linearly independent columns." .
+<urn:anchor:612> <urn:quote> "In a general linear space, we write $(x, y)$ instead of $x \\cdot y$ for inner products, and we define the product axiomatically rather than by a specific formula." .
+<urn:anchor:613> <urn:quote> "This example shows that there may be more than one inner product in a given linear space." .
+<urn:anchor:614> <urn:quote> "Two vectors are orthogonal when their dot product is zero: $\\boldsymbol { v } \\boldsymbol { \\cdot w } = \\boldsymbol { v } ^ { \\mathrm { T } } \\boldsymbol { w } = \\boldsymbol { 0 }$ ." .
+<urn:anchor:615> <urn:quote> "The zero element is orthogonal to every element of V; it is the only element orthogonal to itself." .
+<urn:anchor:616> <urn:quote> "If a vector v is orthogonal to itself then v is the zero vector." .
+<urn:anchor:617> <urn:quote> "When a vector is in two orthogonal subspaces, it must be zero. It is perpendicular to itself." .
+<urn:anchor:618> <urn:quote> "the remaining terms being zero since $s$ and $s^{\\perp}$ are orthogonal. This proves (15.17)." .
+<urn:anchor:619> <urn:quote> "2 The error $e = \\pmb { b } - \\pmb { p }$ is perpendicular to a: Right triangle b p e has $| | \\boldsymbol { p } | | ^ { 2 } + | | \\boldsymbol { e } | | ^ { 2 } = | | \\boldsymbol { b } | | ^ { 2 }$" .
+<urn:anchor:61> <urn:quote> "f _ {1} (t) = \\sqrt {\\frac {3}{2}} \\frac {2}{\\pi} \\varphi_ {1} (t) = \\frac {3}{\\pi} t." .
+<urn:anchor:620> <urn:quote> "An element in V is said to be orthogonal to S if it is orthogonal to every element of S." .
+<urn:anchor:621> <urn:quote> "It is a simple exercise to verify that $S^{\\perp}$ is a subspace of V, whether or not S itself is one." .
+<urn:anchor:622> <urn:quote> "DEFINITION The orthogonal complement of a subspace V contains every vector that is perpendicular to V." .
+<urn:anchor:623> <urn:quote> "In case S is a subspace, then $S^{\\perp}$ is called the orthogonal complement of S." .
+<urn:anchor:624> <urn:quote> "Example 2 Two walls look perpendicular but those two subspaces are not orthogonal!" .
+<urn:anchor:625> <urn:quote> "Those pairs of subspaces are not only orthogonal, they are orthogonal complements." .
+<urn:anchor:626> <urn:quote> "Then every element x in V can be represented uniquely as a sum of two elements, one in S and one in $S^{\\perp}$ ." .
+<urn:anchor:627> <urn:quote> "$N ( A )$ is the orthogonal complement of the row space $C ( A ^ { \\mathrm { T } } )$" .
+<urn:anchor:628> <urn:quote> "The point of \"complements\" is that every x can be split into a row space component" .
+<urn:anchor:629> <urn:quote> "is called the projection of x along y. In the Gram-Schmidt process (15.15), we construct the element $y_{r+1}$ by subtracting from $x_{r+1}$ the projection" .
+<urn:anchor:62> <urn:quote> "Since $(f, \\varphi_2) = 0$ , this is also the nearest quadratic approximation." .
+<urn:anchor:630> <urn:quote> "The projection of b onto the line through a is the vector $p = { \\widehat { x } } a = { \\frac { a ^ { \\mathrm { T } } b } { a ^ { \\mathrm { T } } a } } a$" .
+<urn:anchor:631> <urn:quote> "When P projects onto one subspace, $I - P$ projects onto the perpendicular subspace." .
+<urn:anchor:632> <urn:quote> "and let $\\{e_1, \\ldots, e_n\\}$ be an orthonormal basis for $S$ . If $x \\in V$ , the element $s$ defined by the equation" .
+<urn:anchor:633> <urn:quote> "Start with n vectors $\\mathbf { a } _ { 1 } , \\ldots , \\mathbf { a } _ { n }$ in $\\mathbf { R } ^ { m }$ . Assume that these" .
+<urn:anchor:634> <urn:quote> "$A ^ { \\mathrm { T } } ( \\pmb { b } - A \\pmb { \\widehat { x } } ) = \\mathbf { \\widehat { 0 } }$ in its famous form $A ^ { \\mathrm { T } } A { \\widehat { \\mathbf { x } } } = A ^ { \\mathrm { T } } b$" .
+<urn:anchor:635> <urn:quote> "Therefore $s^\\perp$ is orthogonal to every element in $S$ , which means that $s^\\perp \\in S^\\perp$ ." .
+<urn:anchor:636> <urn:quote> "The n right angles give the n equations for" .
+<urn:anchor:637> <urn:quote> "The left nullspace is important in projections. That nullspace of $A ^ { \\mathrm { T } }$ contains the error vector" .
+<urn:anchor:638> <urn:quote> "Then the projection of x on S is nearer to x than any other element of S. That is, if s is the projection of x on S, we have" .
+<urn:anchor:639> <urn:quote> "for all $t$ in $S$ ; the equality sign holds if and only if $t = s$ ." .
+<urn:anchor:63> <urn:quote> "In each case, determine whether $(x, y)$ is an inner product for $V_{n}$ if $(x, y)$ is defined by the formula given." .
+<urn:anchor:640> <urn:quote> "3 The projection of b onto a subspace Sis the closest vector pin $S ; b - p$ is orthogonal to S" .
+<urn:anchor:641> <urn:quote> "Given an element x in V, to determine an element in S whose distance from x is as small as possible." .
+<urn:anchor:642> <urn:quote> "It contains the error $e = b - A x$ in the \"least-squares\" solution. Least squares is the key application of linear algebra in this chapter." .
+<urn:anchor:643> <urn:quote> "The set of solutions of a nonhomogeneous differential equation does not satisfy the closure axioms." .
+<urn:anchor:644> <urn:quote> "Figure 3.3: Complete solution = one particular solution + all nullspace solutions." .
+<urn:anchor:645> <urn:quote> "(b) Any set of n independent elements is a basis for V." .
+<urn:anchor:646> <urn:quote> "Any n independent vectors in $\\mathbf { R } ^ { n }$ must span $\\mathbf { R } ^ { n }$ . So they are a basis." .
+<urn:anchor:647> <urn:quote> "Starting with the correct number of vectors, one property of a basis produces the other." .
+<urn:anchor:648> <urn:quote> "Briefly, a linear space is a set of elements of any kind on which certain operations (called addition and multiplication by numbers) can be performed." .
+<urn:anchor:649> <urn:quote> "The set V is called a linear space if it satisfies the following ten axioms which we list in three groups." .
+<urn:anchor:64> <urn:quote> "In case $(x, y)$ is not an inner product, tell which axioms are not satisfied." .
+<urn:anchor:650> <urn:quote> "In this chapter we discuss a general mathematical concept, called a linear space, which includes all these examples and many others as special cases." .
+<urn:anchor:651> <urn:quote> "AXIOM 1. CLOSURE UNDER ADDITION. For every pair of elements x and y in V there corresponds a unique element in V called the sum of x and y" .
+<urn:anchor:652> <urn:quote> "AXIOM 2. CLOSURE UNDER MULTIPLICATION BY REAL NUMBERS. For every x in V and every real number a there corresponds an element in V called the product of a and x, denoted by ax." .
+<urn:anchor:653> <urn:quote> "AXIOM 3. COMMUTATIVE LAW. For all x and y in V, we have $x + y = y + x$" .
+<urn:anchor:654> <urn:quote> "AXIOM 4. ASSOCIATIVE LAW. For all $x, y$ , and $z$ in $V$ , we have $(x + y) + z = x + (y + z)$" .
+<urn:anchor:655> <urn:quote> "AXIOM 6. EXISTENCE OF NEGATIVES. For every x in V, the element $(-1)x$ has the property" .
+<urn:anchor:656> <urn:quote> "Axioms for multiplication by numbers" .
+<urn:anchor:657> <urn:quote> "AXIOM 7. ASSOCIATIVE LAW. For every x in V and all real numbers a and b, we have" .
+<urn:anchor:658> <urn:quote> "AXIOM 10. EXISTENCE OF IDENTITY. For every x in V, we have 1x = x." .
+<urn:anchor:659> <urn:quote> "Sometimes a linear space is referred to as a linear vector space or simply a vector space; the numbers used as multipliers are also called scalars." .
+<urn:anchor:65> <urn:quote> "In case $(f,g)$ is not an inner product, indicate which axioms are violated." .
+<urn:anchor:660> <urn:quote> "A real linear space has real numbers as scalars; a complex linear space has complex numbers as scalars." .
+<urn:anchor:661> <urn:quote> "Linear spaces, as defined above, are sometimes called real linear spaces to emphasize the fact that we are multiplying the elements of V by real numbers." .
+<urn:anchor:662> <urn:quote> "If real number is replaced by complex number in Axioms 2, 7, 8, and 9, the resulting structure is called a complex linear space." .
+<urn:anchor:663> <urn:quote> "Although we shall deal primarily with examples of real linear spaces, all the theorems are valid for complex linear spaces as well." .
+<urn:anchor:664> <urn:quote> "AXIOM 5. EXISTENCE OF ZERO ELEMENT. There is an element in V, denoted by O, such that" .
+<urn:anchor:665> <urn:quote> "Axiom 5 tells us that there is at least one zero element." .
+<urn:anchor:666> <urn:quote> "AXIOM 6. EXISTENCE OF NEGATIVES. For every x in V, the element $(-1)x$ has the property" .
+<urn:anchor:667> <urn:quote> "Axiom 6 tells us that each x has at least one negative, namely $(-1)x$" .
+<urn:anchor:668> <urn:quote> "Notation. The negative of $x$ is denoted by $-x$ . The difference $y - x$ is defined to be the sum $y + (-x)$" .
+<urn:anchor:669> <urn:quote> "EXAMPLE 3. Let $V = V_{n}$ , the vector space of all n-tuples of real numbers, with addition and multiplication by scalars defined in the usual way in terms of components." .
+<urn:anchor:66> <urn:quote> "(x, y) = \\sum_ {i = 1} ^ {n} x _ {i} | y _ {i} |." .
+<urn:anchor:670> <urn:quote> "The following examples are called function spaces. The elements of V are real-valued functions, with addition of two functions f and g defined in the usual way:" .
+<urn:anchor:671> <urn:quote> "Multiplication of a function f by a real scalar a is defined as follows: af is that function whose value at each x in the domain of f is $af(x)$ ." .
+<urn:anchor:672> <urn:quote> "EXAMPLE 7. The set of all polynomials of degree $\\leq n$ , where n is fixed." .
+<urn:anchor:673> <urn:quote> "(Whenever we consider this set it is understood that the zero polynomial is also included.)" .
+<urn:anchor:674> <urn:quote> "The set of all polynomials of degree equal to n is not a linear space because the closure axioms are not satisfied." .
+<urn:anchor:675> <urn:quote> "For example, the sum of two polynomials of degree n need not have degree n." .
+<urn:anchor:676> <urn:quote> "EXAMPLE 8. The set of all functions continuous on a given interval. If the interval is $[a, b]$ , we denote this space by $C(a, b)$" .
+<urn:anchor:677> <urn:quote> "EXAMPLE 12. The set of all solutions of a homogeneous linear differential equation $y'' + ay' + by = 0$ , where a and b are given constants." .
+<urn:anchor:678> <urn:quote> "The set of solutions of a nonhomogeneous differential equation does not satisfy the closure axioms." .
+<urn:anchor:679> <urn:quote> "THEOREM 15.1. UNIQUENESS OF THE ZERO ELEMENT. In any linear space there is one and only one zero element." .
+<urn:anchor:67> <urn:quote> "In each case, determine whether $(x, y)$ is an inner product for $V_{n}$ if $(x, y)$ is defined by the formula given." .
+<urn:anchor:680> <urn:quote> "THEOREM 15.2. UNIQUENESS OF NEGATIVE ELEMENTS. In any linear space every element has exactly one negative. That is, for every x there is one and only one y such that $x + y = O$" .
+<urn:anchor:681> <urn:quote> "Therefore $y_{1} = y_{2}$ , so $x$ has exactly one negative, the element $(-1)x$ ." .
+<urn:anchor:682> <urn:quote> "THEOREM 15.3. In a given linear space, let $x$ and $y$ denote arbitrary elements and let $a$ and $b$ denote arbitrary scalars. Then we have the following properties:" .
+<urn:anchor:683> <urn:quote> "The next theorem describes a number of properties which govern elementary algebraic manipulations in a linear space." .
+<urn:anchor:684> <urn:quote> "We shall prove (a), (b), and (c) and leave the proofs of the other properties as exercises." .
+<urn:anchor:685> <urn:quote> "If S is also a linear space, with the same operations of addition and multiplication by scalars, then S is called a subspace of V." .
+<urn:anchor:686> <urn:quote> "Given a linear space V, let S be a nonempty subset of V." .
+<urn:anchor:687> <urn:quote> "THEOREM 15.4. Let S be a nonempty subset of a linear space V. Then S is a subspace if and only if S satisfies the closure axioms." .
+<urn:anchor:688> <urn:quote> "If S is a subspace, it satisfies all the axioms for a linear space, and hence, in particular, it satisfies the closure axioms." .
+<urn:anchor:689> <urn:quote> "Now we show that if S satisfies the closure axioms it satisfies the others as well." .
+<urn:anchor:68> <urn:quote> "(x, y) = \\left(\\sum_ {i = 1} ^ {n} x _ {i} ^ {2} y _ {i} ^ {2}\\right) ^ {1 / 2}." .
+<urn:anchor:690> <urn:quote> "DEFINITION. Let $S$ be a nonempty subset of a linear space $V$ . An element $x$ in $V$ of the form" .
+<urn:anchor:691> <urn:quote> "is called a finite linear combination of elements of S. The set of all finite linear combinations of elements of S satisfies the closure axioms and hence is a subspace of V." .
+<urn:anchor:692> <urn:quote> "The set of all finite linear combinations of elements of S satisfies the closure axioms and hence is a subspace of V." .
+<urn:anchor:693> <urn:quote> "We call this the subspace spanned by S, or the linear span of S, and denote it by $L(S)$" .
+<urn:anchor:694> <urn:quote> "We call this the subspace spanned by S, or the linear span of S, and denote it by $L(S)$" .
+<urn:anchor:695> <urn:quote> "and let $L(S)$ be the subspace spanned by S." .
+<urn:anchor:696> <urn:quote> "Different sets may span the same subspace. For example, the space $V_{2}$ is spanned by each of the following sets of vectors" .
+<urn:anchor:697> <urn:quote> "For example, which spaces can be spanned by a finite set of elements?" .
+<urn:anchor:698> <urn:quote> "The space of all polynomials is spanned by the infinite set of polynomials" .
+<urn:anchor:699> <urn:quote> "DEFINITION. A set S of elements in a linear space V is called dependent if there is a finite set of distinct elements in S" .
+<urn:anchor:69> <urn:quote> "In each case, determine whether $(x, y)$ is an inner product for $V_{n}$ if $(x, y)$ is defined by the formula given." .
+<urn:anchor:6> <urn:quote> "(c) The sequence $y_1, y_2, \\ldots$ , is unique, except for scalar factors." .
+<urn:anchor:700> <urn:quote> "and corresponding set of scalars $c_{1}, \\ldots, c_{k}$ , not all zero, such that" .
+<urn:anchor:701> <urn:quote> "The set $S$ is called independent if it is not dependent." .
+<urn:anchor:702> <urn:quote> "For example, the elements in an independent set are called independent elements." .
+<urn:anchor:703> <urn:quote> "However, the present definition is not restricted to finite sets." .
+<urn:anchor:704> <urn:quote> "EXAMPLE 1. If a subset T of a set S is dependent, then S itself is dependent." .
+<urn:anchor:705> <urn:quote> "This is logically equivalent to the statement that every subset of an independent set is independent." .
+<urn:anchor:706> <urn:quote> "EXAMPLE 3. If $O \\in S$ , then $S$ is dependent." .
+<urn:anchor:707> <urn:quote> "EXAMPLE 7. If $a_1, \\ldots, a_n$ are distinct real numbers, the $n$ exponential functions" .
+<urn:anchor:708> <urn:quote> "are independent. We can prove this by induction on $n$ . The result holds trivially when $n = 1$ ." .
+<urn:anchor:709> <urn:quote> "THEOREM 15.5. Let S be an independent set consisting of k elements in a linear space V" .
+<urn:anchor:70> <urn:quote> "(x, y) = \\left| \\sum_ {i = 1} ^ {n} x _ {i} y _ {i} \\right|." .
+<urn:anchor:710> <urn:quote> "Then every set of $k + 1$ elements in $L(S)$ is dependent." .
+<urn:anchor:711> <urn:quote> "DEFINITION. A finite set S of elements in a linear space V is called a finite basis for V if S is independent and spans V." .
+<urn:anchor:712> <urn:quote> "The space V is called finite dimensional if it has a finite basis, or if V consists of O alone." .
+<urn:anchor:713> <urn:quote> "THEOREM 15.6. Let $V$ be a finite-dimensional linear space." .
+<urn:anchor:714> <urn:quote> "Otherwise V is called infinite dimensional." .
+<urn:anchor:715> <urn:quote> "EXAMPLE 4. The space of all polynomials $p(t)$ is infinite-dimensional." .
+<urn:anchor:716> <urn:quote> "spans this space, no finite set of polynomials spans the space." .
+<urn:anchor:717> <urn:quote> "Then every finite basis for $V$ has the same number of elements." .
+<urn:anchor:718> <urn:quote> "Let S and T be two finite bases for V. Suppose S consists of k elements and T consists of m elements." .
+<urn:anchor:719> <urn:quote> "DEFINITION. If a linear space V has a basis of n elements, the integer n is called the dimension of V." .
+<urn:anchor:71> <urn:quote> "In each case, determine whether $(x, y)$ is an inner product for $V_{n}$ if $(x, y)$ is defined by the formula given." .
+<urn:anchor:720> <urn:quote> "If $V = \\{O\\}$ , we say V has dimension 0." .
+<urn:anchor:721> <urn:quote> "EXAMPLE 1. The space $V_{n}$ has dimension $n$ . One basis is the set of $n$ unit coordinate vectors." .
+<urn:anchor:722> <urn:quote> "the integer n is called the dimension of V. We write $n = \\dim V$ ." .
+<urn:anchor:723> <urn:quote> "Let $V$ be a finite-dimensional linear space with $\\dim V = n$ ." .
+<urn:anchor:724> <urn:quote> "(a) Any set of independent elements in $V$ is a subset of some basis for $V$ ." .
+<urn:anchor:725> <urn:quote> "(b) Any set of n independent elements is a basis for V." .
+<urn:anchor:726> <urn:quote> "THEOREM 15.7. Let $V$ be a finite-dimensional linear space with $\\dim V = n$ . Then we have the following:" .
+<urn:anchor:727> <urn:quote> "Let $V$ be a linear space of dimension $n$ and consider a basis whose elements $e_1, \\ldots, e_n$ are taken in a given order." .
+<urn:anchor:728> <urn:quote> "We denote such an ordered basis as an $n$ -tuple $(e_1, \\ldots, e_n)$" .
+<urn:anchor:729> <urn:quote> "determined by Equation (15.4) are called the components of x relative to the ordered basis" .
+<urn:anchor:72> <urn:quote> "(x, y) = \\sum_ {i = 1} ^ {n} (x _ {i} + y _ {i}) ^ {2} - \\sum_ {i = 1} ^ {n} x _ {i} ^ {2} - \\sum_ {i = 1} ^ {n} y _ {i} ^ {2}." .
+<urn:anchor:730> <urn:quote> "If $x \\in V$ , we can express $x$ as a linear combination of these basis elements:" .
+<urn:anchor:731> <urn:quote> "The coefficients in this equation determine an n-tuple of numbers $(c_{1},\\ldots,c_{n})$ that is uniquely determined by x." .
+<urn:anchor:732> <urn:quote> "But since the basis elements are independent, this implies $c_{i}=d_{i}$ for each i" .
+<urn:anchor:733> <urn:quote> "A real linear space V is said to have an inner product if for each pair of elements x and y in V there corresponds a unique real number $(x, y)$ satisfying the following axioms" .
+<urn:anchor:734> <urn:quote> "we define the product axiomatically rather than by a specific formula" .
+<urn:anchor:735> <urn:quote> "That is, we state a number of properties we wish inner products to satisfy and we regard these properties as axioms." .
+<urn:anchor:736> <urn:quote> "(2) $(x,y + z) = (x,y) + (x,z)$ (distributivity, or linearity)." .
+<urn:anchor:737> <urn:quote> "(x, x) > 0 \\quad i f \\quad x \\neq O" .
+<urn:anchor:738> <urn:quote> "In a general linear space, we write $(x, y)$ instead of $x \\cdot y$ for inner products" .
+<urn:anchor:739> <urn:quote> "Note: Taking $c = 0$ in (3), we find that $(O, y) = 0$ for all $y$ ." .
+<urn:anchor:73> <urn:quote> "In each case, determine whether $(x, y)$ is an inner product for $V_{n}$ if $(x, y)$ is defined by the formula given." .
+<urn:anchor:740> <urn:quote> "In our study of $V_{n}$ , we defined lengths and angles in terms of the dot product." .
+<urn:anchor:741> <urn:quote> "EXAMPLE 1. In $V_{n}$ let $(x, y) = x \\cdot y$ , the usual dot product of $x$ and $y$ ." .
+<urn:anchor:742> <urn:quote> "In a complex linear space, an inner product $(x, y)$ is a complex number satisfying the same axioms as those for a real inner product, except that the symmetry axiom is replaced by the relation" .
+<urn:anchor:743> <urn:quote> "In the homogeneity axiom, the scalar multiplier c can be any complex number." .
+<urn:anchor:744> <urn:quote> "When we use the term Euclidean space without further designation, it is to be understood that the space can be real or complex." .
+<urn:anchor:745> <urn:quote> "The inner product can be used to introduce the metric concept of length in any Euclidean space." .
+<urn:anchor:746> <urn:quote> "A real linear space with an inner product is called a real Euclidean space." .
+<urn:anchor:747> <urn:quote> "Therefore, the very same proof is valid in any real Euclidean space." .
+<urn:anchor:748> <urn:quote> "A complex linear space with an inner product is called a complex Euclidean space. (Sometimes the term unitary space is also used.)" .
+<urn:anchor:749> <urn:quote> "EXAMPLE 3. Let $C(a, b)$ denote the linear space of all real-valued functions continuous on an interval $[a, b]$ . Define an inner product of two functions $f$ and $g$ by the formula" .
+<urn:anchor:74> <urn:quote> "(c) $(x, y) = \\sum_{i=1}^{n} x_i \\sum_{j=1}^{n} y_j$ ." .
+<urn:anchor:750> <urn:quote> "The function values $f(t)$ and $g(t)$ play the role of the components $x_{i}$ and $y_{i}$ , and integration takes the place of summation." .
+<urn:anchor:751> <urn:quote> "EXAMPLE 4. In the space $C(a, b)$ , define" .
+<urn:anchor:752> <urn:quote> "where w is a fixed positive function in $C(a, b)$ . The function w is called a weight function." .
+<urn:anchor:753> <urn:quote> "THEOREM 15.8. In a Euclidean space V, every inner product satisfies the Cauchy–Schwarz inequality:" .
+<urn:anchor:754> <urn:quote> "Moreover, the equality sign holds if and only if x and y are dependent." .
+<urn:anchor:755> <urn:quote> "| (x, y) | \\leq \\| x \\| \\| y \\|." .
+<urn:anchor:756> <urn:quote> "DEFINITION. In a Euclidean space V, the nonnegative number $\\|x\\|$ defined by the equation" .
+<urn:anchor:757> <urn:quote> "is called the norm of the element $x$ ." .
+<urn:anchor:758> <urn:quote> "Since it may be possible to define an inner product in many different ways, the norm of an element will depend on the choice of inner product." .
+<urn:anchor:759> <urn:quote> "DEFINITION. In a Euclidean space V, the nonnegative number $\\|x\\|$ defined by the equation" .
+<urn:anchor:75> <urn:quote> "In each case, determine whether $(x, y)$ is an inner product for $V_{n}$ if $(x, y)$ is defined by the formula given." .
+<urn:anchor:760> <urn:quote> "When the Cauchy-Schwarz inequality is expressed in terms of norms, it becomes" .
+<urn:anchor:761> <urn:quote> "THEOREM 15.9. In a Euclidean space, every norm has the following properties for all elements $x$ and $y$ and all scalars $c$ :" .
+<urn:anchor:762> <urn:quote> "(b) $\\| x\\| >0$ if $x\\neq O$ (positivity)." .
+<urn:anchor:763> <urn:quote> "The next theorem gives fundamental properties of norms that do not depend on the choice of inner product." .
+<urn:anchor:764> <urn:quote> "(d) $\\|x + y\\| \\leq \\|x\\| + \\|y\\|$ (triangle inequality)." .
+<urn:anchor:765> <urn:quote> "The equality sign holds in (d) if $x = O$ , if $y = O$ , or if $y = cx$ for some $c > 0$ ." .
+<urn:anchor:766> <urn:quote> "DEFINITION. In a real Euclidean space V, the angle between two nonzero elements x and y is defined to be that number $\\theta$ in the interval $0 \\leq \\theta \\leq \\pi$ which satisfies the equation" .
+<urn:anchor:767> <urn:quote> "\\cos \\theta = \\frac {(x , y)}{\\| x \\| \\| y \\|}.\\tag{15.6}" .
+<urn:anchor:768> <urn:quote> "DEFINITION. In a Euclidean space V, two elements x and y are called orthogonal if their inner product is zero." .
+<urn:anchor:769> <urn:quote> "The zero element is orthogonal to every element of V; it is the only element orthogonal to itself." .
+<urn:anchor:76> <urn:quote> "2. Suppose we retain the first three axioms for a real inner product (symmetry, linearity, and homogeneity) but replace the fourth axiom by a new axiom (4'): $(x, x) = 0$ if and only if x = O." .
+<urn:anchor:770> <urn:quote> "A subset S of V is called an orthogonal set if $(x, y) = 0$ for every pair of distinct elements x and y in S." .
+<urn:anchor:771> <urn:quote> "so S is an orthogonal set. Since no member of S is the zero element, S is independent." .
+<urn:anchor:772> <urn:quote> "An orthogonal set is called orthonormal if each of its elements has norm 1." .
+<urn:anchor:773> <urn:quote> "Dividing each $u_{n}$ by its norm, we obtain an orthonormal set $\\{\\varphi_0,\\varphi_1,\\varphi_2,\\ldots \\}$ where $\\varphi_{n} = u_{n} / \\| u_{n}\\|$ ." .
+<urn:anchor:774> <urn:quote> "THEOREM 15.10. In a Euclidean space V, every orthogonal set of nonzero elements is independent." .
+<urn:anchor:775> <urn:quote> "In particular, in a finite-dimensional Euclidean space with dim V = n, every orthogonal set consisting of n nonzero elements is a basis for V." .
+<urn:anchor:776> <urn:quote> "THEOREM 15.11. Let $V$ be a finite-dimensional Euclidean space with dimension $n$ , and assume that $S = \\{e_1, \\ldots, e_n\\}$ is an orthogonal basis for $V$ ." .
+<urn:anchor:777> <urn:quote> "then its components relative to the ordered basis $(e_1, \\ldots, e_n)$ are given by the formulas" .
+<urn:anchor:778> <urn:quote> "In particular, if $S$ is an orthonormal basis, each $c_{j}$ is given by" .
+<urn:anchor:779> <urn:quote> "The next theorem shows that in a finite-dimensional Euclidean space with an orthonormal basis the inner product of two elements can be computed in terms of their components." .
+<urn:anchor:77> <urn:quote> "Prove that either $(x, x) > 0$ for all $x \\neq O$ or else $(x, x) < 0$ for all $x \\neq O$ ." .
+<urn:anchor:780> <urn:quote> "assume that $\\{e_1, \\ldots, e_n\\}$ is an orthonormal basis for $V$ . Then for every pair of elements $x$ and $y$ in $V$ , we have" .
+<urn:anchor:781> <urn:quote> "Note: Equation (15.11) is named in honor of M. A. Parseval (circa 1776–1836), who obtained this type of formula in a special function space." .
+<urn:anchor:782> <urn:quote> "Please notice how I write the complete solution" .
+<urn:anchor:783> <urn:quote> "Figure 3.3: Complete solution = one particular solution + all nullspace solutions." .
+<urn:anchor:784> <urn:quote> "This particular solution is my favorite: free variables = zero, pivot variables from d. The method always works." .
+<urn:anchor:785> <urn:quote> "Notice how we choose the free variables (as zero) and solve for the pivot variables." .
+<urn:anchor:786> <urn:quote> "Ax = b and Rx = d are solvable only when all zero rows of R have zeros in d." .
+<urn:anchor:787> <urn:quote> "This is the condition to put b in the column space." .
+<urn:anchor:788> <urn:quote> "Elimination on [A b] leads to [R d]. Then Ax = b is equivalent to Rx = d." .
+<urn:anchor:789> <urn:quote> "When we apply the usual elimination steps to A, reaching R, we also apply them to b." .
+<urn:anchor:78> <urn:quote> "In the space spanned by $\\{x, y\\}$ , find an element $z \\neq O$ with $(z, z) = 0$ .]" .
+<urn:anchor:790> <urn:quote> "One way to organize that is to add bas an extra column of the matrix." .
+<urn:anchor:791> <urn:quote> "Solution Use the augmented matrix, with its extra column b." .
+<urn:anchor:792> <urn:quote> "Every matrix A with full column rank ( r = n) has all these properties:" .
+<urn:anchor:793> <urn:quote> "With full column rank, Ax = b has one solution or no solution" .
+<urn:anchor:794> <urn:quote> "Every matrix A with full row rank" .
+<urn:anchor:795> <urn:quote> "2. Ax = b has a solution for every right side b." .
+<urn:anchor:796> <urn:quote> "Question Suppose A is a square invertible matrix," .
+<urn:anchor:797> <urn:quote> "The particular solution is the one and only solution" .
+<urn:anchor:798> <urn:quote> "The four possibilities for linear equations depend on the rank r" .
+<urn:anchor:799> <urn:quote> "which depend on the rank. Notice how r, m, n are the critical numbers." .
+<urn:anchor:79> <urn:quote> "Prove that each of the statements in Exercises 3 through 7 is valid for all elements $x$ and $y$ in a real Euclidean space." .
+<urn:anchor:7> <urn:quote> "if $y_1', y_2', \\ldots$ , is another sequence of elements in $V$ satisfying properties (a) and (b), then for each $k$ there is a scalar $c_k$ such that $y_k' = c_k y_k$ ." .
+<urn:anchor:800> <urn:quote> "If a combination of the rows ( on the left side) gives the zero row, then the same combination must give zero on the right side." .
+<urn:anchor:801> <urn:quote> "If the equations are consistent, this must be true on the right side of the equations also!" .
+<urn:anchor:802> <urn:quote> "DEFINITION The sequence of vectors $v _ { 1 } , \\ldots , v _ { n }$ is linearly independent if the only combination that gives the zero vector is" .
+<urn:anchor:803> <urn:quote> "Correct language: \"The sequence of vectors is linearly independent.\" Acceptable shortcut: \"The vectors are independent.\"" .
+<urn:anchor:804> <urn:quote> "DEFINITION The columns of A are linearly independent when the only solution to Ax = 0 is x = 0. No other combination Ax of the columns gives the zero vector." .
+<urn:anchor:805> <urn:quote> "The columns are independent when the nullspace $N ( A )$ contains only the zero vector." .
+<urn:anchor:806> <urn:quote> "If a combination gives 0, when the x's are not all zero, the vectors are dependent." .
+<urn:anchor:807> <urn:quote> "Note Another way to describe linear dependence is this: \"One vector is a combination of the other vectors.\"" .
+<urn:anchor:808> <urn:quote> "A sequence of vectors is either dependent or independent." .
+<urn:anchor:809> <urn:quote> "Full column rank The columns of A are independent exactly when the rank is $r = n .$ There are n pivots and no free variables." .
+<urn:anchor:80> <urn:quote> "4. $(x,y) = 0$ if and only if $\\| x + y\\|^2 = \\| x\\|^2 + \\| y\\|^2$ ." .
+<urn:anchor:810> <urn:quote> "The rank is only $r = 2$ . Independent columns produce full column rank $r = n = 3$" .
+<urn:anchor:811> <urn:quote> "The columns are certainly dependent if $n > m$ , because $A x = \\mathbf { 0 }$ has a nonzero solution." .
+<urn:anchor:812> <urn:quote> "Then the columns must be dependent. Any seven vectors from $\\mathbf { R } ^ { 5 }$ are dependent." .
+<urn:anchor:813> <urn:quote> "DEFINITION A set of vectors spans a space if their linear combinations fill the space." .
+<urn:anchor:814> <urn:quote> "The vectors $v _ { 1 } , \\ldots , v _ { r }$ span a space if their combinations fill that space." .
+<urn:anchor:815> <urn:quote> "The column space is spanned by the columns." .
+<urn:anchor:816> <urn:quote> "DEFINITION A basis for a vector space is a sequence of vectors with two properties:" .
+<urn:anchor:817> <urn:quote> "The basis vectors are linearly independent and they span the space." .
+<urn:anchor:818> <urn:quote> "Two vectors $\\mathrm { c a n ' t }$ span all of $\\mathbf { R } ^ { 3 }$ even if they are independent." .
+<urn:anchor:819> <urn:quote> "There is one and only one way to write v as a combination of the basis vectors." .
+<urn:anchor:81> <urn:quote> "6. $(x + y, x - y) = 0$ if and only if $\\| x \\| = \\| y \\|$ ." .
+<urn:anchor:820> <urn:quote> "A basis consists of linearly independent vectors that span the space. Every vector in the space is a unique combination of the basis vectors." .
+<urn:anchor:821> <urn:quote> "Every vector v in the space is a combination of the basis vectors, because they span the space." .
+<urn:anchor:822> <urn:quote> "DEFINITION The dimension of a space is the number of vectors in every basis" .
+<urn:anchor:823> <urn:quote> "The number of vectors, in any and every basis, is the \"dimension\" of the space." .
+<urn:anchor:824> <urn:quote> "If $\\pmb { v } _ { 1 } , \\ldots , \\pmb { v } _ { m }$ and $w _ { 1 } , \\ldots , w _ { n }$ are both bases for the same vector space, then $m = n$" .
+<urn:anchor:825> <urn:quote> "All bases for a space have the same number of vectors. This number of vectors in a basis is the dimension of the space." .
+<urn:anchor:826> <urn:quote> "The columns of the 3 by 3 identity matrix are the standard basis $i , j ,$ , k." .
+<urn:anchor:827> <urn:quote> "The columns of the n by n identity matrix give the \"standard basis\" for $\\mathbf { R } ^ { n }$" .
+<urn:anchor:828> <urn:quote> "DEFINITION The row space of a matrix is the subspace of $\\mathbf { R } ^ { n }$ spanned by the rows." .
+<urn:anchor:829> <urn:quote> "The columns span the column space. Here is a new subspace-which is spanned by the rows." .
+<urn:anchor:82> <urn:quote> "Prove that each of the statements in Exercises 3 through 7 is valid for all elements $x$ and $y$ in a real Euclidean space." .
+<urn:anchor:830> <urn:quote> "The row space contains all combinations of the rows. This row space of A is the column space of $A ^ { \\mathrm { T } }$" .
+<urn:anchor:831> <urn:quote> "The row space of A is $C ( A ^ { \\mathrm { T } } )$ . It is the column space of" .
+<urn:anchor:832> <urn:quote> "Instead of the rows of A, look at the columns of $A ^ { \\mathrm { T } }$ . Same numbers, but now in the column space" .
+<urn:anchor:833> <urn:quote> "The vectors $v _ { 1 } , \\ldots , v _ { n }$ are a basis for $\\mathbf { R } ^ { n }$ exactly when they are the columns of an n by n invertible matrix." .
+<urn:anchor:834> <urn:quote> "The columns of every invertible n by n matrix give a basis for $\\mathbf { R } ^ { n }$" .
+<urn:anchor:835> <urn:quote> "The only solution to $A x = \\mathbf { 0 }$ is $\\pmb { x } = \\pmb { A } ^ { - 1 } \\mathbf { 0 } = \\mathbf { 0 }$ . The columns are independent." .
+<urn:anchor:836> <urn:quote> "Question Given five vectors in ${ \\bf R } ^ { 7 }$ , how do you find a basis for the space they span?" .
+<urn:anchor:837> <urn:quote> "First answer Make them the rows of A, and eliminate to find the nonzero rows of R." .
+<urn:anchor:838> <urn:quote> "Eliminate to find the pivot columns (of A not R). Those pivot columns are a basis for the column space." .
+<urn:anchor:839> <urn:quote> "The words \"independence\" and \"basis\" and \"dimension\" are not at all restricted to column vectors." .
+<urn:anchor:83> <urn:quote> "4. $(x,y) = 0$ if and only if $\\| x + y\\|^2 = \\| x\\|^2 + \\| y\\|^2$ ." .
+<urn:anchor:840> <urn:quote> "Matrix spaces The vector space M contains all 2 by 2 matrices. Its dimension is 4." .
+<urn:anchor:841> <urn:quote> "That solution space for $y ^ { \\prime \\prime } = - y$ has two basis functions: sin x and cos x." .
+<urn:anchor:842> <urn:quote> "Four Fundamental Subspaces 1. The row space is $C(A^{\\mathrm{T}})$, a subspace of $\\mathbf{R}^{n}$. 2. The column space is $C(A)$, a subspace of $\\mathbf{R}^{m}$." .
+<urn:anchor:843> <urn:quote> "4. The left nullspace is $N(A^{\\mathrm{T}})$, a subspace of $\\mathbf{R}^{m}$. This is our new space." .
+<urn:anchor:844> <urn:quote> "The rank of A reveals the dimensions of all four fundamental subspaces." .
+<urn:anchor:845> <urn:quote> "4. The left nullspace is $N(A^{\\mathrm{T}})$, a subspace of $\\mathbf{R}^{m}$." .
+<urn:anchor:846> <urn:quote> "The vectors y go on the $l e f t$ side of A when the equation is written" .
+<urn:anchor:847> <urn:quote> "The y's in the left nulspace combine the rows to give the zero row." .
+<urn:anchor:848> <urn:quote> "Fundamental Theorem of Linear Algebra, Part 1" .
+<urn:anchor:849> <urn:quote> "The column space and row space both have dimension r." .
+<urn:anchor:84> <urn:quote> "5. $(x,y) = 0$ if and only if $\\| x + cy\\| \\geq \\| x\\|$ for all real $c$ ." .
+<urn:anchor:850> <urn:quote> "The nullspaces have dimensions n - r and m - r." .
+<urn:anchor:851> <urn:quote> "Rank Theorem: The number of independent columns =the number of independent rows" .
+<urn:anchor:852> <urn:quote> "2 The column space of A has dimension r. The column rank equals the row rank." .
+<urn:anchor:853> <urn:quote> "There are $n - r$ free variables, so the dimension of the nullspace is $n - r$ . This is the Counting Theorem" .
+<urn:anchor:854> <urn:quote> "( dimension of column space) + ( dimension of nullspace) = dimension of $\\mathbf { R } ^ { n }$" .
+<urn:anchor:855> <urn:quote> "The counting rule for A was $r + ( n - r ) = n$" .
+<urn:anchor:856> <urn:quote> "The nullspace has dimension $n - r$ . The special solutions form a basis" .
+<urn:anchor:857> <urn:quote> "Reason: There is a special solution for each free variable." .
+<urn:anchor:858> <urn:quote> "The next section shows that the $n - r$ special solutions always give a basis for the nullspace." .
+<urn:anchor:859> <urn:quote> "1 A has the same row space as R. Same dimension rand same basis." .
+<urn:anchor:85> <urn:quote> "7. If $x$ and $y$ are nonzero elements making an angle $\\theta$ with each other, then" .
+<urn:anchor:860> <urn:quote> "Reason: Every row of A is a combination of the rows of R. Also every row of R is a combination of the rows of A. Elimination changes rows, but not row spaces." .
+<urn:anchor:861> <urn:quote> "3 A has the same nullspace as R Same dimension $n - r$ and same basis" .
+<urn:anchor:862> <urn:quote> "Conclusion The r pivot columns of A are a basis for its column space $C ( A )$" .
+<urn:anchor:863> <urn:quote> "The pivot columns are independent, and they span, so they are a basis for C(R)." .
+<urn:anchor:864> <urn:quote> "The pivot columns of A are a basis for its column space." .
+<urn:anchor:865> <urn:quote> "1. The r pivot rows of Rare a basis for the row spaces of Rand A (same space)." .
+<urn:anchor:866> <urn:quote> "So the r pivot rows are a basis for the row space." .
+<urn:anchor:867> <urn:quote> "The pivot rows of A are a basis for its row space. So are the pivot rows of its echelon form R." .
+<urn:anchor:868> <urn:quote> "Every rank one matrix is one column times one row $A = u v ^ { \\mathrm { T } }$" .
+<urn:anchor:869> <urn:quote> "On the left is a matrix with three rows. But its row space only has dimension $= ~ 1$" .
+<urn:anchor:86> <urn:quote> "\\| x - y \\| ^ {2} = \\| x \\| ^ {2} + \\| y \\| ^ {2} - 2 \\| x \\| \\| y \\| \\cos \\theta ." .
+<urn:anchor:870> <urn:quote> "\"The column rank equals the row rank which is l.\"" .
+<urn:anchor:871> <urn:quote> "Two vectors are orthogonal when their dot product is zero" .
+<urn:anchor:872> <urn:quote> "for a right triangle with sides v and w" .
+<urn:anchor:873> <urn:quote> "\\| \\boldsymbol {v} \\| ^ {2} + \\| \\boldsymbol {w} \\| ^ {2} = \\| \\boldsymbol {v} + \\boldsymbol {w} \\| ^ {2}." .
+<urn:anchor:874> <urn:quote> "Two subspaces V and $W$ of a vector space are orthogonal if every vector v in V is perpendicular to every vector w in $W$" .
+<urn:anchor:875> <urn:quote> "Subspaces V and Ware orthogonal if every v in Vis orthogonal to every win W." .
+<urn:anchor:876> <urn:quote> "The row space is perpendicular to the nullspace. Every row of A is perpendicular to every solution of" .
+<urn:anchor:877> <urn:quote> "The nulspace $N ( A )$ and the row space $C ( A ^ { \\mathrm { T } } )$ are orthogonal subspaces of" .
+<urn:anchor:878> <urn:quote> "The column space of A and the nullspace of $\\dot { \\boldsymbol { A } } ^ { \\mathrm { T } }$ are always orthogonal subspaces." .
+<urn:anchor:879> <urn:quote> "The left nullspace $N ( A ^ { \\mathrm { T } } )$ and the column space $C ( A )$ are orthogonal in" .
+<urn:anchor:87> <urn:quote> "8. In the real linear space $C(1, e)$ , define an inner product by the equation" .
+<urn:anchor:880> <urn:quote> "When a vector is in two orthogonal subspaces, it must be zero. It is perpendicular to itself." .
+<urn:anchor:881> <urn:quote> "If a vector v is orthogonal to itself then v is the zero vector." .
+<urn:anchor:882> <urn:quote> "The orthogonal complement of a subspace V contains every vector that is perpendicular to V" .
+<urn:anchor:883> <urn:quote> "We conclude that the nullspace complement $N ( A ) ^ { \\perp }$ is exactly the row space" .
+<urn:anchor:884> <urn:quote> "This perpendicularity of subspaces is Part 2 of the Fundamental Theorem of Linear Algebra." .
+<urn:anchor:885> <urn:quote> "$N ( A )$ is the orthogonal complement of the row space $C ( A ^ { \\mathrm { T } } )$" .
+<urn:anchor:886> <urn:quote> "every x can be split into a row space component" .
+<urn:anchor:887> <urn:quote> "Each x is the sum $x _ { r } + x _ { n }$ of a row space vector" .
+<urn:anchor:888> <urn:quote> "Every vector b in the column space comes from one and only one vector" .
+<urn:anchor:889> <urn:quote> "From the row space to the column space, $A$ is invertible." .
+<urn:anchor:88> <urn:quote> "(f, g) = \\int_ {1} ^ {e} (\\log x) f (x) g (x) d x." .
+<urn:anchor:890> <urn:quote> "This orthogonal subspace is denoted by $V ^ { \\perp }$ (pronounced \"V perp\")." .
+<urn:anchor:891> <urn:quote> "their dot product is zero: $\\boldsymbol { v } \\boldsymbol { \\cdot w } = \\boldsymbol { v } ^ { \\mathrm { T } } \\boldsymbol { w } = \\boldsymbol { 0 }$" .
+<urn:anchor:892> <urn:quote> "$v ^ { \\mathrm { T } } w = 0$ for all v in V and all w in W." .
+<urn:anchor:893> <urn:quote> "When b is projected onto a line, its projection pis the part of b along that line" .
+<urn:anchor:894> <urn:quote> "These three steps will lead to all projection matrices: find ${ \\widehat { \\mathbf { x } } } ,$ , then find the vector" .
+<urn:anchor:895> <urn:quote> "The hat over x indicates the best choice x, to give the closest vector in the column space." .
+<urn:anchor:896> <urn:quote> "Our formula ${ \\widehat { \\pmb x } } = { \\pmb a } ^ { \\mathrm { T } } { \\pmb b } / { \\pmb a } ^ { \\mathrm { T } } { \\pmb a }$ gives the projection" .
+<urn:anchor:897> <urn:quote> "The projection of b onto the line through a is the vector" .
+<urn:anchor:898> <urn:quote> "The projection of b onto the line through a is $\\pmb { p } = \\pmb { a } \\widehat { \\pmb { x } } = \\pmb { a } ( \\pmb { a } ^ { \\mathrm { T } } \\pmb { b } / a ^ { \\mathrm { T } } \\pmb { a } )$" .
+<urn:anchor:899> <urn:quote> "The error vector between $^ { b }$ and $_ p$ is $e = b - p$ ." .
+<urn:anchor:89> <urn:quote> "9. In the real linear space $C(-1, 1)$ , let $(f, g) = \\int_{-1}^{1} f(t)g(t)dt$ ." .
+<urn:anchor:8> <urn:quote> "Every finite-dimensional linear space has a finite basis. If the space is Euclidean, we can always construct an orthogonal basis." .
+<urn:anchor:900> <urn:quote> "The dotted line $b - p$ is the \"error\" $e = b - { \\widehat { x } } a$" .
+<urn:anchor:901> <urn:quote> "The error $e = \\pmb { b } - \\pmb { p }$ is perpendicular to a: Right triangle b p e has" .
+<urn:anchor:902> <urn:quote> "The error e should be perpendicular to" .
+<urn:anchor:903> <urn:quote> "The projection matrix $P$ is $m$ by $m ,$ , but its rank is one." .
+<urn:anchor:904> <urn:quote> "The rank one projection matrix $P = { { a } { { a } ^ { \\mathrm { T } } } / { { a } ^ { \\mathrm { T } } } }$ a multiplies b to produce $p .$" .
+<urn:anchor:905> <urn:quote> "The projection matrix P multiplies b to give p. This section finds p and also P." .
+<urn:anchor:906> <urn:quote> "symmetric matrices with $P ^ { 2 } = P$ . The projection of bis Pb." .
+<urn:anchor:907> <urn:quote> "The projection of b onto a subspace Sis the closest vector pin" .
+<urn:anchor:908> <urn:quote> "We compute projections onto n-dimensional subspaces in three steps as before" .
+<urn:anchor:909> <urn:quote> "in its famous form $A ^ { \\mathrm { T } } A { \\widehat { \\mathbf { x } } } = A ^ { \\mathrm { T } } b$" .
+<urn:anchor:90> <urn:quote> "Prove that two of them are orthogonal, two make an angle $\\pi /3$ with each other, and two make an angle $\\pi /6$ with each other." .
+<urn:anchor:910> <urn:quote> "Now solve the normal equation $A ^ { \\mathrm { T } } A { \\widehat { \\mathbf { x } } } = A ^ { \\mathrm { T } } t$ to find x:" .
+<urn:anchor:911> <urn:quote> "Then the projection of b onto the column space of A is the vector" .
+<urn:anchor:912> <urn:quote> "The projection of b onto the subspace is p:" .
+<urn:anchor:913> <urn:quote> "The projection matrix is $P = A ( A ^ { \\mathrm { T } } A ) ^ { - 1 } A ^ { \\mathrm { T } }$" .
+<urn:anchor:914> <urn:quote> "The projection matrix $\\overset { \\cdot } { P } = \\overset { \\cdot } { A } ( A ^ { \\mathrm { T } } A ) ^ { - 1 } A ^ { \\mathrm { T } }$ gives $p = P b$" .
+<urn:anchor:915> <urn:quote> "has $P ^ { \\mathrm { T } } = P$ and $P ^ { 2 } = P$ and $P b = p$" .
+<urn:anchor:916> <urn:quote> "Projecting a second time doesn't change anything, so $P ^ { 2 } = P$" .
+<urn:anchor:917> <urn:quote> "A is invertible if and only if A has linearly independent columns." .
+<urn:anchor:918> <urn:quote> "When A has independent columns, $A ^ { \\mathrm { T } } A$ is square, symmetric, and invertible." .
+<urn:anchor:919> <urn:quote> "The error vector $\\pmb { b } - A \\widehat { \\pmb { x } }$ is perpendicular to that column space." .
+<urn:anchor:91> <urn:quote> "10. In the linear space $P_{n}$ of all real polynomials of degree $\\leq n$ , define" .
+<urn:anchor:920> <urn:quote> "That nullspace of $A ^ { \\mathrm { T } }$ contains the error vector $e = \\pmb { b } - A \\widehat { \\pmb { x } }$ ." .
+<urn:anchor:92> <urn:quote> "(f, g) = \\sum_ {k = 0} ^ {n} f \\left(\\frac {k}{n}\\right) g \\left(\\frac {k}{n}\\right)." .
+<urn:anchor:93> <urn:quote> "(a) Prove that $(f,g)$ is an inner product for $P_{n}$ ." .
+<urn:anchor:94> <urn:quote> "12. In the linear space of all real polynomials, determine whether or not $(f,g)$ is an inner product if $(f,g)$ is defined by the formula given." .
+<urn:anchor:95> <urn:quote> "(c) $(f,g) = \\int_0^1 f'(t)g'(t)dt.$" .
+<urn:anchor:96> <urn:quote> "12. In the linear space of all real polynomials, determine whether or not $(f,g)$ is an inner product if $(f,g)$ is defined by the formula given." .
+<urn:anchor:97> <urn:quote> "(b) $(f,g) = \\left|\\int_0^1 f(t)g(t)dt\\right|.$" .
+<urn:anchor:98> <urn:quote> "\\text {(d)} (f, g) = \\left(\\int_ {0} ^ {1} f (t) d t\\right) \\left(\\int_ {0} ^ {1} g (t) d t\\right)." .
+<urn:anchor:99> <urn:quote> "[Hint: Use the Cauchy-Schwarz inequality to estimate the sum $\\sum_{n=1}^{M}|x_n y_n|.$ ]" .
+<urn:anchor:9> <urn:quote> "if $x_{1}, \\ldots, x_{k}$ is a basis for a finite-dimensional Euclidean space, then $y_{1}, \\ldots, y_{k}$ is an orthogonal basis for the same space." .

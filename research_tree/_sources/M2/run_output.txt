@@ -1,0 +1,46 @@
+RMLMAPPER_JAR=C:\Users\Wang\Desktop\Studium\research_tree\tmp\m2\rmlmapper-7.3.3-r374-all.jar
+JAR_SHA256=0c0334b3b0d0cb9de7e724b756eccec15943d33e51ffce9855164e32c98a917d
+JAVA=java XMX=512m CWD=C:\Users\Wang\Desktop\Studium\research_tree\_sources\M2
+TIME_START=2026-08-13 20:54:03
+========================================================================
+[test] T1-array-full exit=0 elapsed=1.482s stdout=0 stderr=0 violations=0
+  quads=145 unique_subjects=37 unique_predicates=9
+[test] T2-wrapped exit=0 elapsed=1.469s stdout=0 stderr=0 violations=0
+  quads=145 unique_subjects=37 unique_predicates=9
+[test] T3-raw-jsonl exit=1 elapsed=1.437s stdout=2 stderr=2 violations=2
+  first_error: java.lang.IllegalArgumentException: Cannot deserialize value of type `java.util.LinkedHashMap<java.lang.Object,java.lang.Object>` from Array value (token `JsonToken.START_ARRAY`)
+[test] T4-part1 exit=0 elapsed=1.548s stdout=0 stderr=0 violations=0
+  quads=83 unique_subjects=22 unique_predicates=9
+[test] T5-part2 exit=0 elapsed=1.45s stdout=0 stderr=0 violations=0
+  quads=68 unique_subjects=18 unique_predicates=9
+[test] T6-s2 exit=0 elapsed=1.466s stdout=0 stderr=0 violations=0
+  quads=109 unique_subjects=27 unique_predicates=9
+========================================================================
+[check C1] T1 source -> graph correspondence
+  source nodes=11 anchors=29 sections=12 aliases=8
+  graph quads=145 node_subjects=11 anchor_subjects=26
+  predicates={"alias": 8, "file": 26, "hasAnchor": 29, "name_en": 11, "name_zh": 11, "node_type": 11, "quote": 26, "section": 12, "statement": 11}
+[check C2] T2 (wrapped) quads vs T1 (array) quads
+  T1=145 T2=145 equal=True
+[check C3] T3 raw .jsonl exit=1 first_error=java.lang.IllegalArgumentException: Cannot deserialize value of type `java.util.LinkedHashMap<java.lang.Object,java.lang.Object>` from Array value (token `JsonToken.START_ARRAY`)
+[check C4] incremental: multiset(T4.nq + T5.nq) vs multiset(T1.nq)
+  full_quads=145 part1_quads=83 part2_quads=68 combo_quads=151
+  multiset_equal=False
+  in_combo_not_full=6 in_full_not_combo=0
+    combo-only x1: <http://example.org/ch15/anchor/15.13.md#Dividing%20each%20of%20%24y_%7B1%7D%24%20and%20%24y_%7B2%7D%24%20by%20its%20norm%20we%20get%20an%20orthonorma
+    combo-only x1: <http://example.org/ch15/anchor/15.13.md#Dividing%20each%20of%20%24y_%7B1%7D%24%20and%20%24y_%7B2%7D%24%20by%20its%20norm%20we%20get%20an%20orthonorma
+    combo-only x1: <http://example.org/ch15/anchor/15.13.md#In%20the%20Gram-Schmidt%20process%20%2815.15%29%2C%20we%20construct%20the%20element%20%24y_%7Br%2B1%7D%24%20b
+    combo-only x1: <http://example.org/ch15/anchor/15.13.md#In%20the%20Gram-Schmidt%20process%20%2815.15%29%2C%20we%20construct%20the%20element%20%24y_%7Br%2B1%7D%24%20b
+    combo-only x1: <http://example.org/ch15/anchor/15.13.md#We%20can%20also%20convert%20this%20to%20an%20orthonormal%20basis%20by%20normalizing%20each%20element%20%24y_%
+    combo-only x1: <http://example.org/ch15/anchor/15.13.md#We%20can%20also%20convert%20this%20to%20an%20orthonormal%20basis%20by%20normalizing%20each%20element%20%24y_%
+  [C4b] after dedup: multiset_equal=True (combo_unique=145 full=145)
+[check C5] anchor (file,quote) duplicates within vs across batches
+  duplicate_anchor_pairs_in_full=3 split_across_batches=3
+    pair x2 (part1 x1, part2 x1): 15.13.md | In the Gram-Schmidt process (15.15), we construct 
+    pair x2 (part1 x1, part2 x1): 15.13.md | We can also convert this to an orthonormal basis b
+    pair x2 (part1 x1, part2 x1): 15.13.md | Dividing each of $y_{1}$ and $y_{2}$ by its norm w
+[check C6] T6 (nodes-A2-s2.jsonl, 10 rows) robustness
+  source nodes=10 anchors=17 -> graph quads=109 subjects=27 predicates=9
+========================================================================
+TIME_END=2026-08-13 20:54:12
+[done] run_tests.py complete

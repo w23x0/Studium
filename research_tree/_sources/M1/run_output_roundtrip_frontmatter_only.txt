@@ -1,0 +1,19 @@
+======================================================================
+M1 原型#1 语义无损往返 (frontmatter YAML -> RDF -> YAML)
+======================================================================
+files_total=109 files_parse_failed=6 files_processed=81 with_anchors=False
+parse-failed (strict YAML 拒绝，未参与往返):
+    docs\图工程调研\M08实验-Apostol微积分卷1\obsidian\L1-基础网络\asymptotic-equality-notation.md
+    docs\图工程调研\M08实验-Apostol微积分卷1\obsidian\L1-基础网络\decreasing-sequence.md
+    docs\图工程调研\M08实验-Apostol微积分卷1\obsidian\L1-基础网络\euler-constant.md
+    docs\图工程调研\M08实验-Apostol微积分卷1\obsidian\L1-基础网络\gamma-function.md
+    docs\图工程调研\M08实验-Apostol微积分卷1\obsidian\L1-基础网络\mixed-improper-integral-notation.md
+    docs\图工程调研\M08实验-Apostol微积分卷1\obsidian\L1-基础网络\riemann-zeta-function.md
+N-Quads triples: pass1=869  pass2=869
+[A] byte_equal nquads  : True
+[B] graph isomorphic   : True
+[C] field-level checks : {'checked': 541, 'ok': 541, 'mismatch': 0, 'missing': 0}
+n_violations=0  n_files_with_violation=0  passed_files=81/81
+OVERALL PASS = True
+timings: to_rdf#1=0.0075s from_rdf=0.0438s to_rdf#2=0.0101s total=0.0176s
+outputs: C:\Users\Wang\Desktop\Studium\research_tree\_sources\M1\out

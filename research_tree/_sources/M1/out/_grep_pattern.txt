@@ -1,0 +1,1 @@
+THEOREM 10.15. Assume $\sum |a_n|$ converges. Then $\sum a_{n}$ also converges, and we have

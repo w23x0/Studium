@@ -1,0 +1,2 @@
+<http://example.org/ch15/node/x1> <http://example.org/ch15/name_en> "plain"@en .
+<http://example.org/ch15/node/x1> <http://example.org/ch15/node_type> "lemma" .
