@@ -1,0 +1,20 @@
+SNAPSHOT: arXiv abs/1611.08108 — DKVMN (Dynamic Key-Value Memory Networks for Knowledge Tracing)
+URL: https://arxiv.org/abs/1611.08108
+Fetched: 2026-08-13 via WebFetch
+Paper: Jiani Zhang, Xingjian Shi, Irwin King, Dit-Yan Yeung (CUHK), WWW 2017.
+
+---
+[Abstract, verbatim segments]
+"Knowledge Tracing (KT) is a task of tracing evolving knowledge state of students with respect to one or more concepts."
+Limitation of prior methods: "existing methods such as Bayesian Knowledge Tracing and Deep Knowledge Tracing either model knowledge state for each predefined" "concept separately or fail to pinpoint exactly which concepts a student is good at or unfamiliar with."
+Core model: "this work introduces a new model called Dynamic Key-Value Memory Networks (DKVMN) that can exploit the relationships between" "underlying concepts and directly output a student's mastery level of each concept."
+Architecture: "our model has one static matrix called key, which stores the knowledge concepts and the other dynamic matrix called value," "which stores and updates the mastery levels of corresponding concepts."
+Results: "our model consistently outperforms the state-of-the-art model in a range of KT datasets."
+Interpretability: "the DKVMN model can automatically discover underlying concepts of exercises typically performed by human annotations and" "depict the changing knowledge state of a student."
+
+[Key claims]
+1. Exploits relationships between underlying concepts (not per-concept isolation).
+2. Directly outputs mastery level per concept (unlike DKT which "fail[s] to pinpoint exactly which concepts a student is good at").
+3. Static key matrix (concepts) + dynamic value matrix (mastery levels).
+4. Consistently outperforms SOTA (DKT) across KT datasets.
+5. Discovers underlying exercise concepts and depicts changing knowledge state.

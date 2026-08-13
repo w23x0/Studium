@@ -1,0 +1,18 @@
+# Is GraphRAG Needed? From Basic RAG to Graph-/Agentic Solutions with Context Optimization
+来源：https://arxiv.org/abs/2606.25656
+作者：未知（2026 提交）
+日期：2026-06-24 提交
+抓取日期：2026-08-13（WebFetch，A 级原文）
+
+## 摘要要点
+- 在半结构化知识库上评估 RAG 场景：regular RAG、GraphRAG、Modular RAG、Agentic RAG，实现 9 个标准化场景
+- 上下文工程方法处理 context/memory overflow，对 GraphRAG 与 Agentic RAG 实现「19%-53% reduction on token usage」
+- 核心负面结果：「further analysis identifies a retrieval-generation gap where expanded retrieval does not proportionally improve generation quality, suggesting retrieval-oriented metrics overstate advanced retrieval benefits」——扩展检索（图）不按比例提升生成质量，检索导向指标高估了高级检索（GraphRAG）的收益
+- 给出「data-driven insights on when and how to use them」——何时用 basic RAG vs GraphRAG vs Agentic RAG 的数据驱动判断
+
+## 对 V6 的意义（Q1 核心）
+- 「检索-生成鸿沟」：检索指标（证据召回等）高估图检索的价值——这是 2506.05690 之外第二个独立的负面结果表述
+- 图/Agentic 检索的收益需要上下文工程去控制 prompt 膨胀才兑现，否则被 token 成本吃掉
+
+## 等级
+A（WebFetch 抓取 arxiv 摘要页）

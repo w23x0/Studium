@@ -1,0 +1,132 @@
+ 
+ Mathematical knowledge management - Wikipedia 
+ Jump to content 
+ Main menu 
+ Main menu
+ move to sidebar 
+ hide 
+ Navigation
+ Main page 
+ Contents 
+ Current events 
+ Random article 
+ About Wikipedia 
+ Contact us 
+ Contribute
+ Help 
+ Learn to edit 
+ Community portal 
+ Recent changes 
+ Upload file 
+ Special pages 
+ Search 
+ Search 
+ Appearance 
+ Donate 
+ Create account 
+ Log in 
+ Personal tools 
+ Donate 
+ Create account 
+ Log in 
+ Contents
+ move to sidebar 
+ hide 
+ (Top)
+ 1 
+ See also 
+ 2 
+ External links 
+ Toggle the table of contents 
+ Mathematical knowledge management 
+ 1 language 
+ Ελληνικά 
+ Edit links 
+ Article 
+ Talk 
+ English 
+ Read 
+ Edit 
+ View history 
+ Tools 
+ Tools
+ move to sidebar 
+ hide 
+ Actions
+ Read 
+ Edit 
+ View history 
+ General
+ What links here 
+ Related changes 
+ Upload file 
+ Permanent link 
+ Page information 
+ Cite this page 
+ Get shortened URL 
+ Switch to legacy parser 
+ Print/export
+ Download as PDF 
+ Printable version 
+ In other projects
+ Wikidata item 
+ Appearance
+ move to sidebar 
+ hide 
+ From Wikipedia, the free encyclopedia
+ Study of how society can effectively make use of mathematical literature
+ The topic of this article may not meet Wikipedia's general notability guideline . Please help to demonstrate the notability of the topic by citing reliable secondary sources that are independent of the topic and provide significant coverage of it beyond a mere trivial mention. If notability cannot be shown, the article is likely to be merged , redirected , or deleted .
+ Find sources:   "Mathematical knowledge management"   –   news   · newspapers   · books   · scholar   · JSTOR ( April 2016 ) ( Learn how and when to remove this message ) 
+ This article includes a list of references , related reading , or external links , but its sources remain unclear because it lacks inline citations . Please help improve this article by introducing more precise citations. ( May 2024 ) ( Learn how and when to remove this message ) 
+ Mathematical knowledge management (MKM) is the study of how society can effectively make use of the vast and growing literature on mathematics . It studies approaches such as databases of mathematical knowledge, automated processing of formulae and the use of semantic information , and artificial intelligence . Mathematics is particularly suited to a systematic study of automated knowledge processing due to the high degree of interconnectedness between different areas of mathematics.
+ See also
+ [ edit ] 
+ OMDoc 
+ QED manifesto 
+ Areas of mathematics 
+ MathML 
+ External links
+ [ edit ] 
+ Hazewinkel, Michiel (November 2003). "Mathematical knowledge management is needed". arXiv : cs/0410055 . We don't even know how much we know that we don't know we know 
+ www.nist.gov/mathematical-knowledge-management , NIST 's MKM page
+ The MKM Interest Group (archived)
+ 9th International Conference on MKM, Paris, France, 2010 
+ Big Proof Conference , a programme at the Isaac Newton Institute directed at the challenges of bringing proof technology into mainstream mathematical practice.
+ Big Proof Two 
+ This mathematics-related article is a stub . You can help Wikipedia by adding missing information .
+ v 
+ t 
+ e 
+ Retrieved from " https://en.wikipedia.org/w/index.php?title=Mathematical_knowledge_management&oldid=1351860390 "
+ Categories : Mathematics and culture 
+ Information science 
+ Mathematics stubs 
+ Hidden categories: Articles with short description 
+ Short description matches Wikidata 
+ Articles with topics of unclear notability from April 2016 
+ All articles with topics of unclear notability 
+ Articles lacking in-text citations from May 2024 
+ All articles lacking in-text citations 
+ Use dmy dates from March 2014 
+ All stub articles 
+ This page was last edited on 30 April 2026, at 16:16  (UTC) .
+ Page was rendered with Parsoid .
+ Text is available under the Creative Commons Attribution-ShareAlike 4.0 License ;
+additional terms may apply. By using this site, you agree to the Terms of Use and Privacy Policy . Wikipedia® is a registered trademark of the Wikimedia Foundation, Inc. , a non-profit organization.
+ Privacy policy 
+ About Wikipedia 
+ Disclaimers 
+ Contact Wikipedia 
+ Legal & safety contacts 
+ Code of Conduct 
+ Developers 
+ Statistics 
+ Cookie statement 
+ Mobile view 
+ Search 
+ Search 
+ Toggle the table of contents 
+ Mathematical knowledge management 
+ 1 language 
+ Add topic 
+ 

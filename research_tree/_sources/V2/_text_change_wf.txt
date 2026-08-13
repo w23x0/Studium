@@ -1,0 +1,477 @@
+ 
+ [1105.2392] Workflows for the Management of Change in Science,
+Technologies, Engineering and Mathematics 
+ Workflows for the Management of Change in Science,
+Technologies, Engineering and Mathematics
+ Serge Autexier
+ Affiliation:  
+ Safe and Secure Cognitive Systems, German Research Centre for 
+ Artificial Intelligence (DFKI), Bremen, Germany 
+ Catalin David
+ Affiliation:  
+ Safe and Secure Cognitive Systems, German Research Centre for 
+ Artificial Intelligence (DFKI), Bremen, Germany 
+ Affiliation:  
+ Computer Science, Jacobs University Bremen, Germany 
+ Dominik Dietrich
+ Affiliation:  
+ Safe and Secure Cognitive Systems, German Research Centre for 
+ Artificial Intelligence (DFKI), Bremen, Germany 
+ Michael Kohlhase
+ Affiliation:  
+ Computer Science, Jacobs University Bremen, Germany 
+ Vyacheslav Zholudev
+ Affiliation:  
+ Safe and Secure Cognitive Systems, German Research Centre for 
+ Artificial Intelligence (DFKI), Bremen, Germany 
+ Affiliation:  
+ Computer Science, Jacobs University Bremen, Germany 
+ Abstract 
+ Mathematical knowledge is a central component in science,
+engineering, and technology (documentation). Most of it is
+represented informally, and – in contrast to published research
+mathematics – subject to continual change. Unfortunately, machine
+support for change management has either been very coarse grained
+and thus barely useful, or restricted to formal languages, where
+automation is possible.
+In this paper, we report on an effort to extend change management to
+collections of semi-formal documents which flexibly intermix
+mathematical formulas and natural language and to integrate it into
+a semantic publishing system for mathematical knowledge. We validate
+the long-standing assumption that the semantic annotations in these
+flexiformal documents that drive the machine-supported interaction
+with documents can support semantic impact analyses at the same
+time. But in contrast to the fully formal setting, where adaptations
+of impacted documents can be automated to some degree, the
+flexiformal setting requires much more user interaction and thus a
+much tighter integration into document management workflows. 
+ 1 Introduction
+ As the Web 2.0 age is dawning for mathematics, more and more
+ mathematical development is moving online; not just
+ publications . An example of this is the PolyMath site, where
+upon the recent announcement of a proof of P ≠ N ​ P P\neq NP , the mathematics
+community has organized itself in a WiKi and found a significant gap
+in the proof within two weeks; see  [ PolymathPvsNP ] . The
+PlanetMath community which has collaborated on 8500 graduate-level
+encyclopedia articles over 10 years  [ planetmath:on ] is another,
+and also the Mizar community, who have formalized more than 60000
+definitions, assertions, and proofs and have machine-checked them over
+the last 40 years. Finally, the Cornell EPrint
+Archive  [ arxiv:online ] has amassed over 660 000 scientific
+articles over 20 years. The hallmark of all these efforts is that they
+are massive collaborations by many individuals, distributed widely
+both geographically and temporally. The first three examples have
+another characteristic that is becoming more and more important: the
+knowledge items are interdependent and mutable (subject to
+change). The sheer size of the knowledge collections together with the
+fact that many authors do not even know (of) each other induces
+consistency and coherence problems. In this situation, the need to
+integrate the mechanisms for “change management” (CM) into the
+digital libraries seems obvious. Typically, the documents in the
+libraries are flexiformal (flexibly formal) because they
+contain semantic annotations at different levels of formality. A good
+example is an informal, but rigorous statement from a mathematical
+textbook, which intermixes mathematical formulas (formal
+representations of mathematical objects) with natural language
+(informal representations of their relations). Change management makes use of the
+fact that MKM formats explicitly represent the relations between
+objects to compute related objects and predict the way changes affect
+them; see  [ Hutter:smhd09 , NMueller:PhD , AM-10-a ] for recent
+progress in this field.
+ This paper reports on the experiment of integrating CM into the Planetary system, a new
+flexiformal Digital library system, which we will present in the next section. In
+Section  3 , we describe the information present in the sources by way of an
+extended example and show how these can be used for change management. In
+Section  4 , we present the DocTIP system and the CM procedure it
+implements, so that we can show the integration from an architectural point of view in
+Section  . Section  revisits the example from
+Section  3 to show how the information travels through the systems
+involved. In Section  , we discuss related work and Section  
+concludes the paper.
+ 2 The Planetary System
+ The Planetary system (see  [ KohDavGin:psewads11 , DGKC:eMath30 , Planetary:on ] for an
+introduction) is a Web 3.0 system 1 1 
+ 1 
+ We adopt the nomenclature where Web 3.0 stands
+for extension of the Social Web with Semantic Web/Linked Open Data technologies. for
+semantically annotated document collections in Science, Technology, Engineering and
+Mathematics (STEM). The system is based on semantically annotated documents 
+together with semantic background ontologies (which we call the content
+commons ). This information can then be used by user-visible, semantic services like
+program (fragment) execution, computation, visualization, navigation, information
+aggregation and information retrieval. Finally a document player application can embed
+these services to make documents executable. We call this framework the Active
+Documents Paradigm (ADP), since documents can also actively adapt to user
+preferences and environment rather than only executing services upon user request.
+ In our approach, documents published in the Planetary system become flexible, adaptive
+interfaces to a content commons of domain objects, context, and their relations.
+The system achieves this by providing embedded user assistance through an extended set of
+user interactions with documents based on an extensible set of client- and server side
+services that draw on explicit (and thus machine-understandable) representations in the
+content commons (see Fig.  1 ).
+ Figure 1: Course Notes in the Planetary system 
+ The Planetary system has been used on the course notes of a two-semester introductory course in
+Computer Science  [ Kohlhase:PlanetGenCS:url ] held at Jacobs University by one of the
+authors in the last eight years. While the basic concept of the course stayed the same
+over the years, whole topics have been added/moved/deleted, examples and results have been
+added, and formulations have been sharpened. All of these changes had consequences that
+were sometimes difficult to foresee, and sometimes led to problematic teaching situations
+(when the consequences had not been anticipated). The course notes currently comprise 300
+pages with over 500 slides organized in over 800 files. This is at the limits of what is
+manually manageable for the instructor who has authored all of the material; it would be
+impossible for a new instructor to take over the material (and change it to her
+liking). It becomes increasingly difficult to manage the over 1000 homework, quiz, and
+exam problems that have largely been provided by the more than 30 teaching assistants that have
+accompanied the course over the years.
+ 3 A Planetary Workflow
+ To get a better intuition for the problems involved in managing changes in flexiformal
+document collections, consider the situation in Fig.  2 and Fig.  3 ,
+which we will use as a running example. The lower part of Fig.  2 shows two
+well-known definitions from the theory of binary trees and Fig.  3 a lemma
+that depends on them, as they are referenced in its proof. Clearly, if one of the
+definitions is changed, then we have to revisit the proof and possibly adapt it or
+even the lemma to the changed situation.
+ ⬇ 
+ \begin { module }[ id = binary - trees ] 
+ \ importmodule [ \KWARCslides { graphs - trees / en / trees }]{ trees } 
+ \ importmodule [ \KWARCslides { graphs - trees / en / graph - depth }]{ graph - depth } 
+ … 
+ \begin { definition }[ id = binary - tree . def , title = Binary Tree ] 
+ A \ definiendum [ binary - tree ]{ binary tree } is a \ termref [ cd = trees , name = tree ]{ tree } 
+ where all \ termref [ cd = graphs - intro , name = node ]{ nodes } 
+ have \ termref [ cd = graphs - intro , name = out - degree ]{ out - degree } 2 or 0. 
+ \ end { definition } 
+ … 
+ \begin { definition }[ id = bbt . def ] 
+ A \ termref [ name = binary - tree ]{ binary tree } $ G $ is called 
+ \ definiendum [ bbt ]{ balanced binary tree } iff the 
+ \ termref [ cd = graph - depth , name = vertex - depth ]{ depth } of all 
+ \ termref [ cd = trees , name = leaf ]{ leaves } differs by at most by 1, and 
+ \ definiendum [ fullbbt ]{ fully balanced }, iff the 
+ \ termref [ cd = graph - depth , name = vertex - depth ]{ depth } difference is 0. 
+ \ end { definition } 
+ … 
+ \ end { module } 
+ Figure 2: Two definitions and their S T e X sources 
+ For humans, it is simple to detect the underlying dependency in principle, but there is a
+strong possibility that it will be overlooked in practice; especially, if the conceptional
+distance between a proof and the definitions is large (e.g., because it involves many
+intervening definitions and assertions). Therefore, authors need system support to keep
+large mutable knowledge collections in a consistent state. In the situation of our running
+example, we can make use of the fact that the two text fragments were originally
+written as semantically annotated S T e X course notes  [ Kohlhase:PlanetGenCS:url ] for
+ Planetary . As such, they contain a lot of semantic annotations that are originally added to
+drive services like definition lookup, notation adaptation, and just-in-time prerequisites
+delivery, which also induce a good approximation of the semantic dependency relation that
+is needed for analysing the impact of changes on definitions and proofs in this and other knowledge items.
+ ⬇ 
+ \begin { module }[ id = bbt - size ] 
+ \ importmodule [ binary - trees ]{ binary - trees } 
+ … 
+ Lemma 3.1.9 Let G = ⟨ V , E ⟩ G=\langle V,E\rangle be a balanced binary tree of depth n > i n>i , then the set
+ V i := { v ∈ V : d ​ p ​ ( v = i ) } V_{i}:=\{v\in V:dp(v=i)\} of vertexes at depth i i has cardinality 2 i 2^{i} .
+ Proof: by induction over the depth i i 
+ ⬇ 
+ \begin { spfstep } 
+ By the \begin { justification }[ method = byDef ] 
+ \premise [ uri = binary - trees , ref = binary - tree . def ]{ definition of a binary tree } 
+ \ end { justification }, each $ \inset { v }{ V _{ i -1}}$ is a leaf or has 
+ two children that are at depth $ i $. 
+ \ end { spfstep } 
+ \begin { spfstep } 
+ As $ G $ is \ termref [ cd = binary - trees , name = bbt ]{ balanced } 
+ and $ \gdepth { G }= n > i $, $ V _{ i -1}$ cannot contain leaves . 
+ \ end { spfstep } 
+ … 
+ \ end { sproof } 
+ \ end { module } 
+ Figure 3: A lemma and proof that depend on the definitions in Fig.  2 
+ Let us consider these annotations in the S T e X sources in Fig.  2 
+and Fig.  3 . In the first proof step (the S T e X spfstep environment) in
+Fig.  3 , the “definition of a binary tree” is referenced, and this reference
+is marked up by a URI reference encoded in the optional argument of the
+ premise macro inside the justification element. In the second
+proof step, the property of being “balanced” is exploited. The fact that
+the word “balanced” is used as a technical term is marked up with the
+ \ termref macro, whose optional first argument points to the
+ \ definiendum with name bbt in the module
+ binary - trees in Fig.  2 .
+ Intuitively, the relations encoded in these annotations induce the dependency that signals
+a possible semantic impact of a change to one of the definitions in
+Fig.  2 . There are at least three possible ways an author can benefit from
+an automated impact analysis based on the semantic annotations in the S T e X sources.
+ C1 
+ An author who wants to change something in one (or both) of the definitions in
+Fig.  2 can request an estimation of the total impacts costs of a
+change.
+ C2 
+ An author who actually changes (one of) the definitions can
+request an immediate impact analysis, which gives a list of
+potentially affected knowledge items. This list should be
+cross-linked to the (presentations of) the affected items, so to
+simplify navigation. For every item the author will have to decide whether
+it is really affected and how to adapt it (possibly creating new
+impacts in the process).
+ C3 
+ Authors or maintainers of a given knowledge item can be notified of an impact to
+“their” knowledge item upon changes to elements it depends on.
+ Note that C1 and C2 together constitute what one could call a “push
+workflow of change management” whereas C3 corresponds to a “pull workflow”. The
+abundance of semantic references — 12 in this little example — already shows that
+machine support is indispensable in larger collections. Note furthermore that both of
+these workflows should be completely independent of the “commit policies” of the
+knowledge collection. The change management subsystem should support committing partially
+worked off impact lists — e.g., for the weekend or to pass them on to other authors.
+ 4 DocTIP 
+ The DocTIP system  [ doctip:online ] provides a generic framework that combines
+sophisticated structuring mechanisms for heterogenous formal and
+semi-formal documents with an appropriate change management to
+maintain structured relations between different documents. It is based
+on abstract document models and abstract document ontologies that need
+to be instantiated for specific document kinds, such as OMDoc. The
+heart of the system is the document broker , which maintains all
+documents and provides a generic update and patch-based
+synchronisation protocol between the maintained documents and the
+connected components working on these documents. Components can
+be authoring (and display) systems, or analysis and reasoning systems
+offering automatic background processing support, or simply a
+connection to a repository allowing to commit and update the
+documents.
+ If the document broker obtains a change for some of its documents, the
+changes are propagated to all connected components for that
+document. A configurable impact analysis policy allows the system
+designer to define if impact analysis is required after obtaining a
+change from some component. To perform the impact analysis the
+document broker uses the GMoC 2 2 
+ 2 
+ GMoC : G eneric M anagement o f C hange tool ( [ AM-10-a ] see below) to
+compute the effect of the change on all documents maintained by the
+document broker. The GMoC tool returns that information as impact
+annotations to each individual document, which are subsequently
+distributed to all connected components by the document broker.
+ 4.1 Change Impact Analysis
+ The key idea to design change impact analysis (CIA) for informal
+documents is the explicit semantics method which represents
+both the syntax parts (i.e., the documents) and the intentional
+semantics contained in the documents in a single, typed hyper-graph
+(see [ AM-10-a ] for details). Document type specific graph
+rewriting rules are used to extract the intentional semantics of
+documents and the extracted semantic entities are linked to their
+syntax source, i.e. their origin . That way, any change in the
+document results in semantic objects for which origins have been
+deleted or changed, as well as syntax objects for which there does not
+exist corresponding semantic entities yet. The semantic objects are
+marked with this status information (“deleted”, “added”,
+“preserved”). This information is then exploited by analysis rules
+to compute the ripple effects of the changes on the semantics
+entities, which in a final stage are used to annotate the syntax
+parts, that is the documents. The GMoC tool is built on top of the
+graph rewriting tool GrGen.NET   [ grgen ] and is parameterized over
+document type specific document meta-models and graph rewriting rule
+systems to extract the semantics and to analyze the impact of
+changes.
+ Document Meta-Models.
+ To provide change impact analysis for Planetary , we developed a document meta model and
+graph impact analysis rules for OMDoc. The document meta model consists of a lightweight
+ontology of the relevant semantic concepts in OMDoc documents, — e.g., theories, symbol
+declarations and their occurrences, axioms, definitions, assertions, and their use in
+proofs and proof steps — together with semantic relations between concepts —
+e.g., import relations between theories, symbols and their definitions, assertions and
+their proofs. Note that the OMDoc meta-model abstracts over the OMDoc surface
+syntax. For instance, a definition can either be a
+ definition -element
+ ⬇ 
+ <symbol name= ” unit ” > 
+ <definition xml:id= ”mon-d1” for= ”unit” type= ”informal” > 
+ <CMP> 
+ A structure (M,*,e) , in which (M,*) is a semi - group with unit e is called monoid . 
+ </CMP> 
+ </definition> 
+ where the symbol defined by the definition is given by the
+ for attribute of the definition (boxes abbreviate OpenMath
+content here). The symbol itself is declared in a different
+element. This kind of definition typically occurs when OMDoc documents are created
+manually or obtained from formal representations. Alternatively, a definition can come as
+a “typed” omtext such as
+ ⬇ 
+ <omtext type= ”definition” xml:id= ”binary-tree.def” about= ”#binary-tree.def” > 
+ <CMP xml:id= ”binary-tree.def.CMP1” about= ”#binary-tree.def.CMP1” > 
+ <p xml:id= ”binary-tree.def.CMP1.p1” about= ”#binary-tree.def.CMP1.p1” > 
+ A <term cd= ”balanced-binary-trees” name= ”binary-tree” role= ”definiendum” > 
+ binary tree </term> is a <term cd= ”trees” name= ”tree” 
+ xml:id= ”binary-tree.def.CMP2.p1.term2” 
+ about= ”#binary-tree.def.CMP2.p1.term2” > tree </term> where all … \ldots 
+ </p> 
+ </CMP> 
+ </omtext> 
+ which typically happens, for instance, when generating the OMDoc files from an S T e X source file. Note that in this case the defined symbol is
+declared by the term element with
+ role = ”definiendum” . The fact that this definition defines that
+symbol comes from the structural nesting of the term inside the definition. Similar
+examples are theories which can either be imported into each other by using the explicit
+ imports elements or simply by nesting
+ theory -elements.
+ Conceptually, it does and should not matter in which form symbols and
+definitions are given, and a mixture of both forms is also desirable
+to support the linking of mathematical content in OMDoc from
+different authoring sources. The document meta model declares these
+pure concepts and relations like an ontology. The intentional
+semantics of a given OMDoc document is a set of instances of these
+concepts and relations. The used graph rewriting tool supports
+hypergraphs with typed nodes and edges. The types are simple types
+with sub-typing relations. This is exploited to subdivide the whole
+graph in a syntax and a semantic subgraph by introducing top-level
+types for either part. The OMDoc syntax elements are declared as
+subtypes of the syntax type and the OMDoc document being an XML tree
+can then naturally be represented as (syntax) nodes and
+relations. Analogously, the semantic concepts and relations from the
+OMDoc document meta-model are simply declared as subtypes of the
+semantic types.
+ omtext d 
+ Attribut type p 
+ Attribut xml:id x 
+ OMDoc Definition 
+ isAttribute 
+ origin 
+ L 
+ omtext     d   
+ Attribut type p   
+ Attribut xml:id x   
+ Omdoc Definition od   
+ isAttribute   
+ origin   od.status = added   od.xmlid = x.value   detectOMTextDefiniendum(d,od)   detectCMP(od)   
+ R 
+ Apply 
+ omtext d   
+ Attribut type p   
+ Attribut xml:id x   
+ OMDoc Definition od   
+ isAttribute   
+ origin   od.status == deleted 
+ L 
+ PAC 
+ omtext     d   
+ Attribut type p   
+ Attribut xml:id x   
+ Omdoc Definition od   
+ isAttribute   
+ origin   od.status=preserved detectOMTextDefiniendum(d,od) detectCMP(od) 
+ R 
+ Apply 
+ Omdoc Definition   od 
+ TheoryObject   imp 
+ Definition changed a 
+ Definition changed 
+ uses 
+ L 
+ Omdoc Definition     od   
+ TheoryObject imp   
+ Definition changed a   
+ Definition changed l   
+ uses   
+ a.desc=”Used target definition changed” emit ”Used target definition changed” 
+ R 
+ Apply 
+ FindNewDefinition 
+ FindExistingDefinition 
+ PropagateChangedDefinition 
+ Figure 4: Two Abstraction Rules and one Propagation Rule written
+top-down; we use rectangles for syntax nodes, rounded rectangles
+for semantic nodes and ellipses for impact nodes. 
+ Abstraction Phase of CIA.
+ The abstraction phase of the impact analysis for OMDoc documents
+consists of extracting the intentional semantics from the given OMDoc documents. This is realized by a set of graph rewriting rules which
+analyse the OMDoc document to extract the semantic concepts and
+relations, and mark them as being added. Examples of such rules are
+the two left-most rules in Fig.  4 to
+extract definitions from “typed” omtext :
+The graph rewriting rules are named (e.g., FindNewDefinition )
+and have a left-hand side (the box labelled by L ) indicating
+the pattern to match in a subgraph and a right-hand side (the box
+labelled R ) by what the instantiated subgraph pattern is
+replaced. Identical graph nodes and edges are additionally labelled by
+names, such as x , d , p , o ​ d , … x,d,p,od,\ldots . Further conditions that must be
+satisfied to enable the graph rewriting step are positive application
+conditions (PAC), which must hold on the graph before rule application
+and negative application conditions (the dashed nodes and edges in the
+left-hand sides L or in extra NAC boxes—not
+used here) which must be false on the graph before rule
+application. These conditions can be graph patterns as well as boolean
+tests on attribute values. The application of the graph rewriting rule
+replaces the subgraph in L with the subgraph in R 
+and additional adaptations can be triggered in the Apply 
+part, such as adapting the value of attributes but also invoking
+further graph rewriting rules using their name (e.g.,
+ detectCMP ).
+ The rules for the abstraction phase always come in two variants: one
+variant is for new syntactic omtext s, i.e.,
+there does not exist yet a semantic object in the semantic
+graph. For these, new semantic instances are introduced, marked as
+added and the origin of the semantic concept is represented explicitly
+by an Origin edge from the semantic node to
+the syntax node. The second variant is for already known syntactic
+ omtext s, i.e., there exist already a
+semantic object in the semantic graph from a previous version of the
+document. For these, the semantic instances are maintained and marked
+as preserved. Both rules invoke further rules to analyse the
+“body” of a definition in order to find out whether the definition
+has changed (e.g., detectCMP ). All semantic
+objects that are neither added nor preserved are marked as deleted by
+a generic rule operating over all semantic nodes and edges. Overall we
+have designed 91 rules for the abstraction phase that synchronizes
+OMDoc documents with their intentional semantics.
+ Figure 5: Example Impact Annotation File 
+ ⬇ 
+ <impacts> 
+ <impact for= ”binary-tree.def” name= ”Definition ␣ changed” 
+ select= ” ⟨ xpath-to-definition-binary-tree ⟩ \langle\mbox{\sl xpath-to-definition-binary-tree}\rangle ” /> 
+ <impact for= ”balanced-binary-tree.def” name= ”Definition ␣ Binary ␣ Tree ␣ changed” 
+ select= ” ⟨ path-to-definition-balanced-binary-tree ⟩ \langle\mbox{\sl path-to-definition-balanced-binary-tree}\rangle ” /> 
+ <impact for= ”size-lemma-pf.derive2.method2.proof2.derive4.CMP1.p1.term2” 
+ name= ”Definition ␣ Binary ␣ Tree ␣ changed” 
+ select= ” ⟨ path-to-inproof-reference-to-balanced-binary-tree ⟩ \langle\mbox{\sl path-to-inproof-reference-to-balanced-binary-tree}\rangle ” /> 
+ </impacts> 
+ Propagation Phase of CIA.
+ The second, so-called propagation phase, analyses the semantic graph and exploits the
+information about semantics objects and relations being marked as
+added, deleted or preserved to propagate the impact of changes through
+the semantic graph. Impacts are a third type of nodes, different from the syntax and semantic nodes. They contain a human-oriented
+description of the impact and can only be connected to semantic nodes.
+For instance, we have one marking a definition for some symbol, say
+ f f , as being changed, when its body has changed. Furthermore, we have
+rules that propagate that information further to definitions that
+build upon f f or proofs using that definition (see
+right-most rule of Fig.  4 for an example). Overall, we have 15
+rules to analyse and propagate the impacts.
+ Projection Phase of CIA.
+ Finally, we have the projection phase which essentially
+consists of one generic rule that projects the impact information of
+the semantic nodes backwards along the origin links to the syntactic
+node and creates a corresponding impact annotation for the syntactic
+part of the documents. The impact annotations are output in a
+specific XML format, where an impact
+annotation refers to the xml:id of the
+OMDoc content element in its for attribute
+and the name attribute contains the
+human-oriented description of the impact. For our running example we obtain
+the impact shown in Fig.  5 .
+ 4.2 Change Impact Analysis Workflow
+ definition 
+ Theorem 
+ Proof 
+ origin 
+ origin 
+ origin 
+Conversion to HTML had a Fatal error and exited abruptly. This document may be truncated or damaged.
+ ◄ 
+ Feeling
+lucky? 
+ Conversion
+report 
+ Report
+an issue 
+ View original
+on arXiv ► 
+ Copyright 
+ Privacy Policy 
+ Generated by L a T e XML oxide

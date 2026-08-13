@@ -1,0 +1,29 @@
+SNAPSHOT: ar5iv full text — Deep Knowledge Tracing (Piech et al.)
+URL: https://ar5iv.labs.arxiv.org/html/1506.05908
+Fetched: 2026-08-13 via WebFetch
+
+---
+[Extracted content]
+
+## 1. Model Input and Output
+Input: student interactions encoded as fixed-length vectors. For small exercise sets, one-hot encoding combines exercise tag and correctness: "we set x_t to be a one-hot encoding of the student interaction tuple h_t = {q_t, a_t} that represents the combination of which exercise was answered and if the exercise was answered correctly, so x_t ∈ {0,1}^{2M}." For large feature spaces, random Gaussian vectors are used: "we instead assign a random vector n_{q,a} ~ N(0, I) to each input tuple" with dimension N << M (compressed sensing motivation).
+
+Output: "The output y_t is a vector of length equal to the number of problems, where each entry represents the predicted probability that the student would answer that particular problem correctly." The prediction of a_{t+1} is read from the entry in y_t corresponding to q_{t+1}.
+
+## 2. Datasets and AUC Results
+| Dataset | Students | Exercise Tags | Answers | Marginal AUC | BKT AUC | BKT* AUC | DKT AUC |
+|---|---|---|---|---|---|---|---|
+| Simulated-5 | 4,000 | 50 | 200K | 0.64 | 0.54 | — | 0.82 |
+| Khan Math | 47,495 | 69 | 1,435K | 0.63 | 0.68 | — | 0.85 |
+| Assistments | 15,931 | 124 | 526K | 0.62 | 0.67 | 0.69 | 0.86 |
+
+"On the Assistments dataset the DKT had a 25% gain on the previous best reported result (AUC = 0.86 and 0.69 respectively)."
+
+## 3. Limitations
+Data requirement: "One disadvantage of RNNs over simple hidden Markov methods is that they require large amounts of training data, and so are well suited to an online education environment, but not a small classroom environment."
+Interpretability: Appendix B shows difficulty clustering concepts from weights directly — "It is difficult to cluster concepts using model weights." The influence function J_ij (Eq. 4) was introduced as a workaround to extract structure.
+
+## 4. Curriculum Design and Task Dependency Discovery
+Curriculum design: "Given a student with an estimated hidden knowledge state, we can query our RNN to calculate what their expected knowledge state would be if we were to assign them a particular exercise." Exercise selection framed as a Markov decision problem; MDP-8 curricula yield "higher predicted knowledge after solving fewer problems."
+
+Dependency discovery: influence metric J_ij = y(j|i) / Σ_k y(j|k) captures how one exercise predicts performance on another. The model "recovers the pre-requisites associated with exercises" without human annotation. On synthetic data the conditional influence graph revealed "a perfect clustering of the five latent concepts." On Khan Academy data, "a compelling articulation of how the concepts in the 8th grade Common Core are related to each other." Authors emphasize these relationships "did not require human intervention, and the subtleties may be useful for course design."

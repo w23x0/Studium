@@ -1,0 +1,1095 @@
+ 
+ [1703.02117] Theory Morphisms in Church’s Type Theory with Quotation and
+Evaluation 
+ Theory Morphisms in Church’s Type Theory with Quotation and
+Evaluation Thanks:  Published in: H. Geuvers et al., eds,
+ Intelligent Computer Mathematics (CICM 2017) , Lecture
+Notes in Computer Science , Vol. 10383, pp. 147–162, Springer,
+2017. The final publication is available at Springer via
+ http://dx.doi.org/10.1007/978-3-319-62075-6_11 . This
+research was supported by NSERC.
+ Affiliation:  Computing and Software, McMaster University, Canada
+ William M. Farmer
+ Affiliation:  Computing and Software, McMaster University, Canada
+ Abstract 
+ ctt qe \mbox{\sc ctt}_{\rm qe} is a version of Church’s type theory with global quotation
+and evaluation operators that is engineered to reason about the
+interplay of syntax and semantics and to formalize syntax-based
+mathematical algorithms. ctt uqe \mbox{\sc ctt}_{\rm uqe} is a variant of ctt qe \mbox{\sc ctt}_{\rm qe} 
+that admits undefined expressions, partial functions, and multiple
+base types of individuals. It is better suited than ctt qe \mbox{\sc ctt}_{\rm qe} as a
+logic for building networks of theories connected by theory morphisms.
+This paper presents the syntax and semantics of ctt uqe \mbox{\sc ctt}_{\rm uqe} , defines
+a notion of a theory morphism from one ctt uqe \mbox{\sc ctt}_{\rm uqe} theory to another,
+and gives two simple examples involving monoids that illustrate the
+use of theory morphisms in ctt uqe \mbox{\sc ctt}_{\rm uqe} .
+ 1 Introduction
+ A syntax-based mathematical algorithm (SBMA) , such as a
+symbolic differentiation algorithm, manipulates mathematical
+expressions in a mathematically meaningful way. Reasoning about SBMAs
+requires reasoning about the relationship between how the expressions
+are manipulated and what the manipulations mean mathematically. We
+argue in  [ 8 ] that a logic with quotation and evaluation would
+provide a global infrastructure for formalizing SBMAs and reasoning
+about the interplay of syntax and semantics that is embodied in them.
+ Quotation is a mechanism for referring to a syntactic value
+(e.g., a syntax tree) that represents the syntactic structure of an
+expression, while evaluation is a mechanism for referring to
+the value of the expression that a syntactic value represents.
+Incorporating quotation and evaluation into a traditional logic like
+first-order logic or simple type theory is tricky; there are several
+challenging problems that the logic engineer must
+overcome  [ 8 , 9 ] .
+ ctt qe \mbox{\sc ctt}_{\rm qe}   [ 9 , 10 ] is a version of Church’s
+type theory with global quotation and evaluation operators inspired by
+the quote and eval operators in the Lisp programming language. We
+show in  [ 9 ] that formula schemas and meaning formulas
+for SBMAs can be expressed in ctt qe \mbox{\sc ctt}_{\rm qe} using quotation and
+evaluation and that such schemas and meaning formulas can be
+instantiated and proved within the proof system for ctt qe \mbox{\sc ctt}_{\rm qe} .
+ The little theories method   [ 11 ] is an approach
+for understanding and organizing mathematical knowledge as a
+ theory graph   [ 14 ] consisting of axiomatic
+ theories as nodes and theory morphisms 1 1 
+ 1 
+ Theory
+morphisms are also known as immersions , realizations ,
+ theory interpretations , translations , and
+ views . as directed edges. A theory consists of a
+ language of expressions that denote mathematical values and a
+set of axioms that express in the language assumptions about
+the values. A theory morphism is a meaning-preserving mapping from
+the formulas of one theory to the formulas of another theory. Theory
+morphisms serve as information conduits that enable definitions and
+theorems to be passed from an abstract theory to many other more
+concrete theories  [ 2 ] .
+ A biform theory   [ 3 , 6 ] is a
+combination of an axiomatic theory and an algorithmic theory (a
+collection of algorithms that perform symbolic computations). It
+consists of a language L L generated from a set of
+ symbols , a set of transformers , and a set of
+ axioms . The expressions of L L denote mathematical values that
+include syntactic values representing the expressions of L L . The
+transformers are SBMAs and other algorithms that implement functions
+on the expressions of L L and are represented by symbols of L L . The
+axioms are formulas of L L that express properties about the symbols
+and transformers of the biform theory. Unlike traditional logics,
+ ctt qe \mbox{\sc ctt}_{\rm qe} is well suited for formalizing biform theories. Can the
+little theories method be applied to biform theories formalized in
+ ctt qe \mbox{\sc ctt}_{\rm qe} ? This would require a definition of a theory morphism for
+ ctt qe \mbox{\sc ctt}_{\rm qe} theories.
+ Defining a notion of a theory morphism in a logic with quotation is
+not as straightforward as in a logic without quotation due to the
+following problem:
+ Constant Interpretation Problem . Let T 1 T_{1} and T 2 T_{2} 
+be theories in a logic with a quotation operator
+ ⌜ ⋅ ⌝ \ulcorner\cdot\urcorner . If a theory morphism Φ \Phi from T 1 T_{1} to
+ T 2 T_{2} interprets two distinct constants c c and c ′ c^{\prime} in T 1 T_{1} by a
+single constant d d in T 2 T_{2} , then Φ \Phi would map the true
+formula ⌜ ​ c ​ ⌝ ≠ ⌜ ​ c ′ ​ ⌝ \ulcorner c\urcorner\not=\ulcorner c^{\prime}\urcorner of T 1 T_{1} to the false
+formula ⌜ ​ d ​ ⌝ ≠ ⌜ ​ d ​ ⌝ \ulcorner d\urcorner\not=\ulcorner d\urcorner of T 2 T_{2} , and hence
+ Φ \Phi would not be meaning preserving. Similarly, if Φ \Phi 
+interprets c c as an expression e e in T 2 T_{2} that is not a
+constant, then Φ \Phi would map a true formula like
+ is-constant ​ ( ⌜ ​ c ​ ⌝ ) \mbox{\sf is-constant}(\ulcorner c\urcorner) to the false formula
+ is-constant ​ ( ⌜ ​ e ​ ⌝ ) \mbox{\sf is-constant}(\ulcorner e\urcorner) .
+ This paper defines a notion of a theory morphism that overcomes this
+problem in ctt uqe \mbox{\sc ctt}_{\rm uqe} , a variant of ctt qe \mbox{\sc ctt}_{\rm qe} that admits
+undefined expressions, partial functions, and multiple base types of
+individuals. ctt uqe \mbox{\sc ctt}_{\rm uqe} merges the machinery for quotation and
+evaluation found in ctt qe \mbox{\sc ctt}_{\rm qe}   [ 9 ] with the
+machinery for undefinedness found in 𝒬 0 u {\cal Q}^{\rm u}_{0}   [ 7 ] . Like
+ ctt qe \mbox{\sc ctt}_{\rm qe} and 𝒬 0 u {\cal Q}^{\rm u}_{0} , ctt uqe \mbox{\sc ctt}_{\rm uqe} is based on
+ 𝒬 0 {\cal Q}_{0}   [ 1 ] , Peter Andrews’ elegant version of Church’s
+type theory. See  [ 9 ] for references related to
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} .
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} is better suited than ctt qe \mbox{\sc ctt}_{\rm qe} as a logic for the
+little theories method for two reasons. First, it is often convenient
+for a theory morphism from T 1 T_{1} to T 2 T_{2} to interpret different kinds
+of values by values of different types. Since ctt qe \mbox{\sc ctt}_{\rm qe} contains
+only one base type of individuals, ι \iota , all individuals in a
+theory T 1 T_{1} must be interpreted by values of the same type in T 2 T_{2} .
+Allowing multiple base types of individuals in ctt uqe \mbox{\sc ctt}_{\rm uqe} eliminates
+this restriction. Second, it is often useful to interpret a type
+ α \alpha in T 1 T_{1} by a subset of the denotation of a type β \beta in
+ T 2 T_{2} . As shown in  [ 4 ] , this naturally leads to partial
+functions on the type β \beta . ctt uqe \mbox{\sc ctt}_{\rm uqe} has built-in support for
+partial functions and undefinedness based on the traditional approach
+to undefinedness  [ 5 ] ; ctt qe \mbox{\sc ctt}_{\rm qe} has no such built-in
+support. 2 2 
+ 2 
+ A logic without support for partial functions and
+undefinedness — such as ctt qe \mbox{\sc ctt}_{\rm qe} or the logic of
+HOL  [ 12 ] — can interpret α \alpha by a type
+ β ′ \beta^{\prime} that is isomorphic to a subset of β \beta . However, this
+approach is more complicated and farther from standard mathematics
+practice than interpreting α \alpha directly by a subset of
+ β \beta . 
+ The rest of the paper is organized as follows. The syntax and
+semantics of ctt uqe \mbox{\sc ctt}_{\rm uqe} are presented in sections  2 
+and  3 . The notion of a theory morphism in
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} is defined in section  4 .
+Section  5 contains two simple examples of theory
+morphisms in ctt uqe \mbox{\sc ctt}_{\rm uqe} involving monoids. The paper concludes in
+section  6 with a summary of the paper’s results and
+some brief remarks about constructing theory morphisms in an
+implementation of ctt uqe \mbox{\sc ctt}_{\rm uqe} and about future work.
+ The syntax and semantics of ctt uqe \mbox{\sc ctt}_{\rm uqe} are presented as briefly as
+possible. The reader should consult  [ 7 ] 
+and  [ 9 ] for a more in-depth discussion on the ideas
+underlying the syntax and semantics in ctt uqe \mbox{\sc ctt}_{\rm uqe} . Due to limited
+space, a proof system is not given in this paper for ctt uqe \mbox{\sc ctt}_{\rm uqe} . A
+proof system for ctt uqe \mbox{\sc ctt}_{\rm uqe} can be straightforwardly derived by
+merging the proof systems for ctt qe \mbox{\sc ctt}_{\rm qe}   [ 9 ] and
+ 𝒬 0 u {\cal Q}^{\rm u}_{0}   [ 7 ] .
+ 2 Syntax
+ The syntax of ctt uqe \mbox{\sc ctt}_{\rm uqe} is the same as the syntax of
+ ctt qe \mbox{\sc ctt}_{\rm qe}   [ 9 ] except that (1) the types include
+denumerably many base types of individuals instead of just the single
+ ι \iota type, (2) the expressions include conditional expressions, and
+(3) the logical constants include constants for definite description
+and exclude is-expr ϵ → o \mbox{\sf is-expr}_{\epsilon\rightarrow o} — which we will
+see is not needed since all constructions are “proper” in
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} .
+ 2.1 Types
+ Let ℬ \cal B be a denumerable set of symbols that contains o o and
+ ϵ \epsilon . A type of ctt uqe \mbox{\sc ctt}_{\rm uqe} is a string of symbols
+defined inductively by the following formation rules:
+ 1. 
+ Base type : If α ∈ ℬ \alpha\in\mbox{$\cal B$} , then α \alpha is a
+type.
+ 2. 
+ Function type : If α \alpha and β \beta are types, then
+ ( α → β ) (\alpha\rightarrow\beta) is a type.
+ Let 𝒯 \cal T denote the set of types of ctt uqe \mbox{\sc ctt}_{\rm uqe} . o o and
+ ϵ \epsilon are the logical base types of ctt uqe \mbox{\sc ctt}_{\rm uqe} .
+ α , β , γ , … \alpha,\beta,\gamma,\ldots are syntactic variables ranging over
+types. When there is no loss of meaning, matching pairs of
+parentheses in types may be omitted. We assume that function type
+formation associates to the right so that a type of the form ( α → ( β → γ ) ) (\alpha\rightarrow(\beta\rightarrow\gamma)) may be written as α → β → γ \alpha\rightarrow\beta\rightarrow\gamma .
+ 2.2 Expressions
+ A typed symbol is a symbol with a subscript from 𝒯 \cal T . Let
+ 𝒱 \cal V be a set of typed symbols such that 𝒱 \cal V contains denumerably
+many typed symbols with subscript  α \alpha for each α ∈ 𝒯 \alpha\in\mbox{$\cal T$} .
+A variable of type α \alpha of ctt uqe \mbox{\sc ctt}_{\rm uqe} is a member of
+ 𝒱 \cal V with subscript  α \alpha . f α , g α , h α , u α , v α , w α , x α , y α , z α , … \textbf{f}_{\alpha},\textbf{g}_{\alpha},\textbf{h}_{\alpha},\textbf{u}_{\alpha},\textbf{v}_{\alpha},\textbf{w}_{\alpha},\textbf{x}_{\alpha},\textbf{y}_{\alpha},\textbf{z}_{\alpha},\ldots are syntactic variables ranging over
+variables of type  α \alpha . We will assume that f α , g α , h α , u α , v α , w α , x α , y α , z α , … f_{\alpha},g_{\alpha},h_{\alpha},u_{\alpha},v_{\alpha},w_{\alpha},x_{\alpha},y_{\alpha},z_{\alpha},\ldots are actual variables of type  α \alpha of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} .
+ Let 𝒞 \cal C be a set of typed symbols disjoint from 𝒱 \cal V that includes
+the typed symbols in Table  1 . A constant of
+type  α \alpha of ctt uqe \mbox{\sc ctt}_{\rm uqe} is a member of 𝒞 \cal C with
+subscript  α \alpha . The typed symbols in Table  1 are
+the logical constants of ctt uqe \mbox{\sc ctt}_{\rm uqe} . c α , d α , … \textbf{c}_{\alpha},\textbf{d}_{\alpha},\ldots are syntactic variables ranging over
+constants of type  α \alpha .
+ = α → α → o \mbox{\sf=}_{\alpha\rightarrow\alpha\rightarrow o} 
+    for all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} 
+ ι ( α → o ) → α \iota_{(\alpha\rightarrow o)\rightarrow\alpha} 
+    for all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} with α ≠ o \alpha\not=o 
+ is-var ϵ → o \mbox{\sf is-var}_{\epsilon\rightarrow o} 
+ is-var ϵ → o α \mbox{\sf is-var}_{\epsilon\rightarrow o}^{\alpha} 
+    for all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} 
+ is-con ϵ → o \mbox{\sf is-con}_{\epsilon\rightarrow o} 
+ is-con ϵ → o α \mbox{\sf is-con}_{\epsilon\rightarrow o}^{\alpha} 
+    for all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} 
+ app ϵ → ϵ → ϵ \mbox{\sf app}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon} 
+ abs ϵ → ϵ → ϵ \mbox{\sf abs}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon} 
+ cond ϵ → ϵ → ϵ → ϵ \mbox{\sf cond}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon\rightarrow\epsilon} 
+ quo ϵ → ϵ \mbox{\sf quo}_{\epsilon\rightarrow\epsilon} 
+ is-expr ϵ → o α \mbox{\sf is-expr}_{\epsilon\rightarrow o}^{\alpha} 
+    for all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} 
+ ⊏ ϵ → ϵ → o \sqsubset_{\epsilon\rightarrow\epsilon\rightarrow o} 
+ is-free-in ϵ → ϵ → o \mbox{\sf is-free-in}_{\epsilon\rightarrow\epsilon\rightarrow o} 
+ Table 1: Logical Constants 
+ An expression of type α \alpha of ctt uqe \mbox{\sc ctt}_{\rm uqe} is a string of
+symbols defined inductively by the formation rules below.
+ A α , B α , C α , … \textbf{A}_{\alpha},\textbf{B}_{\alpha},\textbf{C}_{\alpha},\ldots are
+syntactic variables ranging over expressions of type α \alpha . An
+expression is eval-free if it is constructed using just the
+first six formation rules.
+ 1. 
+ Variable : x α \textbf{x}_{\alpha} is an expression of type
+ α \alpha .
+ 2. 
+ Constant : c α \textbf{c}_{\alpha} is an expression of type
+ α \alpha .
+ 3. 
+ Function application : ( F α → β ​ A α ) (\textbf{F}_{\alpha\rightarrow\beta}\,\textbf{A}_{\alpha}) is an expression of type β \beta .
+ 4. 
+ Function abstraction : ( λ ​ x α . B β ) (\lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{B}_{\beta}) is an expression of type α → β \alpha\rightarrow\beta .
+ 5. 
+ Conditional : ( if ​ A o ​ B α ​ C α ) (\mbox{\sf if}\;\textbf{A}_{o}\;\textbf{B}_{\alpha}\;\textbf{C}_{\alpha}) is an expression of type α \alpha .
+ 6. 
+ Quotation : ⌜ ​ A α ​ ⌝ \ulcorner\textbf{A}_{\alpha}\urcorner is an
+expression of type ϵ \epsilon if A α \textbf{A}_{\alpha} is eval-free.
+ 7. 
+ Evaluation : ⟦ A ϵ ⟧ 𝐁 β \llbracket\textbf{A}_{\epsilon}\rrbracket_{{\bf B}_{\beta}} is an expression of type β \beta .
+ The purpose of the second argument B β \textbf{B}_{\beta} in an evaluation
+ ⟦ A ϵ ⟧ 𝐁 β \llbracket\textbf{A}_{\epsilon}\rrbracket_{{\bf B}_{\beta}} is to establish the
+type of the evaluation. 3 3 
+ 3 
+ It would be more natural for the
+second argument of an evaluation to be a type, but that would lead
+to an infinite family of evaluation operators, one for every type,
+since type variables are not available in ctt uqe \mbox{\sc ctt}_{\rm uqe} (as well as
+in ctt qe \mbox{\sc ctt}_{\rm qe} and 𝒬 0 {\cal Q}_{0} ). A formula is an expression
+of type o o . A predicate is an expression of a type of the
+form α → o \alpha\rightarrow o . When there is no loss of meaning, matching
+pairs of parentheses in expressions may be omitted. We assume that
+function application formation associates to the left so that an
+expression of the form ( ( G α → β → γ ​ A α ) ​ B β ) ((\textbf{G}_{\alpha\rightarrow\beta\rightarrow\gamma}\,\textbf{A}_{\alpha})\,\textbf{B}_{\beta}) may be written
+as G α → β → γ ​ A α ​ B β \textbf{G}_{\alpha\rightarrow\beta\rightarrow\gamma}\,\textbf{A}_{\alpha}\,\textbf{B}_{\beta} .
+ Remark 2.2.1 (Conditionals) 
+ We will see in the next section that ( if ​ A o ​ B α ​ C α ) (\mbox{\sf if}\;\textbf{A}_{o}\;\textbf{B}_{\alpha}\;\textbf{C}_{\alpha}) is a conditional expression
+that is not strict with respect to undefinedness. For instance, if
+ A o \textbf{A}_{o} is true, then ( if ​ A o ​ B α ​ C α ) (\mbox{\sf if}\;\textbf{A}_{o}\;\textbf{B}_{\alpha}\;\textbf{C}_{\alpha}) denotes the value of
+ B α \textbf{B}_{\alpha} even when C α \textbf{C}_{\alpha} is undefined. We
+construct conditionals using an expression constructor instead of a
+constant since constants always denote functions that are effectively
+strict with respect to undefinedness. We will use conditional
+expressions to restrict the domain of a function. 
+ An occurrence of a variable x α \textbf{x}_{\alpha} in an eval-free
+expression B β \textbf{B}_{\beta} is bound [ free ] if (1) it
+is not in a quotation and (2) it is [not] in a subexpression of
+ B β \textbf{B}_{\beta} of the form λ ​ x α . C γ \lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{C}_{\gamma} . An eval-free expression is closed if no
+free variables occur in it.
+ 2.3 Constructions
+ Let ℰ \cal E be the function mapping eval-free expressions to
+expressions of type ϵ \epsilon that is defined inductively as follows:
+ 1. 
+ ℰ ⁡ ( x α ) = ⌜ ​ x α ​ ⌝ \mbox{$\cal E$}(\textbf{x}_{\alpha})=\ulcorner\textbf{x}_{\alpha}\urcorner .
+ 2. 
+ ℰ ⁡ ( c α ) = ⌜ ​ c α ​ ⌝ \mbox{$\cal E$}(\textbf{c}_{\alpha})=\ulcorner\textbf{c}_{\alpha}\urcorner .
+ 3. 
+ ℰ ⁡ ( F α → β ​ A α ) = app ϵ → ϵ → ϵ ​ ℰ ​ ( F α → β ) ​ ℰ ​ ( A α ) \mbox{$\cal E$}(\textbf{F}_{\alpha\rightarrow\beta}\,\textbf{A}_{\alpha})=\mbox{\sf app}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\mbox{$\cal E$}(\textbf{F}_{\alpha\rightarrow\beta})\,\mbox{$\cal E$}(\textbf{A}_{\alpha}) .
+ 4. 
+ ℰ ⁡ ( λ ​ x α . B β ) = abs ϵ → ϵ → ϵ ​ ℰ ​ ( x α ) ​ ℰ ​ ( B β ) \mbox{$\cal E$}(\lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{B}_{\beta})=\mbox{\sf abs}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\mbox{$\cal E$}(\textbf{x}_{\alpha})\,\mbox{$\cal E$}(\textbf{B}_{\beta}) .
+ 5. 
+ ℰ ⁡ ( if ​ A o ​ B α ​ C α ) = cond ϵ → ϵ → ϵ → ϵ ​ ℰ ​ ( A o ) ​ ℰ ​ ( B α ) ​ ℰ ​ ( C α ) . \mbox{$\cal E$}(\mbox{\sf if}\;\textbf{A}_{o}\;\textbf{B}_{\alpha}\;\textbf{C}_{\alpha})=\mbox{\sf cond}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\mbox{$\cal E$}(\textbf{A}_{o})\,\mbox{$\cal E$}(\textbf{B}_{\alpha})\,\mbox{$\cal E$}(\textbf{C}_{\alpha}). 
+ 6. 
+ ℰ ⁡ ( ⌜ ​ A α ​ ⌝ ) = quo ϵ → ϵ ​ ℰ ​ ( A α ) \mbox{$\cal E$}(\ulcorner\textbf{A}_{\alpha}\urcorner)=\mbox{\sf quo}_{\epsilon\rightarrow\epsilon}\,\mbox{$\cal E$}(\textbf{A}_{\alpha}) .
+ A construction of ctt uqe \mbox{\sc ctt}_{\rm uqe} is an expression in the range of
+ ℰ \cal E . ℰ \cal E is clearly injective. When A α \textbf{A}_{\alpha} is
+eval-free, ℰ ⁡ ( A α ) \mbox{$\cal E$}(\textbf{A}_{\alpha}) is a construction that represents
+the syntactic structure of A α \textbf{A}_{\alpha} . That is,
+ ℰ ⁡ ( A α ) \mbox{$\cal E$}(\textbf{A}_{\alpha}) is a syntactic value that represents how
+ A α \textbf{A}_{\alpha} is constructed as an expression. In contrast to
+ ctt qe \mbox{\sc ctt}_{\rm qe} , the constructions of ctt uqe \mbox{\sc ctt}_{\rm uqe} do not include
+“improper constructions” — such as app ϵ → ϵ → ϵ ​ ⌜ ​ x α ​ ⌝ ​ ⌜ ​ x α ​ ⌝ \mbox{\sf app}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\ulcorner\textbf{x}_{\alpha}\urcorner\,\ulcorner\textbf{x}_{\alpha}\urcorner — that do not represent the syntactic
+structures of eval-free expressions.
+ The six kinds of eval-free expressions and the syntactic values that
+represent their syntactic structures are given in
+Table  2 .
+ Kind 
+ Syntax 
+ Syntactic Value 
+ Variable 
+ x α \textbf{x}_{\alpha} 
+ ⌜ ​ x α ​ ⌝ \ulcorner\textbf{x}_{\alpha}\urcorner 
+ Constant 
+ c α \textbf{c}_{\alpha} 
+ ⌜ ​ c α ​ ⌝ \ulcorner\textbf{c}_{\alpha}\urcorner 
+ Function application 
+ F α → β ​ A α \textbf{F}_{\alpha\rightarrow\beta}\,\textbf{A}_{\alpha} 
+ app ϵ → ϵ → ϵ ​ ℰ ​ ( F α → β ) ​ ℰ ​ ( A α ) \mbox{\sf app}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\mbox{$\cal E$}(\textbf{F}_{\alpha\rightarrow\beta})\,\mbox{$\cal E$}(\textbf{A}_{\alpha}) 
+ Function abstraction 
+ λ ​ x α . B β \lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{B}_{\beta} 
+ abs ϵ → ϵ → ϵ ​ ℰ ​ ( x α ) ​ ℰ ​ ( B β ) \mbox{\sf abs}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\mbox{$\cal E$}(\textbf{x}_{\alpha})\,\mbox{$\cal E$}(\textbf{B}_{\beta}) 
+ Conditional 
+ ( if ​ A o ​ B α ​ C α ) (\mbox{\sf if}\;\textbf{A}_{o}\;\textbf{B}_{\alpha}\;\textbf{C}_{\alpha}) 
+ cond ϵ → ϵ → ϵ → ϵ ​ ℰ ​ ( A o ) ​ ℰ ​ ( B α ) ​ ℰ ​ ( C α ) . \mbox{\sf cond}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\mbox{$\cal E$}(\textbf{A}_{o})\,\mbox{$\cal E$}(\textbf{B}_{\alpha})\,\mbox{$\cal E$}(\textbf{C}_{\alpha}). 
+ Quotation 
+ ⌜ ​ A α ​ ⌝ \ulcorner\textbf{A}_{\alpha}\urcorner 
+ quo ϵ → ϵ ​ ℰ ​ ( A α ) \mbox{\sf quo}_{\epsilon\rightarrow\epsilon}\,\mbox{$\cal E$}(\textbf{A}_{\alpha}) 
+ Table 2: Six Kinds of Eval-Free Expressions 
+ 2.4 Theories
+ Let ℬ ′ ⊆ ℬ \mbox{$\cal B$}^{\prime}\subseteq\mbox{$\cal B$} and 𝒞 ′ ⊆ 𝒞 \mbox{$\cal C$}^{\prime}\subseteq\mbox{$\cal C$} . A type α \alpha of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} is a ℬ ′ \mbox{$\cal B$}^{\prime} -type if each base type occurring in
+ α \alpha is a member of ℬ ′ \mbox{$\cal B$}^{\prime} . An expression A α \textbf{A}_{\alpha} of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} is a ( ℬ ′ , 𝒞 ′ ) (\mbox{$\cal B$}^{\prime},\mbox{$\cal C$}^{\prime}) -expression if each base type
+and constant occurring in A α \textbf{A}_{\alpha} is a member of ℬ ′ \mbox{$\cal B$}^{\prime} 
+and 𝒞 ′ \mbox{$\cal C$}^{\prime} , respectively. A language of ctt uqe \mbox{\sc ctt}_{\rm uqe} is the
+set of all ( ℬ ′ , 𝒞 ′ ) (\mbox{$\cal B$}^{\prime},\mbox{$\cal C$}^{\prime}) -expressions for some ℬ ′ ⊆ ℬ \mbox{$\cal B$}^{\prime}\subseteq\mbox{$\cal B$} and
+ 𝒞 ′ ⊆ 𝒞 \mbox{$\cal C$}^{\prime}\subseteq\mbox{$\cal C$} such that ℬ ′ \mbox{$\cal B$}^{\prime} contains the logical base types
+of ctt uqe \mbox{\sc ctt}_{\rm uqe} (i.e., o o and ι \iota ) and 𝒞 ′ \mbox{$\cal C$}^{\prime} contains the
+logical constants of ctt uqe \mbox{\sc ctt}_{\rm uqe} . A theory of ctt uqe \mbox{\sc ctt}_{\rm uqe} is
+a pair T = ( L , Γ ) T=(L,\Gamma) where L L is a language of ctt uqe \mbox{\sc ctt}_{\rm uqe} and
+ Γ \Gamma is a set of formulas in L L (called the axioms of
+ T T ). A α \textbf{A}_{\alpha} is an expression of a theory T T if
+ A α ∈ L \textbf{A}_{\alpha}\in L .
+ 2.5 Definitions and Abbreviations
+ As in  [ 9 ] , we introduce in Table  3 
+several defined logical constants and abbreviations.
+ ( A α ↓ ) ({\textbf{A}_{\alpha}\!\downarrow}) says that A α \textbf{A}_{\alpha} is
+defined, and similarly, ( A α ↑ ) ({\textbf{A}_{\alpha}\!\uparrow}) says that
+ A α \textbf{A}_{\alpha} is undefined. A α ≃ B α \textbf{A}_{\alpha}\simeq\textbf{B}_{\alpha} says that A α \textbf{A}_{\alpha} and
+ B α \textbf{B}_{\alpha} are quasi-equal , i.e., that
+ A α \textbf{A}_{\alpha} and B α \textbf{B}_{\alpha} are either both defined
+and equal or both undefined. I ​ x α . A o \mbox{\rm I}\,\textbf{x}_{\alpha}\mathrel{.}\textbf{A}_{o} is a definite description . It denotes the unique
+ x α \textbf{x}_{\alpha} that satisfies A o \textbf{A}_{o} . If there is no or
+more than one such x α \textbf{x}_{\alpha} , it is undefined. The defined
+constant ⊥ α \bot_{\alpha} is a canonical undefined expression of
+type α \alpha .
+ ( A α = B α ) (\textbf{A}_{\alpha}=\textbf{B}_{\alpha}) 
+    stands for 
+ = α → α → o A α B α =_{\alpha\rightarrow\alpha\rightarrow o}\,\textbf{A}_{\alpha}\,\textbf{B}_{\alpha} . 
+ ( A o ≡ B o ) (\textbf{A}_{o}\equiv\textbf{B}_{o}) 
+    stands for 
+ = o → o → o A o B o =_{o\rightarrow o\rightarrow o}\,\textbf{A}_{o}\,\textbf{B}_{o} . 
+ T o T_{o} 
+    stands for 
+ = o → o → o = = o → o → o =_{o\rightarrow o\rightarrow o}\;=\;=_{o\rightarrow o\rightarrow o} . 
+ F o F_{o} 
+    stands for 
+ ( λ ​ x o . T o ) = ( λ ​ x o . x o ) . (\lambda\,x_{o}\mathrel{.}T_{o})=(\lambda\,x_{o}\mathrel{.}x_{o}). 
+ ( ∀ x α . A o ) (\forall\,\textbf{x}_{\alpha}\mathrel{.}\textbf{A}_{o}) 
+    stands for 
+ ( λ ​ x α . T o ) = ( λ ​ x α . A o ) (\lambda\,\textbf{x}_{\alpha}\mathrel{.}T_{o})=(\lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{A}_{o}) . 
+ ∧ o → o → o \wedge_{o\rightarrow o\rightarrow o} 
+    stands for 
+ λ ​ x o . λ ​ y o . \lambda\,x_{o}\mathrel{.}\lambda\,y_{o}\mathrel{.}{} 
+ ( ( λ ​ g o → o → o . g o → o → o ​ T o ​ T o ) = CLOSE ((\lambda\,g_{o\rightarrow o\rightarrow o}\mathrel{.}g_{o\rightarrow o\rightarrow o}\,T_{o}\,T_{o})={} 
+      OPEN ( λ ​ g o → o → o . g o → o → o ​ x o ​ y o ) ) . (\lambda\,g_{o\rightarrow o\rightarrow o}\mathrel{.}g_{o\rightarrow o\rightarrow o}\,x_{o}\,y_{o})). 
+ ( A o ∧ B o ) (\textbf{A}_{o}\wedge\textbf{B}_{o}) 
+    stands for 
+ ∧ o → o → o A o B o \wedge_{o\rightarrow o\rightarrow o}\,\textbf{A}_{o}\,\textbf{B}_{o} . 
+ ⊃ o → o → o \supset_{o\rightarrow o\rightarrow o} 
+    stands for 
+ λ ​ x o . λ ​ y o . ( x o = ( x o ∧ y o ) ) . \lambda\,x_{o}\mathrel{.}\lambda\,y_{o}\mathrel{.}(x_{o}=(x_{o}\wedge y_{o})). 
+ ( A o ⊃ B o ) (\textbf{A}_{o}\supset\textbf{B}_{o}) 
+    stands for 
+ ⊃ o → o → o A o B o {\supset_{o\rightarrow o\rightarrow o}}\,\textbf{A}_{o}\,\textbf{B}_{o} . 
+ ¬ o → o \neg_{o\rightarrow o} 
+    stands for 
+ = o → o → o F o {=_{o\rightarrow o\rightarrow o}}\,F_{o} . 
+ ( ¬ A o ) (\neg\textbf{A}_{o}) 
+    stands for 
+ ¬ o → o A o \neg_{o\rightarrow o}\,\textbf{A}_{o} . 
+ ∨ o → o → o \vee_{o\rightarrow o\rightarrow o} 
+    stands for 
+ λ ​ x o . λ ​ y o . ¬ ( ¬ x o ∧ ¬ y o ) . \lambda\,x_{o}\mathrel{.}\lambda\,y_{o}\mathrel{.}\neg(\neg x_{o}\wedge\neg y_{o}). 
+ ( A o ∨ B o ) (\textbf{A}_{o}\vee\textbf{B}_{o}) 
+    stands for 
+ ∨ o → o → o A o B o {\vee_{o\rightarrow o\rightarrow o}}\,\textbf{A}_{o}\,\textbf{B}_{o} . 
+ ( ∃ x α . A o ) (\exists\,\textbf{x}_{\alpha}\mathrel{.}\textbf{A}_{o}) 
+    stands for 
+ ¬ ( ∀ x α . ¬ A o ) \neg(\forall\,\textbf{x}_{\alpha}\mathrel{.}\neg\textbf{A}_{o}) . 
+ ( A α ≠ B α ) (\textbf{A}_{\alpha}\not=\textbf{B}_{\alpha}) 
+    stands for 
+ ¬ ( A α = B α ) \neg(\textbf{A}_{\alpha}=\textbf{B}_{\alpha}) . 
+ A ϵ ⊏ ϵ → ϵ → o B ϵ \textbf{A}_{\epsilon}\sqsubset_{\epsilon\rightarrow\epsilon\rightarrow o}\textbf{B}_{\epsilon} 
+    stands for 
+ ⊏ ϵ → ϵ → o A ϵ B ϵ \sqsubset_{\epsilon\rightarrow\epsilon\rightarrow o}\,\textbf{A}_{\epsilon}\,\textbf{B}_{\epsilon} . 
+ ⟦ A ϵ ⟧ β \llbracket\textbf{A}_{\epsilon}\rrbracket_{\beta} 
+    stands for 
+ ⟦ A ϵ ⟧ 𝐁 β \llbracket\textbf{A}_{\epsilon}\rrbracket_{{\bf B}_{\beta}} . 
+ ( A α ↓ ) (\textbf{A}_{\alpha}\!\downarrow) 
+    stands for 
+ A α = A α \textbf{A}_{\alpha}=\textbf{A}_{\alpha} . 
+ ( A α ↑ ) (\textbf{A}_{\alpha}\!\uparrow) 
+    stands for 
+ ¬ ( A α ↓ ) \neg(\textbf{A}_{\alpha}\!\downarrow) . 
+ ( A α ≃ B α ) (\textbf{A}_{\alpha}\simeq\textbf{B}_{\alpha}) 
+    stands for 
+ ( A α ↓ ∨ B α ↓ ) ⊃ A α = B α ({\textbf{A}_{\alpha}\!\downarrow}\vee{\textbf{B}_{\alpha}\!\downarrow})\supset\textbf{A}_{\alpha}=\textbf{B}_{\alpha} . 
+ ( I ​ x α . A o ) (\mbox{\rm I}\,\textbf{x}_{\alpha}\mathrel{.}\textbf{A}_{o}) 
+    stands for 
+ ι ( α → o ) → α ​ ( λ ​ x α . A o ) \iota_{(\alpha\rightarrow o)\rightarrow\alpha}\,(\lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{A}_{o}) 
+ where α ≠ o \alpha\not=o . 
+ ⊥ o \bot_{o} 
+    stands for 
+ F o F_{o} . 
+ ⊥ α \bot_{\alpha} 
+    stands for 
+ I ​ x α . x α ≠ x α \mbox{\rm I}\,x_{\alpha}\mathrel{.}x_{\alpha}\not=x_{\alpha} where α ≠ o \alpha\not=o . 
+ Table 3: Definitions and Abbreviations 
+ 3 Semantics
+ The semantics of ctt uqe \mbox{\sc ctt}_{\rm uqe} is the same as the semantics of
+ ctt qe \mbox{\sc ctt}_{\rm qe} except that the former admits undefined expressions in
+accordance with the traditional approach to
+undefinedness  [ 5 ] . Two principal changes are made to the
+ ctt qe \mbox{\sc ctt}_{\rm qe} semantics: (1) The notion of a general model is redefined
+to include partial functions as well as total functions. (2) The
+valuation function for expressions is made into a partial function
+that assigns a value to an expression iff the expression is defined
+according to the traditional approach.
+ 3.1 Frames
+ A frame of ctt uqe \mbox{\sc ctt}_{\rm uqe} is a collection { D α | α ∈ 𝒯 } {\{D_{\alpha}\;|\;\alpha\in\mbox{$\cal T$}\}} of domains such that:
+ 1. 
+ D o = { t , f } D_{o}={\{\mbox{{\sc t}},\mbox{{\sc f}}\}} , the set of standard truth
+values .
+ 2. 
+ D ϵ D_{\epsilon} is the set of constructions of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} .
+ 3. 
+ For α ∈ ℬ \alpha\in\mbox{$\cal B$} with α ∉ { o , ϵ } \alpha\not\in{\{o,\epsilon\}} ,
+ D α D_{\alpha} is a nonempty set of values (called
+ individuals ).
+ 4. 
+ For α , β ∈ 𝒯 \alpha,\beta\in\mbox{$\cal T$} , D α → β D_{\alpha\rightarrow\beta} is
+some set of total functions from D α D_{\alpha} to D β D_{\beta} if
+ β = o \beta=o and some set of partial and total functions
+from D α D_{\alpha} to D β D_{\beta} if β ≠ o \beta\not=o .
+ 3.2 Interpretations
+ An interpretation of ctt uqe \mbox{\sc ctt}_{\rm uqe} is a pair ( { D α | α ∈ 𝒯 } , I ) ({\{D_{\alpha}\;|\;\alpha\in\mbox{$\cal T$}\}},I) consisting of a frame and an
+interpretation function I I that maps each constant in 𝒞 \cal C of type
+ α \alpha to an element of D α D_{\alpha} such that:
+ 1. 
+ For all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} , I ( = α → α → o ) I(=_{\alpha\rightarrow\alpha\rightarrow o}) is the total function f ∈ D α → α → o f\in D_{\alpha\rightarrow\alpha\rightarrow o} such that, for all d 1 , d 2 ∈ D α d_{1},d_{2}\in D_{\alpha} , f ⁡ ( d 1 ) ​ ( d 2 ) = t f(d_{1})(d_{2})=\mbox{{\sc t}} iff d 1 = d 2 d_{1}=d_{2} .
+ 2. 
+ For all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} with α ≠ o \alpha\not=o ,
+ I ⁡ ( ι ( α → o ) → α ) I(\iota_{(\alpha\rightarrow o)\rightarrow\alpha}) is the partial
+function f ∈ D ( α → o ) → α f\in D_{(\alpha\rightarrow o)\rightarrow\alpha} such that,
+for all d ∈ D α → o d\in D_{\alpha\rightarrow o} , if the predicate d d 
+represents a singleton { d ′ } ⊆ D α {\{d^{\prime}\}}\subseteq D_{\alpha} , then f ⁡ ( d ) = d ′ f(d)=d^{\prime} , and otherwise f ⁡ ( d ) f(d) is undefined.
+ 3. 
+ I ⁡ ( is-var ϵ → o ) I(\mbox{\sf is-var}_{\epsilon\rightarrow o}) the total function f ∈ D ϵ → o f\in D_{\epsilon\rightarrow o} such that, for all constructions
+ A ϵ ∈ D ϵ \textbf{A}_{\epsilon}\in D_{\epsilon} , f ⁡ ( A ϵ ) = t f(\textbf{A}_{\epsilon})=\mbox{{\sc t}} iff A ϵ = ⌜ ​ x α ​ ⌝ \textbf{A}_{\epsilon}=\ulcorner\textbf{x}_{\alpha}\urcorner 
+for some variable x α ∈ 𝒱 \textbf{x}_{\alpha}\in\mbox{$\cal V$} (where α \alpha can
+be any type).
+ 4. 
+ For all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} , I ⁡ ( is-var ϵ → o α ) I(\mbox{\sf is-var}_{\epsilon\rightarrow o}^{\alpha}) is the total function f ∈ D ϵ → o f\in D_{\epsilon\rightarrow o} 
+such that, for all constructions A ϵ ∈ D ϵ \textbf{A}_{\epsilon}\in D_{\epsilon} , f ⁡ ( A ϵ ) = t f(\textbf{A}_{\epsilon})=\mbox{{\sc t}} iff
+ A ϵ = ⌜ ​ x α ​ ⌝ \textbf{A}_{\epsilon}=\ulcorner\textbf{x}_{\alpha}\urcorner for some
+variable x α ∈ 𝒱 \textbf{x}_{\alpha}\in\mbox{$\cal V$} .
+ 5. 
+ I ⁡ ( is-con ϵ → o ) I(\mbox{\sf is-con}_{\epsilon\rightarrow o}) is the total function
+ f ∈ D ϵ → o f\in D_{\epsilon\rightarrow o} such that, for all constructions
+ A ϵ ∈ D ϵ \textbf{A}_{\epsilon}\in D_{\epsilon} , f ⁡ ( A ϵ ) = t f(\textbf{A}_{\epsilon})=\mbox{{\sc t}} iff A ϵ = ⌜ ​ c α ​ ⌝ \textbf{A}_{\epsilon}=\ulcorner\textbf{c}_{\alpha}\urcorner 
+for some constant c α ∈ 𝒞 \textbf{c}_{\alpha}\in\mbox{$\cal C$} (where α \alpha can
+be any type).
+ 6. 
+ For all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} , I ⁡ ( is-con ϵ → o α ) I(\mbox{\sf is-con}_{\epsilon\rightarrow o}^{\alpha}) is the total function f ∈ D ϵ → o f\in D_{\epsilon\rightarrow o} 
+such that, for all constructions A ϵ ∈ D ϵ \textbf{A}_{\epsilon}\in D_{\epsilon} , f ⁡ ( A ϵ ) = t f(\textbf{A}_{\epsilon})=\mbox{{\sc t}} iff
+ A ϵ = ⌜ ​ c α ​ ⌝ \textbf{A}_{\epsilon}=\ulcorner\textbf{c}_{\alpha}\urcorner for some
+constant c α ∈ 𝒞 \textbf{c}_{\alpha}\in\mbox{$\cal C$} .
+ 7. 
+ I ⁡ ( app ϵ → ϵ → ϵ ) I(\mbox{\sf app}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}) 
+is the partial function f ∈ D ϵ → ϵ → ϵ f\in D_{\epsilon\rightarrow\epsilon\rightarrow\epsilon} such that, for all constructions
+ A ϵ , B ϵ ∈ D ϵ \textbf{A}_{\epsilon},\textbf{B}_{\epsilon}\in D_{\epsilon} , if
+ app ϵ → ϵ → ϵ ​ A ϵ ​ B ϵ \mbox{\sf app}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\textbf{A}_{\epsilon}\,\textbf{B}_{\epsilon} is a construction,
+then f ⁡ ( A ϵ ) ​ ( B ϵ ) = app ϵ → ϵ → ϵ ​ A ϵ ​ B ϵ f(\textbf{A}_{\epsilon})(\textbf{B}_{\epsilon})=\mbox{\sf app}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\textbf{A}_{\epsilon}\,\textbf{B}_{\epsilon} , and otherwise
+ f ⁡ ( A ϵ ) ​ ( B ϵ ) f(\textbf{A}_{\epsilon})(\textbf{B}_{\epsilon}) is undefined.
+ 8. 
+ I ⁡ ( abs ϵ → ϵ → ϵ ) I(\mbox{\sf abs}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}) 
+is the partial function f ∈ D ϵ → ϵ → ϵ f\in D_{\epsilon\rightarrow\epsilon\rightarrow\epsilon} such that, for all constructions
+ A ϵ , B ϵ ∈ D ϵ \textbf{A}_{\epsilon},\textbf{B}_{\epsilon}\in D_{\epsilon} , if
+ abs ϵ → ϵ → ϵ ​ A ϵ ​ B ϵ \mbox{\sf abs}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\textbf{A}_{\epsilon}\,\textbf{B}_{\epsilon} is a construction,
+then f ⁡ ( A ϵ ) ​ ( B ϵ ) = abs ϵ → ϵ → ϵ ​ A ϵ ​ B ϵ f(\textbf{A}_{\epsilon})(\textbf{B}_{\epsilon})=\mbox{\sf abs}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\textbf{A}_{\epsilon}\,\textbf{B}_{\epsilon} , and otherwise
+ f ⁡ ( A ϵ ) ​ ( B ϵ ) f(\textbf{A}_{\epsilon})(\textbf{B}_{\epsilon}) is undefined.
+ 9. 
+ I ⁡ ( cond ϵ → ϵ → ϵ → ϵ ) I(\mbox{\sf cond}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon\rightarrow\epsilon}) is the partial function f ∈ D ϵ → ϵ → ϵ → ϵ f\in D_{\epsilon\rightarrow\epsilon\rightarrow\epsilon\rightarrow\epsilon} such that,
+for all constructions A ϵ , B ϵ , C ϵ ∈ D ϵ \textbf{A}_{\epsilon},\textbf{B}_{\epsilon},\textbf{C}_{\epsilon}\in D_{\epsilon} , if cond ϵ → ϵ → ϵ → ϵ ​ A ϵ ​ B ϵ ​ C ϵ \mbox{\sf cond}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\textbf{A}_{\epsilon}\,\textbf{B}_{\epsilon}\,\textbf{C}_{\epsilon} 
+is a construction, then
+ f ⁡ ( A ϵ ) ​ ( B ϵ ) ​ ( C ϵ ) = cond ϵ → ϵ → ϵ → ϵ ​ A ϵ ​ B ϵ ​ C ϵ f(\textbf{A}_{\epsilon})(\textbf{B}_{\epsilon})(\textbf{C}_{\epsilon})=\mbox{\sf cond}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon\rightarrow\epsilon}\,\textbf{A}_{\epsilon}\,\textbf{B}_{\epsilon}\,\textbf{C}_{\epsilon} , and otherwise
+ f ⁡ ( A ϵ ) ​ ( B ϵ ) ​ ( C ϵ ) f(\textbf{A}_{\epsilon})(\textbf{B}_{\epsilon})(\textbf{C}_{\epsilon}) 
+is undefined.
+ 10. 
+ I ⁡ ( quo ϵ → ϵ ) I(\mbox{\sf quo}_{\epsilon\rightarrow\epsilon}) is the total
+function f ∈ D ϵ → ϵ f\in D_{\epsilon\rightarrow\epsilon} such that, for all
+constructions A ϵ ∈ D ϵ \textbf{A}_{\epsilon}\in D_{\epsilon} ,
+ f ⁡ ( A ϵ ) = quo ϵ → ϵ ​ A ϵ f(\textbf{A}_{\epsilon})=\mbox{\sf quo}_{\epsilon\rightarrow\epsilon}\,\textbf{A}_{\epsilon} .
+ 11. 
+ For all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} , I ⁡ ( is-expr ϵ → o α ) I(\mbox{\sf is-expr}_{\epsilon\rightarrow o}^{\alpha}) is the total function f ∈ D ϵ → o f\in D_{\epsilon\rightarrow o} 
+such that, for all constructions A ϵ ∈ D ϵ \textbf{A}_{\epsilon}\in D_{\epsilon} , f ⁡ ( A ϵ ) = t f(\textbf{A}_{\epsilon})=\mbox{{\sc t}} iff
+ A ϵ = ℰ ⁡ ( B α ) \textbf{A}_{\epsilon}=\mbox{$\cal E$}(\textbf{B}_{\alpha}) for some
+(eval-free) expression B α \textbf{B}_{\alpha} .
+ 12. 
+ I ( ⊏ ϵ → ϵ → o ) I(\sqsubset_{\epsilon\rightarrow\epsilon\rightarrow o}) is the
+total function f ∈ D ϵ → ϵ → ϵ f\in D_{\epsilon\rightarrow\epsilon\rightarrow\epsilon} such that, for all constructions
+ A ϵ , B ϵ ∈ D ϵ \textbf{A}_{\epsilon},\textbf{B}_{\epsilon}\in D_{\epsilon} ,
+ f ⁡ ( A ϵ ) ​ ( B ϵ ) = t f(\textbf{A}_{\epsilon})(\textbf{B}_{\epsilon})=\mbox{{\sc t}} iff
+ A ϵ \textbf{A}_{\epsilon} is a proper subexpression of
+ B ϵ \textbf{B}_{\epsilon} .
+ 13. 
+ I ⁡ ( is-free-in ϵ → ϵ → o ) I(\mbox{\sf is-free-in}_{\epsilon\rightarrow\epsilon\rightarrow o}) 
+is the total function f ∈ D ϵ → ϵ → ϵ f\in D_{\epsilon\rightarrow\epsilon\rightarrow\epsilon} such that, for all constructions
+ A ϵ , B ϵ ∈ D ϵ \textbf{A}_{\epsilon},\textbf{B}_{\epsilon}\in D_{\epsilon} ,
+ f ⁡ ( A ϵ ) ​ ( B ϵ ) = t f(\textbf{A}_{\epsilon})(\textbf{B}_{\epsilon})=\mbox{{\sc t}} iff
+ A ϵ = ⌜ ​ x α ​ ⌝ \textbf{A}_{\epsilon}=\ulcorner\textbf{x}_{\alpha}\urcorner for some
+ x α ∈ 𝒱 \textbf{x}_{\alpha}\in\mbox{$\cal V$} and x α \textbf{x}_{\alpha} is free in the
+expression C β \textbf{C}_{\beta} such that B ϵ = ℰ ⁡ ( C β ) \textbf{B}_{\epsilon}=\mbox{$\cal E$}(\textbf{C}_{\beta}) .
+ An assignment into a frame { D α | α ∈ 𝒯 } {\{D_{\alpha}\;|\;\alpha\in\mbox{$\cal T$}\}} is a function φ \varphi whose domain is 𝒱 \cal V such that
+ φ ⁡ ( x α ) ∈ D α \varphi(\textbf{x}_{\alpha})\in D_{\alpha} for each x α ∈ 𝒱 \textbf{x}_{\alpha}\in\mbox{$\cal V$} . Given an assignment φ \varphi , x α ∈ 𝒱 \textbf{x}_{\alpha}\in\mbox{$\cal V$} , and d ∈ D α d\in D_{\alpha} , let φ [ x α ↦ d ] \varphi[\textbf{x}_{\alpha}\mapsto d] be the
+assignment ψ \psi such that ψ ⁡ ( x α ) = d \psi(\textbf{x}_{\alpha})=d and
+ ψ ⁡ ( y β ) = φ ⁡ ( y β ) \psi(\textbf{y}_{\beta})=\varphi(\textbf{y}_{\beta}) for all variables
+ y β \textbf{y}_{\beta} distinct from x α \textbf{x}_{\alpha} . For an
+interpretation ℳ = ( { D α | α ∈ 𝒯 } , I ) \mbox{$\cal M$}=({\{D_{\alpha}\;|\;\alpha\in\mbox{$\cal T$}\}},I) ,
+ assign ​ ( ℳ ) \mbox{\sf assign}(\mbox{$\cal M$}) is the set of assignments into the frame of
+ ℳ \cal M .
+ 3.3 General Models
+ An interpretation ℳ = ( { D α | α ∈ 𝒯 ) , I } \mbox{$\cal M$}=({\{D_{\alpha}\;|\;\alpha\in\mbox{$\cal T$}),I\}} is
+a general model for ctt uqe \mbox{\sc ctt}_{\rm uqe} if there is a partial binary
+valuation function V ℳ V^{\cal M} such that, for all assignments φ ∈ assign ​ ( ℳ ) \varphi\in\mbox{\sf assign}(\mbox{$\cal M$}) and expressions D δ \textbf{D}_{\delta} , either
+ V φ ℳ ​ ( D δ ) ∈ D δ V^{\cal M}_{\varphi}(\textbf{D}_{\delta})\in D_{\delta} or V φ ℳ ​ ( D δ ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta}) is undefined 4 4 
+ 4 
+ We write
+ V φ ℳ ​ ( D δ ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta}) instead of V ℳ ​ ( φ , D δ ) V^{\cal M}(\varphi,\textbf{D}_{\delta}) . and each of the following conditions
+is satisfied:
+ 1. 
+ Let D δ ∈ 𝒱 \textbf{D}_{\delta}\in\mbox{$\cal V$} . Then V φ ℳ ​ ( D δ ) = φ ⁡ ( D δ ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=\varphi(\textbf{D}_{\delta}) .
+ 2. 
+ Let D δ ∈ 𝒞 \textbf{D}_{\delta}\in\mbox{$\cal C$} . Then V φ ℳ ​ ( D δ ) = I ⁡ ( D δ ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=I(\textbf{D}_{\delta}) .
+ 3. 
+ Let D δ \textbf{D}_{\delta} be F α → β ​ A α \textbf{F}_{\alpha\rightarrow\beta}\,\textbf{A}_{\alpha} . If V φ ℳ ​ ( F α → β ) V^{\cal M}_{\varphi}(\textbf{F}_{\alpha\rightarrow\beta}) is defined, V φ ℳ ​ ( A α ) V^{\cal M}_{\varphi}(\textbf{A}_{\alpha}) is defined, and the function
+ V φ ℳ ​ ( F α → β ) V^{\cal M}_{\varphi}(\textbf{F}_{\alpha\rightarrow\beta}) is defined
+at the argument V φ ℳ ​ ( A α ) V^{\cal M}_{\varphi}(\textbf{A}_{\alpha}) ,
+then
+ V φ ℳ ​ ( D δ ) = V φ ℳ ​ ( F α → β ) ​ ( V φ ℳ ​ ( A α ) ) . V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=V^{\cal M}_{\varphi}(\textbf{F}_{\alpha\rightarrow\beta})(V^{\cal M}_{\varphi}(\textbf{A}_{\alpha})). 
+ Otherwise, V φ ℳ ​ ( D δ ) = f V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=\mbox{{\sc f}} if β = o \beta=o and
+ V φ ℳ ​ ( D δ ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta}) is undefined if β ≠ o \beta\not=o .
+ 4. 
+ Let D δ \textbf{D}_{\delta} be λ ​ x α . B β \lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{B}_{\beta} . Then V φ ℳ ​ ( D δ ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta}) is
+the (partial or total) function f ∈ D α → β f\in D_{\alpha\rightarrow\beta} 
+such that, for each d ∈ D α d\in D_{\alpha} , f ( d ) = V φ [ 𝐱 α ↦ d ] ℳ ( B β ) f(d)=V^{\cal M}_{\varphi[{\bf x}_{\alpha}\mapsto d]}(\textbf{B}_{\beta}) if
+ V φ [ 𝐱 α ↦ d ] ℳ ( B β ) V^{\cal M}_{\varphi[{\bf x}_{\alpha}\mapsto d]}(\textbf{B}_{\beta}) is
+defined and f ⁡ ( d ) f(d) is undefined if V φ [ 𝐱 α ↦ d ] ℳ ( B β ) V^{\cal M}_{\varphi[{\bf x}_{\alpha}\mapsto d]}(\textbf{B}_{\beta}) is undefined.
+ 5. 
+ Let D δ \textbf{D}_{\delta} be ( if ​ A o ​ B α ​ C α ) (\mbox{\sf if}\;\textbf{A}_{o}\;\textbf{B}_{\alpha}\;\textbf{C}_{\alpha}) . If V φ ℳ ​ ( A o ) = t V^{\cal M}_{\varphi}(\textbf{A}_{o})=\mbox{{\sc t}} and V φ ℳ ​ ( B α ) V^{\cal M}_{\varphi}(\textbf{B}_{\alpha}) is defined, then V φ ℳ ​ ( D δ ) = V φ ℳ ​ ( B α ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=V^{\cal M}_{\varphi}(\textbf{B}_{\alpha}) . If V φ ℳ ​ ( A o ) = f V^{\cal M}_{\varphi}(\textbf{A}_{o})=\mbox{{\sc f}} and V φ ℳ ​ ( C α ) V^{\cal M}_{\varphi}(\textbf{C}_{\alpha}) is defined, then V φ ℳ ​ ( D δ ) = V φ ℳ ​ ( C α ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=V^{\cal M}_{\varphi}(\textbf{C}_{\alpha}) . Otherwise, V φ ℳ ​ ( D δ ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta}) is undefined.
+ 6. 
+ Let D δ \textbf{D}_{\delta} be ⌜ ​ A α ​ ⌝ \ulcorner\textbf{A}_{\alpha}\urcorner .
+Then V φ ℳ ​ ( D δ ) = ℰ ⁡ ( A α ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=\mbox{$\cal E$}(\textbf{A}_{\alpha}) .
+ 7. 
+ Let D δ \textbf{D}_{\delta} be
+ ⟦ A ϵ ⟧ β \llbracket\textbf{A}_{\epsilon}\rrbracket_{\beta} . If V φ ℳ ​ ( is-expr ϵ → o β ​ A ϵ ) = t V^{\cal M}_{\varphi}(\mbox{\sf is-expr}_{\epsilon\rightarrow o}^{\beta}\,\textbf{A}_{\epsilon})=\mbox{{\sc t}} , then
+ V φ ℳ ​ ( D δ ) = V φ ℳ ​ ( ℰ − 1 ​ ( V φ ℳ ​ ( A ϵ ) ) ) . V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=V^{\cal M}_{\varphi}(\mbox{$\cal E$}^{-1}(V^{\cal M}_{\varphi}(\textbf{A}_{\epsilon}))). 
+ Otherwise, V φ ℳ ​ ( D δ ) = f V^{\cal M}_{\varphi}(\textbf{D}_{\delta})=\mbox{{\sc f}} if β = o \beta=o and
+ V φ ℳ ​ ( D δ ) V^{\cal M}_{\varphi}(\textbf{D}_{\delta}) is undefined if β ≠ o \beta\not=o .
+ Proposition 3.3.1 
+ General models for ctt uqe \mbox{\sc ctt}_{\rm uqe} exist. 
+ Proof 
+ The proof is similar to the proof of the analogous proposition
+in  [ 9 ] . □ \Box 
+ Other theorems about the semantics of ctt uqe \mbox{\sc ctt}_{\rm uqe} are the same or
+very similar to the theorems about the semantics of ctt qe \mbox{\sc ctt}_{\rm qe} given
+in  [ 9 ] .
+ Let ℳ \cal M be a general model for ctt uqe \mbox{\sc ctt}_{\rm uqe} . A o \textbf{A}_{o} is
+ valid in ℳ \cal M , written ℳ ⊨ A o \mbox{$\cal M$}\vDash\textbf{A}_{o} , if V φ ℳ ​ ( A o ) = t V^{\cal M}_{\varphi}(\textbf{A}_{o})=\mbox{{\sc t}} for all φ ∈ assign ​ ( ℳ ) \varphi\in\mbox{\sf assign}(\mbox{$\cal M$}) . A o \textbf{A}_{o} is valid in ctt uqe \mbox{\sc ctt}_{\rm uqe} ,
+written ⊨ A o {}\vDash\textbf{A}_{o} , if A o \textbf{A}_{o} is valid in every
+general model for ctt uqe \mbox{\sc ctt}_{\rm uqe} . An expression B β \textbf{B}_{\beta} is
+ semantically closed if no variable “is effective in” it, i.e,
+ ⊨ ∀ y α . ( ( λ ​ x α . B β ) ​ y α = B β ) \vDash\forall\,\textbf{y}_{\alpha}\mathrel{.}((\lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{B}_{\beta})\,\textbf{y}_{\alpha}=\textbf{B}_{\beta}) 
+ holds for all variables x α \textbf{x}_{\alpha} (where
+ y α \textbf{y}_{\alpha} is any variable of type α \alpha that differs from
+ x α \textbf{x}_{\alpha} ). It is easy to show that every closed eval-free
+expression is semantically closed. If B β \textbf{B}_{\beta} is
+semantically closed, then V φ ℳ ​ ( B β ) V_{\varphi}^{\cal M}(\textbf{B}_{\beta}) does
+not depend on φ ∈ assign ​ ( ℳ ) \varphi\in\mbox{\sf assign}(\mbox{$\cal M$}) . The notion of
+“ x α \textbf{x}_{\alpha} is effective in B β \textbf{B}_{\beta} ” is
+discussed in detail in  [ 9 ] .
+ Let T = ( L , Γ ) T=(L,\Gamma) be a theory of ctt uqe \mbox{\sc ctt}_{\rm uqe} and A o \textbf{A}_{o} be a
+formula of T T . A general model for T T is a general model
+ ℳ \cal M for ctt uqe \mbox{\sc ctt}_{\rm uqe} such that ℳ ⊨ A o \mbox{$\cal M$}\vDash\textbf{A}_{o} for all
+ A o ∈ Γ \textbf{A}_{o}\in\Gamma . A o \textbf{A}_{o} is valid in T T ,
+written T ⊨ A o T\vDash\textbf{A}_{o} , if A o \textbf{A}_{o} is valid in every
+general model for T T . T T is normal if each member of
+ Γ \Gamma is semantically closed.
+ 4 Theory Morphisms
+ In this section we define a “semantic morphism” of ctt uqe \mbox{\sc ctt}_{\rm uqe} that
+maps the valid semantically closed formulas of one normal theory to
+the valid semantically closed formulas of another normal theory.
+Theory morphisms usually map base types to types. By exploiting the
+support for partial functions in ctt uqe \mbox{\sc ctt}_{\rm uqe} , we introduce a more
+general notion of theory morphism that maps base types to semantically
+closed predicates that represent sets of values of the same type.
+This requires mapping expressions denoting functions on the base type
+to expressions denoting functions with domains restricted to the
+semantically closed predicate.
+ For i = 1 , 2 i=1,2 , let T i = ( L i , Γ i ) T_{i}=(L_{i},\Gamma_{i}) be a normal theory of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} where, for some ℬ i ⊆ ℬ \mbox{$\cal B$}_{i}\subseteq\mbox{$\cal B$} and 𝒞 i ⊆ 𝒞 \mbox{$\cal C$}_{i}\subseteq\mbox{$\cal C$} , L i L_{i} is the set of all ( ℬ i , 𝒞 i ) (\mbox{$\cal B$}_{i},\mbox{$\cal C$}_{i}) -expressions.
+Also for i = 1 , 2 i=1,2 , let 𝒯 i \mbox{$\cal T$}_{i} be the set of all ℬ i \mbox{$\cal B$}_{i} -types and
+ 𝒱 i \mbox{$\cal V$}_{i} be the set of all variables in L i L_{i} . Finally, let 𝒫 2 \mbox{$\cal P$}_{2} be
+the set of all semantically closed predicates in L 2 L_{2} .
+ 4.1 Translations
+ In this section, we will define a translation from T 1 T_{1} to T 2 T_{2} to
+be a pair ( μ , ν ) (\mu,\nu) of functions where μ \mu interprets the base
+types of T 1 T_{1} and ν \nu interprets the variables and constants of
+ T 1 T_{1} . μ ¯ \overline{\mu} and ν ¯ \overline{\nu} will be canonical
+extensions of μ \mu and ν \nu to the types and expressions of T 1 T_{1} ,
+respectively.
+ Define τ \tau to be the function that maps a predicate of type
+ α → o \alpha\rightarrow o to the type  α \alpha . When p α → o \textbf{p}_{\alpha\rightarrow o} and q β → o \textbf{q}_{\beta\rightarrow o} are semantically
+closed predicates, let
+ p α → o ⇀ q β → o \textbf{p}_{\alpha\rightarrow o}\rightharpoonup\textbf{q}_{\beta\rightarrow o} 
+ be an abbreviation for the following semantically closed predicate of
+type ( α → β ) → o (\alpha\rightarrow\beta)\rightarrow o :
+ λ f α → β . ∀ x α . ( f α → β x α ≠ ⊥ β ⊃ ( p α → o x α ∧ q β → o ( f α → β x α ) ) ) . \lambda\,f_{\alpha\rightarrow\beta}\mathrel{.}\forall\,x_{\alpha}\mathrel{.}(f_{\alpha\rightarrow\beta}\,x_{\alpha}\not=\bot_{\beta}\supset(\textbf{p}_{\alpha\rightarrow o}\,x_{\alpha}\wedge\textbf{q}_{\beta\rightarrow o}\,(f_{\alpha\rightarrow\beta}\,x_{\alpha}))). 
+ If β = o \beta=o [ β ≠ o \beta\not=o ], p α → o → q β → o \textbf{p}_{\alpha\rightarrow o}\rightarrow\textbf{q}_{\beta\rightarrow o} represents the set
+of total [partial and total] functions from the set of values
+represented by p α → o \textbf{p}_{\alpha\rightarrow o} to the set of values
+represented by q β → o \textbf{q}_{\beta\rightarrow o} . Notice
+that
+ τ ⁡ ( p α → o ⇀ q β → o ) = α → β = τ ⁡ ( p α → o ) → τ ⁡ ( q β → o ) . \tau(\textbf{p}_{\alpha\rightarrow o}\rightharpoonup\textbf{q}_{\beta\rightarrow o})=\alpha\rightarrow\beta=\tau(\textbf{p}_{\alpha\rightarrow o})\rightarrow\tau(\textbf{q}_{\beta\rightarrow o}). 
+ Given a total function μ : ℬ 1 → 𝒫 2 \mu:\mbox{$\cal B$}_{1}\rightarrow\mbox{$\cal P$}_{2} , let
+ μ ¯ : 𝒯 1 → 𝒫 2 \overline{\mu}:\mbox{$\cal T$}_{1}\rightarrow\mbox{$\cal P$}_{2} be the canonical extension of
+ μ \mu that is defined inductively as follows:
+ 1. 
+ If α ∈ ℬ 1 \alpha\in\mbox{$\cal B$}_{1} , μ ¯ ​ ( α ) = μ ​ ( α ) \overline{\mu}(\alpha)=\mu(\alpha) .
+ 2. 
+ If α → β ∈ 𝒯 1 \alpha\rightarrow\beta\in\mbox{$\cal T$}_{1} , μ ¯ ​ ( α → β ) = μ ¯ ​ ( α ) ⇀ μ ¯ ​ ( β ) \overline{\mu}(\alpha\rightarrow\beta)=\overline{\mu}(\alpha)\rightharpoonup\overline{\mu}(\beta) .
+ It is easy to see that μ \mu is well-defined and total.
+ A translation from T 1 T_{1} to T 2 T_{2} is a pair Φ = ( μ , ν ) \Phi=(\mu,\nu) ,
+where μ : ℬ 1 → 𝒫 2 \mu:\mbox{$\cal B$}_{1}\rightarrow\mbox{$\cal P$}_{2} is total and ν : 𝒱 1 ∪ 𝒞 1 → 𝒱 2 ∪ 𝒞 2 \nu:\mbox{$\cal V$}_{1}\cup\mbox{$\cal C$}_{1}\rightarrow\mbox{$\cal V$}_{2}\cup\mbox{$\cal C$}_{2} is total and injective, such that:
+ 1. 
+ μ ⁡ ( o ) = λ ​ x o . T o \mu(o)=\lambda\,x_{o}\mathrel{.}T_{o} .
+ 2. 
+ μ ⁡ ( ϵ ) = λ ​ x ϵ . T o \mu(\epsilon)=\lambda\,x_{\epsilon}\mathrel{.}T_{o} .
+ 3. 
+ For each x α ∈ 𝒱 1 \textbf{x}_{\alpha}\in\mbox{$\cal V$}_{1} ,
+ ν ⁡ ( x α ) \nu(\textbf{x}_{\alpha}) is a variable in 𝒱 2 \mbox{$\cal V$}_{2} of type
+ τ ​ ( μ ¯ ​ ( α ) ) \tau(\overline{\mu}(\alpha)) .
+ 4. 
+ For each c α ∈ 𝒞 1 \textbf{c}_{\alpha}\in\mbox{$\cal C$}_{1} ,
+ ν ⁡ ( c α ) \nu(\textbf{c}_{\alpha}) is a constant in 𝒞 2 \mbox{$\cal C$}_{2} of type
+ τ ​ ( μ ¯ ​ ( α ) ) \tau(\overline{\mu}(\alpha)) .
+ Throughout the rest of this section, let Φ = ( μ , ν ) \Phi=(\mu,\nu) be a
+translation from T 1 T_{1} to T 2 T_{2} . ν ¯ : L 1 → L 2 \overline{\nu}:L_{1}\rightarrow L_{2} is
+the canonical extension of ν \nu defined inductively as follows:
+ 1. 
+ If x α ∈ 𝒱 1 \textbf{x}_{\alpha}\in\mbox{$\cal V$}_{1} ,
+ ν ¯ ​ ( x α ) = ν ⁡ ( x α ) \overline{\nu}(\textbf{x}_{\alpha})=\nu(\textbf{x}_{\alpha}) .
+ 2. 
+ If c α ∈ 𝒞 1 \textbf{c}_{\alpha}\in\mbox{$\cal C$}_{1} ,
+ ν ¯ ​ ( c α ) = ν ⁡ ( c α ) \overline{\nu}(\textbf{c}_{\alpha})=\nu(\textbf{c}_{\alpha}) .
+ 3. 
+ If F α → β ​ A α ∈ L 1 \textbf{F}_{\alpha\rightarrow\beta}\,\textbf{A}_{\alpha}\in L_{1} , then ν ¯ ​ ( F α → β ​ A α ) = ν ¯ ​ ( F α → β ) ​ ν ¯ ​ ( A α ) \overline{\nu}(\textbf{F}_{\alpha\rightarrow\beta}\,\textbf{A}_{\alpha})=\overline{\nu}(\textbf{F}_{\alpha\rightarrow\beta})\,\overline{\nu}(\textbf{A}_{\alpha}) .
+ 4. 
+ If λ ​ x α . B β ∈ L 1 \lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{B}_{\beta}\in L_{1} , then ν ¯ ​ ( λ ​ x α . B β ) = \overline{\nu}(\lambda\,\textbf{x}_{\alpha}\mathrel{.}\textbf{B}_{\beta})={} 
+ λ ν ¯ ( x α ) . ( if ( μ ¯ ( α ) ν ¯ ( x α ) ) ν ¯ ( B β ) ⊥ τ ​ ( μ ¯ ​ ( β ) ) ) . \lambda\,\overline{\nu}(\textbf{x}_{\alpha})\mathrel{.}(\mbox{\sf if}\;(\overline{\mu}(\alpha)\,\overline{\nu}(\textbf{x}_{\alpha}))\;\overline{\nu}(\textbf{B}_{\beta})\;\bot_{\tau(\overline{\mu}(\beta))}). 
+ 5. 
+ If ( if ​ A o ​ B α ​ C α ) ∈ L 1 (\mbox{\sf if}\;\textbf{A}_{o}\;\textbf{B}_{\alpha}\;\textbf{C}_{\alpha})\in L_{1} , ν ¯ ​ ( if ​ A o ​ B α ​ C α ) = ( if ​ ν ¯ ​ ( A o ) ​ ν ¯ ​ ( B α ) ​ ν ¯ ​ ( C α ) ) \overline{\nu}(\mbox{\sf if}\;\textbf{A}_{o}\;\textbf{B}_{\alpha}\;\textbf{C}_{\alpha})=(\mbox{\sf if}\;\overline{\nu}(\textbf{A}_{o})\;\overline{\nu}(\textbf{B}_{\alpha})\;\overline{\nu}(\textbf{C}_{\alpha})) .
+ 6. 
+ If ⌜ ​ A α ​ ⌝ ∈ L 1 \ulcorner\textbf{A}_{\alpha}\urcorner\in L_{1} , then
+ ν ¯ ​ ( ⌜ ​ A α ​ ⌝ ) = ⌜ ​ ν ¯ ​ ( A α ) ​ ⌝ \overline{\nu}(\ulcorner\textbf{A}_{\alpha}\urcorner)=\ulcorner\overline{\nu}(\textbf{A}_{\alpha})\urcorner .
+ 7. 
+ If ⟦ A ϵ ⟧ 𝐁 β ∈ L 1 \llbracket\textbf{A}_{\epsilon}\rrbracket_{{\bf B}_{\beta}}\in L_{1} ,
+then ν ¯ ​ ( ⟦ A ϵ ⟧ 𝐁 β ) = ⟦ ν ¯ ​ ( A ϵ ) ⟧ ν ¯ ​ ( 𝐁 β ) \overline{\nu}(\llbracket\textbf{A}_{\epsilon}\rrbracket_{{\bf B}_{\beta}})=\llbracket\overline{\nu}(\textbf{A}_{\epsilon})\rrbracket_{\overline{\nu}({\bf B}_{\beta})} .
+ Lemma 4.1.1 
+ 1. 
+ ν ¯ \overline{\nu} is well-defined, total, and injective. 
+ 2. 
+ If A α ∈ L 1 \textbf{A}_{\alpha}\in L_{1} , then
+ ν ¯ ​ ( A α ) \overline{\nu}(\textbf{A}_{\alpha}) is an expression of type
+ τ ​ ( μ ¯ ​ ( α ) ) \tau(\overline{\mu}(\alpha)) . 
+ Proof 
+ The two parts of the proposition are easily proved simultaneously by
+induction on the structure of expressions. □ \Box 
+ Remark 4.1.2 
+ We overcome the Constant Interpretation Problem mentioned in
+section  1 by requiring ν \nu to injectively map
+constants to constants which, by Lemma  4.1.1 , implies
+that ν ¯ \overline{\nu} injectively maps expressions to expressions. We
+will see in the next section that this requirement comes with a cost. 
+ A formula in L 2 L_{2} is an obligation of Φ \Phi if
+it is one of the following formulas:
+ 1. 
+ ∃ x τ ⁡ ( μ ⁡ ( α ) ) . μ ⁡ ( α ) ​ x τ ⁡ ( μ ⁡ ( α ) ) \exists\,x_{\tau(\mu(\alpha))}\mathrel{.}\mu(\alpha)\,x_{\tau(\mu(\alpha))} where α ∈ ℬ 1 \alpha\in\mbox{$\cal B$}_{1} .
+ 2. 
+ μ ¯ ​ ( α ) ​ ν ​ ( c α ) \overline{\mu}(\alpha)\,\nu(\textbf{c}_{\alpha}) where c α ∈ 𝒞 1 \textbf{c}_{\alpha}\in\mbox{$\cal C$}_{1} .
+ 3. 
+ ν ( = α → α → o ) = λ x α ′ . λ y α ′ . ( if ( μ ¯ ( α ) x α ′ ∧ μ ¯ ( α ) y α ′ ) ( x α ′ = α ′ → α ′ → o y α ′ ) ⊥ o ) \nu(=_{\alpha\rightarrow\alpha\rightarrow o})=\lambda\,x_{\alpha^{\prime}}\mathrel{.}\lambda\,y_{\alpha^{\prime}}\mathrel{.}(\mbox{\sf if}\;(\overline{\mu}(\alpha)\,x_{\alpha^{\prime}}\wedge\overline{\mu}(\alpha)\,y_{\alpha^{\prime}})\;(x_{\alpha^{\prime}}=_{\alpha^{\prime}\rightarrow\alpha^{\prime}\rightarrow o}y_{\alpha^{\prime}})\;\bot_{o}) 
+where α ∈ 𝒯 1 \alpha\in\mbox{$\cal T$}_{1} and α ′ = τ ⁡ ( μ ¯ ​ ( α ) ) \alpha^{\prime}=\tau(\overline{\mu}(\alpha)) .
+ 4. 
+ ν ( ι ( α → o ) → α ) = λ x α ′ → o . ( if ( μ ¯ ( α → o ) x α ′ → o ) ( ι ( α ′ → o ) → α ′ x α ′ → o ) ⊥ α ′ ) \nu(\iota_{(\alpha\rightarrow o)\rightarrow\alpha})=\lambda\,x_{\alpha^{\prime}\rightarrow o}\mathrel{.}(\mbox{\sf if}\;(\overline{\mu}(\alpha\rightarrow o)\,x_{\alpha^{\prime}\rightarrow o})\;(\iota_{(\alpha^{\prime}\rightarrow o)\rightarrow\alpha^{\prime}}\,x_{\alpha^{\prime}\rightarrow o})\;\bot_{\alpha^{\prime}}) 
+where α ∈ 𝒯 1 \alpha\in\mbox{$\cal T$}_{1} with α ≠ o \alpha\not=o and
+ α ′ = τ ⁡ ( μ ¯ ​ ( α ) ) \alpha^{\prime}=\tau(\overline{\mu}(\alpha)) .
+ 5. 
+ ν ⁡ ( c α ) = c α \nu(\textbf{c}_{\alpha})=\textbf{c}_{\alpha} 
+where c α \textbf{c}_{\alpha} is is-var ϵ → o \mbox{\sf is-var}_{\epsilon\rightarrow o} , is-con ϵ → o \mbox{\sf is-con}_{\epsilon\rightarrow o} ,
+ app ϵ → ϵ → ϵ \mbox{\sf app}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon} ,
+ abs ϵ → ϵ → ϵ \mbox{\sf abs}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon} ,
+ cond ϵ → ϵ → ϵ → ϵ \mbox{\sf cond}_{\epsilon\rightarrow\epsilon\rightarrow\epsilon\rightarrow\epsilon} 
+ quo ϵ → ϵ \mbox{\sf quo}_{\epsilon\rightarrow\epsilon} ,
+ ⊏ ϵ → ϵ → o \sqsubset_{\epsilon\rightarrow\epsilon\rightarrow o} , or is-free-in ϵ → ϵ → o \mbox{\sf is-free-in}_{\epsilon\rightarrow\epsilon\rightarrow o} .
+ 6. 
+ ν ⁡ ( c α β ) = c α τ ​ ( μ ¯ ​ ( β ) ) \nu(\textbf{c}_{\alpha}^{\beta})=\textbf{c}_{\alpha}^{\tau(\overline{\mu}(\beta))} where
+ c α \textbf{c}_{\alpha} is is-var ϵ → o β \mbox{\sf is-var}_{\epsilon\rightarrow o}^{\beta} , is-con ϵ → o β \mbox{\sf is-con}_{\epsilon\rightarrow o}^{\beta} , or
+ is-expr ϵ → o β \mbox{\sf is-expr}_{\epsilon\rightarrow o}^{\beta} and β ∈ 𝒯 1 \beta\in\mbox{$\cal T$}_{1} .
+ 7. 
+ ν ¯ ​ ( A o ) \overline{\nu}(\textbf{A}_{o}) where
+ A o ∈ Γ 1 \textbf{A}_{o}\in\Gamma_{1} .
+ Notice that each obligation of Φ \Phi is semantically closed.
+ 4.2 Semantic Morphisms
+ A semantic morphism from T 1 T_{1} to T 2 T_{2} is a translation
+ ( μ , ν ) (\mu,\nu) from T 1 T_{1} to T 2 T_{2} such that T 1 ⊨ A o T_{1}\vDash\textbf{A}_{o} 
+implies T 2 ⊨ ν ¯ ​ ( A o ) T_{2}\vDash\overline{\nu}(\textbf{A}_{o}) for all semantically
+closed formulas A o \textbf{A}_{o} of T 1 T_{1} . (A syntactic morphism 
+from T 1 T_{1} to T 2 T_{2} would be a translation ( μ , ν ) (\mu,\nu) from T 1 T_{1} to
+ T 2 T_{2} such that T 1 ⊢ P A o T_{1}\vdash_{P}\textbf{A}_{o} implies T 2 ⊢ P ν ¯ ( A o ) T_{2}\vdash_{P}\overline{\nu}(\textbf{A}_{o}) for all semantically closed formulas
+ A o \textbf{A}_{o} of T 1 T_{1} where P P is some proof system for
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} .) We will prove a theorem (called the Semantic
+Morphism Theorem) that gives a sufficient condition for a
+translation to be a semantic morphism.
+ Assume ℳ 2 = ( { D α 2 | α ∈ 𝒯 } , I 2 ) \mbox{$\cal M$}_{2}=({\{D_{\alpha}^{2}\;|\;\alpha\in\mbox{$\cal T$}\}},I_{2}) is a
+general model for T 2 T_{2} . Under the assumption that the obligations of
+ Φ \Phi are valid in T 2 T_{2} , we will extract a general model for T 1 T_{1} 
+from ℳ 2 \mbox{$\cal M$}_{2} .
+ For each α ∈ 𝒯 1 \alpha\in\mbox{$\cal T$}_{1} , define
+ D ¯ τ ​ ( μ ¯ ​ ( α ) ) 2 ⊆ D τ ​ ( μ ¯ ​ ( α ) ) 2 \underline{D}_{\tau(\overline{\mu}(\alpha))}^{2}\subseteq D_{\tau(\overline{\mu}(\alpha))}^{2} as follows:
+ 1. 
+ D ¯ τ ​ ( μ ¯ ​ ( o ) ) 2 = D ¯ o 2 = D o 2 = { t , f } \underline{D}_{\tau(\overline{\mu}(o))}^{2}=\underline{D}_{o}^{2}=D_{o}^{2}={\{\mbox{{\sc t}},\mbox{{\sc f}}\}} .
+ 2. 
+ D ¯ τ ​ ( μ ¯ ​ ( ϵ ) ) 2 = D ¯ ϵ 2 = \underline{D}_{\tau(\overline{\mu}(\epsilon))}^{2}=\underline{D}_{\epsilon}^{2}={} 
+ { d ∈ D ϵ 2 | d = V φ ℳ 2 ( ν ¯ ( A ϵ ) )  for some
+construction  A ϵ ∈ L 1 } {\{d\in D_{\epsilon}^{2}\;|\;d=V_{\varphi}^{{\cal M}_{2}}(\overline{\nu}(\textbf{A}_{\epsilon}))\mbox{ for some
+construction }\textbf{A}_{\epsilon}\in L_{1}\}} 
+ where φ \varphi is
+any member of assign ​ ( ℳ 2 ) \mbox{\sf assign}(\mbox{$\cal M$}_{2}) .
+ 3. 
+ If α ∈ 𝒯 1 ∖ { o , ϵ } \alpha\in\mbox{$\cal T$}_{1}\setminus{\{o,\epsilon\}} ,
+ D ¯ τ ​ ( μ ¯ ​ ( α ) ) 2 = \underline{D}_{\tau(\overline{\mu}(\alpha))}^{2}={} 
+ { d ∈ D τ ​ ( μ ¯ ​ ( α ) ) 2 | V φ ℳ 2 ​ ( μ ¯ ​ ( α ) ) ​ ( d ) = t } {\{d\in D_{\tau(\overline{\mu}(\alpha))}^{2}\;|\;V_{\varphi}^{{\cal M}_{2}}(\overline{\mu}(\alpha))(d)=\mbox{{\sc t}}\}} 
+ where φ \varphi is
+any member of assign ​ ( ℳ 2 ) \mbox{\sf assign}(\mbox{$\cal M$}_{2}) .
+ For each α ∈ 𝒯 1 \alpha\in\mbox{$\cal T$}_{1} , define D ¯ α 1 \overline{D}_{\alpha}^{1} 
+inductively as follows:
+ 1. 
+ D ¯ o 1 = { t , f } \overline{D}_{o}^{1}={\{\mbox{{\sc t}},\mbox{{\sc f}}\}} .
+ 2. 
+ D ¯ ϵ 1 \overline{D}_{\epsilon}^{1} is the set of constructions of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} .
+ 3. 
+ If α ∈ ℬ 1 ∖ { o , ϵ } \alpha\in\mbox{$\cal B$}_{1}\setminus{\{o,\epsilon\}} ,
+ D ¯ α 1 = D ¯ τ ​ ( μ ¯ ​ ( α ) ) 2 \overline{D}_{\alpha}^{1}=\underline{D}_{\tau(\overline{\mu}(\alpha))}^{2} .
+ 4. 
+ If α → β ∈ 𝒯 1 \alpha\rightarrow\beta\in\mbox{$\cal T$}_{1} , then D ¯ α → β 1 \overline{D}_{\alpha\rightarrow\beta}^{1} is the set of all total functions from
+ D ¯ α 1 \overline{D}_{\alpha}^{1} to D ¯ β 1 \overline{D}_{\beta}^{1} if
+ β = o \beta=o and the set of all partial and total functions
+from D ¯ α 1 \overline{D}_{\alpha}^{1} to D ¯ β 1 \overline{D}_{\beta}^{1} if
+ β ≠ o \beta\not=o .
+ For each α ∈ 𝒯 1 \alpha\in\mbox{$\cal T$}_{1} , define ρ α : D ¯ τ ​ ( μ ¯ ​ ( α ) ) 2 → D ¯ α 1 \rho_{\alpha}:\underline{D}_{\tau(\overline{\mu}(\alpha))}^{2}\rightarrow\overline{D}_{\alpha}^{1} 
+inductively as follows:
+ 1. 
+ If d ∈ D ¯ ϵ 2 d\in\underline{D}_{\epsilon}^{2} , ρ ϵ ​ ( d ) \rho_{\epsilon}(d) is
+the unique construction A ϵ \textbf{A}_{\epsilon} such that
+ ν ¯ ​ ( A ϵ ) = d \overline{\nu}(\textbf{A}_{\epsilon})=d .
+ 2. 
+ If α ∈ ℬ 1 ∖ { ϵ } \alpha\in\mbox{$\cal B$}_{1}\setminus{\{\epsilon\}} and d ∈ D ¯ τ ​ ( μ ¯ ​ ( α ) ) 2 d\in\underline{D}_{\tau(\overline{\mu}(\alpha))}^{2} , ρ α ​ ( d ) = d \rho_{\alpha}(d)=d .
+ 3. 
+ If α → β ∈ 𝒯 1 \alpha\rightarrow\beta\in\mbox{$\cal T$}_{1} and f ∈ D ¯ τ ​ ( μ ¯ ​ ( α → β ) ) 2 f\in\underline{D}_{\tau(\overline{\mu}(\alpha\rightarrow\beta))}^{2} ,
+ ρ α → β ​ ( f ) \rho_{\alpha\rightarrow\beta}(f) is the unique function g ∈ D ¯ α → β 1 g\in\overline{D}_{\alpha\rightarrow\beta}^{1} such that, for all d ∈ D ¯ τ ​ ( μ ¯ ​ ( α ) ) 2 d\in\underline{D}_{\tau(\overline{\mu}(\alpha))}^{2} , either f ⁡ ( d ) f(d) 
+and g ​ ( ρ α ​ ( d ) ) g(\rho_{\alpha}(d)) are both defined and ρ β ​ ( f ⁡ ( d ) ) = g ⁡ ( ρ α ​ ( d ) ) \rho_{\beta}(f(d))=g(\rho_{\alpha}(d)) or they are both undefined.
+ Lemma 4.2.1 
+ If α ∈ 𝒯 1 \alpha\in\mbox{$\cal T$}_{1} , ρ α : D ¯ τ ​ ( μ ¯ ​ ( α ) ) 2 → D ¯ α 1 \rho_{\alpha}:\underline{D}_{\tau(\overline{\mu}(\alpha))}^{2}\rightarrow\overline{D}_{\alpha}^{1} is well defined, total, and injective. 
+ Proof 
+ This lemma is proved by induction on α ∈ 𝒯 1 \alpha\in\mbox{$\cal T$}_{1} .
+ ρ ϵ \rho_{\epsilon} is well defined since V φ ℳ 2 V_{\varphi}^{{\cal M}_{2}} is
+identity function on constructions and ν ¯ \overline{\nu} is injective
+by Lemma  4.1.1 . □ \Box 
+ For each α ∈ 𝒯 1 \alpha\in\mbox{$\cal T$}_{1} , define D α 1 ⊆ D ¯ α 1 D_{\alpha}^{1}\subseteq\overline{D}_{\alpha}^{1} as follows:
+ 1. 
+ If α ∈ ℬ 1 \alpha\in\mbox{$\cal B$}_{1} , D α 1 = D ¯ α 1 D_{\alpha}^{1}=\overline{D}_{\alpha}^{1} .
+ 2. 
+ If α → β ∈ 𝒯 1 \alpha\rightarrow\beta\in\mbox{$\cal T$}_{1} , D α → β 1 D_{\alpha\rightarrow\beta}^{1} is the range of ρ α → β \rho_{\alpha\rightarrow\beta} .
+ 3. 
+ If α ∈ ℬ ∖ ℬ 1 \alpha\in\mbox{$\cal B$}\setminus\mbox{$\cal B$}_{1} , D α 1 D_{\alpha}^{1} is any
+nonempty set.
+ 4. 
+ If α → β ∈ 𝒯 ∖ 𝒯 1 \alpha\rightarrow\beta\in\mbox{$\cal T$}\setminus\mbox{$\cal T$}_{1} ,
+ D α 1 D_{\alpha}^{1} is the set of all total functions from
+ D α 1 D_{\alpha}^{1} to D β 1 D_{\beta}^{1} if β = o \beta=o and the set of
+all partial and total functions from D α 1 D_{\alpha}^{1} to
+ D β 1 D_{\beta}^{1} if β ≠ o \beta\not=o .
+ For c α ∈ 𝒞 1 \textbf{c}_{\alpha}\in\mbox{$\cal C$}_{1} , define I 1 ​ ( c α ) = ρ α ​ ( V φ ℳ 2 ​ ( ν ¯ ​ ( c α ) ) ) I_{1}(\textbf{c}_{\alpha})=\rho_{\alpha}(V_{\varphi}^{{\cal M}_{2}}(\overline{\nu}(\textbf{c}_{\alpha}))) 
+where φ \varphi is any member of assign ​ ( ℳ 2 ) \mbox{\sf assign}(\mbox{$\cal M$}_{2}) . Finally,
+define ℳ 1 = ( { 𝒟 α 1 | α ∈ 𝒯 } , I 1 ) \mbox{$\cal M$}_{1}=({\{\mbox{$\cal D$}_{\alpha}^{1}\;|\;\alpha\in\mbox{$\cal T$}\}},I_{1}) .
+ Lemma 4.2.2 
+ Suppose each obligation of Φ \Phi is valid in ℳ 2 \mbox{$\cal M$}_{2} . Then
+ ℳ 1 \mbox{$\cal M$}_{1} is a general model for T 2 T_{2} . 
+ Proof 
+ By the first group of obligations of Φ \Phi , 𝒟 α 1 \mbox{$\cal D$}_{\alpha}^{1} is
+nonempty for all α ∈ ℬ 1 \alpha\in\mbox{$\cal B$}_{1} , and so { 𝒟 α 1 | α ∈ 𝒯 } {\{\mbox{$\cal D$}_{\alpha}^{1}\;|\;\alpha\in\mbox{$\cal T$}\}} is a frame of ctt uqe \mbox{\sc ctt}_{\rm uqe} . By the second to
+sixth groups of obligations of Φ \Phi , ℳ 1 \mbox{$\cal M$}_{1} is an interpretation of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} . For all A α ∈ L 1 \textbf{A}_{\alpha}\in L_{1} and φ ∈ assign ​ ( ℳ 1 ) \varphi\in\mbox{\sf assign}(\mbox{$\cal M$}_{1}) , define V φ ℳ 1 ​ ( A α ) V_{\varphi}^{{\cal M}_{1}}(\textbf{A}_{\alpha}) as follows:
+ ( ⋆ ) (\star) V φ ℳ 1 ​ ( A α ) = ρ α ​ ( V ν ¯ ​ ( φ ) ℳ 2 ​ ( ν ¯ ​ ( A α ) ) ) V_{\varphi}^{{\cal M}_{1}}(\textbf{A}_{\alpha})=\rho_{\alpha}(V_{\overline{\nu}(\varphi)}^{{\cal M}_{2}}(\overline{\nu}(\textbf{A}_{\alpha}))) if
+ V ν ¯ ​ ( φ ) ℳ 2 ​ ( ν ¯ ​ ( A α ) ) V_{\overline{\nu}(\varphi)}^{{\cal M}_{2}}(\overline{\nu}(\textbf{A}_{\alpha})) is defined and
+ V φ ℳ 1 ​ ( A α ) V_{\varphi}^{{\cal M}_{1}}(\textbf{A}_{\alpha}) is undefined otherwise,
+ where ν ¯ ​ ( φ ) \overline{\nu}(\varphi) is any ψ ∈ assign ​ ( ℳ 2 ) \psi\in\mbox{\sf assign}(\mbox{$\cal M$}_{2}) 
+such that, for all x β ∈ 𝒱 1 \textbf{x}_{\beta}\in\mbox{$\cal V$}_{1} ,
+ ρ β ​ ( ψ ⁡ ( ν ¯ ​ ( x β ) ) ) = φ ⁡ ( x β ) \rho_{\beta}(\psi(\overline{\nu}(\textbf{x}_{\beta})))=\varphi(\textbf{x}_{\beta}) . This definition of V φ ℳ 1 V_{\varphi}^{{\cal M}_{1}} 
+can be easily extended to a valuation function on all expressions that
+can be shown, by induction on the structure of expressions, to satisfy
+the seven clauses of the definition of a general model. Therefore,
+ ℳ 1 \mbox{$\cal M$}_{1} is a general model for ctt uqe \mbox{\sc ctt}_{\rm uqe} . Then ( ⋆ ) (\star) implies
+ ( ⋆ ⋆ ) ℳ 1 ⊨ A o iff ℳ 2 ⊨ ν ¯ ( A o ) (\star\star){\ }\mbox{$\cal M$}_{1}\vDash\textbf{A}_{o}{\ }\mbox{iff}{\ }\mbox{$\cal M$}_{2}\vDash\overline{\nu}(\textbf{A}_{o}) 
+ for
+all semantically closed formulas A o ∈ L 1 \textbf{A}_{o}\in L_{1} . By the
+seventh group of obligations of Φ \Phi , ℳ 2 ⊨ ν ¯ ​ ( A o ) \mbox{$\cal M$}_{2}\vDash\overline{\nu}(\textbf{A}_{o}) for all A o ∈ Γ 1 \textbf{A}_{o}\in\Gamma_{1} , and
+thus ℳ 1 \mbox{$\cal M$}_{1} is a general model for T 1 T_{1} by  ( ⋆ ⋆ ) (\star\star) .
+ □ \Box 
+ Theorem 4.2.3 (Semantic Morphism Theorem) 
+ Let T 1 T_{1} and T 2 T_{2} be normal theories and Φ \Phi be a translation
+from T 1 T_{1} to T 2 T_{2} . Suppose each obligation of Φ \Phi is valid in
+ T 2 T_{2} . Then Φ \Phi is a semantic morphism from T 1 T_{1} to T 2 T_{2} . 
+ Proof 
+ Let Φ = ( μ , ν ) \Phi=(\mu,\nu) be a translation from T 1 T_{1} to T 2 T_{2} and suppose
+each obligation of Φ \Phi is valid in T 2 T_{2} . Let A o ∈ L 1 \textbf{A}_{o}\in L_{1} be semantically closed and valid in T 1 T_{1} . We must show that
+ ν ¯ ​ ( A o ) \overline{\nu}(\textbf{A}_{o}) is valid in every general model for
+ T 2 T_{2} . Let ℳ 2 \mbox{$\cal M$}_{2} be a general model for T 1 T_{1} . (We are done if
+there are no general models for T 2 T_{2} .) Let ℳ 1 \mbox{$\cal M$}_{1} be extracted from
+ ℳ 2 \mbox{$\cal M$}_{2} as above. Obviously, each obligation of Φ \Phi is valid in
+ ℳ 2 \mbox{$\cal M$}_{2} , and so ℳ 1 \mbox{$\cal M$}_{1} is a general model for T 1 T_{1} by
+Lemma  4.2.2 . Therefore, ℳ 1 ⊨ A o \mbox{$\cal M$}_{1}\vDash\textbf{A}_{o} ,
+and so ℳ 2 ⊨ ν ¯ ​ ( A o ) \mbox{$\cal M$}_{2}\vDash\overline{\nu}(\textbf{A}_{o}) by ( ⋆ ⋆ ) (\star\star) in
+the proof of Lemma  4.2.2 . □ \Box 
+ Theorem 4.2.4 (Relative Satisfiability) 
+ Let T 1 T_{1} and T 2 T_{2} be normal theories and suppose Φ \Phi is a
+semantic morphism of from T 1 T_{1} to T 2 T_{2} . Then there is a general
+model for T 1 T_{1} if there is a general model for T 2 T_{2} . 
+ Proof 
+ Let Φ = ( μ , ν ) \Phi=(\mu,\nu) be a semantic morphism from T 1 T_{1} to T 2 T_{2} ,
+ ℳ 2 \mbox{$\cal M$}_{2} be a general model for T 1 T_{1} , and ℳ 1 \mbox{$\cal M$}_{1} be extracted from
+ ℳ 2 \mbox{$\cal M$}_{2} as above. Since Φ \Phi is a semantic morphism, each of its
+obligations is valid in T 2 T_{2} . Hence, ℳ 1 \mbox{$\cal M$}_{1} is a general model for
+ T 1 T_{1} by Lemma  4.2.2 . □ \Box 
+ 5 Examples
+ We will illustrate the theory morphism machinery of ctt uqe \mbox{\sc ctt}_{\rm uqe} with
+two simple examples involving monoids, the first in which two concepts
+are interpreted as the same concept and second in which a type is
+interpreted as a subset of its denotation. Let 𝒞 log ⊆ 𝒞 \mbox{$\cal C$}_{\rm log}\subseteq\mbox{$\cal C$} be the set of logical constants of ctt uqe \mbox{\sc ctt}_{\rm uqe} .
+ 5.1 Example 1: Monoid with Left and Right Identity Elements
+ Define M = ( L M , Γ M ) M=(L_{M},\Gamma_{M}) to be the usual theory of an abstract
+monoid where:
+ 1. 
+ ℬ M = { o , ϵ , ι } \mbox{$\cal B$}_{M}={\{o,\epsilon,\iota\}} .
+ 2. 
+ 𝒞 M = 𝒞 log ∪ { e ι , ∗ ι → ι → ι } \mbox{$\cal C$}_{M}=\mbox{$\cal C$}_{\rm log}\cup{\{e_{\iota},*_{\iota\rightarrow\iota\rightarrow\iota}\}} . ( ∗ ι → ι → ι *_{\iota\rightarrow\iota\rightarrow\iota} is written as an infix operator.)
+ 3. 
+ L M L_{M} is the set of ( ℬ M , 𝒞 M ) (\mbox{$\cal B$}_{M},\mbox{$\cal C$}_{M}) expressions.
+ 4. 
+ 𝒱 M \mbox{$\cal V$}_{M} is the set of variables in L M L_{M} .
+ 5. 
+ Γ M \Gamma_{M} contains the following axioms:
+ a. 
+ ∀ x ι . ∀ y ι . ∀ z ι . x ι ∗ ι → ι → ι ( y ι ∗ ι → ι → ι z ι ) = ( x ι ∗ ι → ι → ι y ι ) ∗ ι → ι → ι z ι . \forall\,x_{\iota}\mathrel{.}\forall\,y_{\iota}\mathrel{.}\forall\,z_{\iota}\mathrel{.}x_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}(y_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}z_{\iota})=(x_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}y_{\iota})*_{\iota\rightarrow\iota\rightarrow\iota}z_{\iota}. 
+ b. 
+ ∀ x ι . e ι ∗ ι → ι → ι x ι = x ι \forall\,x_{\iota}\mathrel{.}e_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}x_{\iota}=x_{\iota} .
+ c. 
+ ∀ x ι . x ι ∗ ι → ι → ι e ι = x ι \forall\,x_{\iota}\mathrel{.}x_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}e_{\iota}=x_{\iota} .
+ Define M ′ = ( L M ′ , Γ M ′ ) M^{\prime}=(L_{M^{\prime}},\Gamma_{M^{\prime}}) to be the alternate theory of an
+abstract monoid with left and right identity elements where:
+ 1. 
+ ℬ M ′ = ℬ M \mbox{$\cal B$}_{M^{\prime}}=\mbox{$\cal B$}_{M} .
+ 2. 
+ 𝒞 M ′ = 𝒞 log ∪ { e ι left , e ι right , ∗ ι → ι → ι } \mbox{$\cal C$}_{M^{\prime}}=\mbox{$\cal C$}_{\rm log}\cup{\{e_{\iota}^{\rm left},e_{\iota}^{\rm right},*_{\iota\rightarrow\iota\rightarrow\iota}\}} . ( ∗ ι → ι → ι *_{\iota\rightarrow\iota\rightarrow\iota} is
+written as an infix operator.)
+ 3. 
+ L M ′ L_{M^{\prime}} is the set of ( ℬ M ′ , 𝒞 M ′ ) (\mbox{$\cal B$}_{M^{\prime}},\mbox{$\cal C$}_{M^{\prime}}) expressions.
+ 4. 
+ 𝒱 M ′ = 𝒱 M \mbox{$\cal V$}_{M^{\prime}}=\mbox{$\cal V$}_{M} .
+ 5. 
+ Γ M ′ \Gamma_{M^{\prime}} contains the following axioms:
+ a. 
+ ∀ x ι . ∀ y ι . ∀ z ι . x ι ∗ ι → ι → ι ( y ι ∗ ι → ι → ι z ι ) = ( x ι ∗ ι → ι → ι y ι ) ∗ ι → ι → ι z ι . \forall\,x_{\iota}\mathrel{.}\forall\,y_{\iota}\mathrel{.}\forall\,z_{\iota}\mathrel{.}x_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}(y_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}z_{\iota})=(x_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}y_{\iota})*_{\iota\rightarrow\iota\rightarrow\iota}z_{\iota}. 
+ b. 
+ ∀ x ι . e ι left ∗ ι → ι → ι x ι = x ι \forall\,x_{\iota}\mathrel{.}e_{\iota}^{\rm left}*_{\iota\rightarrow\iota\rightarrow\iota}x_{\iota}=x_{\iota} .
+ c. 
+ ∀ x ι . x ι ∗ ι → ι → ι e ι right = x ι \forall\,x_{\iota}\mathrel{.}x_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}e_{\iota}^{\rm right}=x_{\iota} .
+ We would like to construct a semantic morphism from M ′ M^{\prime} to M M that
+maps the left and right identity elements of M ′ M^{\prime} to the single
+identity element of M M . This is not possible since the mapping ν \nu 
+must be injective to overcome the Constant Interpretation Problem. We
+need to add a dummy constant to M M to facilitate the definition of
+the semantic morphism. Let M ¯ \overline{M} be the definitional
+extension of M M that contains the new constant e ι ′ e^{\prime}_{\iota} and the new
+axiom e ι ′ = e ι e^{\prime}_{\iota}=e_{\iota} . 5 5 
+ 5 
+ Technically, e ι ′ e^{\prime}_{\iota} is a
+constant chosen from 𝒞 ∖ 𝒞 M \mbox{$\cal C$}\setminus\mbox{$\cal C$}_{M} . There is no harm is
+assuming that such a constant already exists in 𝒞 \cal C . 
+ Let Φ = ( μ , ν ) \Phi=(\mu,\nu) to be the translation from M ′ M^{\prime} to
+ M ¯ \overline{M} such that:
+ 1. 
+ μ ⁡ ( ι ) = λ ​ x ι . T o \mu(\iota)=\lambda\,x_{\iota}\mathrel{.}T_{o} .
+ 2. 
+ ν \nu is the identity function on 𝒱 M ′ ∪ 𝒞 log ∪ { ∗ ι → ι → ι } \mbox{$\cal V$}_{M^{\prime}}\cup\mbox{$\cal C$}_{\log}\cup{\{*_{\iota\rightarrow\iota\rightarrow\iota}\}} .
+ 3. 
+ ν ⁡ ( e ι left ) = e ι \nu(e_{\iota}^{\rm left})=e_{\iota} .
+ 4. 
+ ν ⁡ ( e ι right ) = e ι ′ \nu(e_{\iota}^{\rm right})=e^{\prime}_{\iota} .
+ It is easy to see that Φ \Phi is a semantic morphism by
+Theorem  4.2.3 .
+ 5.2 Example 2: Monoid interpreted as the Trivial Monoid
+ The identity element of a monoid forms a submonoid of the monoid that
+is isomorphic with the trivial monoid consisting of a single element.
+There is a natural morphism from a theory of a monoid to itself in
+which the type of monoid elements is interpreted by the singleton set
+containing the identity element. This kind of morphism cannot be
+directly expressed using a definition of a theory morphism that maps
+base types to types. However, it can be directly expressed using the
+notion of a semantic morphism we have defined.
+ The desired translation interprets the type ι \iota as the set
+ { e ι } {\{e_{\iota}\}} and the constants denoting functions involving ι \iota 
+as functions in which the domain of ι \iota is replaced by
+ { e ι } {\{e_{\iota}\}} . This is not possible since the mapping ν \nu must
+map constants to constants to overcome the Constant Interpretation
+Problem. We need to add a set of dummy constants to M M to facilitate
+the definition of the semantic morphism.
+ Define μ \mu as follows:
+ 1. 
+ For α ∈ { o , ϵ } \alpha\in{\{o,\epsilon\}} , μ ⁡ ( α ) = λ ​ x α . T o \mu(\alpha)=\lambda\,x_{\alpha}\mathrel{.}T_{o} .
+ 2. 
+ μ ⁡ ( ι ) = λ ​ x ι . x ι = e ι \mu(\iota)=\lambda\,x_{\iota}\mathrel{.}x_{\iota}=e_{\iota} .
+ Let M ¯ \overline{M} be the definitional extension of M M that contains
+the following the new defined constants:
+ 1. 
+ = α → α → o ′ = λ x α . λ y α . ( if ( μ ¯ ( α ) x α ∧ μ ¯ ( α ) y α ) ( x α = α → α → o y α ) ⊥ o ) {=^{\prime}_{\alpha\rightarrow\alpha\rightarrow o}}=\lambda\,x_{\alpha}\mathrel{.}\lambda\,y_{\alpha}\mathrel{.}(\mbox{\sf if}\;(\overline{\mu}(\alpha)\,x_{\alpha}\wedge\overline{\mu}(\alpha)\,y_{\alpha})\;(x_{\alpha}=_{\alpha\rightarrow\alpha\rightarrow o}y_{\alpha})\;\bot_{o}) 
+where
+ α ∈ 𝒯 \alpha\in\mbox{$\cal T$} contains ι \iota .
+ 2. 
+ ι ( α → o ) → α ′ = λ x α → o . ( if ( μ ¯ ( α → o ) x α → o ) ( ι ( α → o ) → α x α → o ) ⊥ α ) {\iota^{\prime}_{(\alpha\rightarrow o)\rightarrow\alpha}}=\lambda\,x_{\alpha\rightarrow o}\mathrel{.}(\mbox{\sf if}\;(\overline{\mu}(\alpha\rightarrow o)\,x_{\alpha\rightarrow o})\;(\iota_{(\alpha\rightarrow o)\rightarrow\alpha}\,x_{\alpha\rightarrow o})\;\bot_{\alpha}) 
+where α ∈ 𝒯 \alpha\in\mbox{$\cal T$} contains ι \iota .
+ 3. 
+ ∗ ι → ι → ι ′ = λ x ι . λ y ι . ( if ( μ ¯ ( ι ) x ι ∧ μ ¯ ( ι ) y ι ) ( x ι ∗ ι → ι → ι y ι ) ⊥ ι ) *^{\prime}_{\iota\rightarrow\iota\rightarrow\iota}=\lambda\,x_{\iota}\mathrel{.}\lambda\,y_{\iota}\mathrel{.}(\mbox{\sf if}\;(\overline{\mu}(\iota)\,x_{\iota}\wedge\overline{\mu}(\iota)\,y_{\iota})\;(x_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}y_{\iota})\;\bot_{\iota}) . 6 6 
+ 6 
+ The definition of ∗ ′ ι → ι → ι *^{\prime}_{\iota\rightarrow\iota\rightarrow\iota} can be simplified by using the
+definition of μ \mu and noting that e ι ∗ ι → ι → ι e ι e_{\iota}*_{\iota\rightarrow\iota\rightarrow\iota}e_{\iota} equals e ι e_{\iota} . 
+ Let Ψ = ( μ , ν ) \Psi=(\mu,\nu) to be the translation from M M to
+ M ¯ \overline{M} such that:
+ 1. 
+ μ \mu is defined as above.
+ 2. 
+ ν \nu is the identity function on 𝒱 M ′ \mbox{$\cal V$}_{M^{\prime}} .
+ 3. 
+ ν \nu is the identity function on the members of 𝒞 log \mbox{$\cal C$}_{\rm log} except for the constants = α → α → o =_{\alpha\rightarrow\alpha\rightarrow o} and ι ( α → o ) → α \iota_{(\alpha\rightarrow o)\rightarrow\alpha} where α ∈ 𝒯 \alpha\in\mbox{$\cal T$} contains ι \iota .
+ 4. 
+ ν ( = α → α → o ) = = α → α → o ′ {\nu(=_{\alpha\rightarrow\alpha\rightarrow o})}={=^{\prime}_{\alpha\rightarrow\alpha\rightarrow o}} for all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} containing
+ ι \iota .
+ 5. 
+ ν ⁡ ( ι ( α → o ) → α ) = ι ( α → o ) → α ′ {\nu(\iota_{(\alpha\rightarrow o)\rightarrow\alpha})}={\iota^{\prime}_{(\alpha\rightarrow o)\rightarrow\alpha}} for all α ∈ 𝒯 \alpha\in\mbox{$\cal T$} containing ι \iota .
+ 6. 
+ ν ⁡ ( e ι ) = e ι \nu(e_{\iota})=e_{\iota} .
+ 7. 
+ ν ( ∗ ι → ι → ι ) = ∗ ι → ι → ι ′ \nu(*_{\iota\rightarrow\iota\rightarrow\iota})=*^{\prime}_{\iota\rightarrow\iota\rightarrow\iota} .
+ It is easy to see that Φ \Phi is a semantic morphism by
+Theorem  4.2.3 .
+ 6 Conclusion
+ ctt qe \mbox{\sc ctt}_{\rm qe} is a version of Church’s type theory with quotation and
+evaluation described in great detail in  [ 9 ] . In this
+paper we have (1) presented ctt uqe \mbox{\sc ctt}_{\rm uqe} , a variant of ctt qe \mbox{\sc ctt}_{\rm qe} 
+that admits undefined expressions, partial functions, and multiple
+base types of individuals, (2) defined a notion of a theory morphism
+in ctt uqe \mbox{\sc ctt}_{\rm uqe} , and (3) given two simple examples that illustrate the
+use of theory morphisms in ctt uqe \mbox{\sc ctt}_{\rm uqe} . The theory morphisms of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} overcome the Constant Interpretation Problem discussed in
+section  1 by requiring constants to be
+injectively mapped to constants. Since ctt uqe \mbox{\sc ctt}_{\rm uqe} admits partial
+functions, ctt uqe \mbox{\sc ctt}_{\rm uqe} theory morphisms are able to map base types to
+sets of values of the same type — which enables many additional
+natural meaning-preserving mappings between theories to be directly
+defined as ctt uqe \mbox{\sc ctt}_{\rm uqe} theory morphisms. Thus the paper demonstrates
+how theory morphisms can be defined in a traditional logic with
+quotation and evaluation and how support for partial functions in a
+traditional logic can be leveraged to obtain a wider class of theory
+morphisms.
+ The two examples presented in section  5 show that
+constructing a translation in ctt uqe \mbox{\sc ctt}_{\rm uqe} from a theory T 1 T_{1} to a
+theory T 2 T_{2} will often require defining new dummy constants in T 2 T_{2} .
+This is certainly a significant inconvenience. However, it is an
+inconvenience that can be greatly ameliorated in an implementation of
+ ctt uqe \mbox{\sc ctt}_{\rm uqe} by allowing a user to define a “pre-translation” that
+is automatically transformed into a bona fide translation. A
+pre-translation from T 1 T_{1} and T 2 T_{2} would be a pair ( μ , ν ) (\mu,\nu) where
+ μ \mu maps base types to either types or semantically closed
+predicates, ν \nu maps constants to expressions that need not be
+constants, and ν \nu is not required to be injective. From the
+pre-translation, the system would automatically extend T 2 T_{2} to a
+theory T 2 ′ T^{\prime}_{2} and then construct a translation from T 1 T_{1} to T 2 ′ T^{\prime}_{2} .
+ Our long-range goal is to implement a system for developing biform
+theory graphs utilizing logics equipped with quotation and evaluation.
+The next step in this direction is to implement ctt qe \mbox{\sc ctt}_{\rm qe} by
+extending HOL Light  [ 13 ] , a simple implementation of
+HOL  [ 12 ] .
+ References
+ [1] 
+P. B. Andrews.
+ An Introduction to Mathematical Logic and Type Theory: To Truth
+through Proof, Second Edition .
+ Kluwer, 2002.
+ [2] 
+J. Barwise and J. Seligman.
+ Information Flow: The Logic of Distributed Systems , volume 44
+of Tracts in Computer Science .
+ Cambridge University Press, 1997.
+ [3] 
+J. Carette and W. M. Farmer.
+ High-level theories.
+ In A. Autexier, J. Campbell, J. Rubio, M. Suzuki, and F. Wiedijk,
+editors, Intelligent Computer Mathematics , volume 5144 of Lecture
+Notes in Computer Science , pages 232–245. Springer, 2008.
+ [4] 
+W. M. Farmer.
+ Theory interpretation in simple type theory.
+ In J. Heering et al., editor, Higher-Order Algebra, Logic, and
+Term Rewriting , volume 816 of Lecture Notes in Computer Science , pages
+96–123. Springer, 1994.
+ [5] 
+W. M. Farmer.
+ Formalizing undefinedness arising in calculus.
+ In D. Basin and M. Rusinowitch, editors, Automated
+Reasoning—IJCAR 2004 , volume 3097 of Lecture Notes in Computer
+Science , pages 475–489. Springer, 2004.
+ [6] 
+W. M. Farmer.
+ Biform theories in Chiron.
+ In M. Kauers, M. Kerber, R. R. Miner, and W. Windsteiger, editors,
+ Towards Mechanized Mathematical Assistants , volume 4573 of Lecture
+Notes in Computer Science , pages 66–79. Springer, 2007.
+ [7] 
+W. M. Farmer.
+ Andrews’ type system with undefinedness.
+ In C. Benzmüller, C. Brown, J. Siekmann, and R. Statman, editors,
+ Reasoning in Simple Type Theory: Festschrift in Honor of Peter B.
+Andrews on his 70th Birthday , Studies in Logic, pages 223–242. College
+Publications, 2008.
+ [8] 
+W. M. Farmer.
+ The formalization of syntax-based mathematical algorithms using
+quotation and evaluation.
+ In J. Carette, D. Aspinall, C. Lange, P. Sojka, and W. Windsteiger,
+editors, Intelligent Computer Mathematics , volume 7961 of Lecture
+Notes in Computer Science , pages 35–50. Springer, 2013.
+ [9] 
+W. M. Farmer.
+ Incorporating quotation and evaluation into Church’s type theory.
+ Computing Research Repository (CoRR) , abs/1612.02785 (72 pp.),
+2016.
+ [10] 
+W. M. Farmer.
+ Incorporating quotation and evaluation into Church’s type theory:
+Syntax and semantics.
+ In M. Kohlhase, M. Johansson, B. Miller, L. de Moura, and F. Tompa,
+editors, Intelligent Computer Mathematics , volume 9791 of Lecture
+Notes in Computer Science , pages 83–98. Springer, 2016.
+ [11] 
+W. M. Farmer, J. D. Guttman, and F. J. Thayer.
+ Little theories.
+ In D. Kapur, editor, Automated Deduction—CADE-11 , volume 607
+of Lecture Notes in Computer Science , pages 567–581. Springer, 1992.
+ [12] 
+M. J. C. Gordon and T. F. Melham.
+ Introduction to HOL: A Theorem Proving Environment for Higher
+Order Logic .
+ Cambridge University Press, 1993.
+ [13] 
+J. Harrison.
+ HOL Light: An overview.
+ In S. Berghofer, T. Nipkow, C. Urban, and M. Wenzel, editors, Theorem Proving in Higher Order Logics , volume 5674 of Lecture Notes in
+Computer Science , pages 60–66. Springer, 2009.
+ [14] 
+M. Kohlhase.
+ Mathematical knowledge management: Transcending the one-brain-barrier
+with theory graphs.
+ European Mathematical Society (EMS) Newsletter , 92:22––27,
+June 2014.
+ ◄ 
+ Feeling
+lucky? 
+ Conversion
+report 
+ Report
+an issue 
+ View original
+on arXiv ► 
+ Copyright 
+ Privacy Policy 
+ Generated by L a T e XML oxide

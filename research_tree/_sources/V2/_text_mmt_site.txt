@@ -1,0 +1,46 @@
+ 
+ Since otherwise we could not keep (image) links in the documentation relative anymore - without
+ a hassle at least.
+ We would always have to prepend doc/ or something.
+ Hence, use e.g. `https://uniformal.github.io//lib/css/bootstrap.min.css` to refer to assets in this file only.
+ Only downside: the links will include the official gh-pages domain (e.g. uniformal.github.io), so html-proofer
+ -- which we run as part of the Travis build -- will be tricked to look for the actually old files, which are not
+ yet deployed there. Hence, if you add a new CSS file and reference it here using the technique above, the Travis
+ build will unfortunately fail. Just ignore this and merge nonetheless into master.
+ -->
+ The MMT Language and System 
+ The MMT Language and System
+ Documentation 
+ Research 
+ Applications 
+ Language 
+ Tutorials 
+ Development 
+ Community 
+ The MMT Language and System
+ Enabling Uniform Representation of Knowledge
+ Download 
+ Source Code 
+ Setup 
+ Representing Knowledge
+ MMT integrates the 4 major paradigms for representing scientific knowledge. 
+ Foundation Independent
+ All aspects of MMT avoid a commitment to semantic foundation, representational paradigm, or application work flow
+ Representation Languages
+ MMT represents all knowledge in one simple framework
+ Narration
+ MMT subsumes natural languages
+ Applications
+ MMT enables generic large-scale implementations
+ Deduction
+ MMT subsumes logical languages
+ Soundness-Critical Services
+ MMT allows generic solutions to deep problems
+ Computation
+ MMT will subsume programming languages
+ Management Services
+ MMT allows generic knowledge management solutions
+ Tabulation
+ MMT subsumes data description languages
+ MMT is developed and maintained mostly by Florian Rabe . 
+ This page is hosted via github pages and can be edited directly in the browser . 

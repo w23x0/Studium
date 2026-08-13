@@ -1,0 +1,26 @@
+# Calibrated Fusion for Heterogeneous Graph-Vector Retrieval in Multi-Hop QA
+来源：https://arxiv.org/abs/2603.28886
+标题：Calibrated Fusion for Heterogeneous Graph-Vector Retrieval in Multi-Hop QA（PhaseGraph）
+作者：Andre Bacellar 等
+日期：2026-03-28 提交；v2 2026-03-30
+抓取日期：2026-08-13（WebFetch，A 级原文）
+
+## 摘要要点
+图增强检索（稠密相似度 + 图上 PPR 等图信号）产生的分数分布不同、不可直接比较。该文把「异构检索融合」当作分数校准问题。方法 PhaseGraph：用 percentile-rank 归一化（PIT）把向量分数与图分数映射到共享无单位尺度，再融合；比较 Boltzmann 加权与线性融合。
+
+## 量化结果
+- MuSiQue：LastHop@5「from 75.1% to 76.5%」（8W/1L, p=0.039）
+- 2WikiMultiHopQA：LastHop@5「from 51.7% to 53.6%」（11W/2L, p=0.023）
+- percentile 校准 vs min-max 方向性更好但不显著（1W/6L, p=0.125）
+- 校准后融合算子差异小：「Boltzmann weighting performs comparably to linear fusion after calibration (0W/3L, p=0.25)」
+- 结论：「score commensuration is a robust design choice, and the exact post-calibration operator appears to matter less on these benchmarks」
+
+## 核心论断
+- 「these scores have different distributions and are not directly comparable」——图信号与向量信号异构，朴素混合不可靠，需要校准桥接
+
+## 对 V6 的意义（Q2）
+- 图+向量混合在工业界/学术界的实证：混合有帮助，但增益幅度小（+1.4 到 +1.9 个百分点），且只有当分数先校准、且不能把任一信号当「结案分数」
+- 这与 Studium「向量只定向不结案」红线一致：向量分数与图分数都是异构定向信号，不能直接相加后结案
+
+## 等级
+A（WebFetch 抓取 arxiv 摘要页）

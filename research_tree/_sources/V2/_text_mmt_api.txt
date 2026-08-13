@@ -1,0 +1,165 @@
+ 
+ [1306.3199] The MMT API: A Generic MKM System 
+ The MMT API: A Generic MKM System
+ Florian Rabe
+ Affiliation:  Computer Science, Jacobs University Bremen, Germany
+ Abstract 
+ The Mmt language has been developed as a scalable representation and interchange language for formal mathematical knowledge.
+It permits natural representations of the syntax and semantics of virtually all declarative languages while making Mmt -based MKM services easy to implement.
+It is foundationally unconstrained and can be instantiated with specific formal languages.
+ The Mmt API implements the Mmt language along with multiple backends for persistent storage and frontends for machine and user access.
+Moreover, it implements a wide variety of Mmt -based knowledge management services.
+The API and all services are generic and can be applied to any language represented in Mmt . A plugin interface permits injecting syntactic and semantic idiosyncrasies of individual formal languages.
+ The Mmt Language
+ Content-oriented representation languages for mathematical knowledge are usually designed to focus on either of two goals:
+ (i) the automation potential offered by mechanically verifiable representations, as pursued in semi-automated proof assistants like Isabelle and
+ (ii) the universal applicability offered by a generic meta-language, as pursued in XML-based content markup languages like OMDoc .
+ The Mmt language [ 11 ] (Module system for Mathematical Theories) was designed to realize both goals in one coherent system.
+It uses a minimal number of primitives with a precise semantics chosen to permit natural and adequate representations of many individual languages.
+ A key feature is foundation-independence : Mmt systematically avoids a commitment to a particular type theory or logic.
+Instead, it represents every formal system as an Mmt theory: domain theories (like the theory 𝙶𝚛𝚘𝚞𝚙 \mathtt{Group} ), logics (like first-order logic FOL), and logical frameworks (like LF [ 4 ] ) are represented uniformly as Mmt theories .
+These theories are related by the meta-theory relation, e.g., LF is the meta-theory of FOL, which in turn is the meta-theory of 𝙶𝚛𝚘𝚞𝚙 \mathtt{Group} .
+ Mmt uses this relation to obtain the semantics of a theory from that of its meta-theory; thus, an external semantics (called the foundation ), e.g., a research article or an implementation, only has to be supplied for the topmost meta-theories.
+For example, a foundation for LF can be given in the form of a type system.
+ Theories contain typed symbol declarations , which permit the uniform representation of constants, functions, and predicates as well as – via the Curry-Howard correspondence – judgments, inference rules, axioms, and theorems.
+Theories are related via theory morphisms , which subsume translations, functors, and models.
+Finally, Mmt provides a module system for building large theories and morphisms via reuse and inheritance.
+ Mathematical objects such as terms, types, formulas, and proofs are represented uniformly as OpenMath objects [ 1 ] , which are formed from the symbols available to the theory under consideration: For example, LF declares the symbols 𝚝𝚢𝚙𝚎 \mathtt{type} and λ \lambda ; FOL declares ∀ \forall and ⇒ \Rightarrow , and 𝙶𝚛𝚘𝚞𝚙 \mathtt{Group} declares ∘ \circ and e e .
+ Mmt is agnostic in the typing relation between these objects and instead delegates the resolution of typing judgments to the foundation.
+Then all Mmt results are obtained for arbitrary foundations.
+For example, Mmt guarantees that theory morphisms translate objects in a typing- and truth-preserving way, which is the crucial invariant permitting the reuse of results in large networks of theories.
+ The Mmt API
+ Exploiting the small number of primitives in Mmt , the Mmt API provides a comprehensive, scalable implementation of Mmt itself and of Mmt -based knowledge management (KM) services.
+The development is intentionally application-independent : It focuses on the data model of Mmt and its KM services in a way that makes the integration into specific applications as easy as possible.
+But by itself, it provides only a basic user interface.
+ All algorithms are implemented generically and relegate all foundation-specific aspects to plugins.
+Concrete applications usually provide a few small plugins to customize the behavior to one specific foundation and a high-level component that connects the desired Mmt services to a user interface.
+ The API is written in the functional and object-oriented language Scala [ 9 ] , which is fully compatible with Java so that API plugins and applications can be written in either language.
+Excluding plugins and libraries, it comprises over 20,000 20,000 lines of Scala code compiling into about 3000 3000 Java class files totaling about 5 5 MB of platform-independent bytecode.
+Sources, binaries, API documentation, and user manual are available at http://trac.kwarc.info/MMT .
+ Knowledge Management Services
+ The Mmt API provides a suite of coherently integrated KM services, which we only summarize here because they have been presented individually.
+A notation language based on [ 7 ] is used to serialize Mmt in arbitrary output formats. Notations are grouped into styles , and a rendering engine presents any Mmt concept according to the chosen style.
+ Mmt content can be organized in archives [ 5 ] , a light-weight project abstraction to integrate source files, content markup, narrative structure, notation indices, and RDF-style relational indices. Archives can be built, indexed, and browsed, and simplify distribution and reuse.
+A query language [ 10 ] integrates hierarchic, relational, and unification-based query paradigms.
+A change management infrastructure [ 6 ] permits detecting and propagating and changes at the level of individual OpenMath objects.
+ User and System Interfaces
+ If run as a standalone application, the API responds with a shell that interacts via standard input/output.
+The shell is scriptable, which permits users and application developers to initialize and configure it conveniently.
+For example, to check the theory 𝐺𝑟𝑜𝑢𝑝 \mathit{Group} , the initialization script would first register the Mmt theory defining the syntax of LF and then a plugin providing a foundation for LF, then register the theory FOL, and finally check the file containing the theory 𝐺𝑟𝑜𝑢𝑝 \mathit{Group} .
+ A second frontend is given by an HTTP server. For machine interaction, it exposes all API functionality and KM services via a RESTful interface, which permits developing Mmt -based applications outside the Java/Scala world.
+For human interaction, the HTTP server offers an interactive web browser based on HTML+presentation MathML. The latter is computed on demand according to the style interactively selected by the user.
+Based on the JOBAD JavaScript library [ 3 ] , user interaction is handled via JavaScript and Ajax.
+In particular, Mmt includes a JOBAD module that provides interactive functionality such as definition lookup and type inference.
+ To facilitate distributing Mmt content, all Mmt declarations are referenced by canonical logical identifiers (the Mmt URIs), and their physical locations (their URLs) remain transparent. This is implemented as a catalog that translates Mmt URIs into URLs according to the registered knowledge repositories.
+ Mmt declarations are retrieved and loaded into memory transparently when needed so that storage and memory management are hidden from high-level services, applications, and users.
+Supported knowledge repositories are file systems, SVN working copies and repositories, and TNTBase databases [ 12 ] .
+The latter also supports Mmt -specific indexing and querying functions [ 8 ] permitting, e.g., the efficient retrieval of the dependency closure of an Mmt knowledge item.
+ A Specific Application for a Specific Foundation
+ The LATIN project [ 2 ] built an atlas of logics and related formal systems.
+The atlas is realized as an Mmt project, and Mmt is used for building and interactively browsing the atlas.
+ All theories in the atlas use LF as their meta-theory, which defines the abstract syntax of LF and thus of the logics in the atlas.
+ For concrete syntax, the Twelf implementation of LF is used.
+To integrate Twelf with Mmt , LATIN developed an Mmt plugin that calls Twelf to read individual source files and convert them to OMDoc , which Mmt reads natively.
+ Based on this import, Mmt ’s foundation-independent algorithms can index and catalog the LATIN atlas and make it accessible to KM services and applications.
+Here the use of Twelf remains fully transparent: An application sends only an Mmt URI (e.g., the one LATIN defines for the theory FOL) to Mmt and receives the corresponding Scala object.
+ From the perspective of Mmt , Twelf is an external tool for parsing and type reconstruction that is applicable only to theories whose meta-theory is LF.
+From the perspective of Twelf on the other hand, the Mmt theory LF does not exist.
+Instead, the symbols 𝑡𝑦𝑝𝑒 \mathit{type} , λ \lambda , etc. are implemented directly in Twelf’s underlying programming language.
+ This is a typical situation: Generally, Mmt uses the meta-theory to determine which plugin is applicable, and these plugins hard-code the semantics of the respective meta-theory.
+Similar concrete syntax plugins can be written for most languages and exist for, e.g., the ATP interface language TPTP, the ontology language OWL, and the Mizar language for formalized mathematics.
+ LATIN also customizes the Mmt web server by providing a style that provides notations for objects from theories with meta-theory LF.
+The above screen shot shows the generic web server displaying a theory 𝙸𝙼𝙿𝙴𝚡𝚝 \mathtt{IMPExt} : It imports the theory IMP \mathrm{IMP} of the implication connective 𝚒𝚖𝚙 \mathtt{imp} and extends it with derived rules for the introduction and elimination of double implications, i.e., formulas of the form A ​ 𝚒𝚖𝚙 ​ ( B ​ 𝚒𝚖𝚙 ​ 𝙲 ) A\,\mathtt{imp}\,(B\,\mathtt{imp}\,\mathtt{C}) .
+The symbol 𝚒𝚖𝚙𝙸 \mathtt{impI} represents the derivation of the rule A , B ⊢ C ⊢ A ​ i ​ m ​ p ​ ( B ​ i ​ m ​ p ​ C ) \frac{A,B\vdash C}{\vdash A\,imp\,(B\,imp\,C)} .
+Via the context menu, the user has called type inference on the selected subobject, which opened a dialog showing the dynamically inferred type .
+ The interactive type inference is implemented using the HTTP interface to the Mmt API.
+First of all, the LATIN style is such that the rendered HTML includes parallel markup in the form of special attributes on the presentation MathML elements.
+JavaScript uses them to build an Mmt query that is posted to the server as an Ajax request and whose response is shown in the dialog.
+This query bundles multiple Mmt API calls into a single HTTP request-response cycle:
+First the parallel markup is used to retrieve the OpenMath object corresponding to the selected expression (and its context), then type inference is called, and finally the rendering engine is called to render the type as presentation MathML.
+ For the type inference, LATIN provides one further plugin: a foundation plugin that supplies the typing relation for theories with meta-theory LF. Mmt uses it to perform type inference directly in memory without having to call external tools like Twelf.
+Such foundation plugins are easy to write because they can focus on the logical core of the type system and, e.g., parsing and module system remain transparent to the plugin.
+For example, the plugin for LF comprises only 200 lines of code
+ Except for the concrete syntax plugin, the presentation style, and the foundation plugin, all steps of the above example are foundation-independent and are immediately available for Mmt content written in any other meta-theory.
+Moreover, being a logical framework, these plugins LF are immediately inherited by all logics defined in LF: We obtain, e.g., type inference for FOL and 𝐺𝑟𝑜𝑢𝑝 \mathit{Group} (in fact: for all logics defined in LATIN) without writing additional plugins.
+ Furthermore, all implementations are application-independent and can be immediately integrated into any application, e.g., a Wiki containing LF objects.
+This customization of Mmt to specific foundations and specific applications occurs at minimal cost, a principle we call rapid prototyping for formal ystems .
+ Acknowledgements
+ Over the last 6 years, contributions to the API or to individual plugins have been made by Maria Alecu, Alin Iacob, Catalin David, Stefania Dumbrava, Dimitar Misev, Fulya Horozal, Füsun Horozal, Mihnea Iancu, Felix Mance, and Vladimir Zamdzhiev. Some of them were partially supported by DFG grant KO-2428/9-1.
+ References
+ [1] 
+S. Buswell, O. Caprotti, D. Carlisle, M. Dewar, M. Gaetano, and M. Kohlhase.
+ The Open Math Standard, Version 2.0.
+ Technical report, The Open Math Society, 2004.
+ See http://www.openmath.org/standard/om20 .
+ [2] 
+M. Codescu, F. Horozal, M. Kohlhase, T. Mossakowski, and F. Rabe.
+ Project Abstract: Logic Atlas and Integrator (LATIN).
+ In J. Davenport, W. Farmer, F. Rabe, and J. Urban, editors, Intelligent Computer Mathematics , pages 289–291. Springer, 2011.
+ [3] 
+J. Gičeva, C. Lange, and F. Rabe.
+ Integrating Web Services into Active Mathematical Documents.
+ In J. Carette, L. Dixon, C. Sacerdoti Coen, and S. Watt, editors,
+ Intelligent Computer Mathematics , pages 279–293. Springer, 2009.
+ [4] 
+R. Harper, F. Honsell, and G. Plotkin.
+ A framework for defining logics.
+ Journal of the Association for Computing Machinery ,
+40(1):143–184, 1993.
+ [5] 
+F. Horozal, A. Iacob, C. Jucovschi, M. Kohlhase, and F. Rabe.
+ Combining Source, Content, Presentation, Narration, and Relational
+Representation.
+ In J. Davenport, W. Farmer, F. Rabe, and J. Urban, editors, Intelligent Computer Mathematics , pages 212–227. Springer, 2011.
+ [6] 
+M. Iancu and F. Rabe.
+ Management of Change in Declarative Languages.
+ In J. Campbell, J. Carette, G. Dos Reis, J. Jeuring, P. Sojka,
+V. Sorge, and M. Wenzel, editors, Intelligent Computer Mathematics ,
+pages 325–340. Springer, 2012.
+ [7] 
+M. Kohlhase, C. Müller, and F. Rabe.
+ Notations for Living Mathematical Documents.
+ In S. Autexier, J. Campbell, J. Rubio, V. Sorge, M. Suzuki, and
+F. Wiedijk, editors, Mathematical Knowledge Management , pages 504–519.
+Springer, 2008.
+ [8] 
+M. Kohlhase, F. Rabe, and V. Zholudev.
+ Towards MKM in the Large: Modular Representation and Scalable
+Software Architecture.
+ In S. Autexier, J. Calmet, D. Delahaye, P. Ion, L. Rideau, R. Rioboo,
+and A. Sexton, editors, Intelligent Computer Mathematics , pages
+370–384. Springer, 2010.
+ [9] 
+M. Odersky, L. Spoon, and B. Venners.
+ Programming in Scala .
+ artima, 2007.
+ [10] 
+F. Rabe.
+ A Query Language for Formal Mathematical Libraries.
+ In J. Campbell, J. Carette, G. Dos Reis, J. Jeuring, P. Sojka,
+V. Sorge, and M. Wenzel, editors, Intelligent Computer Mathematics ,
+pages 142–157. Springer, 2012.
+ [11] 
+F. Rabe and M. Kohlhase.
+ A Scalable Module System.
+ Information and Computation , 2013.
+ conditionally accepted; see http://arxiv.org/abs/1105.0548 .
+ [12] 
+V. Zholudev and M. Kohlhase.
+ TNTBase: a Versioned Storage for XML.
+ In Proceedings of Balisage: The Markup Conference 2009 ,
+volume 3 of Balisage Series on Markup Technologies . Mulberry
+Technologies, Inc., 2009.
+ ◄ 
+ Feeling
+lucky? 
+ Conversion
+report 
+ Report
+an issue 
+ View original
+on arXiv ► 
+ Copyright 
+ Privacy Policy 
+ Generated by L a T e XML oxide

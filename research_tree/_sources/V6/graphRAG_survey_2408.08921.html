@@ -1,0 +1,30 @@
+# Graph Retrieval-Augmented Generation: A Survey（GraphRAG 综述）
+来源：https://arxiv.org/abs/2408.08921 （摘要页）+ https://arxiv.org/html/2408.08921v2 （HTML 全文）
+作者：Boci Peng, Yun Zhu, Yongchao Liu, Xiaohe Bo, Haizhou Shi, Chuntao Hong, Yan Zhang, Shumin Deng
+日期：2024-08-15 提交；v2
+抓取日期：2026-08-13（WebFetch，A 级原文）
+
+## 三阶段框架（原文）
+Graph-Based Indexing（G-Indexing）→ Graph-Guided Retrieval（G-Retrieval）→ Graph-Enhanced Generation（G-Generation）
+- G-Indexing：图数据来源（开放知识图谱 vs 自构建）；索引方法（图索引/文本索引/向量索引/混合索引）。开放图谱含 Wikidata、Freebase、DBpedia、YAGO、ConceptNet 等
+- G-Retrieval：检索器（非参数/LM/GNN）、范式（一次性/迭代/多阶段）、粒度（节点/三元组/路径/子图/混合）
+- G-Generation：生成器（GNN/LM/混合）、图格式、增强方式
+
+## 关键论断
+- 「the quality of the graph database directly impacts GraphRAG's performance」
+- 自构图流程：「named entity recognition tools to extract entities from documents and language models to further extract relations between entities」
+- 标准 RAG 的三个局限（图要解决的）：
+  (1) Neglecting Relationships：传统 RAG 无法捕获结构化关系知识
+  (2) Redundant Information：文本片段拼接成 prompt 过长
+  (3) Lacking Global Information：RAG 只能取子集，无法全局把握
+- 「graph data, such as knowledge graphs, offer abstraction and summarization of textual data, thereby significantly shortening the length of the input text」
+- 开放知识图谱「could dramatically reduce the time and resources required to develop and maintain」（自建成本高的反证）
+- 「As the graph size increases, the number of candidate subgraphs grows exponentially, requiring heuristic search algorithms」
+
+## 对 V6 的意义
+- 综述明确「图质量直接决定 GraphRAG 性能」——图的价值依赖构图质量，而构图是 NER+LLM 抽取（噪声源）
+- 图被引用的价值点：关系、去冗余、全局信息、输入缩短——全部是「全局/关系型问题」的价值
+- 自建图谱成本高（开放图谱可省成本）——对 Studium 522 节点小规模而言，自建图的价值要按需求算
+
+## 等级
+A（WebFetch 抓取 arxiv 摘要页 + HTML 全文）

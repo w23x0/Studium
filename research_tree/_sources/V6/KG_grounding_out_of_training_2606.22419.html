@@ -1,0 +1,23 @@
+# Knowledge-Graph Grounding Helps LLMs Only for Out-of-Training Knowledge
+来源：https://arxiv.org/abs/2606.22419
+标题：Knowledge-Graph Grounding Helps LLMs Only for Out-of-Training Knowledge: A Controlled Study on Clinical Question Answering
+日期：2026-06-21 提交；v2
+抓取日期：2026-08-13（WebFetch，A 级原文）
+
+## 摘要要点
+- 复现 Nature Medicine 研究（frontier LLM 胜过检索增强临床工具），发现 headline HealthBench 分数反映的是 Consensus 变体（~88）而非完整 HealthBench（~46-47）
+- 用 graph+vector 引擎（samyama-graph）在 PrimeKG 上做 KG grounding 测试：MedQA 全模型阶梯无改进
+- 合成反事实 KG 与混合基准上：同一管道对「训练外知识」把准确率从接近随机抬到 ~100%（+68 到 +79），对已知事实零增益
+
+## 核心负面结果（原文摘录）
+- 「neither naive triple retrieval nor an agentic natural-language-to-Cypher loop (82% successful queries) improves MedQA across a weak-to-strong model ladder (all |Delta| <= 3.4)」
+- 「the identical pipeline lifts out-of-training accuracy from chance to ~100% (+68 to +79) while adding nothing on known facts」
+- 「grounding helps only insofar as the decisive fact lies outside the model's training -- public-KG facts are redundant, private and novel data are where it pays」
+
+## 对 V6 的意义（Q1/Q3）
+- 图/知识图谱 grounding 只在「决定性事实在模型训练之外」时有用；公开 KG 事实对模型冗余
+- 检索增强（含图）的价值域 = 私域/新域知识。对 Studium 而言：若教材内容模型已知（通用教科书），图检索价值打折；若内容是模型没见过的高阶/个性化/最新材料，图/检索才有增量
+- 「无 LLM 臂也能答两种」（no-LLM arm answers both）——指出评估协议陷阱
+
+## 等级
+A（WebFetch 抓取 arxiv 摘要页）

@@ -1,0 +1,40 @@
+SNAPSHOT: Wikipedia — Bayesian Knowledge Tracing
+URL: https://en.wikipedia.org/wiki/Bayesian_knowledge_tracing
+Fetched: 2026-08-13 via WebFetch；2026-08-13 整改时 curl 独立抓取复核
+复核注: 页面实际小节 = Contents / Method / See also / References / Further reading。**页面无 "Known Limitations" 节**；"stationar"、"partial knowledge"、"binary knowledge" 在页面原始 HTML 与剥标签纯文本中全部 MISS。
+整改注（2026-08-13）: 旧快照 "## Known Limitations" 段（"…no partial knowledge."／"Assumes parameter stationarity …"）为 WebFetch 摘录中超出原文的加工/二手内容，实际页面无此表述，已整体删除。相关两条局限的处置见 findings/V4_发现.md：#17 与第 1 节问 3 依据——二元态局限改引 cn_alphaxiv_kt_survey（A 级真实逐字）；"参数平稳假设"降级 B/未核（注明来源为文献常识/摘录加工）。以下仅存页面**实际内容**（逐字）。
+
+---
+[实际页面逐字内容]
+
+## Lead（引言，逐字）
+"Bayesian knowledge tracing is an algorithm used in many intelligent tutoring systems to model each learner's mastery of the knowledge being tutored. It models student knowledge in a hidden Markov model as a latent variable, updated by observing the correctness of each student's interaction in which they apply the skill in question."
+
+## 二元变量假设（逐字）
+"BKT assumes that student knowledge is represented as a set of binary variables, one per skill, where the skill is either mastered by the student or not. Observations in BKT are also binary: a student gets a problem/step either right or wrong."
+
+## 逐技能参数（逐字）
+"In its most common implementation, BKT has only skill-specific parameters."
+
+## 四参数（Method 节，逐字；页面上参数名以 LaTeX 渲染为 p-init/p-transit/p-slip/p-guess）
+1. "p(L0) or p-init, the probability of the student knowing the skill beforehand."
+2. "p(T) or p-transit, the probability of the student demonstrating knowledge of the skill after an opportunity to apply it"
+3. "p(S) or p-slip, the probability the student makes a mistake when applying a known skill"
+4. "p(G) or p-guess, the probability that the student correctly applies an unknown skill (has a lucky guess)"
+
+## 更新公式（Method 节，页面逐字；公式 a–e，LaTeX 渲染）
+- Equation (a): p(L1)_u^k = p(L0)^k（初始掌握概率 = 该技能 p-init）
+- Equation (b): p(L_t | obs=correct)_u^k = p(L_t)_u^k·(1−p(S)^k) / (p(L_t)_u^k·(1−p(S)^k) + (1−p(L_t)_u^k)·p(G)^k)
+- Equation (c): p(L_t | obs=wrong)_u^k = p(L_t)_u^k·p(S)^k / (p(L_t)_u^k·p(S)^k + (1−p(L_t)_u^k)·(1−p(G)^k))
+- Equation (d): p(L_{t+1})_u^k = p(L_t|obs)_u^k + (1−p(L_t|obs)_u^k)·p(T)^k
+- Equation (e): p(C_{t+1})_u^k = p(L_{t+1})_u^k·(1−p(S)^k) + (1−p(L_{t+1})_u^k)·p(G)^k
+
+## See also（逐字列出）
+Computerized adaptive testing / Item response theory / Knowledge space theory / Latent growth modeling
+
+## References（页面参考文献节）
+- Corbett, A. T.; Anderson, J. R. (1995). "Knowledge tracing: Modeling the acquisition of procedural knowledge". User Modeling and User-Adapted Interaction. 4(4): 253–278.
+- Yudelson, M.V.; Koedinger, K.R.; Gordon, G.J. (2013). "Individualized bayesian knowledge tracing models". Artificial Intelligence in Education. Lecture Notes in Computer Science. Vol. 7926. pp. 171–180.
+
+## Further reading
+- Ines, ŠG.; Ani, G.; Angelina, G. (2024). "Twenty-Five Years of Bayesian knowledge tracing: a systematic review". User Modeling and User-Adapted Interaction.

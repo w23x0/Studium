@@ -1,0 +1,196 @@
+<!doctype html>
+<html lang="en">
+	<!-- This is the layout used for all pages in the wiki-style documentation.
+        The wiki files must have "layout: doc" in their front matter.
+        This file can use page.NAME to refer to variables declared in the front matter
+        and content to refer to the body of the md file.
+   -->
+
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="">
+    <!--
+      Do not use base tag: <base href="/" />
+      Since otherwise we could not keep (image) links in the documentation relative anymore - without
+      a hassle at least.
+      We would always have to prepend doc/ or something.
+
+      Hence, use e.g. `https://uniformal.github.io//lib/css/bootstrap.min.css` to refer to assets in this file only.
+
+      Only downside: the links will include the official gh-pages domain (e.g. uniformal.github.io), so html-proofer
+      -- which we run as part of the Travis build -- will be tricked to look for the actually old files, which are not
+      yet deployed there. Hence, if you add a new CSS file and reference it here using the technique above, the Travis
+      build will unfortunately fail. Just ignore this and merge nonetheless into master.
+    -->
+    <link rel="icon" href="https://uniformal.github.io//favicon.ico">
+
+    <title>The MMT Language and System</title>
+
+    <link href="https://uniformal.github.io//lib/css/bootstrap.min.css" rel="stylesheet" />
+	  <link href="https://uniformal.github.io//lib/css/doc.css" rel="stylesheet" />
+		<link href="https://uniformal.github.io//lib/css/pygments-default.css" rel="stylesheet" />
+	<link href="https://uniformal.github.io//lib/css/overview.css" rel="stylesheet" />
+  </head>
+  <body>
+	
+<nav class="navbar navbar-expand navbar-dark site-header" site-header >
+    <div class="container">
+        <a class="navbar-brand" href="/">
+            <img src="https://uniformal.github.io//lib/css/img/logo_dark.svg" width="30" height="30" class="d-inline-block align-top" alt="MMT logo showing three differently styled arrows under each other">
+            The MMT Language and System
+        </a>
+    </div>
+</nav>
+
+	
+		<nav class="site-header py-1">
+    <div class="container d-flex flex-column flex-md-row justify-content-between">
+      <a class="py-2 d-inline-block" href="doc/">Documentation</a>
+      <a class="py-2 d-inline-block" href="doc/philosophy/">Research</a>
+      <a class="py-2 d-inline-block" href="doc/applications/">Applications</a>
+      <a class="py-2 d-inline-block" href="doc/language/">Language</a>
+      <a class="py-2 d-inline-block" href="doc/tutorials/">Tutorials</a>
+      <a class="py-2 d-inline-block" href="doc/development/">Development</a>
+      <a class="py-2 d-inline-block" href="doc/community/">Community</a>
+    </div>
+  </nav>
+
+<!-- Overview Box -->
+<div class="position-relative overflow-hidden p-3 p-md-5 m-md-3 text-center bg-light" id="header">
+  <div class="col-md-5 p-lg-5 mx-auto my-5 headerbox">
+    <h1 class="display-4 font-weight-normal">The MMT Language and System</h1>
+    <p class="lead font-weight-normal">
+      Enabling Uniform Representation of Knowledge
+    </p>
+    <a class="btn btn-secondary" href="https://github.com/UniFormal/MMT/releases/latest">Download</a>
+    &nbsp;
+    <a class="btn btn-secondary" href="https://github.com/Uniformal/MMT">Source Code</a>
+    &nbsp;
+    <a class="btn btn-secondary btn-default" href="doc/setup/">Setup</a>
+  </div>
+</div>
+
+<!-- aspect introduction: TODO: Make this a central box sort of -->
+<div class="d-md-flex flex-md-equal w-100 my-md-3 pl-md-3">
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden repknowledge">
+    <div class="my-3 p-3">
+      <h2 class="display-5">Representing Knowledge</h2>
+      <p class="lead">MMT integrates the 4 major paradigms for representing scientific knowledge. </p>
+    </div>
+  </div>
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden funindependent">
+    <div class="my-3 py-3">
+      <h2 class="display-5">Foundation Independent</h2>
+      <p class="lead">All aspects of MMT avoid a commitment to semantic foundation, representational paradigm, or application work flow</p>
+    </div>
+  </div>
+</div>
+
+<div class="d-md-flex flex-md-equal w-100 my-md-3 pl-md-3">
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden repknowledge">
+    <div class="my-3 p-3">
+      <h2 class="display-5">Representation Languages</h2>
+      <p class="lead">MMT represents all knowledge in one simple framework</p>
+      <div class="imagebox box-shadow mx-auto" style="width: 80%; height: 300px; border-radius: 21px 21px 0 0; ">
+        <!-- screenshot here -->
+      </div>
+    </div>
+  </div>
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden funindependent">
+    <div class="my-3 py-3">
+      <h2 class="display-5">Narration</h2>
+      <p class="lead">MMT subsumes natural languages</p>
+      <div class="imagebox box-shadow mx-auto" style="width: 80%; height: 300px; border-radius: 21px 21px 0 0;">
+        <!-- screenshot here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="d-md-flex flex-md-equal w-100 my-md-3 pl-md-3">
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden repknowledge">
+    <div class="my-3 p-3">
+      <h2 class="display-5">Applications</h2>
+      <p class="lead">MMT enables generic large-scale implementations</p>
+      <div class="imagebox box-shadow mx-auto" style="width: 80%; height: 300px; border-radius: 21px 21px 0 0;">
+        <!-- screenshot here -->
+      </div>
+    </div>
+  </div>
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden funindependent">
+    <div class="my-3 py-3">
+      <h2 class="display-5">Deduction</h2>
+      <p class="lead">MMT subsumes logical languages</p>
+      <div class="imagebox box-shadow mx-auto" style="width: 80%; height: 300px; border-radius: 21px 21px 0 0;">
+        <!-- screenshot here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="d-md-flex flex-md-equal w-100 my-md-3 pl-md-3">
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden repknowledge">
+    <div class="my-3 p-3">
+      <h2 class="display-5">Soundness-Critical Services</h2>
+      <p class="lead">MMT allows generic solutions to deep problems</p>
+      <div class="imagebox box-shadow mx-auto" style="width: 80%; height: 300px; border-radius: 21px 21px 0 0;">
+        <!-- screenshot here -->
+      </div>
+    </div>
+  </div>
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden funindependent">
+    <div class="my-3 py-3">
+      <h2 class="display-5">Computation</h2>
+      <p class="lead">MMT will subsume programming languages</p>
+      <div class="imagebox box-shadow mx-auto" style="width: 80%; height: 300px; border-radius: 21px 21px 0 0;">
+        <!-- screenshot here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="d-md-flex flex-md-equal w-100 my-md-3 pl-md-3">
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden repknowledge">
+    <div class="my-3 p-3">
+      <h2 class="display-5">Management Services</h2>
+      <p class="lead">MMT allows generic knowledge management solutions</p>
+      <div class="imagebox box-shadow mx-auto" style="width: 80%; height: 300px; border-radius: 21px 21px 0 0;">
+        <!-- screenshot here -->
+      </div>
+    </div>
+  </div>
+  <div class="bg-light mr-md-3 pt-3 px-3 pt-md-5 px-md-5 text-center overflow-hidden funindependent">
+    <div class="my-3 py-3">
+      <h2 class="display-5">Tabulation</h2>
+      <p class="lead">MMT subsumes data description languages</p>
+      <div class="imagebox box-shadow mx-auto" style="width: 80%; height: 300px; border-radius: 21px 21px 0 0;">
+        <!-- screenshot here -->
+      </div>
+    </div>
+  </div>
+</div>
+
+	
+
+
+	<div class="container">
+		<footer class="container">
+
+    <hr />
+    <p>
+        MMT is developed and maintained mostly by <a href="http://kwarc.info/frabe/" target="_blank">Florian Rabe</a>. <br />
+        
+        This page is hosted via github pages and can be edited <a href="https://github.com/UniFormal/uniformal.github.io/edit/master/index.html" target="_blank">directly in the browser</a>. <br/>
+    </p>
+</footer>
+	</div>
+
+    <script src="https://uniformal.github.io//lib/js/jquery-3.3.1.min.js"></script>
+    <script src="https://uniformal.github.io//lib/js/bootstrap.min.js"></script>
+		<script src="https://uniformal.github.io//lib/js/doc.js"></script>
+		<script src="https://uniformal.github.io//lib/js/api.js"></script>
+	<script src="https://uniformal.github.io//lib/js/overview.js"></script>
+  </body>
+</html>
