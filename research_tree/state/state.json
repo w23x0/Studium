@@ -1,7 +1,7 @@
 {
   "meta": {
     "schema": 1,
-    "current_round": 5,
+    "current_round": 6,
     "root_topic": "M08/M09 存储选型候选空间缺口补全",
     "as_of": "2026-08-13",
     "decision_points": [
@@ -460,6 +460,20 @@
       "recovered": [],
       "verdicts": {},
       "log": "R5 收口合成：E-SYN 把 M1-M4 迁移路径实测并入 决策点_v1.1 → v1.2"
+    },
+    {
+      "round": 6,
+      "asOf": "2026-08-13",
+      "dispatched": [
+        "L2"
+      ],
+      "recovered": [
+        "L2"
+      ],
+      "verdicts": {
+        "L2": "accepted"
+      },
+      "log": "R6 派发 L2：L2 版本层选型（FHIR _history vs 时态属性图双区间二选一）——存储选型最后未决项；L2 条件性选 FHIR _history 式，5 项设计待定移交产品"
     }
   ]
 }
