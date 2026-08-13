@@ -1,0 +1,63 @@
+{"id":"apostol:linear-space","verdict":"KEEP","cause":0,"reason":"全章根概念:十条公理下的抽象结构,任何邻居都推不出「元素性质不指定、只要公理」这一要点;14 个 D 子节点挂靠。"}
+{"id":"apostol:closure-axioms","verdict":"KEEP","cause":0,"reason":"公理 1、2 的具体内容(和唯一、数乘落回 V)不在 apostol:linear-space 里,且是 apostol:theorem-15-4-subspace-criterion 的判据本体。"}
+{"id":"apostol:axioms-for-addition","verdict":"KEEP","cause":0,"reason":"公理 3–6 的四条式子(交换、结合、零元、负元)在别处无完整承载;是 apostol:theorem-uniqueness-of-zero-element 的前提。"}
+{"id":"apostol:axioms-for-multiplication-by-numbers","verdict":"KEEP","cause":0,"reason":"公理 7–10 的四条式子(数乘结合、两条分配、单位数乘)别处无载体,5 个 D 子节点。"}
+{"id":"apostol:scalar","verdict":"FIX","cause":0,"reason":"首句「作乘子的数称为标量」是本条独有的命名行为,不可删;但第二句实/复标量的区分与 apostol:real-linear-space、apostol:complex-linear-space 完全重复,应删去第二句。"}
+{"id":"apostol:real-linear-space","verdict":"FIX","cause":0,"reason":"仅剩「不加限定时默认实标量」这一点为独有;而「标量是实数」已在 apostol:scalar 第二句、「实线性空间」这个名字已在 apostol:complex-linear-space 的对照里。陈述应压到「省略 real 是默认约定」并交回 apostol:scalar 的实/复区分。"}
+{"id":"apostol:complex-linear-space","verdict":"KEEP","cause":0,"reason":"「把公理 2、7、8、9 里的实数换成复数」这一具体改法,以及「实空间的所有定理对复空间同样成立」的迁移声明,均无邻居承载。"}
+{"id":"apostol:zero-element","verdict":"FIX","cause":0,"reason":"公理 5 的内容已在 apostol:axioms-for-addition,函数空间零元已在 apostol:function-space 陈述里;11 条边挂在它上面,作为「零元这个对象」的挂载点有用但陈述空洞。应补的是零元作为对象的角色(apostol:theorem-uniqueness-of-zero-element 断言的是它、apostol:zero-element-forces-dependence 用的是它),而非重述公理 5。"}
+{"id":"apostol:negative-of-an-element","verdict":"KEEP","cause":0,"reason":"独有内容是「至少一个负元」这一措辞:它把存在与唯一分开,正是 apostol:theorem-uniqueness-of-negatives 要补的缺口;并首次给出「负元」这个称名。"}
+{"id":"apostol:negative-and-difference-notation","verdict":"KEEP","cause":0,"reason":"差 y-x := y+(-x) 是本条独有的新运算定义,apostol:negative-of-an-element 只给 (-1)x,不给差;apostol:theorem-elementary-algebraic-properties 的 -(x+y)=-x-y 反过来依赖它。"}
+{"id":"apostol:v-n-space","verdict":"KEEP","cause":0,"reason":"V_n 是全章唯一的具体基准模型:apostol:dot-product-in-vn、apostol:dimension 的例子、apostol:theorem-15-5 的迁移来源都指向它,别处无替代。"}
+{"id":"apostol:function-space","verdict":"FIX","cause":0,"reason":"作为函数空间这一类的挂载点必要(11 个 D 子节点,全章最多),但陈述把三件事塞在一句里:类的定义、两条运算公式、零元。零元已有 apostol:zero-element 独立承载,运算公式则是它自己 D 层子节点必然复述的对象。应压到「元素是实值函数、运算逐点定义」,把公式与零元留给下层。"}
+{"id":"apostol:polynomials-of-degree-at-most-n","verdict":"KEEP","cause":0,"reason":"「次数 ≤ n 且含零多项式」这一具体集合是有限维的标准例子,apostol:function-space 只给类、apostol:infinite-dimensional-space 给的是全体多项式(无限维),都推不出它。"}
+{"id":"apostol:polynomials-of-degree-exactly-n","verdict":"KEEP","cause":0,"reason":"真反例:两个 n 次多项式之和可能不是 n 次,故封闭性失效。apostol:closure-axioms 只给公理不给失效实例,apostol:polynomials-of-degree-at-most-n 是它的对照面。"}
+{"id":"apostol:space-of-continuous-functions","verdict":"KEEP","cause":0,"reason":"C(a,b) 这个具名空间是 apostol:integral-inner-product-on-continuous-functions 与 apostol:weighted-integral-inner-product 的定义域,无它则那两条无处落脚。"}
+{"id":"apostol:homogeneous-de-solution-space","verdict":"KEEP","cause":0,"reason":"齐次方程解集为函数空间、且右端为 0 是本质(非齐次不封闭)——这个「零的必要性」不在 apostol:closure-axioms 也不在 apostol:function-space。"}
+{"id":"apostol:theorem-uniqueness-of-zero-element","verdict":"KEEP","cause":0,"reason":"唯一性不含在公理里:apostol:axioms-for-addition 只给「存在零元」,apostol:zero-element 只给「至少一个」。「有且只有一个」是新断言。"}
+{"id":"apostol:theorem-uniqueness-of-negatives","verdict":"KEEP","cause":0,"reason":"同上,apostol:negative-of-an-element 只保证「至少一个负元」;「恰好一个、且就是 (-1)x」是新断言。"}
+{"id":"apostol:theorem-elementary-algebraic-properties","verdict":"KEEP","cause":0,"reason":"八条初等运算律(0x=O、aO=O、消去律等)是全章代数操作的工具箱,10 个 D 子节点,任何公理组节点都不含这些推论。"}
+{"id":"apostol:subspace","verdict":"KEEP","cause":0,"reason":"子空间的定义(V 的非空子集在同样运算下自成线性空间)不可由 apostol:linear-space 推出——「同样运算」这一约束是新的。"}
+{"id":"apostol:theorem-15-4-subspace-criterion","verdict":"KEEP","cause":0,"reason":"「非空子集是子空间 ⟺ 满足封闭公理」这个判别法把 10 条公理压到 2 条,是全章最省力的工具;apostol:subspace 与 apostol:closure-axioms 各自都不含这个等价。"}
+{"id":"apostol:finite-linear-combination","verdict":"KEEP","cause":0,"reason":"定义的是「元素」层面:形如 Σc_i x_i 的 x 叫 S 元素的有限线性组合。apostol:linear-span 定义的是这些元素构成的「集合」,层面不同。"}
+{"id":"apostol:linear-span","verdict":"KEEP","cause":0,"reason":"定义的是集合层面的对象 L(S) 及其为子空间的事实,外加独有约定「S 为空时张成取 {O}」——这个空集约定无邻居承载。"}
+{"id":"apostol:linear-span-notation-l-of-s","verdict":"KILL","cause":5,"reason":"纯记号复述:L(S) 记张成子空间,这一等式已逐字写在 apostol:theorem-15-5 的陈述里(「L(S) is the subspace spanned by S」),而被记的对象由 apostol:linear-span 定义完毕,删后可从这两条重建。"}
+{"id":"apostol:spanning-set","verdict":"FIX","cause":0,"reason":"谓词「S 张成 V ⟺ V 每元都是 S 元素的有限线性组合」是 apostol:linear-span 的直接改写,「用几个元素够」由 apostol:finite-basis 与 apostol:theorem-15-6 回答,「哪些空间能被有限集张成」由 apostol:finite-dimensional-space 回答。真正独有的只剩「不同集合可张成同一子空间(张成集不唯一)」,应把陈述压到这一点。"}
+{"id":"apostol:dependent-set","verdict":"KEEP","cause":0,"reason":"相依的定义(存在有限个互异元与不全为零的标量使组合为 O)是 15.07 起全部内容的基础,7 个 D 子节点,无邻居承载。"}
+{"id":"apostol:independent-set","verdict":"KEEP","cause":0,"reason":"虽是 apostol:dependent-set 的逻辑否定,但独有内容为「与第 12 章定义不同,此处不限于有限集」,以及「独立元素」这一称名的转用——这两点删后无处可得。"}
+{"id":"apostol:dependence-inherited-by-supersets","verdict":"KEEP","cause":0,"reason":"「相依子集使全集相依」与「独立集的每个子集独立」互为等价这一对偶陈述,不写出来学习者不会自发注意;它是 apostol:theorem-15-7 扩基论证反复使用的判据。"}
+{"id":"apostol:zero-element-forces-dependence","verdict":"KEEP","cause":0,"reason":"「含 O 的集合必相依」是一条一步可用的排除判据,apostol:dependent-set 的定义不含这个特例;apostol:orthogonal-set「无零元故独立」的论证依赖它。"}
+{"id":"apostol:independence-of-exponential-functions","verdict":"KEEP","cause":0,"reason":"指数函数独立性连同其证明骨架(乘 e^{-a_M x} 后令 x→∞ 的归纳)是全章唯一的无限维独立性实例,3 个 D 子节点。"}
+{"id":"apostol:theorem-15-5","verdict":"KEEP","cause":0,"reason":"「k 个独立元张成的空间里任 k+1 个元必相依」是维数良定义的全部支点,apostol:theorem-15-6 的证明两次调用它;还带有「第 12 章证明只用公理故可迁移」这一独有的迁移声明。"}
+{"id":"apostol:finite-basis","verdict":"KEEP","cause":0,"reason":"有限基 = 独立 + 张成,把 apostol:independent-set 与 apostol:spanning-set 两个谓词合成一个新对象;后续维数、正交基全建在它上。"}
+{"id":"apostol:finite-dimensional-space","verdict":"KEEP","cause":0,"reason":"独有内容是「或 V 只含 O」这一特例约定,且逻辑上必须先有「有有限基」才能定义 apostol:dimension 的 n;apostol:finite-basis 只给基不给空间的分类。"}
+{"id":"apostol:infinite-dimensional-space","verdict":"KEEP","cause":0,"reason":"除否定式定义外带有独有实例:全体多项式由无限个 t 的幂张成、但无有限多项式集张成它——apostol:polynomials-of-degree-at-most-n 是有限维的,推不出这个。"}
+{"id":"apostol:theorem-15-6","verdict":"KEEP","cause":0,"reason":"「任两个有限基元素个数相同」是 apostol:dimension 得以定义的前提,不含在维数定义中;6 个 D 子节点。"}
+{"id":"apostol:dimension","verdict":"KEEP","cause":0,"reason":"把基的元素个数 n 命名为维数、并约定 {O} 维数为 0,是新对象;6 个 D 子节点。"}
+{"id":"apostol:dim-notation","verdict":"KILL","cause":5,"reason":"纯记号复述:「n = dim V」这个写法与它记的对象,已分别逐字出现在 apostol:dimension 的定义(「the integer n is called the dimension of V」)和 apostol:theorem-15-7 的假设(「with dim V = n」)中,删后可完整重建;全图仅 1 条边引用,无 D 子节点。"}
+{"id":"apostol:theorem-15-7","verdict":"KEEP","cause":0,"reason":"(a) 独立集可扩为基、(b) n 个独立元即成基,两条都是 apostol:finite-basis 定义之外的新断言,是判定「是不是基」时最常用的捷径。"}
+{"id":"apostol:ordered-basis","verdict":"KEEP","cause":0,"reason":"「取定次序、写成 n 元组 (e_1,…,e_n)」这一结构是 apostol:components-relative-to-ordered-basis 成立的前提;apostol:finite-basis 的集合无序,推不出它。"}
+{"id":"apostol:components-relative-to-ordered-basis","verdict":"KEEP","cause":0,"reason":"把展开系数命名为 x 关于有序基的分量,是坐标概念的落地点;apostol:ordered-basis 只给次序,apostol:uniqueness-of-components 断言的是它的唯一性而非定义。"}
+{"id":"apostol:uniqueness-of-components","verdict":"KEEP","cause":0,"reason":"「n 元组由 x 唯一确定」正是使 apostol:components-relative-to-ordered-basis 中「the components」这个定冠词合法的那一步,定义本身推不出唯一性。"}
+{"id":"apostol:inner-product","verdict":"KEEP","cause":0,"reason":"内积的定义性框架(实线性空间、每对元对应唯一实数)与方法论声明(公理化而非给具体公式)不在别处;是 15.10–15.16 全部内容的入口,4 个 D 子节点。"}
+{"id":"apostol:inner-product-axioms","verdict":"FIX","cause":0,"reason":"与 apostol:inner-product 构成近似重复:那条已把四条公理按名字列全(对称、分配/线性、齐次、正定),本条再把同样四条按式子列一遍。两条只是同一件事的「点名版」与「公式版」。应二择一:或让 apostol:inner-product 删去公理枚举、本条独占四式;或反之。现状是同一内容被拆成两个节点。"}
+{"id":"apostol:inner-product-notation","verdict":"KILL","cause":5,"reason":"兄弟冗余:记号约定「一般空间写 (x,y) 而非 x·y」可由 apostol:inner-product(通篇用 (x,y))与 apostol:dot-product-in-vn(给出 (x,y)=x·y)对照重建;附带的 (O,y)=0 是 apostol:inner-product-axioms 齐次公理取 c=0 的一步推论。无 D 子节点。"}
+{"id":"apostol:dot-product-in-vn","verdict":"KEEP","cause":0,"reason":"V_n 中的点积是内积公理化所抽象的原型,承载「长度与角度原先由点积定义」这一历史动因;apostol:inner-product 只给公理不给原型。"}
+{"id":"apostol:complex-inner-product","verdict":"KEEP","cause":0,"reason":"复内积以 (x,y)=conj(y,x) 替换对称性、标量可取复数、并推出 (x,cy)=conj(c)(x,y),这三点都不在 apostol:inner-product-axioms 里。"}
+{"id":"apostol:euclidean-space","verdict":"KEEP","cause":0,"reason":"「线性空间 + 内积 = 欧氏空间」这个合成对象,以及「不加限定时可实可复、定理两边都成立」的约定,无邻居承载;是 apostol:cauchy-schwarz-inequality、apostol:norm 的定义域。"}
+{"id":"apostol:real-euclidean-space","verdict":"KILL","cause":5,"reason":"纯切分:内容 = apostol:euclidean-space 取实的情形,而该条已声明「不加限定时可实可复」;实标量这一侧由 apostol:real-linear-space 承载。附带的「V_n 的证明可逐字迁移到任何实欧氏空间」也已被 apostol:euclidean-space 与 apostol:cauchy-schwarz-inequality(在一般欧氏空间中陈述)覆盖。无 D 子节点,全图仅 1 条边。"}
+{"id":"apostol:complex-euclidean-space","verdict":"KILL","cause":5,"reason":"同上,取复的情形可由 apostol:euclidean-space 与 apostol:complex-linear-space 重建;唯一独有物是别名「unitary space」,应作为 aliases 挂到 apostol:euclidean-space 而非独立成节点。无 D 子节点。"}
+{"id":"apostol:integral-inner-product-on-continuous-functions","verdict":"KEEP","cause":0,"reason":"C(a,b) 上 (f,g)=∫fg 是全章最重要的非 V_n 内积实例,并带有「函数值充当分量、积分取代求和」这一可迁移的类比;apostol:inner-product 的公理推不出任何具体公式。"}
+{"id":"apostol:weighted-integral-inner-product","verdict":"KEEP","cause":0,"reason":"权函数 w 是一个全新对象(固定的正连续函数),不是 apostol:integral-inner-product-on-continuous-functions 的特例——依赖方向相反,是后者为 w≡1 的特例;Legendre 一线的内容依赖它。"}
+{"id":"apostol:cauchy-schwarz-inequality","verdict":"KEEP","cause":0,"reason":"|(x,y)|² ≤ (x,x)(y,y) 及「等号 ⟺ x,y 相依」是全章核心不等式,apostol:triangle-inequality 与 apostol:angle-between-two-elements 都建在它上;6 个 D 子节点。"}
+{"id":"apostol:norm","verdict":"KEEP","cause":0,"reason":"范数 ‖x‖=(x,x)^{1/2} 把内积转成长度,并带有独有警告「内积可有多种定义,故范数依赖内积的选择」——这个相对性无邻居承载。"}
+{"id":"apostol:norm-notation","verdict":"KILL","cause":5,"reason":"纯记号复述:双竖线记号及其定义式已在 apostol:norm 的陈述与锚点中(同一条 DEFINITION),用它写出的 |(x,y)| ≤ ‖x‖‖y‖ 已逐字在 apostol:cauchy-schwarz-inequality 的陈述里。删后可从这两条完整重建;无 D 子节点,全图仅 1 条边。"}
+{"id":"apostol:theorem-15-9-properties-of-norms","verdict":"KEEP","cause":0,"reason":"四条范数性质及「不依赖内积选择」这一声明,是把范数当独立公理体系看的入口;apostol:norm 只给定义式,推不出这四条。"}
+{"id":"apostol:triangle-inequality","verdict":"KEEP","cause":0,"reason":"虽是定理 15.9 的 (d),但独有内容是等号条件「x=O、y=O 或 y=cx (c>0)」——apostol:theorem-15-9-properties-of-norms 只列不等式不列等号条件;5 个 D 子节点。建议陈述改为以等号条件领起,避免重复 (d)。"}
+{"id":"apostol:angle-between-two-elements","verdict":"KEEP","cause":0,"reason":"夹角定义把 Cauchy-Schwarz 转成「商落在 [-1,1] 故 θ 存在且唯一」,这个存在唯一性论证不在 apostol:cauchy-schwarz-inequality 中;5 个 D 子节点。"}
+{"id":"apostol:orthogonal-elements","verdict":"KEEP","cause":0,"reason":"正交的定义,外加两条独有事实:零元与一切元正交、且是唯一自正交元。apostol:inner-product-axioms 的正定性只给「x≠O 时 (x,x)>0」,反向的唯一性刻画是新的。"}
+{"id":"apostol:orthogonal-set","verdict":"KEEP","cause":0,"reason":"正交集(两两互异元内积为零)是集合层面的新对象,apostol:orthogonal-elements 只谈两个元;是 apostol:theorem-15-10-orthogonal-sets-are-independent 的主语。"}
+{"id":"apostol:orthonormal-set","verdict":"KEEP","cause":0,"reason":"规范性(每元范数 1)与「除以范数即可规范化」这一构造,都不在 apostol:orthogonal-set 与 apostol:norm 中。"}
+{"id":"apostol:theorem-15-10-orthogonal-sets-are-independent","verdict":"KEEP","cause":0,"reason":"「非零元正交集必独立」把度量条件转成代数条件,是全章两条线的接缝;附带推论「dim V=n 时 n 个非零正交元即成基」也不在 apostol:theorem-15-7 中;6 个 D 子节点。"}
+{"id":"apostol:theorem-15-11-components-relative-to-an-orthogonal-basis","verdict":"KEEP","cause":0,"reason":"分量公式 c_j=(x,e_j)/(e_j,e_j) 及正交规范情形 c_j=(x,e_j),是 apostol:components-relative-to-ordered-basis(只断言唯一存在、不给算法)之外的新增计算力。"}
+{"id":"apostol:parsevals-formula","verdict":"KEEP","cause":0,"reason":"Parseval 公式用分量算内积、取 x=y 得 ‖x‖²=Σ|(x,e_i)|²,是 apostol:theorem-15-11-components-relative-to-an-orthogonal-basis 之外的新等式(算内积而非算分量)。"}

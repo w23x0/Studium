@@ -1,0 +1,79 @@
+[
+ {
+  "pair": "P0",
+  "X": {
+   "type": "concept",
+   "statement": "The set of all finite linear combinations of elements of S satisfies the closure axioms and is therefore a subspace of V; it is called the subspace spanned by S, or the linear span of S. If S is empty the span is defined to be the set consisting of the zero element alone."
+  },
+  "Y": {
+   "type": "concept",
+   "statement": "The column space of A consists of all linear combinations of the columns of A, i.e. all vectors Ax; it is a subspace of R^m."
+  }
+ },
+ {
+  "pair": "P1",
+  "X": {
+   "type": "concept",
+   "statement": "A real linear space V is said to have an inner product if to each pair of elements x, y there corresponds a unique real number (x, y) satisfying four axioms: symmetry, distributivity (linearity), homogeneity in the scalar, and positivity for nonzero x. Apostol defines the product axiomatically rather than by a specific formula."
+  },
+  "Y": {
+   "type": "concept",
+   "statement": "Two vectors are orthogonal when their dot product is zero. The test is v^T w = 0."
+  }
+ },
+ {
+  "pair": "P2",
+  "X": {
+   "type": "concept",
+   "statement": "Given a linear space V, a nonempty subset S of V is called a subspace of V if S is itself a linear space under the same operations of addition and multiplication by scalars."
+  },
+  "Y": {
+   "type": "concept",
+   "statement": "A subspace of a vector space is a set of vectors (including 0) closed under addition and scalar multiplication, so all linear combinations stay in the set."
+  }
+ },
+ {
+  "pair": "P3",
+  "X": {
+   "type": "concept",
+   "statement": "If a linear space V has a basis of n elements, the integer n is called the dimension of V. The space consisting of the zero element alone is said to have dimension 0."
+  },
+  "Y": {
+   "type": "concept",
+   "statement": "The dimension of a space is the number of vectors in every basis for that space. It counts the degrees of freedom in the space; the dimension of R^n is n. We never speak of the rank of a space or the dimension of a basis."
+  }
+ },
+ {
+  "pair": "P4",
+  "X": {
+   "type": "concept",
+   "statement": "A real linear space V is said to have an inner product if to each pair of elements x, y there corresponds a unique real number (x, y) satisfying four axioms: symmetry, distributivity (linearity), homogeneity in the scalar, and positivity for nonzero x. Apostol defines the product axiomatically rather than by a specific formula."
+  },
+  "Y": {
+   "type": "notation",
+   "statement": "The dot product of v and w is written v . w = v^T w, so the orthogonality condition is v^T w = 0."
+  }
+ },
+ {
+  "pair": "P5",
+  "X": {
+   "type": "concept",
+   "statement": "The dot product x . y of two vectors in V_n, defined in Chapter 12 by the sum of the products of corresponding components. It is the concrete product in terms of which lengths and angles in V_n were defined, and it is the model that the inner product generalizes; in V_n one may take (x, y) = x . y."
+  },
+  "Y": {
+   "type": "notation",
+   "statement": "The dot product of v and w is written v . w = v^T w, so the orthogonality condition is v^T w = 0."
+  }
+ },
+ {
+  "pair": "P6",
+  "X": {
+   "type": "concept",
+   "statement": "In a Euclidean space V, two elements x and y are called orthogonal if their inner product is zero. The zero element is orthogonal to every element of V, and it is the only element orthogonal to itself."
+  },
+  "Y": {
+   "type": "concept",
+   "statement": "Two vectors are orthogonal when their dot product is zero. The test is v^T w = 0."
+  }
+ }
+]

@@ -1,0 +1,161 @@
+{"src": "apostol:linear-space", "rel": "is-a", "dst": "x:vectors-need-not-be-columns", "origin": "model"}
+{"src": "apostol:function-space", "rel": "is-a", "dst": "x:vectors-need-not-be-columns", "origin": "model"}
+{"src": "apostol:space-of-continuous-functions", "rel": "is-a", "dst": "x:vectors-need-not-be-columns", "origin": "model"}
+{"src": "apostol:polynomials-of-degree-at-most-n", "rel": "is-a", "dst": "x:vectors-need-not-be-columns", "origin": "model"}
+{"src": "strang:bases-for-matrix-and-function-spaces", "rel": "is-a", "dst": "x:vectors-need-not-be-columns", "origin": "model"}
+{"src": "apostol:linear-span", "rel": "is-a", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "apostol:finite-linear-combination", "rel": "is-a", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "apostol:spanning-set", "rel": "is-a", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "apostol:linear-span-notation-l-of-s", "rel": "is-a", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "strang:spanning-a-space", "rel": "is-a", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "strang:row-space", "rel": "is-a", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "strang:row-space-notation", "rel": "is-a", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "apostol:independent-set", "rel": "is-a", "dst": "x:linear-independence", "origin": "model"}
+{"src": "apostol:dependent-set", "rel": "is-a", "dst": "x:linear-independence", "origin": "model"}
+{"src": "strang:linear-independence", "rel": "is-a", "dst": "x:linear-independence", "origin": "model"}
+{"src": "strang:linear-dependence", "rel": "is-a", "dst": "x:linear-independence", "origin": "model"}
+{"src": "strang:independent-columns", "rel": "is-a", "dst": "x:linear-independence", "origin": "model"}
+{"src": "apostol:zero-element-forces-dependence", "rel": "is-a", "dst": "x:zero-element-destroys-independence", "origin": "model"}
+{"src": "d:independence-of-the-empty-set", "rel": "is-a", "dst": "x:zero-element-destroys-independence", "origin": "model"}
+{"src": "d:span-of-the-empty-set-is-the-zero-subspace", "rel": "is-a", "dst": "x:zero-element-destroys-independence", "origin": "model"}
+{"src": "strang:linear-dependence", "rel": "is-a", "dst": "x:zero-element-destroys-independence", "origin": "model"}
+{"src": "apostol:finite-basis", "rel": "is-a", "dst": "x:basis", "origin": "model"}
+{"src": "apostol:ordered-basis", "rel": "is-a", "dst": "x:basis", "origin": "model"}
+{"src": "strang:basis", "rel": "is-a", "dst": "x:basis", "origin": "model"}
+{"src": "strang:standard-basis", "rel": "is-a", "dst": "x:basis", "origin": "model"}
+{"src": "strang:basis-by-elimination", "rel": "is-a", "dst": "x:basis", "origin": "model"}
+{"src": "strang:pivot-columns-basis-for-column-space", "rel": "is-a", "dst": "x:basis", "origin": "model"}
+{"src": "strang:special-solutions-basis-for-nullspace", "rel": "is-a", "dst": "x:basis", "origin": "model"}
+{"src": "apostol:uniqueness-of-components", "rel": "is-a", "dst": "x:unique-coordinates-in-a-basis", "origin": "model"}
+{"src": "apostol:components-relative-to-ordered-basis", "rel": "is-a", "dst": "x:unique-coordinates-in-a-basis", "origin": "model"}
+{"src": "strang:unique-combination-in-a-basis", "rel": "is-a", "dst": "x:unique-coordinates-in-a-basis", "origin": "model"}
+{"src": "apostol:theorem-15-6", "rel": "is-a", "dst": "x:all-bases-are-equinumerous", "origin": "model"}
+{"src": "strang:all-bases-have-the-same-size", "rel": "is-a", "dst": "x:all-bases-are-equinumerous", "origin": "model"}
+{"src": "apostol:dimension", "rel": "is-a", "dst": "x:dimension-versus-rank", "origin": "model"}
+{"src": "apostol:dim-notation", "rel": "is-a", "dst": "x:dimension-versus-rank", "origin": "model"}
+{"src": "strang:dimension", "rel": "is-a", "dst": "x:dimension-versus-rank", "origin": "model"}
+{"src": "strang:rank-theorem", "rel": "is-a", "dst": "x:dimension-versus-rank", "origin": "model"}
+{"src": "strang:counting-theorem", "rel": "is-a", "dst": "x:dimension-versus-rank", "origin": "model"}
+{"src": "strang:fundamental-theorem-of-linear-algebra-part-1", "rel": "is-a", "dst": "x:dimension-versus-rank", "origin": "model"}
+{"src": "apostol:theorem-15-7", "rel": "is-a", "dst": "x:independence-criterion-and-its-consequences", "origin": "model"}
+{"src": "apostol:uniqueness-of-components", "rel": "is-a", "dst": "x:independence-criterion-and-its-consequences", "origin": "model"}
+{"src": "strang:full-column-rank", "rel": "is-a", "dst": "x:independence-criterion-and-its-consequences", "origin": "model"}
+{"src": "strang:full-column-rank-criterion", "rel": "is-a", "dst": "x:independence-criterion-and-its-consequences", "origin": "model"}
+{"src": "strang:ata-invertible-iff-independent-columns", "rel": "is-a", "dst": "x:independence-criterion-and-its-consequences", "origin": "model"}
+{"src": "strang:square-invertible-system", "rel": "is-a", "dst": "x:independence-criterion-and-its-consequences", "origin": "model"}
+{"src": "apostol:inner-product", "rel": "is-a", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "apostol:inner-product-axioms", "rel": "is-a", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "apostol:inner-product-notation", "rel": "is-a", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "apostol:dot-product-in-vn", "rel": "is-a", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "apostol:euclidean-space", "rel": "is-a", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "apostol:integral-inner-product-on-continuous-functions", "rel": "is-a", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "strang:dot-product-notation", "rel": "is-a", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "apostol:orthogonal-elements", "rel": "is-a", "dst": "x:orthogonality-is-a-vanishing-pairing", "origin": "model"}
+{"src": "strang:orthogonal-vectors", "rel": "is-a", "dst": "x:orthogonality-is-a-vanishing-pairing", "origin": "model"}
+{"src": "strang:zero-vector-in-two-orthogonal-subspaces", "rel": "is-a", "dst": "x:orthogonality-is-a-vanishing-pairing", "origin": "model"}
+{"src": "apostol:pythagorean-formula-for-orthogonal-decomposition", "rel": "is-a", "dst": "x:pythagorean-identity-for-orthogonal-parts", "origin": "model"}
+{"src": "strang:pythagorean-law-orthogonality", "rel": "is-a", "dst": "x:pythagorean-identity-for-orthogonal-parts", "origin": "model"}
+{"src": "strang:error-perpendicular-to-a", "rel": "is-a", "dst": "x:pythagorean-identity-for-orthogonal-parts", "origin": "model"}
+{"src": "apostol:orthogonal-to-a-set", "rel": "is-a", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "apostol:s-perp-notation", "rel": "is-a", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "apostol:orthogonal-complement-is-a-subspace", "rel": "is-a", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "strang:orthogonal-complement", "rel": "is-a", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "strang:orthogonal-complement-notation", "rel": "is-a", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "strang:row-space-orthogonal-to-nullspace", "rel": "is-a", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "strang:column-space-orthogonal-to-left-nullspace", "rel": "is-a", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "apostol:orthogonal-complement", "rel": "is-a", "dst": "x:orthogonal-subspaces-versus-complements", "origin": "model"}
+{"src": "d:orthogonal-complement-is-a-name-reserved-for-subspaces", "rel": "is-a", "dst": "x:orthogonal-subspaces-versus-complements", "origin": "model"}
+{"src": "strang:orthogonal-subspaces", "rel": "is-a", "dst": "x:orthogonal-subspaces-versus-complements", "origin": "model"}
+{"src": "strang:fundamental-theorem-part-2", "rel": "is-a", "dst": "x:orthogonal-subspaces-versus-complements", "origin": "model"}
+{"src": "apostol:theorem-15-15-orthogonal-decomposition", "rel": "is-a", "dst": "x:orthogonal-decomposition-of-the-ambient-space", "origin": "model"}
+{"src": "apostol:orthogonal-decomposition", "rel": "is-a", "dst": "x:orthogonal-decomposition-of-the-ambient-space", "origin": "model"}
+{"src": "strang:fundamental-theorem-part-2", "rel": "is-a", "dst": "x:orthogonal-decomposition-of-the-ambient-space", "origin": "model"}
+{"src": "strang:vector-splitting-row-null", "rel": "is-a", "dst": "x:orthogonal-decomposition-of-the-ambient-space", "origin": "model"}
+{"src": "apostol:projection-along-an-element", "rel": "is-a", "dst": "x:projection-onto-a-one-dimensional-direction", "origin": "model"}
+{"src": "strang:projection-onto-a-line", "rel": "is-a", "dst": "x:projection-onto-a-one-dimensional-direction", "origin": "model"}
+{"src": "strang:projection-of-vector-onto-line-formula", "rel": "is-a", "dst": "x:projection-onto-a-one-dimensional-direction", "origin": "model"}
+{"src": "strang:projection-coefficient-x-hat", "rel": "is-a", "dst": "x:projection-onto-a-one-dimensional-direction", "origin": "model"}
+{"src": "strang:rank-one-projection-matrix", "rel": "is-a", "dst": "x:projection-onto-a-one-dimensional-direction", "origin": "model"}
+{"src": "apostol:projection-on-a-subspace", "rel": "is-a", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "d:projection-on-a-subspace-is-defined-through-an-orthonormal-basis", "rel": "is-a", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "strang:projection-onto-a-subspace", "rel": "is-a", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "strang:normal-equation", "rel": "is-a", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "strang:projection-onto-subspace-formula", "rel": "is-a", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "strang:column-space-projection-matrix", "rel": "is-a", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "strang:projection-matrix", "rel": "is-a", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "d:s-perp-is-orthogonal-to-each-basis-element", "rel": "is-a", "dst": "x:orthogonality-of-the-residual", "origin": "model"}
+{"src": "d:orthogonality-to-the-basis-extends-to-all-of-s", "rel": "is-a", "dst": "x:orthogonality-of-the-residual", "origin": "model"}
+{"src": "strang:error-vector", "rel": "is-a", "dst": "x:orthogonality-of-the-residual", "origin": "model"}
+{"src": "strang:error-in-left-nullspace", "rel": "is-a", "dst": "x:orthogonality-of-the-residual", "origin": "model"}
+{"src": "apostol:theorem-15-16-approximation-theorem", "rel": "is-a", "dst": "x:best-approximation-by-the-projection", "origin": "model"}
+{"src": "apostol:best-approximation-in-a-finite-dimensional-subspace", "rel": "is-a", "dst": "x:best-approximation-by-the-projection", "origin": "model"}
+{"src": "strang:projection-onto-a-subspace", "rel": "is-a", "dst": "x:best-approximation-by-the-projection", "origin": "model"}
+{"src": "apostol:best-approximation-problem", "rel": "is-a", "dst": "x:least-squares-is-a-projection", "origin": "model"}
+{"src": "apostol:distance-between-elements", "rel": "is-a", "dst": "x:least-squares-is-a-projection", "origin": "model"}
+{"src": "strang:normal-equation", "rel": "is-a", "dst": "x:least-squares-is-a-projection", "origin": "model"}
+{"src": "strang:error-vector", "rel": "is-a", "dst": "x:least-squares-is-a-projection", "origin": "model"}
+{"src": "strang:solvability-condition", "rel": "is-a", "dst": "x:least-squares-is-a-projection", "origin": "model"}
+{"src": "apostol:homogeneous-de-solution-space", "rel": "is-a", "dst": "x:solution-set-of-a-homogeneous-linear-condition", "origin": "model"}
+{"src": "apostol:theorem-15-4-subspace-criterion", "rel": "is-a", "dst": "x:solution-set-of-a-homogeneous-linear-condition", "origin": "model"}
+{"src": "strang:complete-solution", "rel": "is-a", "dst": "x:solution-set-of-a-homogeneous-linear-condition", "origin": "model"}
+{"src": "strang:particular-solution", "rel": "is-a", "dst": "x:solution-set-of-a-homogeneous-linear-condition", "origin": "model"}
+{"src": "strang:special-solutions-basis-for-nullspace", "rel": "is-a", "dst": "x:solution-set-of-a-homogeneous-linear-condition", "origin": "model"}
+{"src": "apostol:theorem-15-7", "rel": "is-a", "dst": "x:right-count-upgrades-one-basis-property-to-both", "origin": "model"}
+{"src": "strang:basis-of-rn-from-invertible-matrix", "rel": "is-a", "dst": "x:right-count-upgrades-one-basis-property-to-both", "origin": "model"}
+{"src": "strang:all-bases-have-the-same-size", "rel": "is-a", "dst": "x:right-count-upgrades-one-basis-property-to-both", "origin": "model"}
+{"src": "apostol:inner-product", "rel": "generalizes", "dst": "strang:dot-product-notation", "origin": "model", "evidence": {"file": "15.10.md", "quote": "In a general linear space, we write $(x, y)$ instead of $x \\cdot y$ for inner products, and we define the product axiomatically rather than by a specific formula."}}
+{"src": "apostol:euclidean-space", "rel": "generalizes", "dst": "strang:orthogonal-vectors", "origin": "model", "evidence": {"file": "15.10.md", "quote": "A real linear space with an inner product is called a real Euclidean space."}}
+{"src": "apostol:orthogonal-to-a-set", "rel": "generalizes", "dst": "strang:orthogonal-complement", "origin": "model", "evidence": {"file": "15.14.md", "quote": "It is a simple exercise to verify that $S^{\\perp}$ is a subspace of V, whether or not S itself is one."}}
+{"src": "apostol:theorem-15-15-orthogonal-decomposition", "rel": "generalizes", "dst": "strang:fundamental-theorem-part-2", "origin": "model", "evidence": {"file": "15.14.md", "quote": "Let V be a Euclidean space and let S be a finite-dimensional subspace of V."}}
+{"src": "apostol:projection-on-a-subspace", "rel": "generalizes", "dst": "strang:projection-onto-a-subspace", "origin": "model", "evidence": {"file": "15.14.md", "quote": "DEFINITION. Let $S$ be a finite-dimensional subspace of a Euclidean space $V$ ,"}}
+{"src": "apostol:projection-along-an-element", "rel": "generalizes", "dst": "strang:projection-onto-a-line", "origin": "model", "evidence": {"file": "15.13.md", "quote": "If $x$ and $y$ are elements in a Euclidean space, with $y \\neq O$ , the element"}}
+{"src": "apostol:theorem-15-16-approximation-theorem", "rel": "generalizes", "dst": "strang:projection-onto-subspace-formula", "origin": "model", "evidence": {"file": "15.15.md", "quote": "THEOREM 15.16. APPROXIMATION THEOREM. Let S be a finite-dimensional subspace of a Euclidean space V, and let x be any element of V."}}
+{"src": "apostol:independent-set", "rel": "generalizes", "dst": "strang:linear-independence", "origin": "model", "evidence": {"file": "15.07.md", "quote": "However, the present definition is not restricted to finite sets."}}
+{"src": "apostol:linear-span", "rel": "generalizes", "dst": "strang:spanning-a-space", "origin": "model", "evidence": {"file": "15.06.md", "quote": "The set of all finite linear combinations of elements of S satisfies the closure axioms and hence is a subspace of V."}}
+{"src": "apostol:theorem-15-6", "rel": "generalizes", "dst": "strang:all-bases-have-the-same-size", "origin": "model", "evidence": {"file": "15.08.md", "quote": "THEOREM 15.6. Let $V$ be a finite-dimensional linear space. Then every finite basis for $V$ has the same number of elements."}}
+{"src": "apostol:dimension", "rel": "generalizes", "dst": "strang:dimension", "origin": "model", "evidence": {"file": "15.08.md", "quote": "DEFINITION. If a linear space V has a basis of n elements, the integer n is called the dimension of V."}}
+{"src": "apostol:theorem-15-7", "rel": "generalizes", "dst": "strang:basis-of-rn-from-invertible-matrix", "origin": "model", "evidence": {"file": "15.08.md", "quote": "THEOREM 15.7. Let $V$ be a finite-dimensional linear space with $\\dim V = n$ . Then we have the following:"}}
+{"src": "apostol:finite-basis", "rel": "generalizes", "dst": "strang:basis", "origin": "model", "evidence": {"file": "15.08.md", "quote": "DEFINITION. A finite set S of elements in a linear space V is called a finite basis for V if S is independent and spans V."}}
+{"src": "apostol:homogeneous-de-solution-space", "rel": "contrasts", "dst": "strang:complete-solution", "origin": "model"}
+{"src": "apostol:pythagorean-formula-for-orthogonal-decomposition", "rel": "generalizes", "dst": "strang:pythagorean-law-orthogonality", "origin": "model", "evidence": {"file": "15.14.md", "quote": "Moreover, the norm of $x$ is given by the Pythagorean formula"}}
+{"src": "apostol:orthogonal-elements", "rel": "generalizes", "dst": "strang:orthogonal-vectors", "origin": "model", "evidence": {"file": "15.11.md", "quote": "DEFINITION. In a Euclidean space V, two elements x and y are called orthogonal if their inner product is zero."}}
+{"src": "apostol:orthogonal-complement", "rel": "contrasts", "dst": "strang:orthogonal-subspaces", "origin": "model"}
+{"src": "apostol:orthogonal-set", "rel": "contrasts", "dst": "strang:basis", "origin": "model"}
+{"src": "apostol:projection-along-an-element", "rel": "contrasts", "dst": "strang:projection-onto-a-line", "origin": "model"}
+{"src": "apostol:dimension", "rel": "contrasts", "dst": "strang:rank-theorem", "origin": "model"}
+{"src": "apostol:s-perp-notation", "rel": "alias-of", "dst": "strang:orthogonal-complement-notation", "origin": "model"}
+{"src": "apostol:inner-product-notation", "rel": "alias-of", "dst": "strang:dot-product-notation", "origin": "model"}
+{"src": "apostol:orthogonal-decomposition", "rel": "alias-of", "dst": "strang:vector-splitting-row-null", "origin": "model"}
+{"src": "x:basis", "rel": "requires", "dst": "x:linear-independence", "origin": "model"}
+{"src": "x:basis", "rel": "requires", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "x:linear-independence", "rel": "requires", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "x:zero-element-destroys-independence", "rel": "requires", "dst": "x:linear-independence", "origin": "model"}
+{"src": "x:unique-coordinates-in-a-basis", "rel": "requires", "dst": "x:basis", "origin": "model"}
+{"src": "x:all-bases-are-equinumerous", "rel": "requires", "dst": "x:basis", "origin": "model"}
+{"src": "x:dimension-versus-rank", "rel": "requires", "dst": "x:all-bases-are-equinumerous", "origin": "model"}
+{"src": "x:right-count-upgrades-one-basis-property-to-both", "rel": "requires", "dst": "x:dimension-versus-rank", "origin": "model"}
+{"src": "x:independence-criterion-and-its-consequences", "rel": "requires", "dst": "x:unique-coordinates-in-a-basis", "origin": "model"}
+{"src": "x:independence-criterion-and-its-consequences", "rel": "requires", "dst": "x:linear-independence", "origin": "model"}
+{"src": "x:orthogonality-is-a-vanishing-pairing", "rel": "requires", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "x:pythagorean-identity-for-orthogonal-parts", "rel": "requires", "dst": "x:orthogonality-is-a-vanishing-pairing", "origin": "model"}
+{"src": "x:orthogonality-to-a-whole-set", "rel": "requires", "dst": "x:orthogonality-is-a-vanishing-pairing", "origin": "model"}
+{"src": "x:orthogonality-to-a-whole-set", "rel": "requires", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "x:orthogonal-subspaces-versus-complements", "rel": "requires", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "x:orthogonal-subspaces-versus-complements", "rel": "requires", "dst": "x:dimension-versus-rank", "origin": "model"}
+{"src": "x:orthogonal-decomposition-of-the-ambient-space", "rel": "requires", "dst": "x:orthogonality-to-a-whole-set", "origin": "model"}
+{"src": "x:orthogonal-decomposition-of-the-ambient-space", "rel": "implies", "dst": "x:pythagorean-identity-for-orthogonal-parts", "origin": "model"}
+{"src": "x:orthogonal-decomposition-of-the-ambient-space", "rel": "implies", "dst": "x:orthogonal-subspaces-versus-complements", "origin": "model"}
+{"src": "x:projection-onto-a-subspace", "rel": "part-of", "dst": "x:orthogonal-decomposition-of-the-ambient-space", "origin": "model"}
+{"src": "x:projection-onto-a-subspace", "rel": "requires", "dst": "x:basis", "origin": "model"}
+{"src": "x:projection-onto-a-subspace", "rel": "generalizes", "dst": "x:projection-onto-a-one-dimensional-direction", "origin": "model"}
+{"src": "x:projection-onto-a-one-dimensional-direction", "rel": "requires", "dst": "x:the-pairing-that-carries-geometry", "origin": "model"}
+{"src": "x:orthogonality-of-the-residual", "rel": "equivalent", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "x:best-approximation-by-the-projection", "rel": "requires", "dst": "x:projection-onto-a-subspace", "origin": "model"}
+{"src": "x:best-approximation-by-the-projection", "rel": "requires", "dst": "x:pythagorean-identity-for-orthogonal-parts", "origin": "model"}
+{"src": "x:best-approximation-by-the-projection", "rel": "requires", "dst": "x:orthogonal-decomposition-of-the-ambient-space", "origin": "model"}
+{"src": "x:least-squares-is-a-projection", "rel": "is-a", "dst": "x:best-approximation-by-the-projection", "origin": "model"}
+{"src": "x:least-squares-is-a-projection", "rel": "requires", "dst": "x:orthogonality-of-the-residual", "origin": "model"}
+{"src": "x:solution-set-of-a-homogeneous-linear-condition", "rel": "requires", "dst": "x:span-of-a-set", "origin": "model"}
+{"src": "x:linear-independence", "rel": "requires", "dst": "x:vectors-need-not-be-columns", "origin": "model"}
+{"src": "x:the-pairing-that-carries-geometry", "rel": "requires", "dst": "x:vectors-need-not-be-columns", "origin": "model"}
+{"src": "x:least-squares-is-a-projection", "rel": "contrasts", "dst": "x:solution-set-of-a-homogeneous-linear-condition", "origin": "model"}

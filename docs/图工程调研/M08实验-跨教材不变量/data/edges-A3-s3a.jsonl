@@ -1,0 +1,20 @@
+{"src":"zh-303","rel":"requires","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"A real linear space with an inner product is called a real Euclidean space."}}
+{"src":"zh-304","rel":"requires","dst":"zh-302","origin":"source","evidence":{"file":"15.10.md","quote":"A complex linear space with an inner product is called a complex Euclidean space."}}
+{"src":"zh-303","rel":"is-a","dst":"zh-305","origin":"source","evidence":{"file":"15.10.md","quote":"the space can be real or complex."}}
+{"src":"zh-304","rel":"is-a","dst":"zh-305","origin":"source","evidence":{"file":"15.10.md","quote":"the space can be real or complex."}}
+{"src":"zh-302","rel":"contrasts","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"satisfying the same axioms as those for a real inner product, except that the symmetry axiom is replaced by the relation"}}
+{"src":"zh-301","rel":"generalizes","dst":"zh-306","origin":"source","evidence":{"file":"15.10.md","quote":"We shall introduce first a generalization of the dot product, which we call an inner product"}}
+{"src":"zh-307","rel":"is-a","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"Define an inner product of two functions $f$ and $g$ by the formula"}}
+{"src":"zh-307","rel":"contrasts","dst":"zh-306","origin":"source","evidence":{"file":"15.10.md","quote":"This formula is analogous to Equation (15.5) which defines the dot product of two vectors in $V_{n}$"}}
+{"src":"zh-308","rel":"requires","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"The inner product can be used to introduce the metric concept of length in any Euclidean space."}}
+{"src":"zh-308","rel":"requires","dst":"zh-305","origin":"model"}
+{"src":"zh-313","rel":"other","dst":"zh-308","origin":"source","evidence":{"file":"15.10.md","quote":"is called the norm of the element $x$"},"rel_note":"zh-313 是 zh-308(范数)所用的记号 ||x||。"}
+{"src":"zh-312","rel":"other","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"we write $(x, y)$ instead of $x \\cdot y$ for inner products"},"rel_note":"zh-312 是 zh-301(内积)所用的记号 (x, y)。"}
+{"src":"zh-309","rel":"requires","dst":"zh-301","origin":"source","evidence":{"file":"15.10.md","quote":"In a Euclidean space V, every inner product satisfies the Cauchy–Schwarz inequality:"}}
+{"src":"zh-309","rel":"applies-to","dst":"zh-305","origin":"source","evidence":{"file":"15.10.md","quote":"In a Euclidean space V, every inner product satisfies the Cauchy–Schwarz inequality:"}}
+{"src":"zh-309","rel":"implies","dst":"zh-310","origin":"source","evidence":{"file":"15.10.md","quote":"The Cauchy-Schwarz inequality shows that $|(x,y)| \\leq \\| x\\| \\| y\\|$"}}
+{"src":"zh-310","rel":"part-of","dst":"zh-311","origin":"source","evidence":{"file":"15.10.md","quote":"(d) $\\|x + y\\| \\leq \\|x\\| + \\|y\\|$ (triangle inequality)."}}
+{"src":"zh-311","rel":"applies-to","dst":"zh-308","origin":"source","evidence":{"file":"15.10.md","quote":"In a Euclidean space, every norm has the following properties"}}
+{"src":"zh-310","rel":"requires","dst":"zh-308","origin":"source","evidence":{"file":"15.10.md","quote":"every norm has the following properties"}}
+{"src":"zh-306","rel":"requires","dst":"zh-312","origin":"model"}
+{"src":"zh-311","rel":"requires","dst":"zh-309","origin":"source","evidence":{"file":"15.10.md","quote":"The Cauchy-Schwarz inequality shows that"}}

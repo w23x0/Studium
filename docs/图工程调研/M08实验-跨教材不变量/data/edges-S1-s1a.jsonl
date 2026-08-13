@@ -1,0 +1,18 @@
+{"src":"strang:vector-space-rn","rel":"is-a","dst":"strang:real-vector-space","origin":"source","evidence":{"file":"3.1.md","quote":"there are vector spaces other than $\\mathbf { R } ^ { n }$ , and all vector spaces have to obey the eight reasonable rules."}}
+{"src":"strang:zero-vector-space","rel":"is-a","dst":"strang:real-vector-space","origin":"source","evidence":{"file":"3.1.md","quote":"Z The vector space that consists only of a zero vector."}}
+{"src":"strang:subspace","rel":"is-a","dst":"strang:real-vector-space","origin":"source","evidence":{"file":"3.1.md","quote":"That plane is a vector space in its own right."}}
+{"src":"strang:subspace","rel":"requires","dst":"strang:real-vector-space","origin":"source","evidence":{"file":"3.1.md","quote":"A subspace of a vector space is a set of vectors (including 0) that satisfies two requirements"}}
+{"src":"strang:subspace-closure-requirements","rel":"equivalent","dst":"strang:subspace","origin":"source","evidence":{"file":"3.1.md","quote":"The rules can be combined into a single requirement-the rule for subspaces"}}
+{"src":"strang:subspace-closure-requirements","rel":"implies","dst":"strang:subspace-contains-zero","origin":"source","evidence":{"file":"3.1.md","quote":"but it follows directly from rule (ii)."}}
+{"src":"strang:subspace-contains-zero","rel":"requires","dst":"strang:subspace","origin":"model"}
+{"src":"strang:line-through-origin","rel":"is-a","dst":"strang:subspace","origin":"source","evidence":{"file":"3.1.md","quote":"Lines through the origin are also subspaces."}}
+{"src":"strang:plane-through-origin","rel":"is-a","dst":"strang:subspace","origin":"source","evidence":{"file":"3.1.md","quote":"The plane going through $( 0 , 0 , 0 )$ is a subspace of the full vector space"}}
+{"src":"strang:zero-vector-space","rel":"is-a","dst":"strang:subspace","origin":"source","evidence":{"file":"3.1.md","quote":"Z is always a subspace."}}
+{"src":"strang:line-through-origin","rel":"requires","dst":"strang:vector-space-rn","origin":"model"}
+{"src":"strang:plane-through-origin","rel":"requires","dst":"strang:vector-space-rn","origin":"source","evidence":{"file":"3.1.md","quote":"The vectors have three components and they belong to $\\mathbf { R } ^ { 3 }$ . The plane is a vector space inside $\\mathbf { R } ^ { 3 }$"}}
+{"src":"strang:column-space","rel":"is-a","dst":"strang:subspace","origin":"source","evidence":{"file":"3.1.md","quote":"The column space of A is a subspace of $\\mathbf { R } ^ { m }$"}}
+{"src":"strang:column-space","rel":"requires","dst":"strang:vector-space-rn","origin":"source","evidence":{"file":"3.1.md","quote":"So the columns belong to $\\mathbf { R } ^ { m }$ ."}}
+{"src":"strang:column-space-notation","rel":"alias-of","dst":"strang:column-space","origin":"source","evidence":{"file":"3.1.md","quote":"The column space of A is denoted by"}}
+{"src":"strang:column-space","rel":"implies","dst":"strang:column-space-solvability","origin":"source","evidence":{"file":"3.1.md","quote":"To solve $A x = b$ is to express bas a combination of the columns."}}
+{"src":"strang:column-space-solvability","rel":"requires","dst":"strang:column-space","origin":"source","evidence":{"file":"3.1.md","quote":"is solvable if and only if b is in the column space of A."}}
+{"src":"strang:plane-through-origin","rel":"contrasts","dst":"strang:vector-space-rn","origin":"source","evidence":{"file":"3.1.md","quote":"A plane in three-dimensional space is not $\\mathbf { R } ^ { 2 }$ (even if it looks like"}}

@@ -1,0 +1,62 @@
+{"id": "strang:complete-solution", "verdict": "KEEP", "cause": 0, "reason": "3.3 的中心结论 x = x_p + x_n，是零空间与特解两条线的汇合点，无兄弟承载"}
+{"id": "strang:particular-solution", "verdict": "KEEP", "cause": 0, "reason": "给出「自由变量置零、回代求主元变量」这一具体产生 x_p 的程序，strang:complete-solution 只声明存在不给做法"}
+{"id": "strang:solvability-condition", "verdict": "KEEP", "cause": 0, "reason": "可解性判据（R 的零行对应 d 的零项 / b 在列空间中），是独立的判定内容"}
+{"id": "strang:reduce-augmented-to-rd", "verdict": "KEEP", "cause": 0, "reason": "[A b] 消元到 [R d] 是 3.3 全部计算的载体程序，strang:particular-solution 与 strang:solvability-condition 都 requires 它"}
+{"id": "strang:augmented-matrix", "verdict": "KILL", "cause": 5, "reason": "复述父节点：strang:reduce-augmented-to-rd 的 statement 已写出「Elimination applied to the augmented matrix [A b] produces [R d]」，[A b] 的名字、符号与「行操作同时作用于两侧」都已含在其中，本节点无新增内容"}
+{"id": "strang:full-column-rank", "verdict": "KEEP", "cause": 0, "reason": "r = n 的整套后果（无自由变量、零空间只有零向量）是被反复引用的命名概念，strang:four-possibilities-by-rank 只给解的个数不给这些结构性后果"}
+{"id": "strang:full-row-rank", "verdict": "KEEP", "cause": 0, "reason": "r = m 的后果（列空间是整个 R^m、对每个 b 都可解）与 strang:full-column-rank 对偶且独立"}
+{"id": "strang:square-invertible-system", "verdict": "KILL", "cause": 5, "reason": "纯语法/逻辑切分：本节点 = strang:full-column-rank 与 strang:full-row-rank 的合取，其 is-a 边已自承这一点；「R = I、零空间只有零向量、唯一解」三条分别从 strang:full-column-rank 与 strang:full-row-rank 直接得出，r = m = n 一格也已在 strang:four-possibilities-by-rank 的四格表里，无独立内容"}
+{"id": "strang:four-possibilities-by-rank", "verdict": "KEEP", "cause": 0, "reason": "四格表覆盖了 r < m 且 r < n 这一格，strang:full-column-rank 与 strang:full-row-rank 单独都给不出该格，是真正的综合"}
+{"id": "strang:row-combination-consistency", "verdict": "KILL", "cause": 5, "reason": "兄弟冗余：这是 strang:solvability-condition 同一命题在 (A,b) 侧的改写。strang:reduce-augmented-to-rd 已说明消元把 A 的行组合同步作用到 b 上，故「R 的零行须对应 d 的零项」与「使行组合为零的同一组合作用于 b 也须为零」是同一句话的两种坐标写法，无新增判断力"}
+{"id": "strang:linear-independence", "verdict": "KEEP", "cause": 0, "reason": "3.4 的根定义，且明确覆盖任意向量空间中的任意序列，是全章独立性讨论的唯一源头"}
+{"id": "strang:independent-columns", "verdict": "KEEP", "cause": 0, "reason": "把 strang:linear-independence 的定义搭到矩阵零空间上（独立当且仅当 N(A) 只含零向量），这个桥是 3.4 与 3.2 零空间之间的唯一接口，strang:full-column-rank-criterion 与 strang:basis-of-rn-from-invertible-matrix 都靠它"}
+{"id": "strang:linear-dependence", "verdict": "KILL", "cause": 5, "reason": "复述父节点：strang:linear-independence 的 statement 已写 Otherwise the vectors are dependent，相依的定义原文就在里面；余下「等价于某个向量是其他向量的组合」只是把该定义中系数非零的那一项移到等号另侧，属纯语法改写，无新断言"}
+{"id": "strang:full-column-rank-criterion", "verdict": "KILL", "cause": 5, "reason": "复述父节点（粗节点已把要拆的写出来）：strang:full-column-rank 的 statement 已含 r = n: all columns are pivot columns, there are no free variables, the nullspace is only the zero vector，strang:independent-columns 已含「独立当且仅当零空间只有零向量」，两者合起来逐字给出本节点全部内容"}
+{"id": "strang:short-wide-matrix-has-dependent-columns", "verdict": "KEEP", "cause": 0, "reason": "n > m 必相依 是鸽笼型新断言，且是 strang:all-bases-have-the-same-size 证明里真正用到的引理，strang:linear-independence 与 strang:linear-dependence 都推不出自由变量计数"}
+{"id": "strang:spanning-a-space", "verdict": "KEEP", "cause": 0, "reason": "张成是与独立性正交的另一半条件，strang:basis 明确 requires 它，无兄弟承载"}
+{"id": "strang:basis", "verdict": "KEEP", "cause": 0, "reason": "基是被命名的新对象（不多不少），并额外断言一个空间有无穷多组基；它是 3.4 下游 9 条入边的枢纽"}
+{"id": "strang:unique-combination-in-a-basis", "verdict": "KEEP", "cause": 0, "reason": "唯一表示这一断言不出现在任何邻居的 statement 里（strang:basis 只说独立且张成），它才是基能当坐标系用的语义载荷"}
+{"id": "strang:dimension", "verdict": "KEEP", "cause": 0, "reason": "维数是独立的命名量（自由度计数、dim R^n = n），并附带「不说空间的秩、不说基的维数」的用词纪律"}
+{"id": "strang:all-bases-have-the-same-size", "verdict": "KEEP", "cause": 0, "reason": "m = n 是需要证明的定理并给出 W = VA 的证法，strang:dimension 的定义只预设其良定义而不断言它"}
+{"id": "strang:standard-basis", "verdict": "KEEP", "cause": 0, "reason": "单位矩阵各列这个具体命名实例（i, j, k）是 strang:basis 的抽象定义唯一被落地的地方，也是坐标系对齐的锚"}
+{"id": "strang:row-space", "verdict": "KEEP", "cause": 0, "reason": "行空间是 3.4/3.5 新引入的子空间对象（R^n 中而列空间在 R^m 中），下游 6 条入边"}
+{"id": "strang:row-space-notation", "verdict": "KILL", "cause": 5, "reason": "兄弟冗余：strang:row-space 的 statement 已写 It is the column space of A transpose，C(A^T) 这个记号的全部内容就在其中；剩下的 N(A^T) 记号又与 strang:left-nullspace 重复，本节点两半各被一个兄弟吃掉，无剩余"}
+{"id": "strang:basis-of-rn-from-invertible-matrix", "verdict": "KEEP", "cause": 0, "reason": "把「是 R^n 的基」等价成「是可逆矩阵的列」，这是 3.4 与 ch2 可逆性之间唯一的接口判据，不是 strang:basis 定义的改写"}
+{"id": "strang:basis-by-elimination", "verdict": "KEEP", "cause": 0, "reason": "method 节点，其价值是可执行流程本身（行做法与列做法二选一，并给出 pivot columns of A 而非 R 的操作纪律），strang:pivot-columns-basis-for-column-space 与 strang:pivot-rows-basis-for-row-space 只给定理不给流程"}
+{"id": "strang:bases-for-matrix-and-function-spaces", "verdict": "KEEP", "cause": 0, "reason": "矩阵空间维数 n^2 与 y'' = -y 解空间以 sin/cos 为基，是把 3.4 全部概念挪出 R^n 的唯一处，且是与 Apostol 函数空间对齐的关键端"}
+{"id": "strang:four-fundamental-subspaces", "verdict": "KEEP", "cause": 0, "reason": "四个子空间的成套编排（两个在 R^n、两个在 R^m，两个来自 A、两个来自 A^T）是 3.5 的组织框架，编排本身即内容"}
+{"id": "strang:left-nullspace", "verdict": "KEEP", "cause": 0, "reason": "左零空间是第四个新对象，并给出 y^T A = 0^T 的「左乘」读法与「行组合给出零行」的解释"}
+{"id": "strang:fundamental-theorem-of-linear-algebra-part-1", "verdict": "KEEP", "cause": 0, "reason": "唯一给出 dim N(A^T) = m - r 的节点，并断言秩单独决定全部四个维数，这个统一断言无兄弟承载"}
+{"id": "strang:rank-theorem", "verdict": "KILL", "cause": 5, "reason": "兄弟冗余：strang:pivot-columns-basis-for-column-space 已构造性给出 dim C(A) = r（主元列是基），strang:pivot-rows-basis-for-row-space 已给出 dim 行空间 = r（主元行是基），两者相并即得「列秩 = 行秩」；本节点自陈的 right reason（Ax = 0 恰当 Rx = 0）也已是 strang:elimination-preserves-row-space-and-nullspace 的内容，故命题与理由两侧都被同节兄弟覆盖"}
+{"id": "strang:counting-theorem", "verdict": "KILL", "cause": 5, "reason": "兄弟冗余 + 纯逻辑切分：strang:special-solutions-basis-for-nullspace 的 statement 已含 with n variables and r pivots there are n - r of them ... which has dimension n - r，自由变量计数与零空间维数两条都在里面；strang:pivot-columns-basis-for-column-space 已给 dim C(A) = r。本节点余下的 r + (n - r) = n 与 r + (m - r) = m 是这两个数的加法恒等式，不含新判断力"}
+{"id": "strang:special-solutions-basis-for-nullspace", "verdict": "KEEP", "cause": 0, "reason": "构造性给出零空间的基（每个自由变量一个特解，因自由行含单位矩阵而独立），这是 dim N(A) = n - r 的唯一来源，非计数改写"}
+{"id": "strang:elimination-preserves-row-space-and-nullspace", "verdict": "KEEP", "cause": 0, "reason": "消元保持行空间与零空间（但不保持列空间）是「可以用 R 算 A 的基」的全部合法性依据，strang:pivot-rows-basis-for-row-space requires 它"}
+{"id": "strang:pivot-columns-basis-for-column-space", "verdict": "KEEP", "cause": 0, "reason": "主元列是列空间的基 + 必须取 A 的列而非 R 的列，构造与陷阱都无兄弟承载"}
+{"id": "strang:pivot-rows-basis-for-row-space", "verdict": "KEEP", "cause": 0, "reason": "主元行是行空间的基，与 strang:pivot-columns-basis-for-column-space 构成不同构的一对（行侧可用 R，列侧不可），不是 strang:pivot-columns-basis-for-column-space 的转置改写"}
+{"id": "strang:rank-one-matrix", "verdict": "KEEP", "cause": 0, "reason": "A = uv^T 是新的命名对象与秩一分解，3.5 内无兄弟给出该结构"}
+{"id": "strang:orthogonal-vectors", "verdict": "KEEP", "cause": 0, "reason": "4.1 的根定义（点积为零，判据 v^T w = 0），下游整节都建在它上"}
+{"id": "strang:pythagorean-law-orthogonality", "verdict": "KEEP", "cause": 0, "reason": "长度平方相加 ||v||^2 + ||w||^2 = ||v + w||^2 是 strang:orthogonal-vectors 定义之外的新等式，构成正交的度量含义"}
+{"id": "strang:orthogonal-subspaces", "verdict": "KEEP", "cause": 0, "reason": "从向量正交升到子空间正交，需要「所有配对」这一量词，是新的抽象层级而非 strang:orthogonal-vectors 的复述"}
+{"id": "strang:row-space-orthogonal-to-nullspace", "verdict": "KEEP", "cause": 0, "reason": "行空间与零空间正交是 4.1 的核心事实，strang:orthogonal-subspaces 只给定义不给这对具体子空间"}
+{"id": "strang:column-space-orthogonal-to-left-nullspace", "verdict": "KEEP", "cause": 0, "reason": "列空间与左零空间正交，与 strang:row-space-orthogonal-to-nullspace 构成 R^m/R^n 两侧的对偶一对，Strang 明写两条且互为 contrasts，转置这一动作本身是要学的"}
+{"id": "strang:zero-vector-in-two-orthogonal-subspaces", "verdict": "KEEP", "cause": 0, "reason": "需要 v^T v = 0 推出 v = 0 这一步，strang:orthogonal-subspaces 与 strang:orthogonal-complement 的定义里都没有这个引理，且 strang:row-space-to-column-space-invertible requires 它"}
+{"id": "strang:orthogonal-complement", "verdict": "KEEP", "cause": 0, "reason": "正交补是新的命名对象，并断言 N(A)^perp 恰好是 C(A^T)（相等而非仅正交）"}
+{"id": "strang:fundamental-theorem-part-2", "verdict": "KEEP", "cause": 0, "reason": "把 strang:row-space-orthogonal-to-nullspace 与 strang:column-space-orthogonal-to-left-nullspace 的「正交」升级为「正交补」，即加上维数配足、无遗漏，这是严格更强的新断言"}
+{"id": "strang:vector-splitting-row-null", "verdict": "KEEP", "cause": 0, "reason": "x = x_r + x_n 的唯一分解不出现在 strang:fundamental-theorem-part-2 的 statement 里，它是正交补性质的可用形态，也是 strang:row-space-to-column-space-invertible 的前件"}
+{"id": "strang:row-space-to-column-space-invertible", "verdict": "KEEP", "cause": 0, "reason": "A 在行空间到列空间上是 r 阶可逆映射，是把四子空间图景收成「A 的真正作用域」的结构性断言，strang:fundamental-theorem-part-2 与 strang:vector-splitting-row-null 都不含"}
+{"id": "strang:orthogonal-complement-notation", "verdict": "KILL", "cause": 5, "reason": "兄弟冗余（与 strang:row-space-notation 同型）：strang:orthogonal-complement 的 statement 已使用 N(A)^perp 这一记号，perp 上标的用法原文就在其中；本节点仅追加读音「V perp」，无可推导内容之外的新信息"}
+{"id": "strang:dot-product-notation", "verdict": "KEEP", "cause": 0, "reason": "把点积写法 v . w 与矩阵写法 v^T w 划等号，strang:orthogonal-vectors 只用了 v^T w 一侧，这个记号桥不在任何邻居里"}
+{"id": "strang:projection-onto-a-line", "verdict": "KEEP", "cause": 0, "reason": "method 节点，给出「先 x-hat、再 p、再 P」的三步骨架，这个编排是 4.2 全节的组织方式，公式节点各自都不含"}
+{"id": "strang:projection-coefficient-x-hat", "verdict": "KILL", "cause": 5, "reason": "兄弟冗余：strang:projection-of-vector-onto-line-formula 的 statement 逐字含 p = x-hat a = (a^T b / a^T a) a，x-hat 这个符号与它的值同时出现在其中；本节点仅剩「最佳系数」这一泛化说法，而 strang:normal-equation 已承载子空间侧的对应量"}
+{"id": "strang:projection-of-vector-onto-line-formula", "verdict": "KEEP", "cause": 0, "reason": "投影向量的显式公式 p = (a^T b / a^T a) a，是三步中第二步的实际内容"}
+{"id": "strang:error-vector", "verdict": "KEEP", "cause": 0, "reason": "误差向量 e = b - p 是新的命名对象，且 p 与 e 相加得 b，下游 strang:error-perpendicular-to-a 与 strang:error-in-left-nullspace 都 requires 它"}
+{"id": "strang:error-perpendicular-to-a", "verdict": "KEEP", "cause": 0, "reason": "e 垂直于 a 这一几何事实是解出 x-hat 的依据（不是它的结论），并给出直角三角形的长度关系"}
+{"id": "strang:rank-one-projection-matrix", "verdict": "KEEP", "cause": 0, "reason": "P = a a^T / a^T a 的显式矩阵与「m 阶但秩一」的观察，是三步中第三步的实际内容"}
+{"id": "strang:projection-matrix", "verdict": "KEEP", "cause": 0, "reason": "投影矩阵作为被命名的一类矩阵（对称且 P^2 = P），strang:rank-one-projection-matrix 与 strang:column-space-projection-matrix 都 is-a 它，是这两个具体矩阵的共同上位"}
+{"id": "strang:projection-onto-a-subspace", "verdict": "KEEP", "cause": 0, "reason": "method 节点，把三步骨架搬到子空间（独立列张成的列空间）上，是 4.2 后半的组织框架"}
+{"id": "strang:normal-equation", "verdict": "KEEP", "cause": 0, "reason": "正规方程 A^T A x-hat = A^T b 是 4.2 的中心方程，也是最小二乘的入口，无兄弟承载"}
+{"id": "strang:projection-onto-subspace-formula", "verdict": "KILL", "cause": 5, "reason": "纯语法切分：strang:column-space-projection-matrix 的 statement 已给出 P = A (A^T A)^{-1} A^T 且写明 p = Pb，两者代入即逐字得到本节点的 p = A (A^T A)^{-1} A^T b。同一串符号只在「矩阵」与「矩阵乘 b」之间挪了一次括号，无新内容"}
+{"id": "strang:column-space-projection-matrix", "verdict": "KEEP", "cause": 0, "reason": "列空间投影矩阵 P = A (A^T A)^{-1} A^T 是可复用的命名对象，与 strang:rank-one-projection-matrix 构成线/子空间一对"}
+{"id": "strang:projection-matrix-symmetric-idempotent", "verdict": "KILL", "cause": 5, "reason": "复述父节点：strang:projection-matrix 的 statement 已把投影矩阵定义为 a symmetric matrix with P^2 = P，本节点断言的 P^T = P 与 P^2 = P 两条恰是该定义本身；余下「投影第二次不改变结果」即 P^2 = P 的字面含义，属无信息量的同义展开"}
+{"id": "strang:ata-invertible-iff-independent-columns", "verdict": "KEEP", "cause": 0, "reason": "A^T A 可逆当且仅当 A 列独立，是 strang:projection-onto-subspace-formula 与 strang:column-space-projection-matrix 里那个逆矩阵存在的唯一许可条件，并给出 N(A^T A) = N(A) 的理由"}
+{"id": "strang:error-in-left-nullspace", "verdict": "KEEP", "cause": 0, "reason": "把 strang:error-perpendicular-to-a 的垂直性升级为「误差落在 N(A^T) 内」，这条把 4.2 接回 3.5 的第四子空间，属新的跨节连接"}

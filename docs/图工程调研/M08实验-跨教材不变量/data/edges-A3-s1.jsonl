@@ -1,0 +1,26 @@
+{"src":"zh-102","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"The set V is called a linear space if it satisfies the following ten axioms which we list in three groups."}}
+{"src":"zh-103","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"The set V is called a linear space if it satisfies the following ten axioms which we list in three groups."}}
+{"src":"zh-104","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"which we list in three groups"}}
+{"src":"zh-105","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"which we list in three groups"}}
+{"src":"zh-106","rel":"part-of","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"which we list in three groups"}}
+{"src":"zh-108","rel":"is-a","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"Linear spaces, as defined above, are sometimes called real linear spaces"}}
+{"src":"zh-109","rel":"is-a","dst":"zh-101","origin":"source","evidence":{"file":"15.02.md","quote":"the resulting structure is called a complex linear space"}}
+{"src":"zh-108","rel":"contrasts","dst":"zh-109","origin":"source","evidence":{"file":"15.02.md","quote":"If real number is replaced by complex number in Axioms 2, 7, 8, and 9, the resulting structure is called a complex linear space."}}
+{"src":"zh-101","rel":"requires","dst":"zh-107","origin":"model"}
+{"src":"zh-103","rel":"requires","dst":"zh-107","origin":"source","evidence":{"file":"15.02.md","quote":"For every x in V and every real number a there corresponds an element in V called the product of a and x"}}
+{"src":"zh-108","rel":"requires","dst":"zh-107","origin":"source","evidence":{"file":"15.02.md","quote":"A real linear space has real numbers as scalars"}}
+{"src":"zh-109","rel":"requires","dst":"zh-107","origin":"source","evidence":{"file":"15.02.md","quote":"a complex linear space has complex numbers as scalars"}}
+{"src":"zh-110","rel":"is-a","dst":"zh-101","origin":"model"}
+{"src":"zh-111","rel":"is-a","dst":"zh-110","origin":"source","evidence":{"file":"15.03.md","quote":"The reader can easily verify that each of the following sets is a function space."}}
+{"src":"zh-112","rel":"is-a","dst":"zh-110","origin":"source","evidence":{"file":"15.03.md","quote":"The reader can easily verify that each of the following sets is a function space."}}
+{"src":"zh-117","rel":"is-a","dst":"zh-101","origin":"model"}
+{"src":"zh-113","rel":"requires","dst":"zh-101","origin":"source","evidence":{"file":"15.04.md","quote":"In any linear space there is one and only one zero element."}}
+{"src":"zh-113","rel":"requires","dst":"zh-104","origin":"source","evidence":{"file":"15.04.md","quote":"Axiom 5 tells us that there is at least one zero element."}}
+{"src":"zh-114","rel":"requires","dst":"zh-105","origin":"source","evidence":{"file":"15.04.md","quote":"Axiom 6 tells us that each x has at least one negative, namely $(-1)x$"}}
+{"src":"zh-114","rel":"requires","dst":"zh-101","origin":"model"}
+{"src":"zh-116","rel":"requires","dst":"zh-114","origin":"model"}
+{"src":"zh-116","rel":"requires","dst":"zh-105","origin":"model"}
+{"src":"zh-115","rel":"requires","dst":"zh-107","origin":"source","evidence":{"file":"15.04.md","quote":"let $a$ and $b$ denote arbitrary scalars"}}
+{"src":"zh-115","rel":"requires","dst":"zh-101","origin":"source","evidence":{"file":"15.04.md","quote":"In a given linear space, let $x$ and $y$ denote arbitrary elements"}}
+{"src":"zh-102","rel":"contrasts","dst":"zh-103","origin":"model"}
+{"src":"zh-115","rel":"requires","dst":"zh-104","origin":"model"}

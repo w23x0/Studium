@@ -1,0 +1,26 @@
+{"src":"zh-202","rel":"requires","dst":"zh-201","origin":"source","evidence":{"file":"15.06.md","quote":"Then S is a subspace if and only if S satisfies the closure axioms."}}
+{"src":"zh-204","rel":"requires","dst":"zh-203","origin":"source","evidence":{"file":"15.06.md","quote":"The set of all finite linear combinations of elements of S satisfies the closure axioms and hence is a subspace of V."}}
+{"src":"zh-204","rel":"is-a","dst":"zh-201","origin":"source","evidence":{"file":"15.06.md","quote":"satisfies the closure axioms and hence is a subspace of V."}}
+{"src":"zh-205","rel":"other","dst":"zh-204","origin":"source","evidence":{"file":"15.06.md","quote":"and denote it by $L(S)$"},"rel_note":"zh-205 是 zh-204(由 S 张成的子空间)的记号"}
+{"src":"zh-207","rel":"contrasts","dst":"zh-206","origin":"source","evidence":{"file":"15.07.md","quote":"The set $S$ is called independent if it is not dependent."}}
+{"src":"zh-207","rel":"requires","dst":"zh-206","origin":"source","evidence":{"file":"15.07.md","quote":"The set $S$ is called independent if it is not dependent."}}
+{"src":"zh-208","rel":"requires","dst":"zh-207","origin":"source","evidence":{"file":"15.07.md","quote":"Let S be an independent set consisting of k elements in a linear space V"}}
+{"src":"zh-208","rel":"requires","dst":"zh-204","origin":"source","evidence":{"file":"15.07.md","quote":"let $L(S)$ be the subspace spanned by S"}}
+{"src":"zh-208","rel":"implies","dst":"zh-206","origin":"source","evidence":{"file":"15.07.md","quote":"Then every set of $k + 1$ elements in $L(S)$ is dependent."}}
+{"src":"zh-209","rel":"requires","dst":"zh-207","origin":"source","evidence":{"file":"15.08.md","quote":"is called a finite basis for V if S is independent and spans V."}}
+{"src":"zh-209","rel":"requires","dst":"zh-204","origin":"model"}
+{"src":"zh-210","rel":"requires","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"The space V is called finite dimensional if it has a finite basis"}}
+{"src":"zh-211","rel":"contrasts","dst":"zh-210","origin":"source","evidence":{"file":"15.08.md","quote":"Otherwise V is called infinite dimensional."}}
+{"src":"zh-212","rel":"requires","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"Then every finite basis for $V$ has the same number of elements."}}
+{"src":"zh-212","rel":"requires","dst":"zh-210","origin":"source","evidence":{"file":"15.08.md","quote":"Let $V$ be a finite-dimensional linear space."}}
+{"src":"zh-212","rel":"requires","dst":"zh-208","origin":"source","evidence":{"file":"15.08.md","quote":"Theorem 15.5 tells us that every set of $k + 1$ elements in V is dependent."}}
+{"src":"zh-213","rel":"requires","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"If a linear space V has a basis of n elements, the integer n is called the dimension of V."}}
+{"src":"zh-213","rel":"requires","dst":"zh-212","origin":"model"}
+{"src":"zh-214","rel":"other","dst":"zh-213","origin":"source","evidence":{"file":"15.08.md","quote":"We write $n = \\dim V$ ."},"rel_note":"zh-214 是 zh-213(维数)的记号"}
+{"src":"zh-215","rel":"requires","dst":"zh-213","origin":"source","evidence":{"file":"15.08.md","quote":"Let $V$ be a finite-dimensional linear space with $\\dim V = n$ ."}}
+{"src":"zh-215","rel":"requires","dst":"zh-207","origin":"source","evidence":{"file":"15.08.md","quote":"Any set of independent elements in $V$ is a subset of some basis for $V$ ."}}
+{"src":"zh-215","rel":"implies","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"Any set of n independent elements is a basis for V."}}
+{"src":"zh-216","rel":"requires","dst":"zh-209","origin":"source","evidence":{"file":"15.08.md","quote":"consider a basis whose elements $e_1, \\ldots, e_n$ are taken in a given order."}}
+{"src":"zh-216","rel":"requires","dst":"zh-213","origin":"model"}
+{"src":"zh-217","rel":"requires","dst":"zh-216","origin":"source","evidence":{"file":"15.08.md","quote":"are called the components of x relative to the ordered basis $(e_{1},\\ldots,e_{n})$ ."}}
+{"src":"zh-217","rel":"requires","dst":"zh-213","origin":"model"}
