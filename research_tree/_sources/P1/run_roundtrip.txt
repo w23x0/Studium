@@ -1,0 +1,24 @@
+== P1 roundtrip: N-Quads escape-reduction == 
+interpreter: C:\Users\Wang\Desktop\Studium\tmp\venv_b7a\Scripts\python.exe
+rdflib version: 7.6.0
+total_anchors: 921
+dataset quads (should be 921): 921
+nquads_file: C:/Users/Wang/Desktop/Studium/research_tree/_sources/P1\anchors_921.nq
+nquads_bytes: 120426 lines: 921
+serialize_time_s: 0.0042
+roundtrip_ok: 921 / 921
+roundtrip_pass_rate: 100.0000%
+roundtrip_time_s: 0.0097
+lines_not_mapped_to_anchor: 0
+reduce_illegal_escape_count: 0
+canonical_bytes: 120426
+canonical_serialize_time_s: 0.0026
+canonical_identical_to_regular: True
+canonical_roundtrip_ok: 921 / 921
+canonical_roundtrip_pass_rate: 100.0000%
+anchors_with_backslash: 343
+anchors_with_doublequote: 12
+anchors_with_singlequote: 20
+anchors_with_nonascii: 3
+anchors_with_control_chars: 0
+DONE

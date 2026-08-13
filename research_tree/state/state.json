@@ -1,7 +1,7 @@
 {
   "meta": {
     "schema": 1,
-    "current_round": 2,
+    "current_round": 3,
     "root_topic": "M08/M09 存储选型候选空间缺口补全",
     "as_of": "2026-08-13",
     "decision_points": [
@@ -149,7 +149,7 @@
         "不改变红线；只验证『还原后 grep -F 等价』是否成立",
         "复现命令必须写入报告（含 venv python 路径）"
       ],
-      "status": "running",
+      "status": "archived",
       "priority": 2,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P1_NQuads转义还原grep_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P1_审计.md",
@@ -158,7 +158,8 @@
       "data": "docs/图工程调研/M08实验-第15章分层图谱/data/nodes-*.jsonl",
       "retries": 0,
       "created": "2026-08-13",
-      "updated": "2026-08-13"
+      "updated": "2026-08-13",
+      "verdict": "accepted"
     },
     {
       "id": "P2",
@@ -183,7 +184,7 @@
         "建模从简：只做能回答『可行性与量级』的最简 RDF 映射",
         "复现命令必须写入报告"
       ],
-      "status": "running",
+      "status": "archived",
       "priority": 2,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P2_pySHACL耗时_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P2_审计.md",
@@ -192,7 +193,8 @@
       "data": "docs/图工程调研/M08实验-第15章分层图谱/data/nodes-*.jsonl + edges-*.jsonl",
       "retries": 0,
       "created": "2026-08-13",
-      "updated": "2026-08-13"
+      "updated": "2026-08-13",
+      "verdict": "accepted"
     },
     {
       "id": "P3",
@@ -217,7 +219,7 @@
         "可用 shex.js 或 pyshex，选可用的；装不成就如实记未核",
         "复现命令必须写入报告"
       ],
-      "status": "running",
+      "status": "archived",
       "priority": 2,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P3_ShEx9+other_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P3_审计.md",
@@ -226,7 +228,8 @@
       "data": "构造词表测试（9 固定关系 + other 边界值）",
       "retries": 0,
       "created": "2026-08-13",
-      "updated": "2026-08-13"
+      "updated": "2026-08-13",
+      "verdict": "accepted"
     }
   ],
   "conflicts": [],
@@ -259,9 +262,31 @@
         "P2",
         "P3"
       ],
-      "recovered": [],
-      "verdicts": {},
-      "log": "引擎 v3 第二轮：派发原型实测 P1(N-Quads转义还原grep)/P2(pySHACL耗时)/P3(ShEx 9+other)"
+      "recovered": [
+        "P1",
+        "P2",
+        "P3"
+      ],
+      "verdicts": {
+        "P1": "accepted",
+        "P2": "accepted",
+        "P3": "accepted"
+      },
+      "log": "引擎 v3 第二轮：派发原型实测 P1(N-Quads转义还原grep)/P2(pySHACL耗时)/P3(ShEx 9+other)；回收 3/3 全 accepted（审计员复跑验证），到叶归档"
+    },
+    {
+      "round": 3,
+      "asOf": "2026-08-13",
+      "dispatched": [
+        "SYN1"
+      ],
+      "recovered": [
+        "SYN1"
+      ],
+      "verdicts": {
+        "SYN1": "done"
+      },
+      "log": "R3 收口合成：E-SYN 汇总 6 发现，产出 存储选型决策点_v1.1.md（D2 修正 ShEx ~、P1/P2/P3 实测并入、缺口三分类重排）"
     }
   ]
 }

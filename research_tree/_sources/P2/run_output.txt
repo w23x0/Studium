@@ -1,0 +1,73 @@
+======================================================================
+P2 原型实测 — pyshacl 0.40.1 / rdflib 7.6.0
+data_dir : docs/图工程调研/M08实验-第15章分层图谱/data
+pyshacl  : 0.40.1   rdflib: 7.6.0
+======================================================================
+
+[A] 构建 RDF 图（简化建模）
+  nodes=522 anchors=921 edges=1433 edge_evidence=931 triples=6402
+  build_seconds=0.0525
+  graph.ttl bytes=600457
+
+[A] 全量 validate（计时用无 tracemalloc 的干净通道）
+  conforms        = False
+  validate_sec    = 8.4812   (无 tracemalloc 干净计时)
+  results         = 205
+  by component    = {'SPARQLConstraintComponent': 205}
+  process working set: before=57724 KB after=83404 KB delta=25680 KB peak=83404 KB
+  [tracemalloc pass] peak_python_bytes = 22572155 (21.53 MB), 该次 validate_sec=41.78s(含 tracer 开销)
+  report head:
+    Validation Report
+    Conforms: False
+    Results (205):
+    Constraint Violation in SPARQLConstraintComponent (http://www.w3.org/ns/shacl#SPARQLConstraintComponent):
+    	Severity: sh:Violation
+    	Source Shape: ex:NodeShape
+    	Focus Node: <urn:studium:node:apostol:angle-between-two-elements>
+    	Value Node: <urn:studium:node:apostol:angle-between-two-elements>
+    	Source Constraint: [ rdf:type sh:SPARQLConstraint ; sh:message Literal("边的 evidence quote 未出现在该节点任一 anchor quote 中（锚点引用存在性）") ; sh:select Literal("
+          PREFIX ex: <urn:studium:>
+          SELECT $this WHERE {
+            $this ex:edgeEvidence ?q .
+            FILTER NOT EXISTS { $this ex:anchorQuote ?q }
+          }
+        ") ]
+    	Message: 边的 evidence quote 未出现在该节点任一 anchor quote 中（锚点引用存在性）
+    	Message: 节点带有封闭词表之外的谓词
+    Constraint Violation in SPARQLConstraintComponent (http://www.w3.org/ns/shacl#SPARQLConstraintComponent):
+    	Severity: sh:Violation
+    	Source Shape: ex:NodeShape
+    	Focus Node: <urn:studium:node:apostol:axioms-for-addition>
+    	Value Node: <urn:studium:node:apostol:axioms-for-addition>
+    	Source Constraint: [ rdf:type sh:SPARQLConstraint ; sh:message Literal("边的 evidence quote 未出现在该节点任一 anchor quote 中（锚点引用存在性）") ; sh:select Literal("
+          PREFIX ex: <urn:studium:>
+          SELECT $this WHERE {
+
+[B] 负对照：对 1 个节点注入词表外谓词 ex:bogusField
+  injected node   = urn:studium:node:apostol:angle-between-two-elements
+  conforms        = False
+  results         = 206  (vs clean 205)
+  by component    = {'ClosedConstraintComponent': 1, 'SPARQLConstraintComponent': 205}
+  ClosedConstraintComponent count = 1 (期望 1，证明封闭词表有牙齿)
+
+[C] 量级探针：取前 N 个节点子图，测 validate 耗时随规模变化（单工具自比，非跨工具基准）
+       N  triples validate_sec  results
+     100     1137       1.6987       43
+     200     2487       3.4472       85
+     300     3632       5.2648      112
+     400     4848       7.1674      158
+     522     6402       9.1466      205
+
+[D] pyshacl CLI 退出码语义（合规模 / 不合规模 / 非法 shapes）
+  non-conforming graph: exit=1  elapsed=9.3203s
+  conforming (empty data) graph: exit=0
+  empty-but-valid shapes file: exit=0  (空 shapes 图 -> 无约束全通过)
+  invalid shapes file: exit=1
+  [D] invalid-shapes stderr tail: Traceback (most recent call last):
+  File "<frozen runpy>", line 198, in _run_module_as_main
+  File "<frozen runpy>", line 88, in _run_code
+  File "C:\Users\Wang\Desktop\Studium\tmp\venv_b7a\Lib\site-packages\pyshacl\__main__.py", line 31, in <module>
+    validate_main(prog="python3 -m pyshacl")
+   
+
+[DONE]

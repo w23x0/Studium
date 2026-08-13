@@ -1,0 +1,133 @@
+node v25.6.1
+shex meta: 1.0.0-alpha.29
+validator: 1.0.0-alpha.29
+parser: 1.0.0-alpha.28
+n3: 1.26.0
+9 固定关系: alias-of, applies-to, contrasts, equivalent, generalizes, implies, is-a, part-of, requires
+兜底值: rel:other
+=== Q1: valueSet 值封闭语义 ===
+
+-- T1 [9 固定值 + 末尾 ~] (B5b 原文写法) --
+  valueSet: [rel:alias-of rel:applies-to rel:contrasts rel:equivalent rel:generalizes rel:implies rel:is-a rel:part-of rel:requires ~]
+  解析为: ["http://s.example/rel/alias-of","http://s.example/rel/applies-to","http://s.example/rel/contrasts","http://s.example/rel/equivalent","http://s.example/rel/generalizes","http://s.example/rel/implies","http://s.example/rel/is-a","http://s.example/rel/part-of",{"type":"IriStem","stem":"http://s.example/rel/requires"}]
+    fixed:alias-of           -> ACCEPT
+    fixed:applies-to         -> ACCEPT
+    fixed:contrasts          -> ACCEPT
+    fixed:equivalent         -> ACCEPT
+    fixed:generalizes        -> ACCEPT
+    fixed:implies            -> ACCEPT
+    fixed:is-a               -> ACCEPT
+    fixed:part-of            -> ACCEPT
+    fixed:requires           -> ACCEPT
+    other(数据兜底值)             -> REJECT  [TypeMismatch, MissingProperty]
+    arbitrary(未列IRI)         -> REJECT  [TypeMismatch, MissingProperty]
+    literal('part-of')       -> REJECT  [TypeMismatch, MissingProperty]
+
+-- T2 [9 固定值] (闭合 9) --
+  valueSet: [rel:alias-of rel:applies-to rel:contrasts rel:equivalent rel:generalizes rel:implies rel:is-a rel:part-of rel:requires]
+  解析为: ["http://s.example/rel/alias-of","http://s.example/rel/applies-to","http://s.example/rel/contrasts","http://s.example/rel/equivalent","http://s.example/rel/generalizes","http://s.example/rel/implies","http://s.example/rel/is-a","http://s.example/rel/part-of","http://s.example/rel/requires"]
+    fixed:alias-of           -> ACCEPT
+    fixed:applies-to         -> ACCEPT
+    fixed:contrasts          -> ACCEPT
+    fixed:equivalent         -> ACCEPT
+    fixed:generalizes        -> ACCEPT
+    fixed:implies            -> ACCEPT
+    fixed:is-a               -> ACCEPT
+    fixed:part-of            -> ACCEPT
+    fixed:requires           -> ACCEPT
+    other(数据兜底值)             -> REJECT  [TypeMismatch, MissingProperty]
+    arbitrary(未列IRI)         -> REJECT  [TypeMismatch, MissingProperty]
+    literal('part-of')       -> REJECT  [TypeMismatch, MissingProperty]
+
+-- T3 [9 固定值 + rel:other] (闭合 10, 数据词表) --
+  valueSet: [rel:alias-of rel:applies-to rel:contrasts rel:equivalent rel:generalizes rel:implies rel:is-a rel:part-of rel:requires rel:other]
+  解析为: ["http://s.example/rel/alias-of","http://s.example/rel/applies-to","http://s.example/rel/contrasts","http://s.example/rel/equivalent","http://s.example/rel/generalizes","http://s.example/rel/implies","http://s.example/rel/is-a","http://s.example/rel/part-of","http://s.example/rel/requires","http://s.example/rel/other"]
+    fixed:alias-of           -> ACCEPT
+    fixed:applies-to         -> ACCEPT
+    fixed:contrasts          -> ACCEPT
+    fixed:equivalent         -> ACCEPT
+    fixed:generalizes        -> ACCEPT
+    fixed:implies            -> ACCEPT
+    fixed:is-a               -> ACCEPT
+    fixed:part-of            -> ACCEPT
+    fixed:requires           -> ACCEPT
+    other(数据兜底值)             -> ACCEPT
+    arbitrary(未列IRI)         -> REJECT  [TypeMismatch, MissingProperty]
+    literal('part-of')       -> REJECT  [TypeMismatch, MissingProperty]
+
+-- T4 [ . - 9 固定值 ] (通配排除 9 = 补集) --
+  valueSet: [ . - rel:alias-of - rel:applies-to - rel:contrasts - rel:equivalent - rel:generalizes - rel:implies - rel:is-a - rel:part-of - rel:requires]
+  解析为: [{"type":"IriStemRange","stem":{"type":"Wildcard"},"exclusions":["http://s.example/rel/alias-of","http://s.example/rel/applies-to","http://s.example/rel/contrasts","http://s.example/rel/equivalent","http://s.example/rel/generalizes","http://s.example/rel/implies","http://s.example/rel/is-a","http://s.example/rel/part-of","http://s.example/rel/requires"]}]
+    fixed:alias-of           -> REJECT  [TypeMismatch, MissingProperty]
+    fixed:applies-to         -> REJECT  [TypeMismatch, MissingProperty]
+    fixed:contrasts          -> REJECT  [TypeMismatch, MissingProperty]
+    fixed:equivalent         -> REJECT  [TypeMismatch, MissingProperty]
+    fixed:generalizes        -> REJECT  [TypeMismatch, MissingProperty]
+    fixed:implies            -> REJECT  [TypeMismatch, MissingProperty]
+    fixed:is-a               -> REJECT  [TypeMismatch, MissingProperty]
+    fixed:part-of            -> REJECT  [TypeMismatch, MissingProperty]
+    fixed:requires           -> REJECT  [TypeMismatch, MissingProperty]
+    other(数据兜底值)             -> ACCEPT
+    arbitrary(未列IRI)         -> ACCEPT
+    literal('part-of')       -> REJECT  [TypeMismatch, MissingProperty]
+
+-- 语法探针: 裸通配写法 --
+  [~]                  -> PARSE ERROR
+  [ . ]                -> PARSE ERROR
+  [~ - rel:part-of]    -> PARSE ERROR
+  [ . - rel:part-of]   -> PARSE OK
+
+Q1 汇总: 30 ACCEPT / 18 REJECT (合计 48)
+
+=== Q2: CLOSED / EXTRA 与 valueSet 并置 (谓词封闭) ===
+注: 规范 §5.5.2 EXTRA 只放行『已在表达式中的谓词(matchables)』的未消费三元组,
+    不放行外来谓词; CLOSED 要求 unmatchables 为空。故 EXTRA rel:extra 不豁免外来谓词。
+  CLOSED+闭合10valueSet      | 仅 9 固定谓词 (值在词表内)                         -> ACCEPT (预期 ACCEPT) OK
+  CLOSED+EXTRA(外来谓词)       | 仅 9 固定谓词 (值在词表内)                         -> ACCEPT (预期 ACCEPT) OK
+  CLOSED+'~'valueSet(并置)   | 仅 9 固定谓词 (值在词表内)                         -> ACCEPT (预期 ACCEPT) OK
+  EXTRA在表达式中(正例)           | 仅 9 固定谓词 (值在词表内)                         -> REJECT (预期 REJECT) OK  [MissingProperty]
+  CLOSED+闭合10valueSet      | 9 固定谓词 + 外来谓词 rel:extra                  -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  CLOSED+EXTRA(外来谓词)       | 9 固定谓词 + 外来谓词 rel:extra                  -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  CLOSED+'~'valueSet(并置)   | 9 固定谓词 + 外来谓词 rel:extra                  -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  EXTRA在表达式中(正例)           | 9 固定谓词 + 外来谓词 rel:extra                  -> REJECT (预期 REJECT) OK  [MissingProperty]
+  CLOSED+闭合10valueSet      | 9 固定谓词 + 未声明额外谓词 rel:unlisted            -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  CLOSED+EXTRA(外来谓词)       | 9 固定谓词 + 未声明额外谓词 rel:unlisted            -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  CLOSED+'~'valueSet(并置)   | 9 固定谓词 + 未声明额外谓词 rel:unlisted            -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  EXTRA在表达式中(正例)           | 9 固定谓词 + 未声明额外谓词 rel:unlisted            -> REJECT (预期 REJECT) OK  [ClosedShapeViolation; MissingProperty]
+  CLOSED+闭合10valueSet      | EXTRA正例: rel:extra 在表达式中且超出基数            -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  CLOSED+EXTRA(外来谓词)       | EXTRA正例: rel:extra 在表达式中且超出基数            -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  CLOSED+'~'valueSet(并置)   | EXTRA正例: rel:extra 在表达式中且超出基数            -> REJECT (预期 REJECT) OK  [ClosedShapeViolation]
+  EXTRA在表达式中(正例)           | EXTRA正例: rel:extra 在表达式中且超出基数            -> ACCEPT (预期 ACCEPT) OK
+
+Q2 汇总: 16 次校验, 0 次与预期不符
+总耗时: 119.962ms
+
+======== 通过率: Q1 30 ACCEPT / 18 REJECT; Q2 16/16 与预期一致 ========
+python 3.14.3
+pyshacl 0.40.1 | rdflib 7.6.0
+9 固定关系: alias-of, applies-to, contrasts, equivalent, generalizes, implies, is-a, part-of, requires
+数据节点: n1=part-of(固定) n2=other n3=custom-unknown(任意IRI) n4=字面量 n5=requires(固定)
+
+[S1 sh:in 闭合10(9+other具体值)] 整体 conforms=False 耗时=1.8ms
+    n1: rel=fixed -> ACCEPT
+    n2: rel=other -> ACCEPT
+    n3: rel=custom-unknown -> REJECT
+    n4: rel=literal -> REJECT
+    n5: rel=fixed -> ACCEPT
+[S2 sh:or(sh:in9 + nodeKind IRI)] 整体 conforms=False 耗时=2.2ms
+    n1: rel=fixed -> ACCEPT
+    n2: rel=other -> ACCEPT
+    n3: rel=custom-unknown -> ACCEPT
+    n4: rel=literal -> REJECT
+    n5: rel=fixed -> ACCEPT
+
+[S3 sh:closed 9谓词 + 仅9谓词节点] conforms=True 耗时=0.7ms (预期 True=接受)
+[S3 sh:closed 9谓词 + 额外谓词 rel:extra] conforms=False 耗时=0.8ms (预期 False=拒绝)
+
+==== 语法长度对照 (字符数) ====
+  ShEx valueSet 闭合10 (9+other具体值)              : 132 字符  | [ rel:alias-of rel:applies-to rel:contrasts rel:equivalent rel:generalizes rel:implies rel:is-a rel:part-of rel:requires rel:other ]
+  ShEx valueSet '~' (B5b 原文, 实测不可用)            : 124 字符  | [ rel:alias-of rel:applies-to rel:contrasts rel:equivalent rel:generalizes rel:implies rel:is-a rel:part-of rel:requires ~ ]
+  SHACL sh:in 闭合10 (9+other具体值)                : 138 字符  | sh:in ( rel:alias-of rel:applies-to rel:contrasts rel:equivalent rel:generalizes rel:implies rel:is-a rel:part-of rel:requires rel:other )
+  SHACL sh:or (sh:in9 + nodeKind IRI) (9+任意)   : 165 字符  | sh:or ( [ sh:in ( rel:alias-of rel:applies-to rel:contrasts rel:equivalent rel:generalizes rel:implies rel:is-a rel:part-of rel:requires ) ] [ sh:nodeKind sh:IRI ] )
+
+注: ShEx 的裸通配 [ . ] 无法解析, '9+任意值' 在 ShEx 无 valueSet 写法, 最近似为 nodeKind IRI (1 个 token)。

@@ -1,0 +1,17 @@
+== P1 mechanism probe v2 (NON-dataset, risk section only) ==
+newline            -> row='"line1\\nline2"'                              grepF_hit=False
+cr                 -> row='"a\\rb"'                                      grepF_hit=False
+tab                -> row='"a\tb"'                                       grepF_hit=True
+backspace          -> row='"a\x08b"'                                     grepF_hit=True
+formfeed           -> row='"'                                            grepF_hit=True
+del                -> row='"a\x7fb"'                                     grepF_hit=True
+cjk                -> row='"线性空间"'                                       grepF_hit=True
+fullwidth_space    -> row='"a\u3000b"'                                   grepF_hit=True
+em_dash            -> row='"a—b"'                                        grepF_hit=True
+endash             -> row='"a–b"'                                        grepF_hit=True
+lone_surrogate     -> row='"a?b"'                                        grepF_hit=N/A(original not utf-8-encodable)
+backslash_end      -> row='"trail\\\\"'                                  grepF_hit=True
+literal_u0061      -> row='"\\\\u0061"'                                  grepF_hit=True
+literal_backslash_n -> row='"a\\\\nb"'                                    grepF_hit=False
+saved mechanism_probe.txt
+NOTE: synthetic strings; NOT part of the 921 real-anchor numbers.

@@ -1,0 +1,16 @@
+C:\Users\Wang\Desktop\Studium\research_tree\_sources\P1\p1_verify.py:52: DeprecationWarning: ConjunctiveGraph is deprecated, use Dataset instead.
+  g = ConjunctiveGraph()
+== P1 verify: oracle cross-check + canonicalization no-op check ==
+interpreter: C:\Users\Wang\Desktop\Studium\tmp\venv_b7a\Scripts\python.exe
+total_anchors: 921
+oracle_parsed_literals: 921
+oracle_roundtrip_ok: 921 / 921
+oracle_roundtrip_pass_rate: 100.0000%
+oracle_missing_or_mismatch: 0 []
+plain_serialize_ordered_bytes: 120420
+plain_serialize_shuffled_bytes: 120420
+plain_ordered == plain_shuffled: False
+canonical_ordered == canonical_shuffled: False
+canonical_ordered == plain_ordered: True
+canonical_shuffled == plain_shuffled: True
+DONE

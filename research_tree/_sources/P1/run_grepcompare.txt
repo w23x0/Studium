@@ -1,0 +1,15 @@
+== P1 grep -F equivalence: raw JSONL vs N-Quads path ==
+interpreter: C:\Users\Wang\Desktop\Studium\tmp\venv_b7a\Scripts\python.exe
+total_anchors: 921
+raw_jsonl_bytes: 508384
+nquads_bytes: 121348
+both_hit: 571
+lost_on_nquads_path (A hit, B miss): 0
+gained_on_nquads_path (A miss, B hit): 0
+neither: 350
+--- lost_on_nquads reasons ---
+--- lost anchors detail (first 40) ---
+--- gained on nquads (A miss, B hit) detail ---
+anchors_appearing_more_than_once_in_nquads: 314
+anchors_appearing_more_than_once_in_jsonl: 319
+DONE

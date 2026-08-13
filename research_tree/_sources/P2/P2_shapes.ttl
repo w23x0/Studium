@@ -1,0 +1,73 @@
+# P2 原型 — SHACL shapes（封闭词表 + 锚点引用存在性 + 边端点存在性）
+# 建模对齐 P2_common.py：节点=subject、锚点quote=字面量、关系边=predicate。
+@prefix sh:  <http://www.w3.org/ns/shacl#> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix ex:  <urn:studium:> .
+@prefix rel: <urn:studium:rel:> .
+
+ex:NodeShape
+  a sh:NodeShape ;
+  sh:targetClass ex:Node ;
+  # ---- 封闭词表（谓词封闭）----
+  sh:closed true ;
+  sh:ignoredProperties ( rdf:type ) ;
+  sh:message "节点带有封闭词表之外的谓词" ;
+  # ---- 值封闭：nodeType 必须是 4 类之一且恰好 1 个 ----
+  sh:property [
+    sh:path ex:nodeType ;
+    sh:minCount 1 ;
+    sh:maxCount 1 ;
+    sh:datatype xsd:string ;
+    sh:in ( "concept" "theorem" "method" "notation" ) ;
+  ] ;
+  # ---- 节点元字段：至多 1 个，字符串字面量 ----
+  sh:property [ sh:path ex:nameEn ;     sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path ex:nameZh ;     sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path ex:statement ;  sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path ex:origin ;     sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path ex:originNote ; sh:maxCount 1 ; sh:datatype xsd:string ] ;
+  sh:property [ sh:path ex:section ;    sh:datatype xsd:string ] ;
+  # ---- 锚点与边 evidence：字面量 ----
+  sh:property [ sh:path ex:anchorQuote ;   sh:nodeKind sh:Literal ] ;
+  sh:property [ sh:path ex:edgeEvidence ;  sh:nodeKind sh:Literal ] ;
+  # ---- 关系谓词：10 个合法 rel，值必须是 IRI（dst 节点）----
+  sh:property [ sh:path rel:is-a ;        sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:part-of ;     sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:requires ;    sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:implies ;     sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:equivalent ;  sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:contrasts ;   sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:applies-to ;  sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:generalizes ; sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:alias-of ;    sh:nodeKind sh:IRI ] ;
+  sh:property [ sh:path rel:other ;       sh:nodeKind sh:IRI ] ;
+  # ---- 锚点引用存在性：每条边 evidence quote 必须出现在本节点 anchorQuote 中 ----
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "边的 evidence quote 未出现在该节点任一 anchor quote 中（锚点引用存在性）" ;
+    sh:select """
+      PREFIX ex: <urn:studium:>
+      SELECT $this WHERE {
+        $this ex:edgeEvidence ?q .
+        FILTER NOT EXISTS { $this ex:anchorQuote ?q }
+      }
+    """ ;
+  ] ;
+  # ---- 边端点存在性：所有关系谓词的目标必须是已知节点（a ex:Node）----
+  sh:sparql [
+    a sh:SPARQLConstraint ;
+    sh:message "关系谓词的目标不是已知节点（边端点存在性）" ;
+    sh:select """
+      PREFIX ex:  <urn:studium:>
+      PREFIX rel: <urn:studium:rel:>
+      SELECT $this WHERE {
+        $this ?rel ?dst .
+        FILTER (?rel IN (rel:is-a, rel:part-of, rel:requires,
+                         rel:implies, rel:equivalent, rel:contrasts,
+                         rel:applies-to, rel:generalizes, rel:alias-of,
+                         rel:other))
+        FILTER NOT EXISTS { ?dst a ex:Node }
+      }
+    """ ;
+  ] .

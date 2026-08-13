@@ -1,0 +1,4 @@
+rows: 921
+escape kinds found in real 921 N-Quads literals:
+  double_backslash (orig backslash)      971
+  ECHAR_"                                38
