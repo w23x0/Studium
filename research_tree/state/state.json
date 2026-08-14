@@ -1,9 +1,10 @@
 {
   "meta": {
     "schema": 1,
-    "current_round": 7,
-    "root_topic": "Studium 理科知识载体选型",
-    "as_of": "2026-08-13",
+    "current_round": 13,
+    "root_topic": "Studium 缺口闭环（G 系列）",
+    "as_of": "2026-08-14",
+    "prior_root": "Studium 理科知识载体选型",
     "decision_points": [
       "六族储存结构（形式化库/MKM/图谱/教学/认知/GraphRAG）哪些进入 Studium 知识组织、怎么取舍",
       "五家族表示形式（类型论/因果/概率程序/程序合成/向量）系统化与 M08 结合",
@@ -373,6 +374,35 @@
       "verdict": "accepted"
     },
     {
+      "id": "L2",
+      "parent": null,
+      "topic": "版本层选型（FHIR _history 式 vs 时态属性图双区间二选一）",
+      "questions": [
+        "FHIR _history 式（B6d）与时态属性图双区间（B2c）对 M09 的技术形态与工程成本？",
+        "叠加 revlog 分离（B6b）与 L3 哈希链（B6e）后哪条路线与 L1 RDF + 红线兼容且成本更低？",
+        "需产品先裁决哪些设计待定项？条件性终裁是什么？",
+        "建议的最终工程形态（含 M1–M4 迁移路径复用）？"
+      ],
+      "candidates": [],
+      "keywords": [],
+      "bounds": [
+        "不做性能基准",
+        "不代产品裁决设计待定项",
+        "综合任务：不新增来源、不升级等级"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/L2_版本层选型_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/L2_审计.md",
+      "sources_dir": "",
+      "env": "",
+      "data": "",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
       "id": "V1",
       "parent": null,
       "topic": "形式化数学库与依赖图（储存结构 A 族：mathlib/MML/Metamath + premise selection）",
@@ -496,6 +526,380 @@
       "retries": 0,
       "created": "2026-08-13",
       "updated": "2026-08-13",
+      "verdict": "accepted"
+    },
+    {
+      "id": "V3",
+      "parent": null,
+      "topic": "知识图谱本体与词汇（储存结构 C 族：MaRDI/OntoMath/QUDT/DLMF）",
+      "questions": [
+        "MaRDI/OntoMath/QUDT/DLMF 等数学物理本体对对象/公式/量纲建模的粒度与词汇，能否作为 M08 概念/关系词表的参考（结合 M08「9+other 封闭词表」红线）？",
+        "本体层（OWL/RDF）与已定 L1 RDF 语义层（v1.3）的整合——本体可直接承载还是需降级映射？",
+        "本体推理在「开放字段稳定查询审查 + 机械信号只定向不结案」红线中的定位（推理是结案还是定向）？"
+      ],
+      "candidates": [],
+      "keywords": [
+        "MaRDI OntoMath QUDT DLMF 数学本体 词汇",
+        "本体 OWL RDF 词表 9+other M08 推理 定向"
+      ],
+      "bounds": [
+        "不评估本体工具栈（Protégé 等）",
+        "词表若进入需与 M08 9+other 封闭红线协调，不推翻",
+        "不改变红线；推理只定向不结案"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/V3_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/V3_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/V3",
+      "env": "",
+      "data": "",
+      "retries": 1,
+      "created": "2026-08-13",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "V5",
+      "parent": null,
+      "topic": "认知记忆与遗忘曲线（储存结构 E 族：语义网络/间隔重复/FSRS）",
+      "questions": [
+        "语义网络模型（个体语义网络测量）对 M09 个人知识结构的适配（结合 L2 FHIR 式版本化）？",
+        "遗忘曲线/间隔重复（FSRS/DAS3H/最优复习调度）对 M05 复习计划、M09 记忆建模的适配？",
+        "认知侧结构（联想存储容量、Sparsey 稀疏编码）对 M09「个人知识形成」的启示 vs 与「证据边不数值化」红线的冲突？"
+      ],
+      "candidates": [],
+      "keywords": [
+        "语义网络 遗忘曲线 间隔重复 FSRS 记忆 建模",
+        "semantic memory forgetting curve spaced repetition personal model"
+      ],
+      "bounds": [
+        "不评估具体实现",
+        "与 M09「证据边不数值化、机械信号只定向」红线协调，不推翻",
+        "不改变红线"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/V5_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/V5_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/V5",
+      "env": "",
+      "data": "",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "V7",
+      "parent": null,
+      "topic": "表示形式五家族系统化（《几个方向》：类型论/因果/概率程序/程序合成/向量）",
+      "questions": [
+        "《几个方向》五家族从谱系清单推进到证据级：各自对「理科知识表达」的实质能力与局限？",
+        "06-M08 §8 取用结论（借证明作为对象/向量只定向/DreamCoder 循环形状）逐一验证：哪些成立、哪些需修正？",
+        "五家族与已定 L0 JSONL/L1 RDF/L2 FHIR 式（v1.3）的结合：哪些表达形式能承载在 RDF 语义层上，哪些冲突？"
+      ],
+      "candidates": [],
+      "keywords": [
+        "类型论 因果模型 概率程序 程序合成 向量嵌入 知识表达",
+        "type theory causal probability program synthesis embedding knowledge representation"
+      ],
+      "bounds": [
+        "不重复 06-M08 §8 结论（作为基线深化验证）",
+        "不做实现选型",
+        "不改变红线"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/V7_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/V7_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/V7",
+      "env": "",
+      "data": "",
+      "retries": 0,
+      "created": "2026-08-13",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "G1",
+      "parent": "SYN3",
+      "topic": "OntoMath/Math-KG → M08 9+other 对照表实测",
+      "questions": [
+        "OntoMathPRO 与 Math-KG 关系词汇能否逐条映射到 M08 封闭 9+other？",
+        "无法映射的域关系如何处理（other+rel_note）？",
+        "能否在现有图数据上做 spot-check？"
+      ],
+      "candidates": [
+        "OntoMath KESW2014 PDF",
+        "OntoMathPRO 2.0 arXiv",
+        "Math-KG 2205.03772",
+        "M08 edges-audited 样本"
+      ],
+      "keywords": [
+        "OntoMath Math-KG M08 9+other mapping",
+        "rel_note externalRel 封闭词表"
+      ],
+      "bounds": [
+        "不扩展边词表",
+        "不 OWL-import",
+        "对照表为 C 级草案"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/G1_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/G1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/G1",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "G2",
+      "parent": "SYN3",
+      "topic": "M08 节点 schema 形态/语义字段分界草案",
+      "questions": [
+        "哪些字段进 L1 RDF 形态层？",
+        "哪些语义留外部？",
+        "与 L2 versionId 触发如何对齐？"
+      ],
+      "candidates": [
+        "V7 发现 Q3",
+        "06-M08 §3/§8",
+        "存储 v1.3 L2"
+      ],
+      "keywords": [
+        "M08 schema morphology semantics RDF",
+        "versionId FHIR trigger fields"
+      ],
+      "bounds": [
+        "schema 草案 C 非定案",
+        "不改 9+other"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/G2_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/G2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/G2",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "G3",
+      "parent": "SYN3",
+      "topic": "M09 事件日志 ↔ L2 FHIR 版本边界契约",
+      "questions": [
+        "M09 事件如何映射 verificationStatus/_history？",
+        "哪些事件必须新 versionId？",
+        "与 L3 哈希链如何叠加？"
+      ],
+      "candidates": [
+        "B6d FHIR 发现",
+        "L2 版本层选型",
+        "V5 认知记忆发现"
+      ],
+      "keywords": [
+        "M09 FHIR verificationStatus 复检 遗忘",
+        "version boundary event log"
+      ],
+      "bounds": [
+        "不代产品裁决 L2 条件项",
+        "契约草案 C"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/G3_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/G3_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/G3",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "G4",
+      "parent": "SYN3",
+      "topic": "QUDT 量纲字段试点 + DLMF 补核",
+      "questions": [
+        "notation 节点挂哪些 QUDT IRI？",
+        "DLMF 能否补抓？",
+        "与 SHACL 只读审计如何衔接？"
+      ],
+      "candidates": [
+        "qudt.org",
+        "dlmf.nist.gov",
+        "V3 QUDT 发现"
+      ],
+      "keywords": [
+        "QUDT quantitykind unit notation node",
+        "DLMF externalRef SHACL pilot"
+      ],
+      "bounds": [
+        "不全库写入",
+        "DLMF 未核如实标注"
+      ],
+      "status": "archived",
+      "priority": 2,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/G4_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/G4_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/G4",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "P5",
+      "parent": "SYN4",
+      "topic": "FSRS 间隔反解 M05 定向原型",
+      "questions": [
+        "FSRS I(r,S) 反解能否机械复现？",
+        "能否输出 revlog 级 suggested_next_I 而不进 M09？"
+      ],
+      "candidates": [
+        "awesome-fsrs wiki The-Algorithm",
+        "V5 fsrs_algorithm_wiki 快照"
+      ],
+      "keywords": [
+        "FSRS interval inverse retrievability stability",
+        "M05 directional signal prototype"
+      ],
+      "bounds": [
+        "不做个体参数拟合",
+        "不进 M09 数值"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P5_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P5_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P5",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "P6",
+      "parent": "SYN4",
+      "topic": "向量嵌入假阳性实测（522 节点）+ rel 频率统计",
+      "questions": [
+        "MiniLM 余弦在 M08 全库的 contrasts FP 率？",
+        "是否解锁 06-M08 §9 向量候选？",
+        "other rel 占比？"
+      ],
+      "candidates": [
+        "sentence-transformers all-MiniLM-L6-v2",
+        "M08 第15章 522/1433 数据"
+      ],
+      "keywords": [
+        "vector embedding false positive M08",
+        "contrasts cosine similarity threshold"
+      ],
+      "bounds": [
+        "不解锁=维持只定向",
+        "SAE 不在本叶"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P6_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P6_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P6",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "P7",
+      "parent": "SYN5",
+      "topic": "G2/G4 SHACL shapes 原型",
+      "questions": ["other 边是否全有 rel_note？", "P7 shapes 能否在 522 节点跑？"],
+      "candidates": ["P2 pySHACL", "G2 schema", "G4 QUDT shape"],
+      "keywords": ["SHACL shapes M08 other rel_note"],
+      "bounds": ["只读审计层"],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P7_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P7_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P7",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "P8",
+      "parent": "SYN5",
+      "topic": "Mock M09 revlog + FSRS shadow 管道",
+      "questions": ["P5 能否接 M09 事件时间戳？", "G3 版本事件与 FSRS 如何并行？"],
+      "candidates": ["P5 FSRS", "G3 事件映射"],
+      "keywords": ["M09 revlog FSRS shadow M05"],
+      "bounds": ["mock 级", "不进 M09 数值"],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P8_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P8_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P8",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "G6",
+      "parent": "SYN5",
+      "topic": "DLMF 补核（about 页）",
+      "questions": ["DLMF about 能否补抓？", "正文 1.1 是否仍 timeout？"],
+      "candidates": ["dlmf.nist.gov/about", "dlmf.nist.gov/1.1"],
+      "keywords": ["DLMF NIST externalRef"],
+      "bounds": ["正文未核如实标注"],
+      "status": "archived",
+      "priority": 2,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/G6_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/G6_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/G6",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "G7",
+      "parent": "SYN5",
+      "topic": "因果边锚点义务试点（规则草案）",
+      "questions": ["因果边锚点是否≥普通边？", "当前图有无因果边？"],
+      "candidates": ["V7 Pearl", "06-M08 锚点红线"],
+      "keywords": ["causal edge anchor do-calculus M08"],
+      "bounds": ["规则 C 非定案"],
+      "status": "archived",
+      "priority": 2,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/G7_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/G7_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/G7",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted"
+    },
+    {
+      "id": "P9",
+      "parent": "SYN6",
+      "topic": "SAE 假阳性 proxy 实测",
+      "questions": ["SAE 稀疏码 contrasts FP？", "是否解锁§9？"],
+      "candidates": ["2605.29358", "MiniLM+SAE proxy"],
+      "keywords": ["SAE false positive sparse autoencoder M08"],
+      "bounds": ["proxy 非 LM 残差 SAE", "诚实边界"],
+      "status": "archived",
+      "priority": 1,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P9_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P9_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P9",
+      "retries": 0,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
       "verdict": "accepted"
     }
   ],
@@ -624,6 +1028,102 @@
         "V6": "accepted"
       },
       "log": "R7 知识载体主线第一轮：派发 V1(形式化库依赖图)/V2(MKM理论图)/V4(教学结构KST)/V6(GraphRAG图检索)；V2/V6 accepted；V1(伪句冒充原文)/V4(BKT标级错误) rejected 回炉——引擎首个回炉事件；V1/V4 回炉整改后均复核通过——引擎首个 rejected->rework->accepted 闭环"
+    },
+    {
+      "round": 8,
+      "asOf": "2026-08-14",
+      "dispatched": [
+        "V3",
+        "V5",
+        "V7"
+      ],
+      "recovered": [
+        "V3",
+        "V5",
+        "V7"
+      ],
+      "verdicts": {
+        "V3": "accepted",
+        "V5": "accepted",
+        "V7": "accepted"
+      },
+      "log": "R8 知识载体第二轮：派发 V3/V5/V7；首轮 429 部分失败（V3 无产出、V5/V7 审计失败）；2026-08-14 Cursor 续跑恢复：V3 调研+审计 PASS、V5/V7 补审计 PASS；三路 archived"
+    },
+    {
+      "round": 9,
+      "asOf": "2026-08-14",
+      "dispatched": [
+        "SYN3"
+      ],
+      "recovered": [
+        "SYN3"
+      ],
+      "verdicts": {
+        "SYN3": "done"
+      },
+      "log": "R9 收口合成：E-SYN 汇总 V1-V7 → 知识载体选型决策点_v1.0.md；知识载体主线到叶归档"
+    },
+    {
+      "round": 10,
+      "asOf": "2026-08-14",
+      "dispatched": [
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "SYN4"
+      ],
+      "recovered": [
+        "G1",
+        "G2",
+        "G3",
+        "G4",
+        "SYN4"
+      ],
+      "verdicts": {
+        "G1": "accepted",
+        "G2": "accepted",
+        "G3": "accepted",
+        "G4": "accepted",
+        "SYN4": "done"
+      },
+      "log": "R10 缺口闭环：派发 G1(对照表)/G2(schema)/G3(M09-FHIR)/G4(QUDT试点)；本对话直接调研+审计 4/4 PASS；SYN4 → 缺口闭环决策点_v1.0.md；G 系列到叶归档"
+    },
+    {
+      "round": 11,
+      "asOf": "2026-08-14",
+      "dispatched": [
+        "P5",
+        "P6",
+        "SYN5"
+      ],
+      "recovered": [
+        "P5",
+        "P6",
+        "SYN5"
+      ],
+      "verdicts": {
+        "P5": "accepted",
+        "P6": "accepted",
+        "SYN5": "done"
+      },
+      "log": "R11 原型实测：P5(FSRS间隔反解) A实测 roundtrip=0；P6(MiniLM 522节点) contrasts FP 7.2%@0.75、不解锁§9、other=2.79%；SYN5 → 缺口闭环决策点_v1.1.md"
+    },
+    {
+      "round": 12,
+      "asOf": "2026-08-14",
+      "dispatched": ["P7", "P8", "G6", "G7", "SYN6"],
+      "recovered": ["P7", "P8", "G6", "G7", "SYN6"],
+      "verdicts": {"P7": "accepted", "P8": "accepted", "G6": "accepted", "G7": "accepted", "SYN6": "done"},
+      "log": "R12：P7(SHACL other 40/40+shapes 2.2s)/P8(M09 mock+FSRS shadow)/G6(DLMF about A)/G7(因果锚点规则)；SYN6→v1.2"
+    },
+    {
+      "round": 13,
+      "asOf": "2026-08-14",
+      "dispatched": ["P9", "SYN7"],
+      "recovered": ["P9", "SYN7"],
+      "verdicts": {"P9": "accepted", "SYN7": "done"},
+      "log": "R13：P9(SAE proxy FP 98.4%@0.75 不解锁§9)；SYN7→v1.3；I1 模块组合入口已撤回（不修改 docs/模块需求设计）"
     }
   ]
 }
