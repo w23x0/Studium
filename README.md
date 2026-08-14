@@ -14,10 +14,11 @@
 | 执行图 / 上下文工程（暂缓，另主题） | [`docs/图工程调研/README.md`](docs/图工程调研/README.md) |
 | 自学方法调研 | [`docs/自学方法调研/README.md`](docs/自学方法调研/README.md) |
 | 自动化调研引擎（现行 v3） | [`docs/深度调研树/_engine/ENGINE.md`](docs/深度调研树/_engine/ENGINE.md) · 运行时状态在 [`research_tree/`](research_tree/) |
+| DSH（deepseek harness / agent 开发外部参考） | [`docs/DSH/README.md`](docs/DSH/README.md) |
 
 ## 目录速览
 
-- `docs/` — 产品设计、知识组织调研（载体/存储选型，见其 README）、执行图背景、自学方法、调研引擎说明
+- `docs/` — 产品设计、知识组织调研（载体/存储选型，见其 README）、执行图背景、自学方法、调研引擎说明、DSH 外部参考
 - `research_tree/` — 现行调研流水线产出（任务卡、发现、审计、合成、原文快照）
 
 ## 当前阶段（摘要）
