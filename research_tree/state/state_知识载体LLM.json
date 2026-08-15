@@ -1,9 +1,9 @@
 {
   "meta": {
     "schema": 1,
-    "current_round": 3,
+    "current_round": 4,
     "root_topic": "Studium 知识载体选型（LLM/agent-harness 时代主线）",
-    "as_of": "2026-08-14",
+    "as_of": "2026-08-15",
     "prior_root": "Studium 理科知识载体选型（前 LLM 时代，V/S/P/M/L/G 已到叶）",
     "parallel_session": "与另一编排器会话并行：该会话跑 D1 harness / D2 检索 / D3 上下文 / D4 记忆（卡片 H1-*/H2-*/H3-*/H4-*，写 state.json）。本文件独立、零抢写、用 K 前缀避冲突。",
     "decision_points": [
@@ -172,6 +172,23 @@
       "model": "Fable 5",
       "batch": "K-batch-v2",
       "state_note": "【纠偏 2026-08-14】findings 已落盘但 audit 未落盘时，某 workflow 子代理越权把本卡改为 completed 并写 verdict_note。按证据契约该自评不具审计效力（schema 也不一致：verdict_note≠verdict+audit_summary），已还原为 pending 等待正式审计。verdict 只以 audit/K4_审计.md 落盘判定为准。【已结案】正式审计 PASS，verdict=accepted，以此为准；子代理自评中的核心内容（触发清单三条/共轭判别器）经审计独立核验后与终判一致，可作交叉佐证。"
+    },
+    {
+      "id": "P10",
+      "parent": "R-LLM/知识载体·检索（K4 风险1 验证·原型实测）",
+      "topic": "共轭判别器实测——K4 §5 风险1「哪些 Studium 查询实际涉险+简单检索能否满意」在 Apostol M08 自有语料的验证",
+      "status": "archived",
+      "priority": 1,
+      "verdict": "accepted",
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P10_共轭判别器实测_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/P10_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/P10",
+      "created": "2026-08-15",
+      "updated": "2026-08-15",
+      "completed": "2026-08-15",
+      "model": "Fable 5",
+      "batch": "R17-原型实测",
+      "audit_summary": "PASS。复跑可复现（81节点/186边/12万字符，12题 satisfied6/confound3/at-risk3）；关键判定独立核验通过。结论：共轭判别器涉险不能按维度一刀切——规则维 ≥0 vs >0 字符串层可 grep 区分（R1/R2 satisfied）；数值维 3/4 涉险但 N2 Warning 独特串满意；真正涉险点两类=共享串 confound（inconclusive 同命中 root/ratio）+ 跨实体关系 at-risk（身份类比/版本对应/反例连接）。M1 收紧 K4(a)「多跳不必然涉险」。可操作代理=决定性串 grep 唯一性检查。"
     }
   ],
   "conflicts": [],
@@ -218,6 +235,20 @@
       "verdicts": {},
       "model": "Fable 5",
       "log": "K 线终稿合成：synthesis/知识载体选型决策点_LLM时代v1_K线终稿.md。知识载体主线四决策点全覆盖（D1 组织存储/D2 数学科学表示/D3 可信引用/D4 检索），补足并发稿 §D4 明示缺口（D2 数学/科学表示）。并发会话已占用同名路径 知识载体选型决策点_LLM时代v1.md（R14+R15 H 线），本稿写独立路径，两稿互补。final_deliverable 指针已更新。"
+    },
+    {
+      "round": 17,
+      "label": "P10-共轭判别器实测",
+      "dispatched": "2026-08-15",
+      "recovered": "2026-08-15",
+      "tasks_dispatched": [
+        "P10"
+      ],
+      "verdicts": {
+        "P10": "accepted"
+      },
+      "model": "Fable 5",
+      "log": "P10 共轭判别器实测（K4 §5 风险1 自有语料验证）：Apostol M08 81节点/186边/12万字符 L0 上跑 12 题查询集（6维）。判定 satisfied6/confound3/at-risk3。核心发现：涉险不按维度一刀切，决定性串独特可 grep 即满意；两型真涉险=共享串+跨边关系。M1 收紧 K4(a)。"
     }
   ]
 }

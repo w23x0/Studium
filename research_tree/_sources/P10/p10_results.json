@@ -1,0 +1,441 @@
+{
+ "rows": [
+  {
+   "id": "S1-simple",
+   "dim": "simple",
+   "risk": false,
+   "gt": [
+    "infinite-sequence"
+   ],
+   "gt_hit": [
+    "infinite-sequence"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "infinite-sequence"
+   ],
+   "hit_edges": [],
+   "confound_hits": [],
+   "src_count": 2,
+   "verdict": "satisfied: 简单检索唯一命中正确事实"
+  },
+  {
+   "id": "N1-numeric-boundary",
+   "dim": "numeric",
+   "risk": true,
+   "gt": [
+    "theorem-10-5-geometric-series",
+    "geometric-series"
+   ],
+   "gt_hit": [
+    "theorem-10-5-geometric-series",
+    "geometric-series"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "basic-sequence-limit-formulas",
+    "geometric-exponential-partial-sum-bound",
+    "geometric-series",
+    "geometric-series-manipulation",
+    "gregory-series",
+    "power-series",
+    "ratio-test",
+    "riemann-zeta-function",
+    "root-test",
+    "theorem-10-5-geometric-series"
+   ],
+   "hit_edges": [
+    "e-G1-035",
+    "e-G1-036",
+    "e-G1-037",
+    "e-G1-038",
+    "e-G1-043",
+    "e-G2-024",
+    "e-G2-025",
+    "e-G2-032",
+    "e-G3-031"
+   ],
+   "confound_hits": [
+    "basic-sequence-limit-formulas",
+    "geometric-exponential-partial-sum-bound",
+    "geometric-series-manipulation",
+    "gregory-series",
+    "power-series",
+    "ratio-test",
+    "riemann-zeta-function",
+    "root-test"
+   ],
+   "src_count": 28,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "N2-ratio-warning",
+   "dim": "numeric",
+   "risk": true,
+   "gt": [
+    "ratio-test"
+   ],
+   "gt_hit": [
+    "ratio-test"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "ratio-test"
+   ],
+   "hit_edges": [
+    "e-G2-047"
+   ],
+   "confound_hits": [],
+   "src_count": 2,
+   "verdict": "satisfied: 简单检索唯一命中正确事实"
+  },
+  {
+   "id": "N3-ratio-L1",
+   "dim": "numeric",
+   "risk": true,
+   "gt": [
+    "ratio-test"
+   ],
+   "gt_hit": [
+    "ratio-test"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "ratio-test",
+    "root-test"
+   ],
+   "hit_edges": [
+    "e-G2-047"
+   ],
+   "confound_hits": [
+    "root-test"
+   ],
+   "src_count": 3,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "R1-comparison-nonneg",
+   "dim": "rule",
+   "risk": true,
+   "gt": [
+    "comparison-test",
+    "limit-comparison-test"
+   ],
+   "gt_hit": [
+    "comparison-test"
+   ],
+   "missing_gt": [
+    "limit-comparison-test"
+   ],
+   "hit_nodes": [
+    "bounded-partial-sums-criterion",
+    "comparison-test",
+    "series-of-nonnegative-terms"
+   ],
+   "hit_edges": [],
+   "confound_hits": [
+    "bounded-partial-sums-criterion",
+    "series-of-nonnegative-terms"
+   ],
+   "src_count": 0,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "R2-limit-comparison-strict",
+   "dim": "rule",
+   "risk": true,
+   "gt": [
+    "limit-comparison-test"
+   ],
+   "gt_hit": [
+    "limit-comparison-test"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "alternating-series",
+    "limit-comparison-test"
+   ],
+   "hit_edges": [
+    "e-G2-041"
+   ],
+   "confound_hits": [
+    "alternating-series"
+   ],
+   "src_count": 0,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "I1-series-vs-improper",
+   "dim": "identity",
+   "risk": true,
+   "gt": [
+    "comparison-test-for-improper-integrals"
+   ],
+   "gt_hit": [
+    "comparison-test-for-improper-integrals"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "asymptotic-comparison-theorem",
+    "boundedness-criterion-for-improper-integrals",
+    "comparison-test",
+    "comparison-test-for-improper-integrals",
+    "dominated-integral",
+    "dominates",
+    "limit-comparison-test",
+    "limit-comparison-test-for-improper-integrals",
+    "ratio-test",
+    "root-test"
+   ],
+   "hit_edges": [
+    "e-G2-010",
+    "e-G2-011",
+    "e-G2-013",
+    "e-G2-014",
+    "e-G2-015",
+    "e-G2-019",
+    "e-G2-020",
+    "e-G2-024",
+    "e-G2-034",
+    "e-G2-035",
+    "e-G2-036",
+    "e-G2-037",
+    "e-G2-048",
+    "e-G2-049",
+    "e-G2-050",
+    "e-G2-051",
+    "e-G4-014",
+    "e-G4-015",
+    "e-G4-020"
+   ],
+   "confound_hits": [
+    "asymptotic-comparison-theorem",
+    "boundedness-criterion-for-improper-integrals",
+    "comparison-test",
+    "dominated-integral",
+    "dominates",
+    "limit-comparison-test",
+    "limit-comparison-test-for-improper-integrals",
+    "ratio-test",
+    "root-test"
+   ],
+   "src_count": 18,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "I2-nth-term-alias",
+   "dim": "identity",
+   "risk": false,
+   "gt": [
+    "nth-term-test"
+   ],
+   "gt_hit": [
+    "nth-term-test"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "convergence-test",
+    "geometric-series",
+    "infinite-sequence",
+    "nth-term-test",
+    "sequence-notation"
+   ],
+   "hit_edges": [
+    "e-G1-005",
+    "e-G2-003"
+   ],
+   "confound_hits": [
+    "convergence-test",
+    "geometric-series",
+    "infinite-sequence",
+    "sequence-notation"
+   ],
+   "src_count": 10,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "V1-improper-analog-version",
+   "dim": "version",
+   "risk": true,
+   "gt": [
+    "boundedness-criterion-for-improper-integrals",
+    "comparison-test-for-improper-integrals",
+    "limit-comparison-test-for-improper-integrals"
+   ],
+   "gt_hit": [
+    "boundedness-criterion-for-improper-integrals"
+   ],
+   "missing_gt": [
+    "comparison-test-for-improper-integrals",
+    "limit-comparison-test-for-improper-integrals"
+   ],
+   "hit_nodes": [
+    "boundedness-criterion-for-improper-integrals",
+    "improper-integral-second-kind",
+    "theorem-10-4-telescoping"
+   ],
+   "hit_edges": [
+    "e-G4-015",
+    "e-G4-018",
+    "e-G4-019",
+    "e-G4-020",
+    "e-G4-031",
+    "e-G4-032",
+    "e-G4-033"
+   ],
+   "confound_hits": [
+    "improper-integral-second-kind",
+    "theorem-10-4-telescoping"
+   ],
+   "src_count": 7,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "M1-ratio-derives",
+   "dim": "multi-hop",
+   "risk": true,
+   "gt": [
+    "ratio-test",
+    "root-test",
+    "comparison-test"
+   ],
+   "gt_hit": [
+    "ratio-test",
+    "root-test",
+    "comparison-test"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "asymptotic-comparison-theorem",
+    "boundedness-criterion-for-improper-integrals",
+    "comparison-test",
+    "comparison-test-for-improper-integrals",
+    "dominated-integral",
+    "dominates",
+    "geometric-exponential-partial-sum-bound",
+    "geometric-series",
+    "geometric-series-manipulation",
+    "integral-test",
+    "limit-comparison-test",
+    "limit-comparison-test-for-improper-integrals",
+    "power-series",
+    "ratio-test",
+    "riemann-zeta-function",
+    "root-test",
+    "theorem-10-5-geometric-series"
+   ],
+   "hit_edges": [
+    "e-G1-035",
+    "e-G1-036",
+    "e-G1-043",
+    "e-G2-010",
+    "e-G2-011",
+    "e-G2-015",
+    "e-G2-019",
+    "e-G2-020",
+    "e-G2-024",
+    "e-G2-025",
+    "e-G2-026",
+    "e-G2-032",
+    "e-G2-034",
+    "e-G2-035",
+    "e-G2-036",
+    "e-G2-037",
+    "e-G2-038",
+    "e-G2-039",
+    "e-G2-048",
+    "e-G2-049",
+    "e-G2-050",
+    "e-G2-051",
+    "e-G3-031",
+    "e-G4-014",
+    "e-G4-015",
+    "e-G4-020"
+   ],
+   "confound_hits": [
+    "asymptotic-comparison-theorem",
+    "boundedness-criterion-for-improper-integrals",
+    "comparison-test-for-improper-integrals",
+    "dominated-integral",
+    "dominates",
+    "geometric-exponential-partial-sum-bound",
+    "geometric-series",
+    "geometric-series-manipulation",
+    "integral-test",
+    "limit-comparison-test",
+    "limit-comparison-test-for-improper-integrals",
+    "power-series",
+    "riemann-zeta-function",
+    "theorem-10-5-geometric-series"
+   ],
+   "src_count": 31,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "C1-harmonic-nth-term",
+   "dim": "rule",
+   "risk": true,
+   "gt": [
+    "harmonic-series",
+    "nth-term-test"
+   ],
+   "gt_hit": [
+    "harmonic-series",
+    "nth-term-test"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "alternating-harmonic-series",
+    "euler-constant",
+    "harmonic-series",
+    "nth-term-test",
+    "ratio-test",
+    "riemann-zeta-function"
+   ],
+   "hit_edges": [
+    "e-G1-027",
+    "e-G2-030",
+    "e-G2-047",
+    "e-G3-006",
+    "e-G3-007",
+    "e-G3-011",
+    "e-G3-012",
+    "e-G3-013",
+    "e-G3-020"
+   ],
+   "confound_hits": [
+    "alternating-harmonic-series",
+    "euler-constant",
+    "ratio-test",
+    "riemann-zeta-function"
+   ],
+   "src_count": 16,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  },
+  {
+   "id": "N4-root-R1",
+   "dim": "numeric",
+   "risk": true,
+   "gt": [
+    "root-test"
+   ],
+   "gt_hit": [
+    "root-test"
+   ],
+   "missing_gt": [],
+   "hit_nodes": [
+    "ratio-test",
+    "root-test"
+   ],
+   "hit_edges": [
+    "e-G2-044",
+    "e-G2-046"
+   ],
+   "confound_hits": [
+    "ratio-test"
+   ],
+   "src_count": 4,
+   "verdict": "CONJUGATE-AT-RISK: 简单检索命中正确事实但同时命中混淆候选"
+  }
+ ]
+}
