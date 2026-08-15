@@ -1,7 +1,7 @@
 {
   "meta": {
     "schema": 1,
-    "current_round": 13,
+    "current_round": 15,
     "root_topic": "Studium 缺口闭环（G 系列）",
     "as_of": "2026-08-14",
     "prior_root": "Studium 理科知识载体选型",
@@ -816,10 +816,21 @@
       "id": "P7",
       "parent": "SYN5",
       "topic": "G2/G4 SHACL shapes 原型",
-      "questions": ["other 边是否全有 rel_note？", "P7 shapes 能否在 522 节点跑？"],
-      "candidates": ["P2 pySHACL", "G2 schema", "G4 QUDT shape"],
-      "keywords": ["SHACL shapes M08 other rel_note"],
-      "bounds": ["只读审计层"],
+      "questions": [
+        "other 边是否全有 rel_note？",
+        "P7 shapes 能否在 522 节点跑？"
+      ],
+      "candidates": [
+        "P2 pySHACL",
+        "G2 schema",
+        "G4 QUDT shape"
+      ],
+      "keywords": [
+        "SHACL shapes M08 other rel_note"
+      ],
+      "bounds": [
+        "只读审计层"
+      ],
       "status": "archived",
       "priority": 1,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P7_发现.md",
@@ -834,10 +845,21 @@
       "id": "P8",
       "parent": "SYN5",
       "topic": "Mock M09 revlog + FSRS shadow 管道",
-      "questions": ["P5 能否接 M09 事件时间戳？", "G3 版本事件与 FSRS 如何并行？"],
-      "candidates": ["P5 FSRS", "G3 事件映射"],
-      "keywords": ["M09 revlog FSRS shadow M05"],
-      "bounds": ["mock 级", "不进 M09 数值"],
+      "questions": [
+        "P5 能否接 M09 事件时间戳？",
+        "G3 版本事件与 FSRS 如何并行？"
+      ],
+      "candidates": [
+        "P5 FSRS",
+        "G3 事件映射"
+      ],
+      "keywords": [
+        "M09 revlog FSRS shadow M05"
+      ],
+      "bounds": [
+        "mock 级",
+        "不进 M09 数值"
+      ],
       "status": "archived",
       "priority": 1,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P8_发现.md",
@@ -852,10 +874,20 @@
       "id": "G6",
       "parent": "SYN5",
       "topic": "DLMF 补核（about 页）",
-      "questions": ["DLMF about 能否补抓？", "正文 1.1 是否仍 timeout？"],
-      "candidates": ["dlmf.nist.gov/about", "dlmf.nist.gov/1.1"],
-      "keywords": ["DLMF NIST externalRef"],
-      "bounds": ["正文未核如实标注"],
+      "questions": [
+        "DLMF about 能否补抓？",
+        "正文 1.1 是否仍 timeout？"
+      ],
+      "candidates": [
+        "dlmf.nist.gov/about",
+        "dlmf.nist.gov/1.1"
+      ],
+      "keywords": [
+        "DLMF NIST externalRef"
+      ],
+      "bounds": [
+        "正文未核如实标注"
+      ],
       "status": "archived",
       "priority": 2,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/G6_发现.md",
@@ -870,10 +902,20 @@
       "id": "G7",
       "parent": "SYN5",
       "topic": "因果边锚点义务试点（规则草案）",
-      "questions": ["因果边锚点是否≥普通边？", "当前图有无因果边？"],
-      "candidates": ["V7 Pearl", "06-M08 锚点红线"],
-      "keywords": ["causal edge anchor do-calculus M08"],
-      "bounds": ["规则 C 非定案"],
+      "questions": [
+        "因果边锚点是否≥普通边？",
+        "当前图有无因果边？"
+      ],
+      "candidates": [
+        "V7 Pearl",
+        "06-M08 锚点红线"
+      ],
+      "keywords": [
+        "causal edge anchor do-calculus M08"
+      ],
+      "bounds": [
+        "规则 C 非定案"
+      ],
       "status": "archived",
       "priority": 2,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/G7_发现.md",
@@ -888,10 +930,21 @@
       "id": "P9",
       "parent": "SYN6",
       "topic": "SAE 假阳性 proxy 实测",
-      "questions": ["SAE 稀疏码 contrasts FP？", "是否解锁§9？"],
-      "candidates": ["2605.29358", "MiniLM+SAE proxy"],
-      "keywords": ["SAE false positive sparse autoencoder M08"],
-      "bounds": ["proxy 非 LM 残差 SAE", "诚实边界"],
+      "questions": [
+        "SAE 稀疏码 contrasts FP？",
+        "是否解锁§9？"
+      ],
+      "candidates": [
+        "2605.29358",
+        "MiniLM+SAE proxy"
+      ],
+      "keywords": [
+        "SAE false positive sparse autoencoder M08"
+      ],
+      "bounds": [
+        "proxy 非 LM 残差 SAE",
+        "诚实边界"
+      ],
       "status": "archived",
       "priority": 1,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/P9_发现.md",
@@ -901,6 +954,356 @@
       "created": "2026-08-14",
       "updated": "2026-08-14",
       "verdict": "accepted"
+    },
+    {
+      "id": "H3-1",
+      "parent": "R-LLM/D3",
+      "topic": "上下文解构与重构（DSH temporal 维：组件移除时上下文副作用如何回滚/移除补偿）",
+      "questions": [
+        "2024–2026 文献如何形式化「上下文组件/插槽的解构与重构」？组件被移除时，其余上下文如何补偿其副作用（DSH 论文 temporal 维的直接引申）？",
+        "有无「可逆上下文编辑 / context rollback / 补偿动作」的显式机制或实现？快照-还原、diff-patch、版本化上下文各自适用什么？",
+        "这种解构/重构语义对 Studium 的 harness 上下文管理（长程会话、批量改上下文组件）提供什么可移植模式？"
+      ],
+      "candidates": [
+        "DSH《A Programming Paradigm for Spatiotemporal Composability》(北大+DeepSeek-AI 2026)",
+        "context engineering 综述（ACE-GraphRAG/context by distinct information 2026 为代表的 agentic context 流）",
+        "LLM 上下文编辑/rollback/补偿研究"
+      ],
+      "keywords": [
+        "context engineering",
+        "context decomposition reconstruction",
+        "context rollback compensation side-effect",
+        "revertible context editing LLM"
+      ],
+      "bounds": [
+        "只收 2024-01 之后，2023 前只作背景不标 A",
+        "不越过上下文工程边界进 harness 运行时编排（方向1 承接）",
+        "抓不到原文标「未核」，不捏造；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H3-1_上下文解构与重构_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H3-1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-1"
+    },
+    {
+      "id": "H3-2",
+      "parent": "R-LLM/D3",
+      "topic": "上下文预算与切分（无界/长上下文下按预算切分代理、成本-质量权衡）",
+      "questions": [
+        "2024–2026 如何对无界上下文做预算/切分？「按上下文预算切分代理，不按任务语义」（既有 memory）有何文献佐证或反例？",
+        "上下文随输入长度增长的延迟/成本超线性（平方增长）是否有量化实证？预填充量对首 token 延迟的实证？",
+        "prompt caching 的命中率/收益边界（低成本长上下文、缓存 TTL）——何时值得缓存、何时不值得？"
+      ],
+      "candidates": [
+        "Token Reduction Is Not Cost Reduction (arXiv 2607.xxxx, 2026-07)",
+        "TokTier: 状态化 tokenization 服务（2026-07）",
+        "prompt caching / context budget 相关 2024-26 文献"
+      ],
+      "keywords": [
+        "context window budget",
+        "prompt caching LLM",
+        "context length latency superlinear",
+        "token reduction cost trade-off"
+      ],
+      "bounds": [
+        "只收 2024-01 之后",
+        "不评估具体缓存产品（Anthropic/OpenAI 前缀缓存由官方文档快照），聚焦机制与边界",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H3-2_上下文预算切分_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H3-2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-2"
+    },
+    {
+      "id": "H3-3",
+      "parent": "R-LLM/D3",
+      "topic": "上下文压缩与记忆窗口管理（摘要/编码/窗口滑动，长程状态保持）",
+      "questions": [
+        "2024–2026 上下文压缩的主流形态：重 LLM 摘要、中型编码器（如 MemGPT/压缩核）、窗口滑动？各自的压缩率/失真/可审计性权衡？",
+        "压缩后如何保持可 grep/可锚点（吸附 Studium L0 JSONL 红线）？压缩上下文与原文锚点如何共存？",
+        "记忆窗口管理（分层 memory、工作记忆 vs 长程存储）对 Studium 长程会话状态提供什么可移植模式？"
+      ],
+      "candidates": [
+        "MemGPT / LetMeDoItAI 记忆压缩流 2024",
+        "context compression summarization LLM 2024-26",
+        "auditable compressed context（Dirichlet 工作记忆 2026）"
+      ],
+      "keywords": [
+        "context compression",
+        "memory window management agent",
+        "LLM context summarization",
+        "long context working memory hierarchical"
+      ],
+      "bounds": [
+        "只收 2024-01 之后",
+        "压缩技术本身不实现（不写码），聚焦结构模式与可审计性",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H3-3_上下文压缩记忆窗口_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H3-3_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-3"
+    },
+    {
+      "id": "H3-4",
+      "parent": "R-LLM/D3",
+      "topic": "上下文与工具调用的编排（有限上下文下的工具协商、MCP 工具选择）",
+      "questions": [
+        "2024–2026 如何在有限上下文预算下编排工具/工具协商：工具数量上限、工具描述压缩、按需加载工具？",
+        "MCP（Model Context Protocol, 2024-11 开源）如何进入工具编排？工具发现/工具选择的机制与局限？",
+        "工具调用的上下文开销（工具描述占 budget）如何被定量评估与削减？"
+      ],
+      "candidates": [
+        "MCP 规范/官方文档（modelcontextprotocol.io, 2024-11 开源）",
+        "tool orchestration LLM budget 2024-26",
+        "tool selection context compression 文献"
+      ],
+      "keywords": [
+        "tool orchestration LLM budget",
+        "MCP model context protocol",
+        "tool selection context",
+        "function calling context overhead"
+      ],
+      "bounds": [
+        "只收 2024-01 之后",
+        "MCP 优先抓官方规范文档快照，实务局限标 A/B",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H3-4_上下文工具编排_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H3-4_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-4"
+    },
+    {
+      "id": "H1-1",
+      "parent": "R-LLM/D1",
+      "topic": "自演化 agent harness（self-evolving harness）：从执行经验自改进运行时配置",
+      "questions": [
+        "2024–2026 如何让 agent harness 从自身执行经验中自改进（而非只优化提示/流水线/工作流等更窄产物）？自演化的对象是 harness 配置（上下文/工具/编排/记忆/解码/输出）的哪些维度？",
+        "自演化有哪些失败模式与风险（技能污染、非单调能力积累、回归）？文献给出的护栏（pre-commit gating、经验库分层、选择性迁移）是什么？",
+        "对 Studium 的 harness 设计提供什么可移植模式？与 DSH 的组件动态组合如何衔接？"
+      ],
+      "candidates": [
+        "MemoHarness（2607.14159，harness 六维度自适应，H3-4 种子）",
+        "self-evolving agent / skill distillation 文献（含 When Self-Evolution Backfires 2608.05810）",
+        "DSH self-evolving agent harnesses 动机段（本地全文）"
+      ],
+      "keywords": [
+        "self-evolving agent harness",
+        "harness optimization from experience",
+        "skill distillation agent contamination",
+        "agent harness adaptive configuration"
+      ],
+      "bounds": [
+        "只收 2024-01 之后；2023 前只作背景不标 A",
+        "不越过到训练期 agent-native training（聚焦 harness 运行时自改进）",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H1-1_自演化harness_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H1-1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H1-1"
+    },
+    {
+      "id": "H1-2",
+      "parent": "R-LLM/D1",
+      "topic": "可逆副作用与依赖解析（revertible effects / coeffects）：harness 组件的动态组合机制",
+      "questions": [
+        "DSH 的 revertible effects（每个上下文变换带逆、运行时跟踪）与 reactive coeffects（上下文变化按 coeffect 规范通知组件）在 2024–2026 有无后续/同类工作？plugin 系统与 hot module replacement 的可逆性实践？",
+        "组件间依赖的声明式管理（依赖解析、依赖类型化、版本化）在 agent harness 语境的形态？与运行时 effect 系统的关系？",
+        "对 Studium harness 的组件化（工具/记忆/上下文作为可插拔组件）提供什么可移植模式？与方向3 解构/重构（H3-1）如何衔接？"
+      ],
+      "candidates": [
+        "DSH《Spatiotemporal Composability》§3/§4/§6（revertible effects + reactive coeffects + calculus + 依赖类型化/版本化，本地全文）",
+        "plugin system / hot module replacement 可逆性实践",
+        "effect/coeffect 系统在 agent 语境的近期工作"
+      ],
+      "keywords": [
+        "revertible effects coeffects",
+        "agent harness dependency resolution",
+        "plugin system reversible side effects",
+        "hot module replacement agent"
+      ],
+      "bounds": [
+        "只收 2024-01 之后（DSH 本身 2026 作 A 级锚点）",
+        "不重复 H3-1 的上下文回滚（聚焦组件级 effect/coeffect 机制）",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H1-2_可逆副作用coeffects_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H1-2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H1-2"
+    },
+    {
+      "id": "H2-1",
+      "parent": "R-LLM/D2",
+      "topic": "LLM 时代的知识检索：RAG 充分性/回退与检索触发条件（接 V6 尾巴）",
+      "questions": [
+        "2024–2026 如何判断「检索是否充分」（retrieval sufficiency / 文本回退）？何时该检索、何时该用参数知识、何时该放弃？有无自适应检索（adaptive retrieval / self-RAG 类）的新进展？",
+        "GraphRAG/Agentic RAG 的触发条件——何时图检索/多步检索值得、何时不值得（接 V6「图何时真有用」2506.05690 与 2606.25656「Is GraphRAG Needed」）？",
+        "知识新颖度判据（检索内容是否过时/与参数知识冲突）在 LLM 时代的做法？对 Studium M07/M08 检索提供什么可移植模式？"
+      ],
+      "candidates": [
+        "Is GraphRAG Needed（2606.25656，H3-1 检索命中）、From Naive RAG to Deep Agentic Retrieval（2607.24791）",
+        "adaptive/self-RAG、retrieval sufficiency 文献",
+        "V6_发现.md 已挖到的 CS-RAG 反转、LightRAG 混合形态（作基线）"
+      ],
+      "keywords": [
+        "retrieval sufficiency LLM",
+        "adaptive retrieval self-RAG",
+        "GraphRAG trigger condition when needed",
+        "knowledge freshness conflict parametric"
+      ],
+      "bounds": [
+        "只收 2024-01 之后；V6 旧结论只作基线不重复",
+        "不评估具体向量库产品（聚焦检索触发/充分性机制）",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H2-1_知识检索充分性触发条件_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H2-1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H2-1"
+    },
+    {
+      "id": "H2-2",
+      "parent": "R-LLM/D2",
+      "topic": "LLM 时代的知识检索：检索增强的失败模式与证据可信度",
+      "questions": [
+        "2024–2026 检索增强的失败模式有哪些（检索噪声/上下文分心/幻觉放大/证据误用）？文献如何量化与缓解？",
+        "检索到的证据如何与「锚点判等=原文对应」红线协调——检索内容是否需要可溯源/可核（citation/provenance）？",
+        "对 Studium「机械信号只定向不结案」「向量只定向不结案」红线（V6/存储 v1.3）的强化或修正？"
+      ],
+      "candidates": [
+        "retrieval-augmented failure modes / context distraction 文献",
+        "citation/provenance/attributable generation 2024-26",
+        "V6 向量假阳性实证（P6/P9）、06-M08 §9 向量候选作基线"
+      ],
+      "keywords": [
+        "retrieval augmented failure modes",
+        "context distraction LLM retrieval",
+        "citation provenance attributable generation",
+        "retrieval evidence verifiable"
+      ],
+      "bounds": [
+        "只收 2024-01 之后",
+        "不重复 V6/P6/P9 已查证的向量假阳性结论（作基线深化）",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H2-2_检索失败模式_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H2-2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H2-2"
+    },
+    {
+      "id": "H4-1",
+      "parent": "R-LLM/D4",
+      "topic": "长程状态/内存系统：harness memory 层与持久化会话（2024+ 做法）",
+      "questions": [
+        "2024–2026 agent memory 层的主流架构（分层 memory、工作记忆 vs 长程、外部记忆库、记忆即检索）？与 ChronoMem/记忆窗口（H3-1/H3-3）如何衔接？",
+        "持久化会话/跨会话状态保持的工程形态？记忆的写入/合并/遗忘/检索语义？",
+        "对 Studium 长程状态（M09 个人模型、跨会话学习状态）提供什么可移植模式？与 L2 FHIR 式版本化如何协调？"
+      ],
+      "candidates": [
+        "ChronoMem（2607.27773，H3-1 种子）、Mandol（2606.29778）、Organize then Retrieve（2606.11680）",
+        "agent memory benchmark（AgentMemBench 2608.00009）",
+        "持久化会话/外部记忆库 2024-26 文献"
+      ],
+      "keywords": [
+        "agent memory layer long-term",
+        "persistent conversation cross-session state",
+        "harness memory architecture",
+        "memory write merge forget retrieval"
+      ],
+      "bounds": [
+        "只收 2024-01 之后；不重复 H3-3 压缩（聚焦 memory 层架构与持久化）",
+        "不看 RDF/Datalog 老货，看 2024+ 做法",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H4-1_长程状态记忆层_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H4-1_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H4-1"
+    },
+    {
+      "id": "H4-2",
+      "parent": "R-LLM/D4",
+      "topic": "向量库/知识库在 LLM 时代的组织（2024+ 做法，非 RDF/Datalog 老货）",
+      "questions": [
+        "2024–2026 向量库/知识库的组织形态（混合检索、图+向量、结构化+向量、多模态嵌入）？与纯向量检索相比的增量？",
+        "知识库在 agent 语境如何被检索/更新/版本化？与 Studium L0 JSONL/L1 RDF 双轨如何协调？",
+        "对 Studium「向量只定向不结案」「图索引等触发」（V6/S2/存储 v1.3）红线的强化或修正？"
+      ],
+      "candidates": [
+        "GraphRAG/混合检索（接 V6）、向量库 2024-26 组织实践",
+        "knowledge base agent retrieval update versioning",
+        "S2 查询层等触发、存储 v1.3 作基线"
+      ],
+      "keywords": [
+        "vector store knowledge base LLM era",
+        "hybrid retrieval graph vector structured",
+        "knowledge base agent versioning",
+        "vector index trigger condition"
+      ],
+      "bounds": [
+        "只收 2024-01 之后；不看 RDF/Datalog/本体旧文（前 LLM 老货）",
+        "不评估具体向量库产品选型",
+        "抓不到原文标「未核」；推断标 C、实证标 A"
+      ],
+      "status": "archived",
+      "priority": 1,
+      "created": "2026-08-14",
+      "updated": "2026-08-14",
+      "verdict": "accepted",
+      "retries": 0,
+      "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H4-2_向量库知识库_发现.md",
+      "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H4-2_审计.md",
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H4-2"
     }
   ],
   "conflicts": [],
@@ -1112,18 +1515,99 @@
     {
       "round": 12,
       "asOf": "2026-08-14",
-      "dispatched": ["P7", "P8", "G6", "G7", "SYN6"],
-      "recovered": ["P7", "P8", "G6", "G7", "SYN6"],
-      "verdicts": {"P7": "accepted", "P8": "accepted", "G6": "accepted", "G7": "accepted", "SYN6": "done"},
+      "dispatched": [
+        "P7",
+        "P8",
+        "G6",
+        "G7",
+        "SYN6"
+      ],
+      "recovered": [
+        "P7",
+        "P8",
+        "G6",
+        "G7",
+        "SYN6"
+      ],
+      "verdicts": {
+        "P7": "accepted",
+        "P8": "accepted",
+        "G6": "accepted",
+        "G7": "accepted",
+        "SYN6": "done"
+      },
       "log": "R12：P7(SHACL other 40/40+shapes 2.2s)/P8(M09 mock+FSRS shadow)/G6(DLMF about A)/G7(因果锚点规则)；SYN6→v1.2"
     },
     {
       "round": 13,
       "asOf": "2026-08-14",
-      "dispatched": ["P9", "SYN7"],
-      "recovered": ["P9", "SYN7"],
-      "verdicts": {"P9": "accepted", "SYN7": "done"},
+      "dispatched": [
+        "P9",
+        "SYN7"
+      ],
+      "recovered": [
+        "P9",
+        "SYN7"
+      ],
+      "verdicts": {
+        "P9": "accepted",
+        "SYN7": "done"
+      },
       "log": "R13：P9(SAE proxy FP 98.4%@0.75 不解锁§9)；SYN7→v1.3；I1 模块组合入口已撤回（不修改 docs/模块需求设计）"
+    },
+    {
+      "round": 14,
+      "asOf": "2026-08-14",
+      "root": "R-LLM（LLM/agent-harness 时代主线）",
+      "dispatched": [
+        "H3-1",
+        "H3-2",
+        "H3-3",
+        "H3-4"
+      ],
+      "recovered": [
+        "H3-1",
+        "H3-2",
+        "H3-3",
+        "H3-4"
+      ],
+      "verdicts": {
+        "H3-1": "accepted",
+        "H3-2": "accepted",
+        "H3-3": "accepted",
+        "H3-4": "accepted"
+      },
+      "log": "R14 LLM 主线第一批（方向3 上下文工程四子方向）：H3-1(解构/重构→DSH temporal+ChronoMem首个开源语义回滚)/H3-2(预算切分→Don't Break the Cache 41-80%降本、Token Reduction≠Cost、缓存连续性trade-off)/H3-3(压缩记忆窗口→Context Codec承诺保留+Telegraph符号重表达胜摘要、Sleeping Agent时序盲区)/H3-4(工具编排→MCP官方规范2024-11-05+LLM-within-MCP 54000试验+SING减schema暴露99.8%)；本对话直接执行调研+审计(无子代理)，4/4 PASS，全 2026 时代锚定坐实；方向1/2/4 待第二批"
+    },
+    {
+      "round": 15,
+      "asOf": "2026-08-14",
+      "root": "R-LLM（LLM/agent-harness 时代主线）",
+      "dispatched": [
+        "H1-1",
+        "H1-2",
+        "H2-1",
+        "H2-2",
+        "H4-1",
+        "H4-2"
+      ],
+      "recovered": [
+        "H1-1",
+        "H1-2",
+        "H2-1",
+        "H2-2",
+        "H4-1",
+        "H4-2"
+      ],
+      "verdicts": {
+        "H1-1": "accepted",
+        "H1-2": "accepted",
+        "H2-1": "accepted",
+        "H2-2": "accepted",
+        "H4-1": "accepted",
+        "H4-2": "accepted"
+      },
+      "log": "R15 LLM 主线第二批（方向1 harness自演化/可逆副作用 + 方向2 检索充分性/失败模式 + 方向4 记忆层/向量库知识库）：H1-1(MemoHarness六维自适应+When Self-Evolution Backfires技能污染非单调→护栏分层)/H1-2(DSH revertible effects+reactive coeffects+observational equivalence定义可逆=副作用未扩散进依赖图，6 PL 级论文作谱系锚点)/H2-1(active RAG utility estimation+harm audit简单基线胜学习路由、Interpretable Uncertainty区分insufficiency vs ambiguity/conflict、固定混合胜自适应2轮收95%、temporal misgrounding静态RAG 0% date-applicable)/H2-2(D-SCAN false confidence+attention collapse、EvoTrustRAG冲突归因三源、RAGuard留一反事实ASR→0.000、Byzantine-tolerant DenialRAG)/H4-1(GPM双时态状态机+源头绑定准入+fail-closed release直同构Studium审计状态机、LycheeMemory段级固化、RippleMem事件图30x更廉)/H4-2(AkasicDB Vector-Graph-Relational统一Omni RAG、ReFind原文可控搜索胜结构化记忆无LLM索引构造直印证锚点红线、EAHR固定Top-L有损精确自适应、PolicyKG LLM→SHACL+谓词接地+FOL边界标注直对接B5a)；本对话直接执行调研+审计(无子代理)，6/6 PASS，全 2026 时代锚定坐实；方向1/2/4 到叶归档，待第二批 synthesis 收口"
     }
   ]
 }
