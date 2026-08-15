@@ -1,0 +1,422 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/spQf6SJH0ucmg3IJw8xIOKE/C0E</id>
+  <title>arXiv Query: search_query=(cat:cs.AI OR cat:cs.HCIR OR cat:cs.CL) AND (abs:"second brain" OR abs:"personal knowledge") AND abs:LLM&amp;id_list=&amp;start=0&amp;max_results=15</title>
+  <updated>2026-08-14T12:49:44Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=(cat:cs.AI+OR+(cat:cs.HCIR+OR+cat:cs.CL))+AND+((abs:%22second+brain%22+OR+abs:%22personal+knowledge%22)+AND+abs:LLM)&amp;start=0&amp;max_results=15&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>15</opensearch:itemsPerPage>
+  <opensearch:totalResults>22</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2606.03876v1</id>
+    <title>From 'What' to 'How' and 'Why': Sharing LLM-Generated Retrospective Summaries of Older Adults' Passive Tracking Data with Remote Family Members</title>
+    <updated>2026-06-02T16:46:00Z</updated>
+    <link href="https://arxiv.org/abs/2606.03876v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.03876v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>With the growing prevalence of modern ubiquitous computing technologies, multi-modal tracking systems hold promise for providing timely awareness and reassurance to stakeholders such as remote family members (RFMs) of older adults, who play a central role in care coordination. However, combining heterogeneous data streams into high-level, meaningful content - such as retrospective summaries - remains challenging. While recent work has demonstrated the promise of large language models (LLMs) for interpreting multi-modal tracking data, less attention has been given to generating narrative accounts for stakeholders like RFMs, who possess rich personal knowledge of older adults and strong emotional responsibility, yet have limited visibility into their daily lives and limited capacity for caregiving. In this work, we explore how LLMs can be used to generate retrospective summaries from multi-modal tracking data for RFMs of older adults. We leveraged and customized an existing system, Vital Insight, to generate initial summaries on different dates and data availability scenarios as technology probes, and conducted interviews with 11 RFMs to gather feedback. Based on these insights, we redesigned the system into a multi-layer, multi-agent, insight-driven summary approach that builds from objective statistics and descriptions to enriched, context-aware narratives. We then compared the redesigned summaries with the initial versions through a survey with the same 11 RFMs and found significant improvements in satisfaction, perceived helpfulness, trust, and willingness to receive the summaries. We conclude by presenting design implications for AI-generated summaries for RFMs and broader contexts, emphasizing the need to support RFMs' sensemaking shift from simply presenting ''What'' data were collected, to explaining ''How'' is my loved one doing and ''Why''.</summary>
+    <category term="cs.HC" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.MA" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-02T16:46:00Z</published>
+    <arxiv:primary_category term="cs.HC"/>
+    <author>
+      <name>Jiachen Li</name>
+    </author>
+    <author>
+      <name>Reina Szeyi Chan</name>
+    </author>
+    <author>
+      <name>Akshat Choube</name>
+    </author>
+    <author>
+      <name>Xiang Zhi Tan</name>
+    </author>
+    <author>
+      <name>Elizabeth Mynatt</name>
+    </author>
+    <author>
+      <name>Varun Mishra</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2605.27864v4</id>
+    <title>FundaPod: A Multi-Persona Agent Pod Platform with Knowledge Graph Memory for AI-Assisted Fundamental Investment Research</title>
+    <updated>2026-06-18T14:34:57Z</updated>
+    <link href="https://arxiv.org/abs/2605.27864v4" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2605.27864v4" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large language models (LLMs) are increasingly applied in finance, yet most existing work emphasizes trading signals or financial NLP tasks centered on prediction. Institutional fundamental research, by contrast, requires human analysts or AI agents to gather evidence, identify business drivers, compare competing viewpoints, and generate investment memos. Its broader goal is not merely to predict outcomes, but to produce investment plans that are transparent, reusable, and verifiable, while contributing to the cumulative development of investment knowledge. We present FundaPod, a multi-persona agent platform for AI-assisted fundamental investment research. We argue that fundamental research is a human-centric decision-support task that is qualitatively distinct from trading-signal generation, and is therefore better served by an independence-preserving architecture. In FundaPod, AI agents with different personas, such as value investors or macro strategists, conduct research independently under a shared provenance contract. Their disagreements are then surfaced post hoc for adjudication by the human portfolio manager (PM) through a knowledge-graph memory system. This paper contributes five design principles for human-AI hybrid systems supporting fundamental research, grounded in design-science practice and theories of cognitive isolation and human-machine coordination. It also describes four architectural mechanisms: a persona distillation pipeline that turns public investor materials into deployable agents; a declarative skill registry that lets the planner derive typed task graphs; a grounded evidence model that links memo claims to verifiable sources; and a knowledge-graph "second brain" that connects tickers, memos, analysts, and themes. We demonstrate the architecture through a complete case study and a persona-based memo comparison.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-05-27T02:26:16Z</published>
+    <arxiv:comment>32 pages; 12 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Di Zhu</name>
+    </author>
+    <author>
+      <name>Lei Nico Zheng</name>
+    </author>
+    <author>
+      <name>Zihan Chen</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2605.18763v1</id>
+    <title>Query-Conditioned Graph Retrieval for Contextualized LLM Reasoning in Personalized Wearable Data</title>
+    <updated>2026-04-10T13:13:17Z</updated>
+    <link href="https://arxiv.org/abs/2605.18763v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2605.18763v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large language models (LLMs) are increasingly applied to analyzing wearable sensing data, which are long-term, multimodal, and highly personalized. A key challenge is context selection: providing insufficient context limits reasoning, while including all available data leads to inefficiency and degraded generation quality. We propose Wearable As Graph (WAG), a graph-based context retrieval framework that enables query-adaptive reasoning over wearable data with LLMs. WAG organizes wearable metrics and user-specific signals into a personalized knowledge graph, and retrieves a query-conditioned subgraph to support downstream generation. The retrieval process integrates global relationships, capturing prior knowledge and population- and individual-level patterns via hierarchical Bayesian modeling, with local relationships that reflect short-term signal deviations. A query openness signal further controls retrieval breadth. We evaluate WAG on over 10,000 data-grounded queries from real-world wearable datasets. Across LLM-based and human evaluations, WAG achieves an approximately 70% win rate over baseline and standard RAG methods, demonstrating the effectiveness of structured, query-adaptive context retrieval for LLM-driven analysis of wearable data.</summary>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-04-10T13:13:17Z</published>
+    <arxiv:primary_category term="cs.IR"/>
+    <author>
+      <name>Zhenyu Lu</name>
+    </author>
+    <author>
+      <name>Mahyar Abbasian</name>
+    </author>
+    <author>
+      <name>Amir M. Rahmani</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2603.08938v2</id>
+    <title>AgentOS: From Application Silos to a Natural Language-Driven Data Ecosystem</title>
+    <updated>2026-03-11T20:38:50Z</updated>
+    <link href="https://arxiv.org/abs/2603.08938v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2603.08938v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The rapid emergence of open-source, locally hosted intelligent agents marks a critical inflection point in human-computer interaction. Systems such as OpenClaw demonstrate that Large Language Model (LLM)-based agents can autonomously operate local computing environments, orchestrate workflows, and integrate external tools. However, within the current paradigm, these agents remain conventional applications running on legacy operating systems originally designed for Graphical User Interfaces (GUIs) or Command Line Interfaces (CLIs). This architectural mismatch leads to fragmented interaction models, poorly structured permission management (often described as "Shadow AI"), and severe context fragmentation. This paper proposes a new paradigm: a Personal Agent Operating System (AgentOS). In AgentOS, traditional GUI desktops are replaced by a Natural User Interface (NUI) centered on a unified natural language or voice portal. The system core becomes an Agent Kernel that interprets user intent, decomposes tasks, and coordinates multiple agents, while traditional applications evolve into modular Skills-as-Modules enabling users to compose software through natural language rules. We argue that realizing AgentOS fundamentally becomes a Knowledge Discovery and Data Mining (KDD) problem. The Agent Kernel must operate as a real-time engine for intent mining and knowledge discovery. Viewed through this lens, the operating system becomes a continuous data mining pipeline involving sequential pattern mining for workflow automation, recommender systems for skill retrieval, and dynamically evolving personal knowledge graphs. These challenges define a new research agenda for the KDD community in building the next generation of intelligent computing systems.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-03-09T21:13:52Z</published>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Rui Liu</name>
+    </author>
+    <author>
+      <name>Tao Zhe</name>
+    </author>
+    <author>
+      <name>Dongjie Wang</name>
+    </author>
+    <author>
+      <name>Zijun Yao</name>
+    </author>
+    <author>
+      <name>Kunpeng Liu</name>
+    </author>
+    <author>
+      <name>Yanjie Fu</name>
+    </author>
+    <author>
+      <name>Huan Liu</name>
+    </author>
+    <author>
+      <name>Jian Pei</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2602.22828v1</id>
+    <title>TCM-DiffRAG: Personalized Syndrome Differentiation Reasoning Method for Traditional Chinese Medicine based on Knowledge Graph and Chain of Thought</title>
+    <updated>2026-02-26T10:11:15Z</updated>
+    <link href="https://arxiv.org/abs/2602.22828v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2602.22828v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Background: Retrieval augmented generation (RAG) technology can empower large language models (LLMs) to generate more accurate, professional, and timely responses without fine tuning. However, due to the complex reasoning processes and substantial individual differences involved in traditional Chinese medicine (TCM) clinical diagnosis and treatment, traditional RAG methods often exhibit poor performance in this domain. Objective: To address the limitations of conventional RAG approaches in TCM applications, this study aims to develop an improved RAG framework tailored to the characteristics of TCM reasoning. Methods: We developed TCM-DiffRAG, an innovative RAG framework that integrates knowledge graphs (KG) with chains of thought (CoT). TCM-DiffRAG was evaluated on three distinctive TCM test datasets. Results: The experimental results demonstrated that TCM-DiffRAG achieved significant performance improvements over native LLMs. For example, the qwen-plus model achieved scores of 0.927, 0.361, and 0.038, which were significantly enhanced to 0.952, 0.788, and 0.356 with TCM-DiffRAG. The improvements were even more pronounced for non-Chinese LLMs. Additionally, TCM-DiffRAG outperformed directly supervised fine-tuned (SFT) LLMs and other benchmark RAG methods. Conclusions: TCM-DiffRAG shows that integrating structured TCM knowledge graphs with Chain of Thought based reasoning substantially improves performance in individualized diagnostic tasks. The joint use of universal and personalized knowledge graphs enables effective alignment between general knowledge and clinical reasoning. These results highlight the potential of reasoning-aware RAG frameworks for advancing LLM applications in traditional Chinese medicine.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-02-26T10:11:15Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Jianmin Li</name>
+    </author>
+    <author>
+      <name>Ying Chang</name>
+    </author>
+    <author>
+      <name>Su-Kit Tang</name>
+    </author>
+    <author>
+      <name>Yujia Liu</name>
+    </author>
+    <author>
+      <name>Yanwen Wang</name>
+    </author>
+    <author>
+      <name>Shuyuan Lin</name>
+    </author>
+    <author>
+      <name>Binkai Ou</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2602.21862v1</id>
+    <title>Personalized Graph-Empowered Large Language Model for Proactive Information Access</title>
+    <updated>2026-02-25T12:43:25Z</updated>
+    <link href="https://arxiv.org/abs/2602.21862v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2602.21862v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Since individuals may struggle to recall all life details and often confuse events, establishing a system to assist users in recalling forgotten experiences is essential. While numerous studies have proposed memory recall systems, these primarily rely on deep learning techniques that require extensive training and often face data scarcity due to the limited availability of personal lifelogs. As lifelogs grow over time, systems must also adapt quickly to newly accumulated data. Recently, large language models (LLMs) have demonstrated remarkable capabilities across various tasks, making them promising for personalized applications. In this work, we present a framework that leverages LLMs for proactive information access, integrating personal knowledge graphs to enhance the detection of access needs through a refined decision-making process. Our framework offers high flexibility, enabling the replacement of base models and the modification of fact retrieval methods for continuous improvement. Experimental results demonstrate that our approach effectively identifies forgotten events, supporting users in recalling past experiences more efficiently.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-02-25T12:43:25Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Chia Cheng Chang</name>
+    </author>
+    <author>
+      <name>An-Zi Yen</name>
+    </author>
+    <author>
+      <name>Hen-Hsen Huang</name>
+    </author>
+    <author>
+      <name>Hsin-Hsi Chen</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2602.11607v1</id>
+    <title>Scene-Aware Memory Discrimination: Deciding Which Personal Knowledge Stays</title>
+    <updated>2026-02-12T05:53:54Z</updated>
+    <link href="https://arxiv.org/abs/2602.11607v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2602.11607v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Intelligent devices have become deeply integrated into everyday life, generating vast amounts of user interactions that form valuable personal knowledge. Efficient organization of this knowledge in user memory is essential for enabling personalized applications. However, current research on memory writing, management, and reading using large language models (LLMs) faces challenges in filtering irrelevant information and in dealing with rising computational costs. Inspired by the concept of selective attention in the human brain, we introduce a memory discrimination task. To address large-scale interactions and diverse memory standards in this task, we propose a Scene-Aware Memory Discrimination method (SAMD), which comprises two key components: the Gating Unit Module (GUM) and the Cluster Prompting Module (CPM). GUM enhances processing efficiency by filtering out non-memorable interactions and focusing on the salient content most relevant to application demands. CPM establishes adaptive memory standards, guiding LLMs to discern what information should be remembered or discarded. It also analyzes the relationship between user intents and memory contexts to build effective clustering prompts. Comprehensive direct and indirect evaluations demonstrate the effectiveness and generalization of our approach. We independently assess the performance of memory discrimination, showing that SAMD successfully recalls the majority of memorable data and remains robust in dynamic scenarios. Furthermore, when integrated into personalized applications, SAMD significantly enhances both the efficiency and quality of memory construction, leading to better organization of personal knowledge.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-02-12T05:53:54Z</published>
+    <arxiv:comment>Accepted by Knowledge-Based Systems. Lincense: CC BY-NC-ND</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Yijie Zhong</name>
+    </author>
+    <author>
+      <name>Mengying Guo</name>
+    </author>
+    <author>
+      <name>Zewei Wang</name>
+    </author>
+    <author>
+      <name>Zhongyang Li</name>
+    </author>
+    <author>
+      <name>Dandan Tu</name>
+    </author>
+    <author>
+      <name>Haofen Wang</name>
+    </author>
+    <arxiv:doi>10.1016/j.knosys.2026.115496</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.1016/j.knosys.2026.115496" title="doi"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2511.14445v2</id>
+    <title>Tell Me: An LLM-powered Mental Well-being Assistant with RAG, Synthetic Dialogue Generation, and Agentic Planning</title>
+    <updated>2026-06-22T02:47:11Z</updated>
+    <link href="https://arxiv.org/abs/2511.14445v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2511.14445v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We present Tell Me, a mental well-being system that leverages advances in large language models to provide accessible, context-aware support for users and researchers. The system integrates three components: (i) a retrieval-augmented generation (RAG) assistant for personalized, knowledge-grounded dialogue; (ii) a synthetic client-therapist dialogue generator conditioned on client profiles to facilitate research on therapeutic language and data augmentation; and (iii) a Well-being AI crew, implemented with CrewAI, that produces weekly self-care plans and guided meditation audio. The system is designed as a reflective space for emotional processing rather than a substitute for professional therapy. It illustrates how conversational assistants can lower barriers to support, complement existing care, and broaden access to mental health resources. To address the shortage of confidential therapeutic data, we introduce synthetic client-therapist dialogue generation conditioned on client profiles. Finally, the planner demonstrates an innovative agentic workflow for dynamically adaptive, personalized self-care, bridging the limitations of static well-being tools. We describe the architecture, demonstrate its functionalities, and report evaluation of the RAG assistant in curated well-being scenarios using both automatic LLM-based judgments and a human-user study. This work highlights opportunities for interdisciplinary collaboration between NLP researchers and mental health professionals to advance responsible innovation in human-AI interaction for well-being.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.HC" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-11-18T12:43:04Z</published>
+    <arxiv:comment>8 pages, 2 figures, 1 Table. Submitted to the Computation and Language (cs.CL) category. Uses the ACL-style template. Code and demo will be released at: https://github.com/trystine/Tell_Me_Mental_Wellbeing_System</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Trishala Jayesh Ahalpara</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2506.20156v1</id>
+    <title>Irec: A Metacognitive Scaffolding for Self-Regulated Learning through Just-in-Time Insight Recall: A Conceptual Framework and System Prototype</title>
+    <updated>2025-06-25T06:23:39Z</updated>
+    <link href="https://arxiv.org/abs/2506.20156v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2506.20156v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The core challenge in learning has shifted from knowledge acquisition to effective Self-Regulated Learning (SRL): planning, monitoring, and reflecting on one's learning. Existing digital tools, however, inadequately support metacognitive reflection. Spaced Repetition Systems (SRS) use de-contextualized review, overlooking the role of context, while Personal Knowledge Management (PKM) tools require high manual maintenance.
+  To address these challenges, this paper introduces "Insight Recall," a novel paradigm that conceptualizes the context-triggered retrieval of personal past insights as a metacognitive scaffold to promote SRL. We formalize this paradigm using the Just-in-Time Adaptive Intervention (JITAI) framework and implement a prototype system, Irec, to demonstrate its feasibility. At its core, Irec uses a dynamic knowledge graph of the user's learning history. When a user faces a new problem, a hybrid retrieval engine recalls relevant personal "insights." Subsequently, a large language model (LLM) performs a deep similarity assessment to filter and present the most relevant scaffold in a just-in-time manner. To reduce cognitive load, Irec features a human-in-the-loop pipeline for LLM-based knowledge graph construction. We also propose an optional "Guided Inquiry" module, where users can engage in a Socratic dialogue with an expert LLM, using the current problem and recalled insights as context. The contribution of this paper is a solid theoretical framework and a usable system platform for designing next-generation intelligent learning systems that enhance metacognition and self-regulation.</summary>
+    <category term="cs.HC" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-06-25T06:23:39Z</published>
+    <arxiv:comment>Version 1 of a work in progress. Finalized system flowcharts, a public GitHub repository with the source code, and a full reproducibility package detailing the prompts, models, and testing guidelines will be provided in v2</arxiv:comment>
+    <arxiv:primary_category term="cs.HC"/>
+    <author>
+      <name>Xuefei Hou</name>
+    </author>
+    <author>
+      <name>Xizhao Tan</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2506.07449v1</id>
+    <title>LlamaRec-LKG-RAG: A Single-Pass, Learnable Knowledge Graph-RAG Framework for LLM-Based Ranking</title>
+    <updated>2025-06-09T05:52:03Z</updated>
+    <link href="https://arxiv.org/abs/2506.07449v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2506.07449v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Recent advances in Large Language Models (LLMs) have driven their adoption in recommender systems through Retrieval-Augmented Generation (RAG) frameworks. However, existing RAG approaches predominantly rely on flat, similarity-based retrieval that fails to leverage the rich relational structure inherent in user-item interactions. We introduce LlamaRec-LKG-RAG, a novel single-pass, end-to-end trainable framework that integrates personalized knowledge graph context into LLM-based recommendation ranking. Our approach extends the LlamaRec architecture by incorporating a lightweight user preference module that dynamically identifies salient relation paths within a heterogeneous knowledge graph constructed from user behavior and item metadata. These personalized subgraphs are seamlessly integrated into prompts for a fine-tuned Llama-2 model, enabling efficient and interpretable recommendations through a unified inference step. Comprehensive experiments on ML-100K and Amazon Beauty datasets demonstrate consistent and significant improvements over LlamaRec across key ranking metrics (MRR, NDCG, Recall). LlamaRec-LKG-RAG demonstrates the critical value of structured reasoning in LLM-based recommendations and establishes a foundation for scalable, knowledge-aware personalization in next-generation recommender systems. Code is available at~\href{https://github.com/VahidAz/LlamaRec-LKG-RAG}{repository}.</summary>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-06-09T05:52:03Z</published>
+    <arxiv:primary_category term="cs.IR"/>
+    <author>
+      <name>Vahid Azizi</name>
+    </author>
+    <author>
+      <name>Fatemeh Koochaki</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2505.16348v4</id>
+    <title>Embodied Agents Meet Personalization: Investigating Challenges and Solutions Through the Lens of Memory Utilization</title>
+    <updated>2026-02-13T06:10:20Z</updated>
+    <link href="https://arxiv.org/abs/2505.16348v4" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2505.16348v4" rel="related" type="application/pdf" title="pdf"/>
+    <summary>LLM-powered embodied agents have shown success on conventional object-rearrangement tasks, but providing personalized assistance that leverages user-specific knowledge from past interactions presents new challenges. We investigate these challenges through the lens of agents' memory utilization along two critical dimensions: object semantics (identifying objects based on personal meaning) and user patterns (recalling sequences from behavioral routines). To assess these capabilities, we construct MEMENTO, an end-to-end two-stage evaluation framework comprising single-memory and joint-memory tasks. Our experiments reveal that current agents can recall simple object semantics but struggle to apply sequential user patterns to planning. Through in-depth analysis, we identify two critical bottlenecks: information overload and coordination failures when handling multiple memories. Based on these findings, we explore memory architectural approaches to address these challenges. Given our observation that episodic memory provides both personalized knowledge and in-context learning benefits, we design a hierarchical knowledge graph-based user-profile memory module that separately manages personalized knowledge, achieving substantial improvements on both single and joint-memory tasks. Project website: https://connoriginal.github.io/MEMENTO</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-05-22T08:00:10Z</published>
+    <arxiv:comment>Accepted at ICLR 2026</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Taeyoon Kwon</name>
+    </author>
+    <author>
+      <name>Dongwook Choi</name>
+    </author>
+    <author>
+      <name>Hyojun Kim</name>
+    </author>
+    <author>
+      <name>Sunghwan Kim</name>
+    </author>
+    <author>
+      <name>Seungjun Moon</name>
+    </author>
+    <author>
+      <name>Beong-woo Kwak</name>
+    </author>
+    <author>
+      <name>Kuan-Hao Huang</name>
+    </author>
+    <author>
+      <name>Jinyoung Yeo</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2505.16288v2</id>
+    <title>No Black Boxes: Interpretable and Interactable Predictive Healthcare with Knowledge-Enhanced Agentic Causal Discovery</title>
+    <updated>2025-09-27T22:04:45Z</updated>
+    <link href="https://arxiv.org/abs/2505.16288v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2505.16288v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Deep learning models trained on extensive Electronic Health Records (EHR) data have achieved high accuracy in diagnosis prediction, offering the potential to assist clinicians in decision-making and treatment planning. However, these models lack two crucial features that clinicians highly value: interpretability and interactivity. The ``black-box'' nature of these models makes it difficult for clinicians to understand the reasoning behind predictions, limiting their ability to make informed decisions. Additionally, the absence of interactive mechanisms prevents clinicians from incorporating their own knowledge and experience into the decision-making process. To address these limitations, we propose II-KEA, a knowledge-enhanced agent-driven causal discovery framework that integrates personalized knowledge databases and agentic LLMs. II-KEA enhances interpretability through explicit reasoning and causal analysis, while also improving interactivity by allowing clinicians to inject their knowledge and experience through customized knowledge bases and prompts. II-KEA is evaluated on both MIMIC-III and MIMIC-IV, demonstrating superior performance along with enhanced interpretability and interactivity, as evidenced by its strong results from extensive case studies.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-05-22T06:36:30Z</published>
+    <arxiv:comment>EMNLP 2025</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Xiaoxue Han</name>
+    </author>
+    <author>
+      <name>Pengfei Hu</name>
+    </author>
+    <author>
+      <name>Jun-En Ding</name>
+    </author>
+    <author>
+      <name>Chang Lu</name>
+    </author>
+    <author>
+      <name>Feng Liu</name>
+    </author>
+    <author>
+      <name>Yue Ning</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2505.10074v2</id>
+    <title>Leveraging Graph Retrieval-Augmented Generation to Support Learners' Understanding of Knowledge Concepts in MOOCs</title>
+    <updated>2025-05-16T15:33:49Z</updated>
+    <link href="https://arxiv.org/abs/2505.10074v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2505.10074v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Massive Open Online Courses (MOOCs) lack direct interaction between learners and instructors, making it challenging for learners to understand new knowledge concepts. Recently, learners have increasingly used Large Language Models (LLMs) to support them in acquiring new knowledge. However, LLMs are prone to hallucinations which limits their reliability. Retrieval-Augmented Generation (RAG) addresses this issue by retrieving relevant documents before generating a response. However, the application of RAG across different MOOCs is limited by unstructured learning material. Furthermore, current RAG systems do not actively guide learners toward their learning needs. To address these challenges, we propose a Graph RAG pipeline that leverages Educational Knowledge Graphs (EduKGs) and Personal Knowledge Graphs (PKGs) to guide learners to understand knowledge concepts in the MOOC platform CourseMapper. Specifically, we implement (1) a PKG-based Question Generation method to recommend personalized questions for learners in context, and (2) an EduKG-based Question Answering method that leverages the relationships between knowledge concepts in the EduKG to answer learner selected questions. To evaluate both methods, we conducted a study with 3 expert instructors on 3 different MOOCs in the MOOC platform CourseMapper. The results of the evaluation show the potential of Graph RAG to empower learners to understand new knowledge concepts in a personalized learning experience.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CY" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-05-15T08:24:47Z</published>
+    <arxiv:comment>Accepted at EMOOCs 2025</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Mohamed Abdelmagied</name>
+    </author>
+    <author>
+      <name>Mohamed Amine Chatti</name>
+    </author>
+    <author>
+      <name>Shoeb Joarder</name>
+    </author>
+    <author>
+      <name>Qurat Ul Ain</name>
+    </author>
+    <author>
+      <name>Rawaa Alatrash</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2502.19915v2</id>
+    <title>LLM-driven Effective Knowledge Tracing by Integrating Dual-channel Difficulty</title>
+    <updated>2025-04-30T01:26:23Z</updated>
+    <link href="https://arxiv.org/abs/2502.19915v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2502.19915v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Knowledge Tracing (KT) is a fundamental technology in intelligent tutoring systems used to simulate changes in students' knowledge state during learning, track personalized knowledge mastery, and predict performance. However, current KT models face three major challenges: (1) When encountering new questions, models face cold-start problems due to sparse interaction records, making precise modeling difficult; (2) Traditional models only use historical interaction records for student personalization modeling, unable to accurately track individual mastery levels, resulting in unclear personalized modeling; (3) The decision-making process is opaque to educators, making it challenging for them to understand model judgments. To address these challenges, we propose a novel Dual-channel Difficulty-aware Knowledge Tracing (DDKT) framework that utilizes Large Language Models (LLMs) and Retrieval-Augmented Generation (RAG) for subjective difficulty assessment, while integrating difficulty bias-aware algorithms and student mastery algorithms for precise difficulty measurement. Our framework introduces three key innovations: (1) Difficulty Balance Perception Sequence (DBPS) - students' subjective perceptions combined with objective difficulty, measuring gaps between LLM-assessed difficulty, mathematical-statistical difficulty, and students' subjective perceived difficulty through attention mechanisms; (2) Difficulty Mastery Ratio (DMR) - precise modeling of student mastery levels through different difficulty zones; (3) Knowledge State Update Mechanism - implementing personalized knowledge acquisition through gated networks and updating student knowledge state. Experimental results on two real datasets show our method consistently outperforms nine baseline models, improving AUC metrics by 2% to 10% while effectively addressing cold-start problems and enhancing model interpretability.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-02-27T09:36:27Z</published>
+    <arxiv:comment>During a careful review of our base-experiment results, we discovered a possible error in the way some data were recorded. To ensure the integrity and accuracy of our work, we must correct these results and revise the corresponding analysis before making the manuscript publicly available</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Jiahui Cen</name>
+    </author>
+    <author>
+      <name>Jianghao Lin</name>
+    </author>
+    <author>
+      <name>Weixuan Zhong</name>
+    </author>
+    <author>
+      <name>Dong Zhou</name>
+    </author>
+    <author>
+      <name>Jin Chen</name>
+    </author>
+    <author>
+      <name>Aimin Yang</name>
+    </author>
+    <author>
+      <name>Yongmei Zhou</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2502.13311v3</id>
+    <title>Training Turn-by-Turn Verifiers for Dialogue Tutoring Agents: The Curious Case of LLMs as Your Coding Tutors</title>
+    <updated>2025-05-25T09:45:11Z</updated>
+    <link href="https://arxiv.org/abs/2502.13311v3" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2502.13311v3" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Intelligent tutoring agents powered by large language models (LLMs) have been increasingly explored to deliver personalized knowledge in areas such as language learning and science education. However, their capabilities in guiding users to solve complex real-world tasks remain underexplored. To address this limitation, in this work, we focus on coding tutoring, a challenging problem that requires tutors to proactively guide students towards completing predefined coding tasks. We propose a novel agent workflow, Trace-and-Verify (TRAVER), which combines knowledge tracing to estimate a student's knowledge state and turn-by-turn verification to ensure effective guidance toward task completion. We introduce DICT, an automatic evaluation protocol that assesses tutor agents using controlled student simulation and code generation tests. Extensive experiments reveal the challenges of coding tutoring and demonstrate that TRAVER achieves a significantly higher success rate. Although we use code tutoring as an example in this paper, our approach can be extended beyond coding, providing valuable insights into advancing tutoring agents for human task learning.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-02-18T22:13:00Z</published>
+    <arxiv:comment>Accepted to Findings of ACL 2025</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Jian Wang</name>
+    </author>
+    <author>
+      <name>Yinpei Dai</name>
+    </author>
+    <author>
+      <name>Yichi Zhang</name>
+    </author>
+    <author>
+      <name>Ziqiao Ma</name>
+    </author>
+    <author>
+      <name>Wenjie Li</name>
+    </author>
+    <author>
+      <name>Joyce Chai</name>
+    </author>
+  </entry>
+</feed>

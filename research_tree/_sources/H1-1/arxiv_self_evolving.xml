@@ -1,0 +1,777 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/b3Pcwy2WxG/NDb4PPg969eEld3Y</id>
+  <title>arXiv Query: search_query=cat:cs.CL AND (all:"self-evolving" OR all:agent)&amp;id_list=&amp;start=0&amp;max_results=12</title>
+  <updated>2026-08-14T12:26:26Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=cat:cs.CL+AND+(all:%22self-evolving%22+OR+all:agent)&amp;start=0&amp;max_results=12&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>12</opensearch:itemsPerPage>
+  <opensearch:totalResults>9875</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2608.13560v1</id>
+    <title>AutoDesign: Meta-Harness Optimization for Long-Horizon Agentic Design</title>
+    <updated>2026-08-13T17:59:57Z</updated>
+    <link href="https://arxiv.org/abs/2608.13560v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.13560v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Transforming multimodal sources into condensed and structured media outputs can be fundamentally conceptualized as a long-horizon agentic process centered on a model-harness system. While an ideal harness system should align with human design priors and accumulate reusable experience through empirical exploration to drive recursive self-improvement, existing paradigms remain static and fall short of this capability. In this paper, we present AutoDesign, a framework that aligns with human design priors, where a meta-harness optimizer guides a code agent to recursively improve harness based on rollout feedback. To instantiate and evaluate this framework, we focus on the academic paper-to-poster generation task and introduce PosterBench, comprising a 100-paper Main Track spanning five disciplines and PosterBench-mini, a shared 10-paper subset for controlled evaluation. On the PosterBench Main Track, AutoDesign achieves the highest score of 78.32, surpassing the closed-source commercial system Claude Design by 7.45 points. Across seven controlled code-agent-model configurations, integrating the learned DesignHarness consistently improves performance, increasing the average PosterBench Score from 54.99 to 67.39 (+12.4%). In a fully autonomous long-horizon loop, it executes 253 tool calls and 11 editing turns within 40 minutes for under $3, reaching average conference-poster quality in human evaluation. A system-blind human study further demonstrates that AutoDesign achieves the highest human preference among evaluated systems.</summary>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T17:59:57Z</published>
+    <arxiv:comment>Tech Report. Code at: https://github.com/Yaxin9Luo/AutoDesign</arxiv:comment>
+    <arxiv:primary_category term="cs.CV"/>
+    <author>
+      <name>Yaxin Luo</name>
+    </author>
+    <author>
+      <name>Haobin Jiang</name>
+    </author>
+    <author>
+      <name>Jialv Zou</name>
+    </author>
+    <author>
+      <name>Xu Huang</name>
+    </author>
+    <author>
+      <name>Wenhao Yan</name>
+    </author>
+    <author>
+      <name>Haodong Li</name>
+    </author>
+    <author>
+      <name>Zhengrong Yue</name>
+    </author>
+    <author>
+      <name>Jing Li</name>
+    </author>
+    <author>
+      <name>Xiaofu Chen</name>
+    </author>
+    <author>
+      <name>Xiaohan Zhao</name>
+    </author>
+    <author>
+      <name>Jiacheng Liu</name>
+    </author>
+    <author>
+      <name>Jiacheng Cui</name>
+    </author>
+    <author>
+      <name>Zhiqiang Shen</name>
+    </author>
+    <author>
+      <name>Xiaotong Li</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.13558v1</id>
+    <title>OmniScientist: An Omni-Modal Omni-Discipline AI Scientist</title>
+    <updated>2026-08-13T17:59:52Z</updated>
+    <link href="https://arxiv.org/abs/2608.13558v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.13558v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Recent advances in foundation models have enabled AI scientists to automate increasingly complete research workflows, from hypothesis generation and code execution to manuscript preparation. Yet workflow coverage alone does not provide access to the full evidence on which scientific discovery depends. Existing systems typically reason over text, code, labels, or precomputed summaries, leaving scientifically decisive spatial, temporal, cross-channel, and procedural relations unavailable to the agent. We introduce OmniScientist, an end-to-end, omni-modal AI scientist that conducts multidisciplinary research directly from heterogeneous raw evidence. A perception layer and 3 autonomous agents for ideation, experiment, and writeup operate within a deterministic pipeline, allowing observations to shape research questions, experimental decisions, and final claims throughout the research lifecycle. By running idea, rigour, and claim checks in code, the system enforces novelty screening, statistical validity, execution provenance, and numerical traceability. We evaluate OmniScientist on 36 real-data cases spanning 5 discipline families, 4 families of scientific evidence, and modalities including images, signals, audio, video, 3-D structures, trajectories, tables, formulae, and graphs. The system completes the full path from raw data to a compiled manuscript in all 36 cases and achieves a mean overall paper score of 6.3 with the reference reasoning backbone. In paired comparisons against a blind variant that receives only precomputed scalar features, direct perception improves all 7 evaluation dimensions and wins 85% of head-to-head judgments. These results show that lifecycle-wide perception is essential for evidence-grounded scientific discovery and provides a practical path toward broadly capable AI scientists.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T17:59:52Z</published>
+    <arxiv:comment>30 pages, 13 figures, 19 tables. Project page: https://omni-scientist.github.io/</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Bobo Li</name>
+    </author>
+    <author>
+      <name>Hao Fei</name>
+    </author>
+    <author>
+      <name>Tianjie Ju</name>
+    </author>
+    <author>
+      <name>Mong-Li Lee</name>
+    </author>
+    <author>
+      <name>Wynne Hsu</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.13505v1</id>
+    <title>Intern-S2-Preview: Scientific Agentic Foundation Model</title>
+    <updated>2026-08-13T17:31:28Z</updated>
+    <link href="https://arxiv.org/abs/2608.13505v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.13505v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Scientific discovery increasingly requires AI systems that can reason over scientific evidence of heterogeneous modalities, interact with scientific tools and environments, and sustain progress across long task horizons. We present Intern-S2-Preview, a series of scientific agentic foundation models designed to support multimodal scientific understanding, reasoning, generation, and long-horizon tasks. The training pipeline begins with scientific multimodal pre-training over rendered scientific documents, interleaved image-text data, and diverse scientific corpora. Starting from the pretrained checkpoint, we apply a unified post-training pipeline consisting of supervised fine-tuning, scalable multi-task reinforcement learning (RL), black- and white-box agentic RL, and on-policy distillation. This pipeline is supported by practical techniques that improve rollout and training stability and efficiency, including partial rollout with off-policy correction, adaptive length regularization, online speculative decoding, robust multi-task optimization, and trace-aware experience assembly for agentic tasks. At the architecture level, Intern-S2-Preview-397B extends time series modelling from efficient long-sequence understanding to numerical forecasting, while Memory Decoder is studied as a separate memory-augmented path for rapid scientific specialization without modifying the frozen 397B backbone. Evaluations across scientific, multimodal, agentic, and general-purpose benchmarks show that Intern-S2-Preview-397B achieves competitive or leading results in multiple settings. The time series modules improve scientific signal understanding and forecasting on SciTS, while the separate Intern-MemDec-4B extension improves the Biology-Instructions average score from 56.92 to 60.32 without modifying the frozen 397B backbone.</summary>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T17:31:28Z</published>
+    <arxiv:comment>35 pages, 12 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.LG"/>
+    <author>
+      <name>Lei Bai</name>
+    </author>
+    <author>
+      <name>Jiaqi Cao</name>
+    </author>
+    <author>
+      <name>Chiyu Chen</name>
+    </author>
+    <author>
+      <name>Guanzhou Chen</name>
+    </author>
+    <author>
+      <name>Kai Chen</name>
+    </author>
+    <author>
+      <name>Guangran Cheng</name>
+    </author>
+    <author>
+      <name>Erfei Cui</name>
+    </author>
+    <author>
+      <name>Xuanlang Dai</name>
+    </author>
+    <author>
+      <name>Shengyuan Ding</name>
+    </author>
+    <author>
+      <name>Shangheng Du</name>
+    </author>
+    <author>
+      <name>Yanhui Duan</name>
+    </author>
+    <author>
+      <name>Yue Fan</name>
+    </author>
+    <author>
+      <name>Youqing Fang</name>
+    </author>
+    <author>
+      <name>Quan Gan</name>
+    </author>
+    <author>
+      <name>Yuanyuan Gao</name>
+    </author>
+    <author>
+      <name>Jiaye Ge</name>
+    </author>
+    <author>
+      <name>Lixin Gu</name>
+    </author>
+    <author>
+      <name>Yuzhe Gu</name>
+    </author>
+    <author>
+      <name>Qipeng Guo</name>
+    </author>
+    <author>
+      <name>Junjun He</name>
+    </author>
+    <author>
+      <name>Xin Hong</name>
+    </author>
+    <author>
+      <name>Ming Hu</name>
+    </author>
+    <author>
+      <name>Zhouqi Hua</name>
+    </author>
+    <author>
+      <name>Haian Huang</name>
+    </author>
+    <author>
+      <name>Junhao Huang</name>
+    </author>
+    <author>
+      <name>Zixian Huang</name>
+    </author>
+    <author>
+      <name>Minxi Jin</name>
+    </author>
+    <author>
+      <name>Lingkai Kong</name>
+    </author>
+    <author>
+      <name>Alexander Lam</name>
+    </author>
+    <author>
+      <name>Zehao Li</name>
+    </author>
+    <author>
+      <name>Zonglin Li</name>
+    </author>
+    <author>
+      <name>Tianhao Liang</name>
+    </author>
+    <author>
+      <name>Dahua Lin</name>
+    </author>
+    <author>
+      <name>Junyao Lin</name>
+    </author>
+    <author>
+      <name>Tianyang Lin</name>
+    </author>
+    <author>
+      <name>Zhouhan Lin</name>
+    </author>
+    <author>
+      <name>Jiangning Liu</name>
+    </author>
+    <author>
+      <name>Jin Liu</name>
+    </author>
+    <author>
+      <name>Kuikun Liu</name>
+    </author>
+    <author>
+      <name>Wenran Liu</name>
+    </author>
+    <author>
+      <name>Yifei Liu</name>
+    </author>
+    <author>
+      <name>Yuhong Liu</name>
+    </author>
+    <author>
+      <name>Yuhong Liu</name>
+    </author>
+    <author>
+      <name>Zhoumianze Liu</name>
+    </author>
+    <author>
+      <name>Ziyan Liu</name>
+    </author>
+    <author>
+      <name>Ziyu Liu</name>
+    </author>
+    <author>
+      <name>Haijun Lv</name>
+    </author>
+    <author>
+      <name>Han Lv</name>
+    </author>
+    <author>
+      <name>Chengqi Lyu</name>
+    </author>
+    <author>
+      <name>Le Ma</name>
+    </author>
+    <author>
+      <name>Ningsheng Ma</name>
+    </author>
+    <author>
+      <name>Zerun Ma</name>
+    </author>
+    <author>
+      <name>Haoyang Peng</name>
+    </author>
+    <author>
+      <name>Runyu Peng</name>
+    </author>
+    <author>
+      <name>Jifei Shan</name>
+    </author>
+    <author>
+      <name>Zixin Shang</name>
+    </author>
+    <author>
+      <name>Kou Shi</name>
+    </author>
+    <author>
+      <name>Xiang Shi</name>
+    </author>
+    <author>
+      <name>Qisheng Su</name>
+    </author>
+    <author>
+      <name>Xuerui Su</name>
+    </author>
+    <author>
+      <name>Hao Sun</name>
+    </author>
+    <author>
+      <name>Xiao Sun</name>
+    </author>
+    <author>
+      <name>Yanan Sun</name>
+    </author>
+    <author>
+      <name>Yu Sun</name>
+    </author>
+    <author>
+      <name>Huanze Tang</name>
+    </author>
+    <author>
+      <name>Yinghao Tang</name>
+    </author>
+    <author>
+      <name>Wenhui Tian</name>
+    </author>
+    <author>
+      <name>Zhongbo Tian</name>
+    </author>
+    <author>
+      <name>Bingli Wang</name>
+    </author>
+    <author>
+      <name>Haomin Wang</name>
+    </author>
+    <author>
+      <name>Jiarui Wang</name>
+    </author>
+    <author>
+      <name>Jingzhi Wang</name>
+    </author>
+    <author>
+      <name>Rui Wang</name>
+    </author>
+    <author>
+      <name>Xiquan Wang</name>
+    </author>
+    <author>
+      <name>Yi Wang</name>
+    </author>
+    <author>
+      <name>Zhecan Wang</name>
+    </author>
+    <author>
+      <name>Ziyi Wang</name>
+    </author>
+    <author>
+      <name>Zun Wang</name>
+    </author>
+    <author>
+      <name>Rubin Wei</name>
+    </author>
+    <author>
+      <name>Lianyi Wu</name>
+    </author>
+    <author>
+      <name>Wen Wu</name>
+    </author>
+    <author>
+      <name>Yue Wu</name>
+    </author>
+    <author>
+      <name>Yuhan Wu</name>
+    </author>
+    <author>
+      <name>Zhenyu Wu</name>
+    </author>
+    <author>
+      <name>Zijian Wu</name>
+    </author>
+    <author>
+      <name>Shuhao Xing</name>
+    </author>
+    <author>
+      <name>Jun Xu</name>
+    </author>
+    <author>
+      <name>Xingle Xu</name>
+    </author>
+    <author>
+      <name>Xuenan Xu</name>
+    </author>
+    <author>
+      <name>Xiangchao Yan</name>
+    </author>
+    <author>
+      <name>Ziang Yan</name>
+    </author>
+    <author>
+      <name>Bowen Yang</name>
+    </author>
+    <author>
+      <name>Danni Yang</name>
+    </author>
+    <author>
+      <name>Lin Yang</name>
+    </author>
+    <author>
+      <name>Zhiqi Yang</name>
+    </author>
+    <author>
+      <name>Qian Yao</name>
+    </author>
+    <author>
+      <name>Haochen Ye</name>
+    </author>
+    <author>
+      <name>Peng Ye</name>
+    </author>
+    <author>
+      <name>Jinhui Yin</name>
+    </author>
+    <author>
+      <name>Jiashuo Yu</name>
+    </author>
+    <author>
+      <name>Dingbo Yuan</name>
+    </author>
+    <author>
+      <name>Fei Yuan</name>
+    </author>
+    <author>
+      <name>Yuhang Zang</name>
+    </author>
+    <author>
+      <name>Bo Zhang</name>
+    </author>
+    <author>
+      <name>Chao Zhang</name>
+    </author>
+    <author>
+      <name>Chen Zhang</name>
+    </author>
+    <author>
+      <name>Hongjie Zhang</name>
+    </author>
+    <author>
+      <name>Junming Zhang</name>
+    </author>
+    <author>
+      <name>Wenlong Zhang</name>
+    </author>
+    <author>
+      <name>Wenwei Zhang</name>
+    </author>
+    <author>
+      <name>Yiming Zhang</name>
+    </author>
+    <author>
+      <name>Zhuo Zhang</name>
+    </author>
+    <author>
+      <name>Ziyang Zhang</name>
+    </author>
+    <author>
+      <name>Haiteng Zhao</name>
+    </author>
+    <author>
+      <name>Penghao Zhao</name>
+    </author>
+    <author>
+      <name>Yibo Zhao</name>
+    </author>
+    <author>
+      <name>Zhonghan Zhao</name>
+    </author>
+    <author>
+      <name>Zhihang Zhong</name>
+    </author>
+    <author>
+      <name>Bowen Zhou</name>
+    </author>
+    <author>
+      <name>Peiheng Zhou</name>
+    </author>
+    <author>
+      <name>Xin Zhou</name>
+    </author>
+    <author>
+      <name>Xinyu Zhou</name>
+    </author>
+    <author>
+      <name>Yunhua Zhou</name>
+    </author>
+    <author>
+      <name>Dongsheng Zhu</name>
+    </author>
+    <author>
+      <name>Yicheng Zou</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.13476v1</id>
+    <title>MARC v1: An Open-Source Multi-Agent Framework for Clinical AI Reasoning and Coordination</title>
+    <updated>2026-08-13T17:00:08Z</updated>
+    <link href="https://arxiv.org/abs/2608.13476v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.13476v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We present Multi-Agent Reasoning and Coordination (MARC), an open-source framework that replaces monolithic LLM prompting with deterministic multi-agent orchestration for clinical reasoning. MARC coordinates role-specialized agents for extraction, reasoning, answer generation, and evaluation, with explicit context passing and traceable intermediate outputs, enabling stage-wise failure attribution. We additionally introduce a Decomposer module that generates task-specific agent prompts from a plain-language description, eliminating manual prompt engineering. The framework supports both API-based and local CPU-compatible deployments and is entirely configurable via YAML, without code modifications. MARC is designed to be model-agnostic, interpretable, and accessible to clinical domain experts without programming expertise. The full framework is available at https://github.com/Penn-RAIL/MARC-v1.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T17:00:08Z</published>
+    <arxiv:comment>13 pages, 4 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Saisha Shetty</name>
+    </author>
+    <author>
+      <name>Satvik Tripathi</name>
+    </author>
+    <author>
+      <name>Austin Lin</name>
+    </author>
+    <author>
+      <name>Colin Zhao</name>
+    </author>
+    <author>
+      <name>Theodore Kim</name>
+    </author>
+    <author>
+      <name>Don Enwerem</name>
+    </author>
+    <author>
+      <name>Jacinta Arnold</name>
+    </author>
+    <author>
+      <name>Shahriar Faghani</name>
+    </author>
+    <author>
+      <name>Tessa S Cook</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.13463v1</id>
+    <title>MLLM-Routed Heterogeneous Ensembles for Robust Cross-Dataset Image Classification</title>
+    <updated>2026-08-13T16:45:24Z</updated>
+    <link href="https://arxiv.org/abs/2608.13463v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.13463v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Modern image classification models excel when trained on single task-specific datasets but often struggle to generalize across domains and difficulty levels. We propose ARMDIL, an Adaptive Router for Multi-Domain Image classification with LLMs. ARMDIL is an ensemble that uses a multimodal large language model (MLLM) agent to dynamically route each image to the most suitable vision backbone. Our diverse ensemble employs convolutional neural networks (ResNets), self-supervised representation learners (SSL), and vision-language models (VLMs), each trained on a unified label space constructed from multiple image datasets with differing distributions and characteristics. Empirical evaluations illuminate the distinct capabilities and vulnerabilities of each architecture across disparate visual domains. Crucially, we show that ARMDIL effectively navigates these trade-offs, performing competitively with specialized training-based routers. Furthermore, it drastically improves adaptability by allowing new information to be integrated via simple prompt modifications, while enhancing interpretability through natural language reasoning traces. These advances in cross-dataset image classification pave the way for more reliable general-purpose vision systems such as AI assistants and autonomous robots.</summary>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T16:45:24Z</published>
+    <arxiv:comment>8 pages, 4 figures, 7 tables</arxiv:comment>
+    <arxiv:primary_category term="cs.CV"/>
+    <author>
+      <name>Daniel Perkins</name>
+    </author>
+    <author>
+      <name>John Squires</name>
+    </author>
+    <author>
+      <name>Janou Milligan</name>
+    </author>
+    <author>
+      <name>Chandra Raskoti</name>
+    </author>
+    <author>
+      <name>Linda Ungerboeck</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.13334v1</id>
+    <title>RippleMem: From Isolated Retrieval to Associative Recollection for Long-Term Agent Memory</title>
+    <updated>2026-08-13T15:05:01Z</updated>
+    <link href="https://arxiv.org/abs/2608.13334v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.13334v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>LLM-based agents increasingly rely on external memory to support long-horizon reasoning and interaction. However, the main bottleneck is not simply storing past experience, but recovering the right set of evidence when relevant information is distributed across many interactions. Existing approaches struggle with this access problem. Full-context methods require noisy long-context search, flat retrieval often returns isolated and incomplete records, and graph-based memory systems can be expensive to construct while compressing rich event context. We introduce RippleMem, a long-term memory system that replaces one-shot retrieval with adaptive associative recollection. Inspired by cue-dependent episodic retrieval and associative completion, RippleMem stores interaction history as cue-rich episodic memory units and organizes them in an event-centric memory graph. Given a query, it first recalls relevant memory anchors through hybrid cues, then expands from these anchors along semantic and structural associations to recover missing supporting evidence. In this way, initially recalled memories serve not only as answer context, but also as cues for completing the evidence needed to answer. Experiments on LoCoMo and LongMemEval-S show that RippleMem achieves the best overall performance across evaluated settings, improving LLM-as-a-Judge accuracy by 3.95% on LoCoMo and up to 11.87% on LongMemEval-S, while reducing graph construction cost by about 30x.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T15:05:01Z</published>
+    <arxiv:comment>22 pages, 4 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Jingbo Ji</name>
+    </author>
+    <author>
+      <name>Lingyi Li</name>
+    </author>
+    <author>
+      <name>Xilong Cheng</name>
+    </author>
+    <author>
+      <name>Yuhao Zhou</name>
+    </author>
+    <author>
+      <name>Wenji Zhang</name>
+    </author>
+    <author>
+      <name>Yuting Tan</name>
+    </author>
+    <author>
+      <name>Yunxiao Qin</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.13040v1</id>
+    <title>Latent On-Policy Self-Distillation</title>
+    <updated>2026-08-13T10:05:51Z</updated>
+    <link href="https://arxiv.org/abs/2608.13040v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.13040v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Enabling agents to learn from experience and internalize it into their policy has become a central problem in self-evolving AI. On-policy self-distillation (OPSD) offers an effective pathway by using a privileged self-teacher to provide dense supervision on the student's own trajectories; however, existing methods still rely heavily on designer-specified privileged artifacts (e.g., answers, feedback, skills, or trajectories), limiting the end-to-end learnability and scalability required for continual self-improvement. In this work, we introduce Latent On-Policy Self-Distillation (LOPD), which, rather than proposing another hand-crafted OPSD variant with a newly prescribed form of privileged context, makes the teacher's privileged context itself learnable end-to-end from experience. Technically, LOPD retrieves relevant experiences and composes them into continuous latent tokens that condition a self-teacher, while the student generates trajectories from the task and interaction history and receives dense token-level supervision at every visited prefix. We further introduce a privileged-margin objective to stabilize and regulate the learning of latent context. Empirically, LOPD demonstrates (I) strong performance, outperforming RLVR and representative OPSD methods including OPSD, SDPO, and Skill-SD across both agentic tool use and code generation; and (II) high learning efficiency, surpassing GRPO and Skill-SD with less than 30% of their rollout budget. Ablation studies further provide direct evidence that making privileged context learnable is necessary for realizing these gains. Together, these results position LOPD as a step toward a more scalable and self-directed paradigm for agent evolution.</summary>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T10:05:51Z</published>
+    <arxiv:primary_category term="cs.LG"/>
+    <author>
+      <name>Guibin Zhang</name>
+    </author>
+    <author>
+      <name>Jiayang Lyu</name>
+    </author>
+    <author>
+      <name>Ran Sun</name>
+    </author>
+    <author>
+      <name>Xinlei Yu</name>
+    </author>
+    <author>
+      <name>Haoyu Zhao</name>
+    </author>
+    <author>
+      <name>Qibing Ren</name>
+    </author>
+    <author>
+      <name>Shuicheng Yan</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.12990v1</id>
+    <title>LycheeMemory V2: Efficient Long-Term Memory for LLM Agents via Semantic Segment-Level Consolidation</title>
+    <updated>2026-08-13T09:13:15Z</updated>
+    <link href="https://arxiv.org/abs/2608.12990v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.12990v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Long-horizon LLM agents must preserve information from past interactions to support future tasks. Existing memory systems typically rely on eager consolidation, invoking LLMs after each interaction to extract, summarize, or update memories. This design makes memory construction increasingly costly as conversations grow. Coarse summarization can reduce construction cost but risks discarding fine-grained contextual evidence, whereas larger retrieval contexts or multi-hop LLM reasoning shift the overhead to query time. We present LycheeMemory V2, an efficient long-term memory framework that replaces turn-level consolidation with semantic segment-level consolidation. Instead of consolidating every interaction, LycheeMemory batches multiple exchanges into segments and encodes each finalized segment into context-independent typed memory records. Segment-level batching lowers LLM encoding frequency, while semantic boundary detection helps preserve coherent event-level and temporal evidence compared with fixed-window batching. The resulting records are organized with lightweight structured indexes for query-planned evidence retrieval. Experiments using GPT-4.1-Mini show that LycheeMemory achieves state-of-the-art performance, reaching 89.22% on LoCoMo and 92.20% on LongMemEval-S. Compared with A-Mem, it reduces construction tokens by 86.0% on LoCoMo and 75.9% on LongMemEval-S without increasing query-time token usage. More broadly, our results suggest that the accuracy--cost trade-off of long-term agent memory depends not only on what information is retained, but also on the granularity at which it is consolidated.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T09:13:15Z</published>
+    <arxiv:comment>34 pages, 5 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Dongfang Li</name>
+    </author>
+    <author>
+      <name>Zixuan Liu</name>
+    </author>
+    <author>
+      <name>Junmai Wang</name>
+    </author>
+    <author>
+      <name>Jiahe Huang</name>
+    </author>
+    <author>
+      <name>Fuhao Li</name>
+    </author>
+    <author>
+      <name>Bonian Jia</name>
+    </author>
+    <author>
+      <name>Baotian Hu</name>
+    </author>
+    <author>
+      <name>Min Zhang</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.12984v1</id>
+    <title>Reconcile Once, Write Anytime: A Trust-Tiered Librarian and a Multi-Agent Writer for Drift-Free, Point-in-Time Research</title>
+    <updated>2026-08-13T09:09:28Z</updated>
+    <link href="https://arxiv.org/abs/2608.12984v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.12984v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Long-form research reports generated by large language models drift, contradict themselves, and lose provenance: the same metric appears with different values, and rumor is quoted as confidently as an audited filing. We present a two-tier agentic system that separates a maintained, point-in-time knowledge library from report writing. A deterministic "librarian" ingests timestamped sources into a trust-tiered ontology, layering evidence cards, an authoritative metric ledger, and a claim graph into an always-current source of truth, not per-query RAG over raw chunks. A portable multi-agent "writer" runtime then composes a contradiction-free, evidence-grounded report at any knowledge cutoff T, reading only evidence with as_of &lt;= T (no look-ahead); red-team verdicts flow back into the librarian. We evaluate on a self-collected, public corpus of 6,130 sources yielding 555,926 evidence cards (SEC EDGAR filings across 295 issuers and 11 sectors, U.S. Bureau of Labor Statistics releases, and Wikipedia). From the one library we compose four point-in-time reports on distinct theses and run eight reproducible experiments, whose headline metrics come from a deterministic quality-control gate, itself validated by defect-injection meta-evaluation at recall 1.0 and precision 1.0. A shared metric ledger removes 6,845 cross-section contradictions to zero. Tier-first selection is correct on 22/22 gold cases where a popularity-first baseline scores only 9/22; trust tiering leaks zero media-sourced numbers, and no government statistic displaces a company's own filing. A red-team refutation propagates back and self-corrects a later run with zero manual edits. Replay exhibits zero look-ahead violations across seven cutoffs while the library grows from 235,373 to 555,312 cards. Difficulty-tiered model routing exceeds the all-Opus quality ceiling while running 3.7x faster than serial.</summary>
+    <category term="cs.MA" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T09:09:28Z</published>
+    <arxiv:primary_category term="cs.MA"/>
+    <author>
+      <name>Xing Zhang</name>
+    </author>
+    <author>
+      <name>Yanwei Cui</name>
+    </author>
+    <author>
+      <name>Guanghui Wang</name>
+    </author>
+    <author>
+      <name>Peiyang He</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.12888v1</id>
+    <title>When Your Agent Opens the Chat App: Agent-Controlled Search over Raw Chat Logs Rivals Structured Memory</title>
+    <updated>2026-08-13T07:10:22Z</updated>
+    <link href="https://arxiv.org/abs/2608.12888v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.12888v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Agent-memory systems increasingly buy retrieval quality with structure, transforming raw conversation histories into summaries, embeddings, trees, or knowledge graphs before any question is asked. We ask how much of that benefit comes from the structure itself, rather than from competent retrieval over the raw history. We present ReFind, an agent-controlled search interface that builds no semantic structure at all: it leaves the conversation archive unmodified, indexes it lexically at turn granularity, and combines a generic iterative keyword-search loop with four chat-native controls grounded in empirical refinding work: session-aware rank fusion, local context expansion, temporal narrowing, and skipping already-inspected sessions. A separate reasoning stage answers from the collected evidence. Across a broad suite of conversational-memory tasks (single- and multi-hop QA, event ordering, and fact consolidation), roughly 2,800 questions on precise-retrieval and fact-tracking capabilities evaluated under the incremental multi-turn setting of MemoryAgentBench, ReFind attains the highest mean accuracy (58.2) of any system compared, above the strongest graph- and tree-based memory systems (HippoRAG 2, 53.2), all under a GPT-4o-mini backbone matched to every reused baseline. Controlled comparisons to single-shot BM25, a matched generic-agentic BM25 control, component removals, and agentic dense/hybrid variants separately support the roles of agent control, chat-native controls, and lexical retrieval. On LongMemEval-S/M, the same interface reaches 93.2 +/- 3.3 and 89.3 +/- 6.0 with GPT-5-mini. The results indicate that for precise, evidence-grounded questions over chat archives, much of the benefit credited to elaborate memory structures is recoverable by giving an agent controllable search over the unmodified record, with no LLM-based index construction at all.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T07:10:22Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Ruizhe Li</name>
+    </author>
+    <author>
+      <name>Licheng Zhang</name>
+    </author>
+    <author>
+      <name>Benfeng Xu</name>
+    </author>
+    <author>
+      <name>Mingxuan Du</name>
+    </author>
+    <author>
+      <name>Zheren Fu</name>
+    </author>
+    <author>
+      <name>Weidong Chen</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.12847v1</id>
+    <title>Beyond Retrieval: Query-Conditioned Reuse of Long-Horizon Agent Trajectories</title>
+    <updated>2026-08-13T05:39:49Z</updated>
+    <link href="https://arxiv.org/abs/2608.12847v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.12847v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Retrieval can identify a past trajectory that may matter, yet it does not specify how an acting agent should use that trajectory after users, entities, constraints, or environment state have changed. We identify this post-retrieval reuse step as a distinct bottleneck for long-horizon trajectory memory and formulate an evaluation framework that holds candidate retrieval, target state, model, decoding, and tool budget fixed while varying the support delivered to the agent. We instantiate the framework with query-conditioned reuse (QCR), a deliberately simple target-bound note that records a reusable procedure, bindings to recover, applicability conditions, and verification requirements. QCR serves to test the reuse hypothesis rather than to claim a universally preferred memory format. Across 2,391 target instances in WebArena, WorkArena, and AppWorld, QCR reaches 62.3% average Success, 10.7 points above Full Trajectory, while using 48.9% fewer online tokens. Summary reranking selects a reusable memory for 94.8% of targets, placing end-task Success within 1.8 points of an oracle reusable selector. Analyses by trajectory length and source--target binding shift show that direct trajectory injection loses much of its utility as traces grow longer or source-specific values change, whereas target-bound support preserves a larger share of the measured gain. The resulting framework separates retrieval quality from the problem of turning retrieved experience into safe, useful support for a new task.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T05:39:49Z</published>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Yifei Li</name>
+    </author>
+    <author>
+      <name>Heng Wang</name>
+    </author>
+    <author>
+      <name>Lingling Zhang</name>
+    </author>
+    <author>
+      <name>Muye Huang</name>
+    </author>
+    <author>
+      <name>Xinyu Zhang</name>
+    </author>
+    <author>
+      <name>Jiashuai Liu</name>
+    </author>
+    <author>
+      <name>Hang Yan</name>
+    </author>
+    <author>
+      <name>Rongman Xu</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.12841v1</id>
+    <title>AQuA: Recursively Self-Improving Quantitative Trading Research Agents</title>
+    <updated>2026-08-13T05:25:42Z</updated>
+    <link href="https://arxiv.org/abs/2608.12841v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.12841v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We study recursive self-improvement at the level of quantitative-investment research: whether an autonomous system can use evidence from earlier experiments to improve the hypotheses and candidates proposed in later iterations. We present AQuA, which comprises two separate language-model-driven research systems: one for symbolic factor discovery and one for trainable model development. The two systems do not share agents, memories, candidate spaces, or research state. Instead, each independently closes its own research loop by retaining validated evidence and using it to guide subsequent proposals. In this bounded sense, both systems implement recursive self-improvement at the level of the research process. Each system also uses its own sealed sandbox, which fixes the data splits, feature and label definitions, and evaluator while allowing the model to act only through constrained factor expressions or configuration diffs. The factor system, a manager-mediated multi-agent pipeline, discovers and combines factors into a signal that reaches a combined information coefficient of about $0.190$ on a crypto universe. The model system, a config-driven loop over a hybrid time-series architecture, reaches a per-stock information coefficient of $+0.0843$ on US equities and converts it into a threshold long/short strategy with a held-out Sharpe of up to $+2.50$ at a two-leg cost. The strategy is positive in every year from 2021 to 2025.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-13T05:25:42Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Jiacheng Guo</name>
+    </author>
+    <author>
+      <name>Suozhi Huang</name>
+    </author>
+    <author>
+      <name>Yunlong Gao</name>
+    </author>
+    <author>
+      <name>Zihao Li</name>
+    </author>
+    <author>
+      <name>Jian Ge</name>
+    </author>
+    <author>
+      <name>Xu Kuang</name>
+    </author>
+    <author>
+      <name>Mengdi Wang</name>
+    </author>
+  </entry>
+</feed>

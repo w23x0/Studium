@@ -1,0 +1,256 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/1VddisVIcXplQMCrN3YOu5sBXvI</id>
+  <title>arXiv Query: search_query=all:"when to retrieve"&amp;id_list=&amp;start=0&amp;max_results=10</title>
+  <updated>2026-08-14T14:17:40Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=all:%22when+to+retrieve%22&amp;start=0&amp;max_results=10&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>10</opensearch:itemsPerPage>
+  <opensearch:totalResults>100</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2409.15515v1</id>
+    <title>Learning When to Retrieve, What to Rewrite, and How to Respond in Conversational QA</title>
+    <updated>2024-09-23T20:05:12Z</updated>
+    <link href="https://arxiv.org/abs/2409.15515v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2409.15515v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Augmenting Large Language Models (LLMs) with information retrieval capabilities (i.e., Retrieval-Augmented Generation (RAG)) has proven beneficial for knowledge-intensive tasks. However, understanding users' contextual search intent when generating responses is an understudied topic for conversational question answering (QA). This conversational extension leads to additional concerns when compared to single-turn QA as it is more challenging for systems to comprehend conversational context and manage retrieved passages over multiple turns. In this work, we propose a method for enabling LLMs to decide when to retrieve in RAG settings given a conversational context. When retrieval is deemed necessary, the LLM then rewrites the conversation for passage retrieval and judges the relevance of returned passages before response generation. Operationally, we build on the single-turn SELF-RAG framework (Asai et al., 2023) and propose SELF-multi-RAG for conversational settings. SELF-multi-RAG demonstrates improved capabilities over single-turn variants with respect to retrieving relevant passages (by using summarized conversational context) and assessing the quality of generated responses. Experiments on three conversational QA datasets validate the enhanced response generation capabilities of SELF-multi-RAG, with improvements of ~13% measured by human annotation.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-09-23T20:05:12Z</published>
+    <arxiv:comment>Accepted in EMNLP (findings) 2024</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Nirmal Roy</name>
+    </author>
+    <author>
+      <name>Leonardo F. R. Ribeiro</name>
+    </author>
+    <author>
+      <name>Rexhina Blloshmi</name>
+    </author>
+    <author>
+      <name>Kevin Small</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2604.26649v1</id>
+    <title>When to Retrieve During Reasoning: Adaptive Retrieval for Large Reasoning Models</title>
+    <updated>2026-04-29T13:15:44Z</updated>
+    <link href="https://arxiv.org/abs/2604.26649v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2604.26649v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large reasoning models such as DeepSeek-R1 and OpenAI o1 generate extended chains of thought spanning thousands of tokens, yet their integration with retrieval-augmented generation (RAG) remains fundamentally misaligned. Current RAG systems optimize for providing context before reasoning begins, while reasoning models require evidence injection during multi-step inference chains. We introduce ReaLM-Retrieve, a reasoning-aware retrieval framework that addresses this mismatch through three key innovations: (1) a step-level uncertainty detector that identifies knowledge gaps at reasoning-step granularity rather than token or sentence level; (2) a retrieval intervention policy that learns when external evidence maximally benefits ongoing reasoning; and (3) an efficiency-optimized integration mechanism that reduces per-retrieval overhead by 3.2x compared to naive integration. Experiments on MuSiQue, HotpotQA, and 2WikiMultiHopQA demonstrate that ReaLM-Retrieve achieves on average 10.1% absolute improvement in answer F1 over standard RAG (range: 9.0-11.8% across the three benchmarks) while reducing retrieval calls by 47% compared to fixed-interval approaches like IRCoT (all improvements significant at p&lt;0.01, paired bootstrap). On the challenging MuSiQue benchmark requiring 2-4 hop reasoning, our method achieves 71.2% F1 with an average of only 1.8 retrieval calls per question. Analysis shows that ReaLM-Retrieve also improves retrieval quality itself, achieving 81.3% Recall@5 with consistently higher precision and MRR than fixed-interval baselines on supporting evidence, establishing new state-of-the-art efficiency-accuracy trade-offs for reasoning-intensive retrieval tasks.</summary>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-04-29T13:15:44Z</published>
+    <arxiv:comment>12 pages, 3 figures, 9 tables. Accepted at SIGIR 2026 (49th International ACM SIGIR Conference on Research and Development in Information Retrieval), Melbourne, Australia</arxiv:comment>
+    <arxiv:primary_category term="cs.IR"/>
+    <author>
+      <name>Dongxin Guo</name>
+    </author>
+    <author>
+      <name>Jikun Wu</name>
+    </author>
+    <author>
+      <name>Siu Ming Yiu</name>
+    </author>
+    <arxiv:doi>10.1145/3805712.3809722</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.1145/3805712.3809722" title="doi"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2404.19705v2</id>
+    <title>When to Retrieve: Teaching LLMs to Utilize Information Retrieval Effectively</title>
+    <updated>2024-05-06T19:08:10Z</updated>
+    <link href="https://arxiv.org/abs/2404.19705v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2404.19705v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>In this paper, we demonstrate how Large Language Models (LLMs) can effectively learn to use an off-the-shelf information retrieval (IR) system specifically when additional context is required to answer a given question. Given the performance of IR systems, the optimal strategy for question answering does not always entail external information retrieval; rather, it often involves leveraging the parametric memory of the LLM itself. Prior research has identified this phenomenon in the PopQA dataset, wherein the most popular questions are effectively addressed using the LLM's parametric memory, while less popular ones require IR system usage. Following this, we propose a tailored training approach for LLMs, leveraging existing open-domain question answering datasets. Here, LLMs are trained to generate a special token, &lt;RET&gt;, when they do not know the answer to a question. Our evaluation of the Adaptive Retrieval LLM (Adapt-LLM) on the PopQA dataset showcases improvements over the same LLM under three configurations: (i) retrieving information for all the questions, (ii) using always the parametric memory of the LLM, and (iii) using a popularity threshold to decide when to use a retriever. Through our analysis, we demonstrate that Adapt-LLM is able to generate the &lt;RET&gt; token when it determines that it does not know how to answer a question, indicating the need for IR, while it achieves notably high accuracy levels when it chooses to rely only on its parametric memory.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-04-30T16:52:55Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Tiziano Labruna</name>
+    </author>
+    <author>
+      <name>Jon Ander Campos</name>
+    </author>
+    <author>
+      <name>Gorka Azkune</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2403.10081v3</id>
+    <title>DRAGIN: Dynamic Retrieval Augmented Generation based on the Information Needs of Large Language Models</title>
+    <updated>2024-09-21T08:27:16Z</updated>
+    <link href="https://arxiv.org/abs/2403.10081v3" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2403.10081v3" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Dynamic retrieval augmented generation (RAG) paradigm actively decides when and what to retrieve during the text generation process of Large Language Models (LLMs). There are two key elements of this paradigm: identifying the optimal moment to activate the retrieval module (deciding when to retrieve) and crafting the appropriate query once retrieval is triggered (determining what to retrieve). However, current dynamic RAG methods fall short in both aspects. Firstly, the strategies for deciding when to retrieve often rely on static rules. Moreover, the strategies for deciding what to retrieve typically limit themselves to the LLM's most recent sentence or the last few tokens, while the LLM's real-time information needs may span across the entire context. To overcome these limitations, we introduce a new framework, DRAGIN, i.e., Dynamic Retrieval Augmented Generation based on the real-time Information Needs of LLMs. Our framework is specifically designed to make decisions on when and what to retrieve based on the LLM's real-time information needs during the text generation process. We evaluate DRAGIN along with existing methods comprehensively over 4 knowledge-intensive generation datasets. Experimental results show that DRAGIN achieves superior performance on all tasks, demonstrating the effectiveness of our method. We have open-sourced all the code, data, and models in GitHub: https://github.com/oneal2000/DRAGIN/tree/main</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-03-15T07:45:37Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Weihang Su</name>
+    </author>
+    <author>
+      <name>Yichen Tang</name>
+    </author>
+    <author>
+      <name>Qingyao Ai</name>
+    </author>
+    <author>
+      <name>Zhijing Wu</name>
+    </author>
+    <author>
+      <name>Yiqun Liu</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2412.10281v1</id>
+    <title>One world, one opinion? The superstar effect in LLM responses</title>
+    <updated>2024-12-13T17:03:56Z</updated>
+    <link href="https://arxiv.org/abs/2412.10281v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2412.10281v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>As large language models (LLMs) are shaping the way information is shared and accessed online, their opinions have the potential to influence a wide audience. This study examines who the LLMs view as the most prominent figures across various fields, using prompts in ten different languages to explore the influence of linguistic diversity. Our findings reveal low diversity in responses, with a small number of figures dominating recognition across languages (also known as the "superstar effect"). These results highlight the risk of narrowing global knowledge representation when LLMs retrieve subjective information.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-12-13T17:03:56Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <arxiv:journal_ref>https://aclanthology.org/2025.c3nlp-1.pdf#page=100</arxiv:journal_ref>
+    <author>
+      <name>Sofie Goethals</name>
+    </author>
+    <author>
+      <name>Lauren Rhue</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2511.05302v2</id>
+    <title>When More Retrieval Hurts: Retrieval-Augmented Code Review Generation</title>
+    <updated>2026-03-24T20:29:19Z</updated>
+    <link href="https://arxiv.org/abs/2511.05302v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2511.05302v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Code review generation can reduce developer effort by producing concise, reviewer-style feedback for a given code snippet or code change. However, generation-only models often produce generic or off-point reviews, while retrieval-only methods struggle to adapt well to new contexts. In this paper, we view retrieval augmentation for code review as retrieval-augmented in-context learning, where retrieved historical reviews are placed in the input context as examples that guide the model's output. Based on this view, we propose RARe (Retrieval-Augmented Code Reviewer), a framework that retrieves relevant historical reviews from a corpus and conditions a large language model on the retrieved in-context examples. Experiments on two public benchmarks show that RARe outperforms strong baselines and reaches BLEU-4 scores of 12.32 and 12.96. A key finding is that more retrieval can hurt: using only the top-1 retrieved example works best, while adding more retrieved items can degrade performance due to redundancy and conflicting cues under limited context budgets. Human evaluation and interpretability analysis further support that retrieval-augmented generation reduces generic outputs and improves review focus.</summary>
+    <category term="cs.SE" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-11-07T15:02:42Z</published>
+    <arxiv:primary_category term="cs.SE"/>
+    <author>
+      <name>Qianru Meng</name>
+    </author>
+    <author>
+      <name>Xiao Zhang</name>
+    </author>
+    <author>
+      <name>Zhaochen Ren</name>
+    </author>
+    <author>
+      <name>Joost Visser</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.02245v1</id>
+    <title>When Knowledge Is Not Free: Cost-Aware Evidence Selection in Retrieval-Augmented Generation</title>
+    <updated>2026-06-01T13:39:39Z</updated>
+    <link href="https://arxiv.org/abs/2606.02245v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.02245v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Retrieval-Augmented Generation (RAG) typically assumes that external knowledge is free, but many high-quality sources are paywalled, licensed, restricted, or otherwise costly to access. We introduce cost-aware RAG, a setting where retrieved evidence is assigned access-cost tiers and systems must answer under an explicit evidence-access budget. We instantiate this setting by augmenting MS MARCO v2.1 with access-friction tiers and evaluate budgeted evidence selection across general-domain and domain-specific QA benchmarks. Our results show that static selection is brittle: no fixed selector uniformly dominates, and larger budgets do not reliably improve answer quality, even when costly evidence is domain-matched. We then study agentic cost-aware RAG, where an LLM decides when to retrieve, which tier to access, and when to stop. Agents show strong promise as adaptive evidence-acquisition controllers, but their behavior remains highly model- and task-dependent. These findings suggest that cost-aware evidence acquisition is a central challenge for the next generation of RAG systems. All code and data are available at https://github.com/Mignonmy/Cost-Aware.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-01T13:39:39Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Mingyan Wu</name>
+    </author>
+    <author>
+      <name>Han Yang</name>
+    </author>
+    <author>
+      <name>Omer Ben-Porat</name>
+    </author>
+    <author>
+      <name>Yftah Ziser</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2506.04185v1</id>
+    <title>R-Search: Empowering LLM Reasoning with Search via Multi-Reward Reinforcement Learning</title>
+    <updated>2025-06-04T17:29:22Z</updated>
+    <link href="https://arxiv.org/abs/2506.04185v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2506.04185v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large language models (LLMs) have notably progressed in multi-step and long-chain reasoning. However, extending their reasoning capabilities to encompass deep interactions with search remains a non-trivial challenge, as models often fail to identify optimal reasoning-search interaction trajectories, resulting in suboptimal responses. We propose R-Search, a novel reinforcement learning framework for Reasoning-Search integration, designed to enable LLMs to autonomously execute multi-step reasoning with deep search interaction, and learn optimal reasoning search interaction trajectories via multi-reward signals, improving response quality in complex logic- and knowledge-intensive tasks. R-Search guides the LLM to dynamically decide when to retrieve or reason, while globally integrating key evidence to enhance deep knowledge interaction between reasoning and search. During RL training, R-Search provides multi-stage, multi-type rewards to jointly optimize the reasoning-search trajectory. Experiments on seven datasets show that R-Search outperforms advanced RAG baselines by up to 32.2% (in-domain) and 25.1% (out-of-domain). The code and data are available at https://github.com/QingFei1/R-Search.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-06-04T17:29:22Z</published>
+    <arxiv:comment>16 pages, 3 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Qingfei Zhao</name>
+    </author>
+    <author>
+      <name>Ruobing Wang</name>
+    </author>
+    <author>
+      <name>Dingling Xu</name>
+    </author>
+    <author>
+      <name>Daren Zha</name>
+    </author>
+    <author>
+      <name>Limin Liu</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2604.11407v2</id>
+    <title>Retrieval as Generation: A Unified Framework with Self-Triggered Information Planning</title>
+    <updated>2026-04-19T03:48:59Z</updated>
+    <link href="https://arxiv.org/abs/2604.11407v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2604.11407v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We revisit retrieval-augmented generation (RAG) by embedding retrieval control directly into generation. Instead of treating retrieval as an external intervention, we express retrieval decisions within token-level decoding, enabling end-to-end coordination without additional controllers or classifiers. Under the paradigm of Retrieval as Generation, we propose \textbf{GRIP} (\textbf{G}eneration-guided \textbf{R}etrieval with \textbf{I}nformation \textbf{P}lanning), a unified framework in which the model regulates retrieval behavior through control-token emission. Central to GRIP is \textit{Self-Triggered Information Planning}, which allows the model to decide when to retrieve, how to reformulate queries, and when to terminate, all within a single autoregressive trajectory. This design tightly couples retrieval and reasoning and supports dynamic multi-step inference with on-the-fly evidence integration. To supervise these behaviors, we construct a structured training set covering answerable, partially answerable, and multi-hop queries, each aligned with specific token patterns. Experiments on five QA benchmarks show that GRIP surpasses strong RAG baselines and is competitive with GPT-4o while using substantially fewer parameters.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-04-13T12:53:17Z</published>
+    <arxiv:comment>Github: https://github.com/WisdomShell/GRIP HuggingFace:https://huggingface.co/collections/WisdomShell/grip</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <arxiv:journal_ref>ACL2026, Main Conference</arxiv:journal_ref>
+    <author>
+      <name>Bo Li</name>
+    </author>
+    <author>
+      <name>Mingda Wang</name>
+    </author>
+    <author>
+      <name>Gexiang Fang</name>
+    </author>
+    <author>
+      <name>Shikun Zhang</name>
+    </author>
+    <author>
+      <name>Wei Ye</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2410.18141v2</id>
+    <title>SmartRAG: Jointly Learn RAG-Related Tasks From the Environment Feedback</title>
+    <updated>2025-03-10T09:49:31Z</updated>
+    <link href="https://arxiv.org/abs/2410.18141v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2410.18141v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>RAG systems consist of multiple modules to work together. However, these modules are usually separately trained. We argue that a system like RAG that incorporates multiple modules should be jointly optimized to achieve optimal performance. To demonstrate this, we design a specific pipeline called \textbf{SmartRAG} that includes a policy network and a retriever. The policy network can serve as 1) a decision maker that decides when to retrieve, 2) a query rewriter to generate a query most suited to the retriever, and 3) an answer generator that produces the final response with/without the observations. We then propose to jointly optimize the whole system using a reinforcement learning algorithm, with the reward designed to encourage the system to achieve the best performance with minimal retrieval cost. When jointly optimized, all the modules can be aware of how other modules are working and thus find the best way to work together as a complete system. Empirical results demonstrate that the jointly optimized SmartRAG can achieve better performance than separately optimized counterparts.</summary>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-10-22T11:23:11Z</published>
+    <arxiv:primary_category term="cs.IR"/>
+    <author>
+      <name>Jingsheng Gao</name>
+    </author>
+    <author>
+      <name>Linxu Li</name>
+    </author>
+    <author>
+      <name>Weiyuan Li</name>
+    </author>
+    <author>
+      <name>Yuzhuo Fu</name>
+    </author>
+    <author>
+      <name>Bin Dai</name>
+    </author>
+  </entry>
+</feed>

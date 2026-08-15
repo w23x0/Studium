@@ -1,0 +1,384 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/cKtki/n0ETI+DS7WDGv9gggSNt8</id>
+  <title>arXiv Query: search_query=cat:cs.CL AND all:"context compression"&amp;id_list=&amp;start=0&amp;max_results=12</title>
+  <updated>2026-08-14T11:49:58Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=cat:cs.CL+AND+all:%22context+compression%22&amp;start=0&amp;max_results=12&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>12</opensearch:itemsPerPage>
+  <opensearch:totalResults>100</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2608.11775v1</id>
+    <title>The Sleeping Agent: What Gist-Based Context Compression Loses and Why</title>
+    <updated>2026-08-12T08:19:15Z</updated>
+    <link href="https://arxiv.org/abs/2608.11775v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.11775v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Gist-based context compression---summarising older conversation history into compact representations---is a common approach in long-horizon language model agents, yet its effect on different types of memory retrieval is poorly understood. We use Salience-Weighted Consolidation (SWC), a biologically-inspired compression framework motivated by sleep-based memory consolidation, as a diagnostic probe to study when gist compression helps and when it hurts. SWC scores conversation history by salience, partitions it into priority tiers, and applies structured gist abstraction to mid-priority content. Evaluating four conditions on all ten LoCoMo conversations---1,935 matched text-only questions in total, 1,501 used in the primary aggregate after excluding Category 5 (adversarial) questions---at temperature 0, we find a consistent task-type interaction: gist compression substantially outperforms truncation on multi-hop reasoning and single-hop factual questions, but temporal questions remain substantially harder under compression, with compressed conditions scoring well below the full-context reference on the conversations where both are evaluated. We trace this failure to a specific mechanism: the gist abstraction prompt preserves relational and event structure while discarding dates and times. A preservation analysis across all ten conversations confirms the mechanism: an approximately 20-fold increase in temporal expression preservation (3.05% to 62.39%) with a one-sentence prompt modification, while named entity and event preservation rates barely change (x1.02 and x1.11), demonstrating that the fix is a precision instrument. The prompt modification recovers +0.314 [0.254, 0.375] judge accuracy on category-2 (temporal) questions in the matched set. Code and results: https://github.com/kyrkewood/sleeping-agent.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-12T08:19:15Z</published>
+    <arxiv:comment>7 pages, 5 tables, appendices. Code and results at https://github.com/kyrkewood/sleeping-agent</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Nicholas E. Kyrkewood</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.00311v1</id>
+    <title>SeDeM: Selective Decompression of Hidden-State Memories for Long-Context Question Answering</title>
+    <updated>2026-07-31T21:44:03Z</updated>
+    <link href="https://arxiv.org/abs/2608.00311v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.00311v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Long-context inference with large language models (LLMs) is costly: self-attention during prefill scales quadratically with sequence length, and the key-value (KV) cache grows with the number of processed tokens. Larger context windows also do not ensure reliable evidence use. Context compression reduces this cost, but many soft-compression methods use LLMs as compressors and rely on compact memory tokens both to preserve information and to condition the decoder. We propose SeDeM, a selective decompression framework that decouples compact memory storage from decoder conditioning. An LLM extracts hidden states from a chosen intermediate Transformer layer, a lightweight compressor stores them as memory blocks, a query-conditioned selector selects relevant blocks, and a decompressor expands only the selected blocks into hidden states compatible with an intermediate decoder layer. Thus, the decoder avoids both full-context processing and direct generation from highly compressed memory slots. On four long-context QA benchmarks, SeDeM achieves higher QA scores than the evaluated compression baselines in both 1B and 3B same-backbone settings, and with the 3B backbone exceeds full-context fine-tuning on three datasets. The learned selector uses block-level evidence supervision during training. SeDeM also reduces online time-to-first-token and improves autoregressive decoding throughput relative to ICAE.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-07-31T21:44:03Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Maryam Haghifam</name>
+    </author>
+    <author>
+      <name>Jason Cong</name>
+    </author>
+    <author>
+      <name>Yizhou Sun</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2607.27739v1</id>
+    <title>Measuring Alignment With Reader Highlights Net of Position and Length</title>
+    <updated>2026-07-30T06:24:38Z</updated>
+    <link href="https://arxiv.org/abs/2607.27739v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2607.27739v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Context compression discards most of a document before a language model reads it, and is normally evaluated by downstream task accuracy - which makes another model the judge of what mattered. Naturalistic social highlighting offers a non-circular reference: many people independently marking passages on the same page. But the obvious metric, the fraction of crowd-marked sentences a compressor keeps, is confounded twice: crowd marks are front-loaded and crowd-marked sentences are longer, so any method favouring early or long sentences scores well regardless of readers. We remove both by matching each marked sentence against unmarked sentences of the same document at equal relative depth and equal within-document length rank, and we calibrate every estimator on synthetic nulls built from position and length alone - a step that matters, since depth-only stratification returns a false positive on 20-36% of nulls containing no effect. On 120 web documents (at least 12 independent readers each), a language-model importance ranking keeps 38.4% of crowd-marked sentences against 19.9% of their matched neighbours: an enrichment of +0.196 [+0.148, +0.239], at p = 0.0005 under an exact randomization test that assumes nothing about clustering, and replicated cross-vendor. Naive truncation, whose keep rule is position, correctly falls to +0.003. To give the number a scale: scored identically, on the same budget, against a crowd label recomputed to exclude them, a single human reader reaches +0.182 - indistinguishable from GPT-5.4 (+0.002 [-0.081, +0.088]) and below Claude Opus 5. Classical methods are not null - Luhn's 1958 heuristic reaches +0.088 - so reader selection is partly recoverable by counting words; conditioning additionally on lexical centrality removes only 0.010, so the agreement is not centrality. We also report that a claim in our own prior work does not reproduce on this corpus.</summary>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.HC" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-07-30T06:24:38Z</published>
+    <arxiv:comment>15 pages, 7 tables. Analysis code and de-identified artifacts included as ancillary files; five of six scripts reproduce the paper's numbers from the shipped artifacts alone. Reports claims from our own prior work that this corpus does not reproduce, and lists twelve claims withdrawn during internal adversarial review in Appendix A</arxiv:comment>
+    <arxiv:primary_category term="cs.IR"/>
+    <author>
+      <name>Kazuki Nakayashiki</name>
+    </author>
+    <author>
+      <name>Keisuke Watanabe</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2607.14327v1</id>
+    <title>PReM: Learning What to Preserve and When to Refresh for Context Compression</title>
+    <updated>2026-07-15T19:46:10Z</updated>
+    <link href="https://arxiv.org/abs/2607.14327v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2607.14327v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Efficient long-context inference is not only about reducing memory cost, but also about keeping useful contextual evidence accessible as generation proceeds. However, existing compression-oriented approaches, such as key-value (KV) cache compression and context compression, often either make an early decision about which contextual information to keep or rely on an external compressor. Such designs make it difficult to adapt the compressed context to the evidence needed by later reasoning steps. This paper introduces PReM (Preserve and Refresh Memory), a context-compression framework that maintains the long context as the model's internal layer-wise KV memory and learns what to preserve and when to refresh it. Specifically, PReM uses a dedicated memory layer to make memory-selection decisions, and a special memory token &lt;m&gt; to trigger refreshes during generation. To train this behavior, PReM introduces Phase-Separated Refresh Training, aligning memory selection with memory-conditioned generation while preserving continuity across refreshes. Experiments with 32K-token contexts show that PReM outperforms strong baselines under both 16x and 32x compression, while maintaining a favorable balance between answer quality and inference efficiency.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-07-15T19:46:10Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Bohan Yu</name>
+    </author>
+    <author>
+      <name>Lei Shen</name>
+    </author>
+    <author>
+      <name>Chenxi Zhou</name>
+    </author>
+    <author>
+      <name>Chen Han</name>
+    </author>
+    <author>
+      <name>Junlin Liu</name>
+    </author>
+    <author>
+      <name>Wenbo Su</name>
+    </author>
+    <author>
+      <name>Yu Cheng</name>
+    </author>
+    <author>
+      <name>Bo Zheng</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2607.02881v1</id>
+    <title>PraMem: Practice-derived Experiential Memory for Long-horizon Behavior Prediction</title>
+    <updated>2026-07-03T02:25:48Z</updated>
+    <link href="https://arxiv.org/abs/2607.02881v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2607.02881v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Long-horizon behavior prediction aims to infer a user's next action based on a lengthy historical sequence, playing a crucial role in artificial intelligence field. The rise of large language models (LLMs) offers a promising direction for sequential behavior prediction, yet LLMs struggle with latent behavioral pattern induction and model-intrinsic cognitive biases when tackling long-horizon behavior prediction. Prior memory management methods follow a context-compression paradigm that attempts to address this task by alleviating the historical sequence burden, yet fail to resolve the core challenges. In this paper, we advocate a paradigm shift that reframes the lengthy historical sequence from a burden into a valuable resource to be exploited, and accordingly propose PraMem, which conducts beforehand practice over the lengthy historical sequence to build an experiential memory, thereby serving as the assisted input for accurate long-horizon behavior prediction. Extensive experiments across diverse tasks demonstrate that PraMem achieves superior performance than prior methods, and more in-depth analyses provide valuable insights into the mechanism and evolution of the experiential memory. Code: https://github.com/icip-cas/PraMem.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-07-03T02:25:48Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Zhuoqun Li</name>
+    </author>
+    <author>
+      <name>Boxi Cao</name>
+    </author>
+    <author>
+      <name>Jiawei Chen</name>
+    </author>
+    <author>
+      <name>Hanshu Zhou</name>
+    </author>
+    <author>
+      <name>Ruoxi Xu</name>
+    </author>
+    <author>
+      <name>Guiping Jiang</name>
+    </author>
+    <author>
+      <name>Ruotong Pan</name>
+    </author>
+    <author>
+      <name>Tingting Gao</name>
+    </author>
+    <author>
+      <name>Han Li</name>
+    </author>
+    <author>
+      <name>Xiangyu Wu</name>
+    </author>
+    <author>
+      <name>Hongyu Lin</name>
+    </author>
+    <author>
+      <name>Yaojie Lu</name>
+    </author>
+    <author>
+      <name>Xianpei Han</name>
+    </author>
+    <author>
+      <name>Le Sun</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2607.00368v1</id>
+    <title>Beyond Perplexity: A Behavioral Evaluation Framework for Deployment-Memory Claims in LLM Test-Time Training</title>
+    <updated>2026-07-01T03:07:17Z</updated>
+    <link href="https://arxiv.org/abs/2607.00368v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2607.00368v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large language model test-time training (TTT) is often evaluated through local proxy metrics: models are updated on recent tokens, retrieved context, target-domain data, or verifiable task attempts, and then judged by perplexity, future-token loss, long-context performance, or reward. These metrics are well matched to claims about stream adaptation, domain adaptation, context compression, and reward-backed test-time improvement. They are weaker evidence, however, for a capability that TTT results are increasingly used to motivate: deployed assistant memory, personalization, or sparse post-deployment learning, which instead requires behavioral evidence such as later recall, paraphrase robustness, retention, locality, conflict handling, and use in downstream actions after the original support context is removed. We introduce a behavioral evaluation framework that calibrates TTT memory claims to the evidence that supports them. It has two components: a claim-calibrated evidence ladder that separates stream/domain adaptation, bridge internalization, and deployment-time behavioral learning; and an evaluation protocol with matched explicit-memory baselines and mutually exclusive failure categories. We validate the framework by auditing recent TTT and memory-adjacent work and by instantiating it as a controlled diagnostic in which, in a sparse nonce-fact setting, one-step LoRA updates lower support and answer loss across three Qwen3 model scales while generated free-form recall stays at zero, exposing a measurable gap between proxy improvement and deployment behavior. The framework gives authors and evaluators a concrete standard for aligning TTT memory claims with the evidence actually reported.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-07-01T03:07:17Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Xiangchen Song</name>
+    </author>
+    <author>
+      <name>Zhenhao Chen</name>
+    </author>
+    <author>
+      <name>Lingjing Kong</name>
+    </author>
+    <author>
+      <name>Shaoan Xie</name>
+    </author>
+    <author>
+      <name>Xinshuai Dong</name>
+    </author>
+    <author>
+      <name>Guangyi Chen</name>
+    </author>
+    <author>
+      <name>Kun Zhang</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.18406v1</id>
+    <title>CoreMem: Riemannian Retrieval and Fisher-Guided Distillation for Long-Term Memory in Dialogue Agents</title>
+    <updated>2026-06-16T18:56:23Z</updated>
+    <link href="https://arxiv.org/abs/2606.18406v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.18406v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Personalized dialogue agents require continuous long-term memory to maintain coherent interactions across multiple sessions. However, deploying these capabilities on consumer-grade hardware (e.g., 8 GB VRAM edge devices) introduces severe memory and compute bottlenecks. Existing systems typically rely on isotropic cosine similarity for retrieval and heuristic rules for context compression. These approaches lack a unified theoretical foundation, frequently suffering from the hubness problem in high-dimensional retrieval and syntactic fragmentation during compression. To overcome these limitations, we propose CoreMem, a resource-efficient edge-cloud memory architecture fundamentally unified by information geometry. First, Riemannian retrieval replaces cosine matching with a locally adaptive Fisher-Rao metric, effectively penalizing hub memories via Mahalanobis distance with O(Ndr) Woodbury acceleration for real-time search. Second, Fisher-guided discrete token distillation (FDTD) introduces a hierarchical sentence-to-token compression mechanism. It derives sensitivity scores from Fisher information traces, providing a principled compression-KL tradeoff augmented with explicit structural syntax protection. Evaluated on the LOCOMO and LongMemEval-S benchmarks, CoreMem achieves strong accuracy improvements, yielding substantial gains in Open-domain (+4.51 pp) and Temporal (+4.17 pp) reasoning. Extensive profiling confirms that CoreMem operates seamlessly within a strict 8 GB VRAM budget, successfully bridging the gap between resource-constrained edge devices and the demand for theoretically grounded, lifelong memory agents.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-16T18:56:23Z</published>
+    <arxiv:comment>15 pages, 5 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Jiaqi Chen</name>
+    </author>
+    <author>
+      <name>Yongqin Zeng</name>
+    </author>
+    <author>
+      <name>Shaoshen Chen</name>
+    </author>
+    <author>
+      <name>Yijian Zhang</name>
+    </author>
+    <author>
+      <name>Hai-Tao Zheng</name>
+    </author>
+    <author>
+      <name>Chunxia Ma</name>
+    </author>
+    <author>
+      <name>XiuTeng Zhou</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.14875v1</id>
+    <title>Context Compression Is Not One Thing: Readable Symbolic Re-expression vs. Coherent Summary at Matched Budget</title>
+    <updated>2026-06-12T18:27:23Z</updated>
+    <link href="https://arxiv.org/abs/2606.14875v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.14875v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We study context compression for multi-hop question answering with small language models. We propose Telegraph English, a readable symbolic format that rewrites retrieved passages into structured entity-relation statements, preserving reasoning evidence at lower token cost. In controlled experiments on MuSiQue, TwoWiki, and HotpotQA, Telegraph English outperforms three matched-budget compression baselines (character-level deletion, truncation, and random sub-sampling) on every dataset, with gains of 13 to 20 F1 percentage point. It also outperforms a coherent prose summary produced by the same encoder on the hardest dataset. A pre-registered depth-interaction hypothesis is null: the advantage does not grow with reasoning depth within datasets. We interpret these results as evidence that readable symbolic re-expression preserves entity content more densely than either natural language or coherent summarization at matched token budget.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-12T18:27:23Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Sisong Bei</name>
+    </author>
+    <author>
+      <name>Mikhail L. Arbuzov</name>
+    </author>
+    <author>
+      <name>Ziwei Dong</name>
+    </author>
+    <author>
+      <name>Dmitri Kalaev</name>
+    </author>
+    <author>
+      <name>Alexey Shvets</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.12411v1</id>
+    <title>Context-Driven Incremental Compression for Multi-Turn Dialogue Generation</title>
+    <updated>2026-06-10T17:59:54Z</updated>
+    <link href="https://arxiv.org/abs/2606.12411v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.12411v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Modern conversational agents condition on an ever-growing dialogue history at each turn, incurring redundant attention and encoding costs that grow with conversation length. Naive truncation or summarization degrades fidelity, while existing context compressors lack cross-turn memory sharing or revision, causing information loss and compounding errors in long dialogues. We revisit the context compression under conversational dynamics and empirically present its fragility. To improve both efficiency and robustness, we introduce Context-Driven Incremental Compression (C-DIC), which treats a conversation as interleaved contextual threads and stores revisable per-thread compression states in a single, compact dialogue memory. At each turn, a lightweight retrieve, revise, and write-back loop shares information across turns and updates stale memories, stabilizing long-horizon behavior. In addition, we adapt truncated backpropagation-through-time (TBPTT) to our multi-turn setting, learning cross-turn dependencies without full-history backpropagation. Extensive experiments on long-form dialogue benchmarks demonstrate superior performance and efficiency of C-DIC; notably, C-DIC shows stable inference latency and perplexity over hundreds of dialogue turns, supporting a scalable path to high-quality dialogue modeling.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-10T17:59:54Z</published>
+    <arxiv:comment>Accepted at ICML 2026</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Yeongseo Jung</name>
+    </author>
+    <author>
+      <name>Jaehyeok Kim</name>
+    </author>
+    <author>
+      <name>Eunseo Jung</name>
+    </author>
+    <author>
+      <name>Jiachuan Wang</name>
+    </author>
+    <author>
+      <name>Yongqi Zhang</name>
+    </author>
+    <author>
+      <name>Ka Chun Cheung</name>
+    </author>
+    <author>
+      <name>Simon See</name>
+    </author>
+    <author>
+      <name>Lei Chen</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.09659v1</id>
+    <title>End-to-End Context Compression at Scale</title>
+    <updated>2026-06-08T15:43:16Z</updated>
+    <link href="https://arxiv.org/abs/2606.09659v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.09659v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Long-context language model inference is bottlenecked by memory, as the KV cache grows with context length. Recent techniques to compress the KV cache fall short: they either degrade model quality substantially or require considerable time and compute to compress a single long prompt. Furthermore, many methods require the input to fit within the target model's context window, and are generally incompatible with modern production inference engines. Encoder-decoder compressors, which map a long token sequence to a shorter sequence of latent embeddings consumed by a decoder, are an appealing alternative in principle. However, existing approaches are not competitive with KV cache compression on the accuracy-efficiency frontier. In this work, we revisit encoder-decoder compression and close this gap. We first perform an architecture search, pre-training many variants from scratch to determine how best to design and train encoder-decoder compressors. Guided by our findings, we continually pre-train a family of 0.6B-encoder, 4B-decoder models on over 350B tokens each, at compression ratios of 1:4, 1:8, and 1:16. We introduce Latent Context Language Models (LCLMs), a family of compressors that improve the Pareto frontier across general-task performance, compression speed, and peak memory usage. We demonstrate that LCLMs serve as efficient backbones for long-horizon agents, letting the agent skim through a compressed long context and adaptively expand relevant segments on demand.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-08T15:43:16Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Ang Li</name>
+    </author>
+    <author>
+      <name>Sean McLeish</name>
+    </author>
+    <author>
+      <name>Haozhe Chen</name>
+    </author>
+    <author>
+      <name>Nimit Kalra</name>
+    </author>
+    <author>
+      <name>Zaiqian Chen</name>
+    </author>
+    <author>
+      <name>Artem Gazizov</name>
+    </author>
+    <author>
+      <name>Venkata Anoop Suhas Kumar Morisetty</name>
+    </author>
+    <author>
+      <name>Bhavya Kailkhura</name>
+    </author>
+    <author>
+      <name>Harshitha Menon</name>
+    </author>
+    <author>
+      <name>Zhuang Liu</name>
+    </author>
+    <author>
+      <name>Brian R. Bartoldson</name>
+    </author>
+    <author>
+      <name>Tom Goldstein</name>
+    </author>
+    <author>
+      <name>Sanae Lotfi</name>
+    </author>
+    <author>
+      <name>Micah Goldblum</name>
+    </author>
+    <author>
+      <name>Pavel Izmailov</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.01336v2</id>
+    <title>LongAttnComp: Cross-Family Context Compression for Long-Context Reasoning</title>
+    <updated>2026-06-19T17:47:34Z</updated>
+    <link href="https://arxiv.org/abs/2606.01336v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.01336v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>As real-world applications increasingly require processing inputs of 100k+ tokens, the gap between context length and inference efficiency has become a critical bottleneck. Context compression offers a way to reduce prefill costs while preserving task accuracy. However, existing training-free attention-based methods leave substantial gaps in demanding long-context tasks such as code reasoning. We present LongAttnComp, a long-context adaptation of AttnComp that fine-tunes a lightweight cross-attention scoring layer and introduces tokenlevel chunking, a token-budget top-p algorithm, positional reordering, and a formatagnostic query parser. We further design a two-stage fine-tuning recipe for the compressor: Stage 1 builds a general retrieval foundation from NIAH-style data, and Stage 2 extends it with multi-hop and reasoning data for broader long-context task coverage. On InfiniteBench Code-Debug, LongAttnComp matches or exceeds full-context accuracy, substantially outperforms training-free baselines, and transfers across four target models from three families. On LongBench v2, the two-stage recipe largely closes the Stage 1 gap on multi-document reasoning while preserving Code-Debug performance.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-05-31T16:40:36Z</published>
+    <arxiv:comment>Under review</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Mengmeng Ji</name>
+    </author>
+    <author>
+      <name>Ravi Shanker Raju</name>
+    </author>
+    <author>
+      <name>Jonathan Lingjie Li</name>
+    </author>
+    <author>
+      <name>Chen Wu</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2605.17304v1</id>
+    <title>Compress the Context, Keep the Commitments: A Formal Framework for Verifiable LLM Context Compression</title>
+    <updated>2026-05-17T07:42:37Z</updated>
+    <link href="https://arxiv.org/abs/2605.17304v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2605.17304v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>LLM context is not just tokens; it is a set of commitments. Long-running conversations accumulate goals, constraints, decisions, preferences, tool results, retrieved evidence, artifacts, and safety boundaries that future responses must preserve. Existing context-management methods reduce length through truncation, retrieval, summarization, memory systems, or token-level prompt compression, but they rarely specify which semantic commitments must survive compression or how their preservation should be measured. We propose Context Codec, a commitment-level framework for compressing prompts and chat histories.
+  Context Codec represents dialogue state as typed, source-grounded semantic atoms with canonical identity, equivalence, conflict, confidence, risk, and evidence spans. It separates five concerns - extraction, normalization, representation, rendering, and verification - and introduces metrics for Critical Atom Recall, Weighted Atom Recall, Commitment Density, and round-trip recoverability. It also defines a taxonomy of semantic compression errors, a concrete normalization procedure, conservative fallback rules for low-confidence and safety-critical atoms, and Context Compression Language (CCL), an ASCII-first compact rendering of canonical JSON atoms. In a small diagnostic study, CCL-Core occupies a useful middle ground between structured prose and JSON: more explicit and auditable than prose, usually more compact than JSON, and less risky than heavily minified notation. The result is not a claim that shorthand solves compression, but a framework for making context compression verifiable: compress the conversation, keep the commitments.</summary>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-05-17T07:42:37Z</published>
+    <arxiv:primary_category term="cs.LG"/>
+    <author>
+      <name>Natalia Trukhina</name>
+    </author>
+    <author>
+      <name>Vadim Vashkelis</name>
+    </author>
+  </entry>
+</feed>

@@ -1,0 +1,238 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/pxa9HFyLs68kTVh9j06VrbCQwXs</id>
+  <title>arXiv Query: search_query=all:"retrieval sufficiency"&amp;id_list=&amp;start=0&amp;max_results=10</title>
+  <updated>2026-08-14T14:17:39Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=all:%22retrieval+sufficiency%22&amp;start=0&amp;max_results=10&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>10</opensearch:itemsPerPage>
+  <opensearch:totalResults>12</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2605.10848v1</id>
+    <title>Rethinking Agentic Search with Pi-Serini: Is Lexical Retrieval Sufficient?</title>
+    <updated>2026-05-11T16:58:57Z</updated>
+    <link href="https://arxiv.org/abs/2605.10848v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2605.10848v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Does a lexical retriever suffice as large language models (LLMs) become more capable in an agentic loop? This question naturally arises when building deep research systems. We revisit it by pairing BM25 with frontier LLMs that have better reasoning and tool-use abilities. To support researchers asking the same question, we introduce Pi-Serini, a search agent equipped with three tools for retrieving, browsing, and reading documents. Our results show that, on BrowseComp-Plus, a well-configured lexical retriever with sufficient retrieval depth can support effective deep research when paired with more capable LLMs. Specifically, Pi-Serini with gpt-5.5 achieves 83.1% answer accuracy and 94.7% surfaced evidence recall, outperforming released search agents that use dense retrievers. Controlled ablations further show that BM25 tuning improves answer accuracy by 18.0% and surfaced evidence recall by 11.1% over the default BM25 setting, while increasing retrieval depth further improves surfaced evidence recall by 25.3% over the shallow-retrieval setting. Source code is available at https://github.com/justram/pi-serini.</summary>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-05-11T16:58:57Z</published>
+    <arxiv:comment>15 pages, 4 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.IR"/>
+    <author>
+      <name>Tz-Huan Hsu</name>
+    </author>
+    <author>
+      <name>Jheng-Hong Yang</name>
+    </author>
+    <author>
+      <name>Jimmy Lin</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2604.17866v2</id>
+    <title>Latent Abstraction for Retrieval-Augmented Generation</title>
+    <updated>2026-05-07T12:30:55Z</updated>
+    <link href="https://arxiv.org/abs/2604.17866v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2604.17866v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Retrieval-Augmented Generation (RAG) has become a standard approach for enhancing large language models (LLMs) with external knowledge, mitigating hallucinations, and improving factuality. However, existing systems rely on generating natural language queries at each hop and maintaining a strict architectural separation between retriever and generator, preventing them from leveraging the full representational capacity of the LLM. We propose \textbf{LAnR} (Latent Abstraction for RAG), a unified framework in which a single LLM jointly performs encoding, retrieval, and generation entirely within its own latent space. Rather than generating textual queries, LAnR produces dense retrieval vectors from the hidden states of a designated \texttt{[PRED]} token and uses them to match against encoded document representations from the same model. Furthermore, LAnR adaptively decides when sufficient evidence has been retrieved using a lightweight MLP control head over those same hidden states, eliminating both the separate retriever and explicit token-level stopping reasoning. This design is motivated by our empirical observation that answer token entropy reliably signals retrieval sufficiency. Extensive experiments on six QA benchmarks spanning single-hop and multi-hop settings demonstrate that LAnR outperforms existing RAG methods, while achieving improved inference efficiency through reduced number of retrieval calls and tighter model integration.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-04-20T06:26:13Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Ha Lan N. T</name>
+    </author>
+    <author>
+      <name>Minh-Anh Nguyen</name>
+    </author>
+    <author>
+      <name>Dung D. Le</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2506.13607v1</id>
+    <title>Tree-Based Text Retrieval via Hierarchical Clustering in RAGFrameworks: Application on Taiwanese Regulations</title>
+    <updated>2025-06-16T15:34:29Z</updated>
+    <link href="https://arxiv.org/abs/2506.13607v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2506.13607v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Traditional Retrieval-Augmented Generation (RAG) systems employ brute-force inner product search to retrieve the top-k most similar documents, then combined with the user query and passed to a language model. This allows the model to access external knowledge and reduce hallucinations. However, selecting an appropriate k value remains a significant challenge in practical applications: a small k may fail to retrieve sufficient information, while a large k can introduce excessive and irrelevant content. To address this, we propose a hierarchical clustering-based retrieval method that eliminates the need to predefine k. Our approach maintains the accuracy and relevance of system responses while adaptively selecting semantically relevant content. In the experiment stage, we applied our method to a Taiwanese legal dataset with expert-graded queries. The results show that our approach achieves superior performance in expert evaluations and maintains high precision while eliminating the need to predefine k, demonstrating improved accuracy and interpretability in legal text retrieval tasks. Our framework is simple to implement and easily integrates with existing RAG pipelines, making it a practical solution for real-world applications under limited resources.</summary>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-06-16T15:34:29Z</published>
+    <arxiv:comment>19 pages, 5 figures, Code available at https://github.com/arthur422tp/hierachical</arxiv:comment>
+    <arxiv:primary_category term="cs.IR"/>
+    <author>
+      <name>Chia-Heng Yu</name>
+    </author>
+    <author>
+      <name>Yen-Lung Tsai</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2605.27437v1</id>
+    <title>MGRetrieval: Memory-Guided Reflective Retrieval for Long-Term Dialogue Agents</title>
+    <updated>2026-05-22T14:41:56Z</updated>
+    <link href="https://arxiv.org/abs/2605.27437v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2605.27437v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large Language Models (LLMs) have made significant progress in dialogue, yet redundant memory contexts severely limit their effectiveness in long-term dialogue agents. External memory systems have been proposed to improve memory maintenance. However, these systems mainly rely on one-shot retrieval, which limits their ability to retrieve sufficient and relevant evidence. Although recent methods introduce reflection into retrieval, their retrieval paths are generated by the LLM from limited evidence, leading to unstable retrieval and additional latency overhead. %These limitations highlight the need for effective retrieval mechanisms. To address these limitations, we propose MGRetrieval, a retrieval strategy that grounds reflective retrieval in the semantic structure of historical memories. Specifically, MGRetrieval consists of two steps: (1) It references the structure of historical memories to construct a more precise retrieval path. (2) The LLM retains critical memories and determines whether accumulated memories are sufficient to stop further iterative retrieval. This allows the retrieval process to follow semantically meaningful paths. Through memory-guided retrieval and critical memory propagation, MGRetrieval gradually constructs concise and sufficient memory contexts. Extensive experiments on LoCoMo show that MGRetrieval outperforms the strongest baseline by 8.91\% in F1 and 11.11\% in BLEU-1 on average across Qwen2.5-14B and Qwen3-14B, while maintaining practical token and latency costs. The code can be found in https://anonymous.4open.science/r/MGRetrieval.</summary>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-05-22T14:41:56Z</published>
+    <arxiv:primary_category term="cs.IR"/>
+    <author>
+      <name>Tan Wang</name>
+    </author>
+    <author>
+      <name>Yunwei Dong</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2605.30771v1</id>
+    <title>Eywa: Provenance-Grounded Long-Term Memory for AI Agents</title>
+    <updated>2026-05-29T02:56:35Z</updated>
+    <link href="https://arxiv.org/abs/2605.30771v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2605.30771v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>AI agents that persist across sessions need memory they can retrieve, audit, update, and erase. Existing memory systems often collapse source evidence, extracted facts, retrieved context, and answer policy into one opaque prompt path, making failures difficult to diagnose: a wrong answer may come from missing evidence, unsupported extraction, stale state, retrieval loss, or answer-model behavior. We present Eywa, a provenance-grounded memory architecture built around evidence before belief. Eywa stores immutable source evidence before deriving canonical facts, validates extracted memories against typed signals and source support, and retrieves bounded memory context through a deterministic multi-route read path with zero LLM calls inside retrieval. Retrieved context is returned separately from answer instructions, allowing the same memory substrate to be evaluated across frontier, budget, and local answer models. Under a frozen, artifact-recorded retrieval configuration, Eywa reaches 90.19% judge accuracy on the LoCoMo C1-C4 split with Claude Sonnet 4.6 write and QA roles. On LongMemEval-S, it reaches 88.2% retrieval-sufficiency accuracy. On BEAM, a 700-question technical-memory stress benchmark, it reaches 81.45% mean nugget score and 85.29% pass@score &gt;= 0.5. Full per-question artifacts, including questions, gold answers, model answers, retrieved context, and labels, are published at https://eywa.to/research.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-05-29T02:56:35Z</published>
+    <arxiv:comment>29 pages, 3 figures, 16 tables. Benchmark artifacts available at https://eywa.to/research</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Resham Joshi</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/math/0211369v1</id>
+    <title>The Radon-Nikodym problem for approximately proper equivalence relations</title>
+    <updated>2002-11-23T23:36:38Z</updated>
+    <link href="https://arxiv.org/abs/math/0211369v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/math/0211369v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>  We study the Radon-Nikodym problem for approximately proper equivalence relations and more specifically the uniqueness of certain Gibbs states. One of our tools is a variant of the dimension group introduced in the study of AF algebras. As applications, we retrieve sufficient conditions for the uniqueness of traces on AF algebras and parts of the Perron-Frobenius-Ruelle theorem.</summary>
+    <category term="math.OA" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="math.DS" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2002-11-23T23:36:38Z</published>
+    <arxiv:comment>37 pages</arxiv:comment>
+    <arxiv:primary_category term="math.OA"/>
+    <author>
+      <name>Jean Renault</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.12215v1</id>
+    <title>MLT-Dedup: Efficient Large-Scale Online Video Deduplication via Multi-Level Representations and Spatial-Temporal Matching</title>
+    <updated>2026-06-10T15:29:45Z</updated>
+    <link href="https://arxiv.org/abs/2606.12215v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.12215v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The explosive growth of user-generated video content on online platforms is accompanied by the emergence of numerous near-duplicate videos--videos that are identical or highly similar but differ by partial edits. These duplicates degrade user experience and increase storage and bandwidth costs, making large-scale video deduplication a critical task. Existing video deduplication frameworks face a fundamental challenge in retrieving sufficient high-quality candidates under a limited index budget, as well as trade-offs between efficiency and precision. To address these issues, we propose MLT-Dedup, an efficient large-scale online video deduplication framework with Multi-Level representations and spatial-Temporal matching. Our approach employs a Multi-Level Video Encoder (ML-VE) to extract both fine-grained frame-level and sparse clip-level embeddings: sparse embeddings support efficient candidate retrieval, while fine-grained embeddings are loaded for precise pairwise matching. During matching, we introduce DiF-SiM, a Differential Feature-enhanced Similarity Module capable of locating duplicated temporal segments and providing reliable similarity evidence to support policy-driven deduplication decisions. Extensive experiments on a real-world large-scale platform demonstrate that MLT-Dedup reduces online repetition rates by 91% at 90% precision. Furthermore, our sparse retrieval design achieves a 5x increase in indexing capacity, enabling broader candidate coverage in real-world deployment.</summary>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-10T15:29:45Z</published>
+    <arxiv:comment>Accepted by KDD-2026 ADS track</arxiv:comment>
+    <arxiv:primary_category term="cs.CV"/>
+    <author>
+      <name>David Yuchen Wang</name>
+    </author>
+    <author>
+      <name>Haoying Li</name>
+    </author>
+    <author>
+      <name>Hailun Xu</name>
+    </author>
+    <author>
+      <name>Wei Chee Yew</name>
+    </author>
+    <author>
+      <name>Zirui Zhu</name>
+    </author>
+    <author>
+      <name>Sanjay Saha</name>
+    </author>
+    <author>
+      <name>Hao Hei</name>
+    </author>
+    <author>
+      <name>Kanchan Sarkar</name>
+    </author>
+    <author>
+      <name>Kun Xu</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2505.02811v2</id>
+    <title>Knowing You Don't Know: Learning When to Continue Search in Multi-round RAG through Self-Practicing</title>
+    <updated>2025-06-30T17:46:40Z</updated>
+    <link href="https://arxiv.org/abs/2505.02811v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2505.02811v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Retrieval Augmented Generation (RAG) has shown strong capability in enhancing language models' knowledge and reducing AI generative hallucinations, driving its widespread use. However, complex tasks requiring multi-round retrieval remain challenging, and early attempts tend to be overly optimistic without a good sense of self-skepticism. Current multi-round RAG systems may continue searching even when enough information has already been retrieved, or they may provide incorrect answers without having sufficient information or knowledge. Existing solutions either require large amounts of expensive human-labeled process supervision data or lead to subpar performance. This paper aims to address these limitations by introducing a new framework, SIM-RAG, to explicitly enhance RAG systems' self-awareness and multi-round retrieval capabilities. To train SIM-RAG, we first let a RAG system self-practice multi-round retrieval, augmenting existing question-answer pairs with intermediate inner monologue reasoning steps to generate synthetic training data. For each pair, the system may explore multiple retrieval paths, which are labeled as successful if they reach the correct answer and unsuccessful otherwise. Using this data, we train a lightweight information sufficiency Critic. At inference time, the Critic evaluates whether the RAG system has retrieved sufficient information at each round, guiding retrieval decisions and improving system-level self-awareness through in-context reinforcement learning. Experiments across multiple prominent RAG benchmarks show that SIM-RAG is an effective multi-round RAG solution. Furthermore, this framework is system-efficient, adding a lightweight component to RAG without requiring modifications to existing LLMs or search engines, and data-efficient, eliminating the need for costly human-annotated mid-step retrieval process supervision data.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-05-05T17:39:35Z</published>
+    <arxiv:comment>Proceedings of the 48th International ACM SIGIR 2025</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Diji Yang</name>
+    </author>
+    <author>
+      <name>Linda Zeng</name>
+    </author>
+    <author>
+      <name>Jinmeng Rao</name>
+    </author>
+    <author>
+      <name>Yi Zhang</name>
+    </author>
+    <arxiv:doi>10.1145/3726302.3730018</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.1145/3726302.3730018" title="doi"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2311.09721v1</id>
+    <title>On Evaluating the Integration of Reasoning and Action in LLM Agents with Database Question Answering</title>
+    <updated>2023-11-16T09:55:07Z</updated>
+    <link href="https://arxiv.org/abs/2311.09721v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2311.09721v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>This study introduces a new long-form database question answering dataset designed to evaluate how Large Language Models (LLMs) interact with a SQL interpreter. The task necessitates LLMs to strategically generate multiple SQL queries to retrieve sufficient data from a database, to reason with the acquired context, and to synthesize them into a comprehensive analytical narrative. Our findings highlight that this task poses great challenges even for the state-of-the-art GPT-4 model. We propose and evaluate two interaction strategies, and provide a fine-grained analysis of the individual stages within the interaction. A key discovery is the identification of two primary bottlenecks hindering effective interaction: the capacity for planning and the ability to generate multiple SQL queries. To address the challenge of accurately assessing answer quality, we introduce a multi-agent evaluation framework that simulates the academic peer-review process, enhancing the precision and reliability of our evaluations. This framework allows for a more nuanced understanding of the strengths and limitations of current LLMs in complex retrieval and reasoning tasks.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2023-11-16T09:55:07Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Linyong Nan</name>
+    </author>
+    <author>
+      <name>Ellen Zhang</name>
+    </author>
+    <author>
+      <name>Weijin Zou</name>
+    </author>
+    <author>
+      <name>Yilun Zhao</name>
+    </author>
+    <author>
+      <name>Wenfei Zhou</name>
+    </author>
+    <author>
+      <name>Arman Cohan</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2208.14493v1</id>
+    <title>Annotated Dataset Creation through General Purpose Language Models for non-English Medical NLP</title>
+    <updated>2022-08-30T18:42:55Z</updated>
+    <link href="https://arxiv.org/abs/2208.14493v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2208.14493v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Obtaining text datasets with semantic annotations is an effortful process, yet crucial for supervised training in natural language processsing (NLP). In general, developing and applying new NLP pipelines in domain-specific contexts for tasks often requires custom designed datasets to address NLP tasks in supervised machine learning fashion. When operating in non-English languages for medical data processing, this exposes several minor and major, interconnected problems such as lack of task-matching datasets as well as task-specific pre-trained models. In our work we suggest to leverage pretrained language models for training data acquisition in order to retrieve sufficiently large datasets for training smaller and more efficient models for use-case specific tasks. To demonstrate the effectiveness of your approach, we create a custom dataset which we use to train a medical NER model for German texts, GPTNERMED, yet our method remains language-independent in principle. Our obtained dataset as well as our pre-trained models are publicly available at: https://github.com/frankkramer-lab/GPTNERMED</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2022-08-30T18:42:55Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Johann Frei</name>
+    </author>
+    <author>
+      <name>Frank Kramer</name>
+    </author>
+  </entry>
+</feed>

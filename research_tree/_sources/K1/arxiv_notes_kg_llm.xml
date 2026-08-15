@@ -1,0 +1,505 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/TnkujejiBHjC5xUHKAy0jdUUW6E</id>
+  <title>arXiv Query: search_query=(cat:cs.AI OR cat:cs.CL OR cat:cs.HCIR) AND abs:"knowledge graph" AND abs:notes AND abs:LLM&amp;id_list=&amp;start=0&amp;max_results=15</title>
+  <updated>2026-08-14T12:48:55Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=(cat:cs.AI+OR+(cat:cs.CL+OR+cat:cs.HCIR))+AND+(abs:%22knowledge+graph%22+AND+(abs:notes+AND+abs:LLM))&amp;start=0&amp;max_results=15&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>15</opensearch:itemsPerPage>
+  <opensearch:totalResults>16</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2608.12395v1</id>
+    <title>Research Assistant: AstraZeneca's Agentic System for R&amp;D</title>
+    <updated>2026-08-06T15:49:25Z</updated>
+    <link href="https://arxiv.org/abs/2608.12395v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.12395v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We describe Research Assistant, an internal LLM-based system developed at AstraZeneca to help scientists and clinicians explore biomedical questions across a broad range of data sources. The system provides a chat-style interface that brings together evidence from scientific literature, knowledge graphs, chemistry, clinical trials, safety resources, expression data, and internal experimental systems. It supports both a fast mode for direct question answering and a multi-step mode for more complex research tasks. Responses are grounded in retrieved evidence and linked back to the original sources, allowing users to review and further explore the underlying data. In this technical note, we outline the system architecture, the main design choices behind the product, and lessons learned from deploying it at scale to support day-to-day R&amp;D workflows across AstraZeneca.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-08-06T15:49:25Z</published>
+    <arxiv:comment>16 pages, 3 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Piotr Grabowski</name>
+    </author>
+    <author>
+      <name>Mohamed Alameen</name>
+    </author>
+    <author>
+      <name>Jorge Bretones</name>
+    </author>
+    <author>
+      <name>Sabina Cardell</name>
+    </author>
+    <author>
+      <name>Miguel Carmona</name>
+    </author>
+    <author>
+      <name>Gavin Edwards</name>
+    </author>
+    <author>
+      <name>Ben Grainger</name>
+    </author>
+    <author>
+      <name>Sameh Hassan</name>
+    </author>
+    <author>
+      <name>Erik Jansson</name>
+    </author>
+    <author>
+      <name>Artur Kuziakhmetov</name>
+    </author>
+    <author>
+      <name>Albert Maristany</name>
+    </author>
+    <author>
+      <name>Hebatallah Mohamed</name>
+    </author>
+    <author>
+      <name>Andriy Nikolov</name>
+    </author>
+    <author>
+      <name>Sebastian Nilsson</name>
+    </author>
+    <author>
+      <name>Mark O'Donoghue</name>
+    </author>
+    <author>
+      <name>James Pacileo</name>
+    </author>
+    <author>
+      <name>Ashiq Sultan</name>
+    </author>
+    <author>
+      <name>Alex Voegele</name>
+    </author>
+    <author>
+      <name>Michael Ughetto</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2605.11143v1</id>
+    <title>ClinicalBench: Stress-Testing Assertion-Aware Retrieval for Cross-Admission Clinical QA on MIMIC-IV</title>
+    <updated>2026-05-11T18:47:52Z</updated>
+    <link href="https://arxiv.org/abs/2605.11143v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2605.11143v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Reasoning benchmarks measure clinical performance on clean inputs. We evaluate the step before reasoning: retrieval over real EHR notes, where negation, temporality, and family-versus-patient attribution can flip a correct answer to a wrong one. EpiKG carries an assertion label and a temporality tag with every fact in a patient knowledge graph, then routes retrieval by question intent. ClinicalBench is a 400-question test over 43 MIMIC-IV patients across 9 assertion-sensitive categories. A 7-condition ablation tests each piece of EpiKG across six LLMs (Claude Opus 4.6, GPT-OSS 20B, MedGemma 27B, Gemma 4 31B, MedGemma 1.5 4B, Qwen 3.5 35B). Three physicians blindly adjudicated 100 paired items. The author-blind primary endpoint, leave-author-out paired exact McNemar on 50 unanimous-strict items rated by two external physicians, yields +22.0 percentage points (95 percent Newcombe CI [+5.1, +31.5], p=0.0192). The architectural novelty, intent-aware KG-RAG over a Contriever dense-RAG baseline (C2b to C4g_kw on the change-excluded n=362 endpoint), is +8.84 percentage points (paired McNemar p=1.79e-3); +12.43 percentage points under oracle intent. Sensitivities agree directionally: three-rater physician majority +24.0 percentage points (subject to single-author circularity); deterministic keyword reproducibility proxy +39.5 percentage points. Across the six models, the gain shrinks as the LLM-alone baseline rises (beta=-1.123, r=-0.921, p=0.009). With n=6 this looks more like regression to the mean than encoding substituting for model size. Physician adjudication identified 56 percent of auto-generated reference answers as defective, a methodological finding indicating that NLP-pipeline clinical-QA benchmarks require physician adjudication to be usable. ClinicalBench, the frozen evaluator, three-rater adjudication data, and the EpiKG output stack are publicly released.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-05-11T18:47:52Z</published>
+    <arxiv:comment>46 pages including appendices (two-column preprint format). Under review at JAMIA. Code, frozen evaluator, and benchmark released at https://huggingface.co/datasets/alexstinard/epikg-clinicalbench. ClinicalBench v2 is a 400-question MIMIC-IV stress test for assertion-aware retrieval</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Alex Stinard</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2603.00460v1</id>
+    <title>MED-COPILOT: A Medical Assistant Powered by GraphRAG and Similar Patient Case Retrieval</title>
+    <updated>2026-02-28T04:32:03Z</updated>
+    <link href="https://arxiv.org/abs/2603.00460v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2603.00460v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Clinical decision-making requires synthesizing heterogeneous evidence, including patient histories, clinical guidelines, and trajectories of comparable cases. While large language models (LLMs) offer strong reasoning capabilities, they remain prone to hallucinations and struggle to integrate long, structured medical documents. We present MED-COPILOT, an interactive clinical decision-support system designed for clinicians and medical trainees, which combines guideline-grounded GraphRAG retrieval with hybrid semantic-keyword similar-patient retrieval to support transparent and evidence-aware clinical reasoning. The system builds a structured knowledge graph from WHO and NICE guidelines, applies community-level summarization for efficient retrieval, and maintains a 36,000-case similar-patient database derived from SOAP-normalized MIMIC-IV notes and Synthea-generated records.
+  We evaluate our framework on clinical note completion and medical question answering, and demonstrate that it consistently outperforms parametric LLM baselines and standard RAG, improving both generation fidelity and clinical reasoning accuracy. The full system is available at https://huggingface.co/spaces/Cryo3978/Med_GraphRAG , enabling users to inspect retrieved evidence, visualize token-level similarity contributions, and conduct guided follow-up analysis. Our results demonstrate a practical and interpretable approach to integrating structured guideline knowledge with patient-level analogical evidence for clinical LLMs.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-02-28T04:32:03Z</published>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Shuheng Chen</name>
+    </author>
+    <author>
+      <name>Namratha Patil</name>
+    </author>
+    <author>
+      <name>Haonan Pan</name>
+    </author>
+    <author>
+      <name>Angel Hsing-Chi Hwang</name>
+    </author>
+    <author>
+      <name>Yao Du</name>
+    </author>
+    <author>
+      <name>Ruishan Liu</name>
+    </author>
+    <author>
+      <name>Jieyu Zhao</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2512.09127v1</id>
+    <title>Knowledge-Guided Large Language Model for Automatic Pediatric Dental Record Understanding and Safe Antibiotic Recommendation</title>
+    <updated>2025-12-09T21:11:55Z</updated>
+    <link href="https://arxiv.org/abs/2512.09127v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2512.09127v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Accurate interpretation of pediatric dental clinical records and safe antibiotic prescribing remain persistent challenges in dental informatics. Traditional rule-based clinical decision support systems struggle with unstructured dental narratives, incomplete radiographic descriptions, and complex safety constraints. To address these limitations, this study proposes a Knowledge-Guided Large Language Model (KG-LLM) that integrates a pediatric dental knowledge graph, retrieval-augmented generation (RAG), and a multi-stage safety validation pipeline for evidence-grounded antibiotic recommendation. The framework first employs a clinical NER/RE module to extract structured entities and relations from dental notes and radiology reports. Relevant guidelines, drug-safety rules, and analogous historical cases are subsequently retrieved from the knowledge graph and supplied to the LLM for diagnostic summarization and dose-drug-duration prediction. Safety assurance is achieved through a dual-layer validation mechanism combining deterministic rule checking with a learned classifier for detecting allergies, contraindications, and dosing errors. Experiments on 32,000 de-identified pediatric dental visit records demonstrate the effectiveness of the proposed approach. Compared with a domain-adapted Llama-2 clinical baseline, KG-LLM improves record-understanding performance (F1: 0.914 vs. 0.867), drug-dose-duration accuracy (Top-1: 0.782 vs. 0.716), and reduces unsafe antibiotic suggestions by 50%. Additional evaluation across summary quality, recommendation accuracy, and global safety scores further confirms the robustness of the system. Ablation analyses indicate that the knowledge graph, RAG, and safety modules each contribute substantially to clinical reliability and interpretability.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-12-09T21:11:55Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Zihan Han</name>
+    </author>
+    <author>
+      <name>Junyan Ge</name>
+    </author>
+    <author>
+      <name>Caifeng Li</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2512.05256v1</id>
+    <title>Enhancing Clinical Note Generation with ICD-10, Clinical Ontology Knowledge Graphs, and Chain-of-Thought Prompting Using GPT-4</title>
+    <updated>2025-12-04T21:12:21Z</updated>
+    <link href="https://arxiv.org/abs/2512.05256v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2512.05256v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>In the past decade a surge in the amount of electronic health record (EHR) data in the United States, attributed to a favorable policy environment created by the Health Information Technology for Economic and Clinical Health (HITECH) Act of 2009 and the 21st Century Cures Act of 2016. Clinical notes for patients' assessments, diagnoses, and treatments are captured in these EHRs in free-form text by physicians, who spend a considerable amount of time entering and editing them. Manually writing clinical notes takes a considerable amount of a doctor's valuable time, increasing the patient's waiting time and possibly delaying diagnoses. Large language models (LLMs) possess the ability to generate news articles that closely resemble human-written ones. We investigate the usage of Chain-of-Thought (CoT) prompt engineering to improve the LLM's response in clinical note generation. In our prompts, we use as input International Classification of Diseases (ICD) codes and basic patient information. We investigate a strategy that combines the traditional CoT with semantic search results to improve the quality of generated clinical notes. Additionally, we infuse a knowledge graph (KG) built from clinical ontology to further enrich the domain-specific knowledge of generated clinical notes. We test our prompting technique on six clinical cases from the CodiEsp test dataset using GPT-4 and our results show that it outperformed the clinical notes generated by standard one-shot prompts.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="q-bio.QM" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-12-04T21:12:21Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Ivan Makohon</name>
+    </author>
+    <author>
+      <name>Mohamad Najafi</name>
+    </author>
+    <author>
+      <name>Jian Wu</name>
+    </author>
+    <author>
+      <name>Mathias Brochhausen</name>
+    </author>
+    <author>
+      <name>Yaohang Li</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2509.06444v1</id>
+    <title>HyFedRAG: A Federated Retrieval-Augmented Generation Framework for Heterogeneous and Privacy-Sensitive Data</title>
+    <updated>2025-09-08T08:44:24Z</updated>
+    <link href="https://arxiv.org/abs/2509.06444v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2509.06444v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Centralized RAG pipelines struggle with heterogeneous and privacy-sensitive data, especially in distributed healthcare settings where patient data spans SQL, knowledge graphs, and clinical notes. Clinicians face difficulties retrieving rare disease cases due to privacy constraints and the limitations of traditional cloud-based RAG systems in handling diverse formats and edge devices. To address this, we introduce HyFedRAG, a unified and efficient Federated RAG framework tailored for Hybrid data modalities. By leveraging an edge-cloud collaborative mechanism, HyFedRAG enables RAG to operate across diverse data sources while preserving data privacy. Our key contributions are: (1) We design an edge-cloud collaborative RAG framework built on Flower, which supports querying structured SQL data, semi-structured knowledge graphs, and unstructured documents. The edge-side LLMs convert diverse data into standardized privacy-preserving representations, and the server-side LLMs integrates them for global reasoning and generation. (2) We integrate lightweight local retrievers with privacy-aware LLMs and provide three anonymization tools that enable each client to produce semantically rich, de-identified summaries for global inference across devices. (3) To optimize response latency and reduce redundant computation, we design a three-tier caching strategy consisting of local cache, intermediate representation cache, and cloud inference cache. Experimental results on PMC-Patients demonstrate that HyFedRAG outperforms existing baselines in terms of retrieval quality, generation consistency, and system efficiency. Our framework offers a scalable and privacy-compliant solution for RAG over structural-heterogeneous data, unlocking the potential of LLMs in sensitive and diverse data environments.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-09-08T08:44:24Z</published>
+    <arxiv:comment>9 pages, 7 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Cheng Qian</name>
+    </author>
+    <author>
+      <name>Hainan Zhang</name>
+    </author>
+    <author>
+      <name>Yongxin Tong</name>
+    </author>
+    <author>
+      <name>Hong-Wei Zheng</name>
+    </author>
+    <author>
+      <name>Zhiming Zheng</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2506.05766v1</id>
+    <title>BioMol-MQA: A Multi-Modal Question Answering Dataset For LLM Reasoning Over Bio-Molecular Interactions</title>
+    <updated>2025-06-06T05:48:22Z</updated>
+    <link href="https://arxiv.org/abs/2506.05766v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2506.05766v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Retrieval augmented generation (RAG) has shown great power in improving Large Language Models (LLMs). However, most existing RAG-based LLMs are dedicated to retrieving single modality information, mainly text; while for many real-world problems, such as healthcare, information relevant to queries can manifest in various modalities such as knowledge graph, text (clinical notes), and complex molecular structure. Thus, being able to retrieve relevant multi-modality domain-specific information, and reason and synthesize diverse knowledge to generate an accurate response is important. To address the gap, we present BioMol-MQA, a new question-answering (QA) dataset on polypharmacy, which is composed of two parts (i) a multimodal knowledge graph (KG) with text and molecular structure for information retrieval; and (ii) challenging questions that designed to test LLM capabilities in retrieving and reasoning over multimodal KG to answer questions. Our benchmarks indicate that existing LLMs struggle to answer these questions and do well only when given the necessary background data, signaling the necessity for strong RAG frameworks.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-06-06T05:48:22Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Saptarshi Sengupta</name>
+    </author>
+    <author>
+      <name>Shuhua Yang</name>
+    </author>
+    <author>
+      <name>Paul Kwong Yu</name>
+    </author>
+    <author>
+      <name>Fali Wang</name>
+    </author>
+    <author>
+      <name>Suhang Wang</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2506.05386v3</id>
+    <title>Leaps Beyond the Seen: Reinforced Reasoning Augmented Generation for Clinical Notes</title>
+    <updated>2025-08-09T19:31:11Z</updated>
+    <link href="https://arxiv.org/abs/2506.05386v3" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2506.05386v3" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Clinical note generation aims to produce free-text summaries of a patient's condition and diagnostic process, with discharge instructions being a representative long-form example. While recent LLM-based methods pre-trained on general clinical corpora show promise in clinical text generation, they fall short in producing long-form notes from limited patient information. In this paper, we propose ReinRAG, a reinforced reasoning augmented generation (RAG) for long-form discharge instructions based on pre-admission information. ReinRAG retrieves reasoning paths from a medical knowledge graph to provide explicit semantic guidance to the LLM. To bridge the information gap, we propose group-based retriever optimization (GRO) which improves retrieval quality with group-normalized rewards, encouraging reasoning leaps for deeper inference by the LLM. Comprehensive experiments on the real-world dataset show that ReinRAG outperforms baselines in both clinical efficacy and natural language generation metrics. Further analysis reveals that ReinRAG fills semantic gaps in sparse input scenarios, and retrieved reasoning paths help LLMs avoid clinical misinterpretation by focusing on key evidence and following coherent reasoning.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-06-03T12:59:52Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Lo Pang-Yun Ting</name>
+    </author>
+    <author>
+      <name>Chengshuai Zhao</name>
+    </author>
+    <author>
+      <name>Yu-Hua Zeng</name>
+    </author>
+    <author>
+      <name>Yuan Jee Lim</name>
+    </author>
+    <author>
+      <name>Kun-Ta Chuang</name>
+    </author>
+    <author>
+      <name>Huan Liu</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2505.10143v1</id>
+    <title>GE-Chat: A Graph Enhanced RAG Framework for Evidential Response Generation of LLMs</title>
+    <updated>2025-05-15T10:17:35Z</updated>
+    <link href="https://arxiv.org/abs/2505.10143v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2505.10143v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large Language Models are now key assistants in human decision-making processes. However, a common note always seems to follow: "LLMs can make mistakes. Be careful with important info." This points to the reality that not all outputs from LLMs are dependable, and users must evaluate them manually. The challenge deepens as hallucinated responses, often presented with seemingly plausible explanations, create complications and raise trust issues among users. To tackle such issue, this paper proposes GE-Chat, a knowledge Graph enhanced retrieval-augmented generation framework to provide Evidence-based response generation. Specifically, when the user uploads a material document, a knowledge graph will be created, which helps construct a retrieval-augmented agent, enhancing the agent's responses with additional knowledge beyond its training corpus. Then we leverage Chain-of-Thought (CoT) logic generation, n-hop sub-graph searching, and entailment-based sentence generation to realize accurate evidence retrieval. We demonstrate that our method improves the existing models' performance in terms of identifying the exact evidence in a free-form context, providing a reliable way to examine the resources of LLM's conclusion and help with the judgment of the trustworthiness.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2025-05-15T10:17:35Z</published>
+    <arxiv:comment>5 pages, 4 figures, accepted to IJCAI2025 demo track</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Longchao Da</name>
+    </author>
+    <author>
+      <name>Parth Mitesh Shah</name>
+    </author>
+    <author>
+      <name>Kuan-Ru Liou</name>
+    </author>
+    <author>
+      <name>Jiaxing Zhang</name>
+    </author>
+    <author>
+      <name>Hua Wei</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2411.08696v1</id>
+    <title>Scholarly Wikidata: Population and Exploration of Conference Data in Wikidata using LLMs</title>
+    <updated>2024-11-13T15:34:52Z</updated>
+    <link href="https://arxiv.org/abs/2411.08696v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2411.08696v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Several initiatives have been undertaken to conceptually model the domain of scholarly data using ontologies and to create respective Knowledge Graphs. Yet, the full potential seems unleashed, as automated means for automatic population of said ontologies are lacking, and respective initiatives from the Semantic Web community are not necessarily connected: we propose to make scholarly data more sustainably accessible by leveraging Wikidata's infrastructure and automating its population in a sustainable manner through LLMs by tapping into unstructured sources like conference Web sites and proceedings texts as well as already existing structured conference datasets. While an initial analysis shows that Semantic Web conferences are only minimally represented in Wikidata, we argue that our methodology can help to populate, evolve and maintain scholarly data as a community within Wikidata. Our main contributions include (a) an analysis of ontologies for representing scholarly data to identify gaps and relevant entities/properties in Wikidata, (b) semi-automated extraction -- requiring (minimal) manual validation -- of conference metadata (e.g., acceptance rates, organizer roles, programme committee members, best paper awards, keynotes, and sponsors) from websites and proceedings texts using LLMs. Finally, we discuss (c) extensions to visualization tools in the Wikidata context for data exploration of the generated scholarly data. Our study focuses on data from 105 Semantic Web-related conferences and extends/adds more than 6000 entities in Wikidata. It is important to note that the method can be more generally applicable beyond Semantic Web-related conferences for enhancing Wikidata's utility as a comprehensive scholarly resource.
+  Source Repository: https://github.com/scholarly-wikidata/
+  DOI: https://doi.org/10.5281/zenodo.10989709
+  License: Creative Commons CC0 (Data), MIT (Code)</summary>
+    <category term="cs.DL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-11-13T15:34:52Z</published>
+    <arxiv:comment>17 pages, accepted at EKAW-24</arxiv:comment>
+    <arxiv:primary_category term="cs.DL"/>
+    <author>
+      <name>Nandana Mihindukulasooriya</name>
+    </author>
+    <author>
+      <name>Sanju Tiwari</name>
+    </author>
+    <author>
+      <name>Daniil Dobriy</name>
+    </author>
+    <author>
+      <name>Finn Årup Nielsen</name>
+    </author>
+    <author>
+      <name>Tek Raj Chhetri</name>
+    </author>
+    <author>
+      <name>Axel Polleres</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2408.01933v6</id>
+    <title>DiReCT: Diagnostic Reasoning for Clinical Notes via Large Language Models</title>
+    <updated>2025-07-01T08:40:39Z</updated>
+    <link href="https://arxiv.org/abs/2408.01933v6" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2408.01933v6" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large language models (LLMs) have recently showcased remarkable capabilities, spanning a wide range of tasks and applications, including those in the medical domain. Models like GPT-4 excel in medical question answering but may face challenges in the lack of interpretability when handling complex tasks in real clinical settings. We thus introduce the diagnostic reasoning dataset for clinical notes (DiReCT), aiming at evaluating the reasoning ability and interpretability of LLMs compared to human doctors. It contains 511 clinical notes, each meticulously annotated by physicians, detailing the diagnostic reasoning process from observations in a clinical note to the final diagnosis. Additionally, a diagnostic knowledge graph is provided to offer essential knowledge for reasoning, which may not be covered in the training data of existing LLMs. Evaluations of leading LLMs on DiReCT bring out a significant gap between their reasoning ability and that of human doctors, highlighting the critical need for models that can reason effectively in real-world clinical scenarios.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-08-04T05:15:02Z</published>
+    <arxiv:comment>Accepted by NeurIPS 2024 D&amp;B Track</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Bowen Wang</name>
+    </author>
+    <author>
+      <name>Jiuyang Chang</name>
+    </author>
+    <author>
+      <name>Yiming Qian</name>
+    </author>
+    <author>
+      <name>Guoxin Chen</name>
+    </author>
+    <author>
+      <name>Junhao Chen</name>
+    </author>
+    <author>
+      <name>Zhouqiang Jiang</name>
+    </author>
+    <author>
+      <name>Jiahao Zhang</name>
+    </author>
+    <author>
+      <name>Yuta Nakashima</name>
+    </author>
+    <author>
+      <name>Hajime Nagahara</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2405.19877v1</id>
+    <title>KNOW: A Real-World Ontology for Knowledge Capture with Large Language Models</title>
+    <updated>2024-05-30T09:32:14Z</updated>
+    <link href="https://arxiv.org/abs/2405.19877v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2405.19877v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>We present KNOW--the Knowledge Navigator Ontology for the World--the first ontology designed to capture everyday knowledge to augment large language models (LLMs) in real-world generative AI use cases such as personal AI assistants. Our domain is human life, both its everyday concerns and its major milestones. We have limited the initial scope of the modeled concepts to only established human universals: spacetime (places, events) plus social (people, groups, organizations). The inclusion criteria for modeled concepts are pragmatic, beginning with universality and utility. We compare and contrast previous work such as Schema.org and Cyc--as well as attempts at a synthesis of knowledge graphs and language models--noting how LLMs already encode internally much of the commonsense tacit knowledge that took decades to capture in the Cyc project. We also make available code-generated software libraries for the 12 most popular programming languages, enabling the direct use of ontology concepts in software engineering. We emphasize simplicity and developer experience in promoting AI interoperability.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-05-30T09:32:14Z</published>
+    <arxiv:comment>5 pages, 1 figure</arxiv:comment>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Arto Bendiken</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2406.00036v2</id>
+    <title>EMERGE: Enhancing Multimodal Electronic Health Records Predictive Modeling with Retrieval-Augmented Generation</title>
+    <updated>2025-02-26T13:18:09Z</updated>
+    <link href="https://arxiv.org/abs/2406.00036v2" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2406.00036v2" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The integration of multimodal Electronic Health Records (EHR) data has significantly advanced clinical predictive capabilities. Existing models, which utilize clinical notes and multivariate time-series EHR data, often fall short of incorporating the necessary medical context for accurate clinical tasks, while previous approaches with knowledge graphs (KGs) primarily focus on structured knowledge extraction. In response, we propose EMERGE, a Retrieval-Augmented Generation (RAG) driven framework to enhance multimodal EHR predictive modeling. We extract entities from both time-series data and clinical notes by prompting Large Language Models (LLMs) and align them with professional PrimeKG, ensuring consistency. In addition to triplet relationships, we incorporate entities' definitions and descriptions for richer semantics. The extracted knowledge is then used to generate task-relevant summaries of patients' health statuses. Finally, we fuse the summary with other modalities using an adaptive multimodal fusion network with cross-attention. Extensive experiments on the MIMIC-III and MIMIC-IV datasets' in-hospital mortality and 30-day readmission tasks demonstrate the superior performance of the EMERGE framework over baseline models. Comprehensive ablation studies and analysis highlight the efficacy of each designed module and robustness to data sparsity. EMERGE contributes to refining the utilization of multimodal EHR data in healthcare, bridging the gap with nuanced medical contexts essential for informed clinical predictions. We have publicly released the code at https://github.com/yhzhu99/EMERGE.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-05-27T10:53:15Z</published>
+    <arxiv:comment>CIKM 2024 Full Research Paper; arXiv admin note: text overlap with arXiv:2402.07016</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Yinghao Zhu</name>
+    </author>
+    <author>
+      <name>Changyu Ren</name>
+    </author>
+    <author>
+      <name>Zixiang Wang</name>
+    </author>
+    <author>
+      <name>Xiaochen Zheng</name>
+    </author>
+    <author>
+      <name>Shiyun Xie</name>
+    </author>
+    <author>
+      <name>Junlan Feng</name>
+    </author>
+    <author>
+      <name>Xi Zhu</name>
+    </author>
+    <author>
+      <name>Zhoujun Li</name>
+    </author>
+    <author>
+      <name>Liantao Ma</name>
+    </author>
+    <author>
+      <name>Chengwei Pan</name>
+    </author>
+    <arxiv:doi>10.1145/3627673.3679582</arxiv:doi>
+    <link rel="related" href="https://doi.org/10.1145/3627673.3679582" title="doi"/>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2402.07016v1</id>
+    <title>REALM: RAG-Driven Enhancement of Multimodal Electronic Health Records Analysis via Large Language Models</title>
+    <updated>2024-02-10T18:27:28Z</updated>
+    <link href="https://arxiv.org/abs/2402.07016v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2402.07016v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>The integration of multimodal Electronic Health Records (EHR) data has significantly improved clinical predictive capabilities. Leveraging clinical notes and multivariate time-series EHR, existing models often lack the medical context relevent to clinical tasks, prompting the incorporation of external knowledge, particularly from the knowledge graph (KG). Previous approaches with KG knowledge have primarily focused on structured knowledge extraction, neglecting unstructured data modalities and semantic high dimensional medical knowledge. In response, we propose REALM, a Retrieval-Augmented Generation (RAG) driven framework to enhance multimodal EHR representations that address these limitations. Firstly, we apply Large Language Model (LLM) to encode long context clinical notes and GRU model to encode time-series EHR data. Secondly, we prompt LLM to extract task-relevant medical entities and match entities in professionally labeled external knowledge graph (PrimeKG) with corresponding medical knowledge. By matching and aligning with clinical standards, our framework eliminates hallucinations and ensures consistency. Lastly, we propose an adaptive multimodal fusion network to integrate extracted knowledge with multimodal EHR data. Our extensive experiments on MIMIC-III mortality and readmission tasks showcase the superior performance of our REALM framework over baselines, emphasizing the effectiveness of each module. REALM framework contributes to refining the use of multimodal EHR data in healthcare and bridging the gap with nuanced medical context essential for informed clinical predictions.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2024-02-10T18:27:28Z</published>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Yinghao Zhu</name>
+    </author>
+    <author>
+      <name>Changyu Ren</name>
+    </author>
+    <author>
+      <name>Shiyun Xie</name>
+    </author>
+    <author>
+      <name>Shukai Liu</name>
+    </author>
+    <author>
+      <name>Hangyuan Ji</name>
+    </author>
+    <author>
+      <name>Zixiang Wang</name>
+    </author>
+    <author>
+      <name>Tao Sun</name>
+    </author>
+    <author>
+      <name>Long He</name>
+    </author>
+    <author>
+      <name>Zhoujun Li</name>
+    </author>
+    <author>
+      <name>Xi Zhu</name>
+    </author>
+    <author>
+      <name>Chengwei Pan</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2307.11346v1</id>
+    <title>CohortGPT: An Enhanced GPT for Participant Recruitment in Clinical Study</title>
+    <updated>2023-07-21T04:43:00Z</updated>
+    <link href="https://arxiv.org/abs/2307.11346v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2307.11346v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Participant recruitment based on unstructured medical texts such as clinical notes and radiology reports has been a challenging yet important task for the cohort establishment in clinical research. Recently, Large Language Models (LLMs) such as ChatGPT have achieved tremendous success in various downstream tasks thanks to their promising performance in language understanding, inference, and generation. It is then natural to test their feasibility in solving the cohort recruitment task, which involves the classification of a given paragraph of medical text into disease label(s). However, when applied to knowledge-intensive problem settings such as medical text classification, where the LLMs are expected to understand the decision made by human experts and accurately identify the implied disease labels, the LLMs show a mediocre performance. A possible explanation is that, by only using the medical text, the LLMs neglect to use the rich context of additional information that languages afford. To this end, we propose to use a knowledge graph as auxiliary information to guide the LLMs in making predictions. Moreover, to further boost the LLMs adapt to the problem setting, we apply a chain-of-thought (CoT) sample selection strategy enhanced by reinforcement learning, which selects a set of CoT samples given each individual medical report. Experimental results and various ablation studies show that our few-shot learning method achieves satisfactory performance compared with fine-tuning strategies and gains superb advantages when the available data is limited. The code and sample dataset of the proposed CohortGPT model is available at: https://anonymous.4open.science/r/CohortGPT-4872/</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2023-07-21T04:43:00Z</published>
+    <arxiv:comment>16 pages, 10 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Zihan Guan</name>
+    </author>
+    <author>
+      <name>Zihao Wu</name>
+    </author>
+    <author>
+      <name>Zhengliang Liu</name>
+    </author>
+    <author>
+      <name>Dufan Wu</name>
+    </author>
+    <author>
+      <name>Hui Ren</name>
+    </author>
+    <author>
+      <name>Quanzheng Li</name>
+    </author>
+    <author>
+      <name>Xiang Li</name>
+    </author>
+    <author>
+      <name>Ninghao Liu</name>
+    </author>
+  </entry>
+</feed>

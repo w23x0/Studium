@@ -1,0 +1,1905 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<!-- new favicon config and versions by realfavicongenerator.net -->
+<link rel="apple-touch-icon" sizes="180x180" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/favicon-16x16.png">
+<link rel="manifest" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/site.webmanifest">
+<link rel="mask-icon" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/safari-pinned-tab.svg" color="#b31b1b">
+<link rel="shortcut icon" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/favicon.ico">
+<meta name="msapplication-TileColor" content="#b31b1b">
+<meta name="msapplication-config" content="images/icons/browserconfig.xml">
+<meta name="theme-color" content="#b31b1b">
+<!-- end favicon config -->
+<title>Search | arXiv e-print repository</title>
+<script defer src="https://static.arxiv.org/static/base/1.0.0a5/fontawesome-free-5.11.2-web/js/all.js"></script>
+<link rel="stylesheet" href="https://static.arxiv.org/static/base/1.0.0a5/css/arxivstyle.css" />
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    messageStyle: "none",
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX", "output/HTML-CSS"],
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+      processEscapes: true,
+      ignoreClass: '.*',
+      processClass: 'mathjax.*'
+    },
+    TeX: {
+        extensions: ["AMSmath.js", "AMSsymbols.js", "noErrors.js"],
+        noErrors: {
+          inlineDelimiters: ["$","$"],
+          multiLine: false,
+          style: {
+            "font-size": "normal",
+            "border": ""
+          }
+        }
+    },
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+<script src='//static.arxiv.org/MathJax-2.7.3/MathJax.js'></script>
+<script src="https://static.arxiv.org/static/base/1.0.0a5/js/notification.js"></script>
+
+    
+  <script>document.documentElement.classList.add('js');</script>
+  <link rel="stylesheet" type="text/css" media="screen" href="https://static.arxiv.org/static/base/1.0.1/css/arxiv-header-footer.css?v=20260626" />
+  <script defer src="https://static.arxiv.org/static/base/1.0.1/js/arxiv-header.js?v=20260626"></script>
+  <link rel="stylesheet" href="https://static.arxiv.org/static/search/0.5.6/css/bulma-tooltip.min.css" />
+  <link rel="stylesheet" href="https://static.arxiv.org/static/search/0.5.6/css/search.css" />
+  <script
+    src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+    integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
+    crossorigin="anonymous"></script>
+
+  <script src="https://static.arxiv.org/static/search/0.5.6/js/fieldset.js"></script>
+  <style>
+  radio#cf-customfield_11400 {
+    display: none;
+  }
+  /* Render the spinout .ds-site-footer standalone / full-bleed. search extends the
+     legacy base, whose bare wrapping <footer> (in base/base.html, outside any
+     overridable block — so it can't be removed from here) is styled by
+     arxivstyle.css with a grey background (hsl(0,0%,95%)) + 1em 2em padding,
+     boxing our warm-wash footer inside a second grey band. display:contents drops
+     the wrapper's box entirely (cleaner than zeroing individual properties) so
+     .ds-site-footer renders in its place; it inherits flex-shrink:0 from the same
+     legacy `footer` rule, so the sticky footer still works. Search-specific
+     legacy-base integration; the shared chrome CSS stays byte-identical to the SSOT. */
+  body > footer {
+    display: contents;
+  }
+  </style>
+
+  </head>
+  <body>
+  
+  
+  <header><a href="#main-container" class="is-sr-only">Skip to main content</a>
+    <div class="ds-announcement" id="announcement-banner" role="region" aria-label="Announcement" data-banner-name="spinout-nonprofit">
+  <img class="ds-announcement-glyph" src="https://static.arxiv.org/static/base/1.0.1/images/icons/smileybones-small.svg" alt="" aria-hidden="true">
+  <span class="ds-announcement-text">arXiv is now an independent nonprofit!</span>
+  <a class="ds-announcement-link" href="https://info.arxiv.org/about">Learn more</a>
+  <button type="button" class="ds-announcement-close" aria-label="Dismiss announcement">&times;</button>
+</div>
+<header class="ds-site-header">
+  <a href="https://arxiv.org/" class="ds-site-header-logo" aria-label="archive home">
+    <img src="https://static.arxiv.org/static/base/1.0.1/images/arxiv-logo-primary-light.svg" alt="archive">
+  </a>
+  <button type="button" id="ds-nav-toggle" class="ds-site-header-nav-toggle"
+    aria-label="Open menu" aria-controls="ds-site-header-nav" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <nav class="ds-site-header-nav" id="ds-site-header-nav" aria-label="Main navigation">
+    <a id="arxiv-search-toggle" href="/search" aria-controls="arxiv-search-overlay" aria-expanded="false">
+      <svg class="ds-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      Search
+    </a>
+    <a href="https://arxiv.org/user/create">Submit</a>
+    <a href="https://info.arxiv.org/about/donate.html">Donate</a>
+    <span class="ds-site-header-divider" aria-hidden="true"></span>
+    <a href="https://arxiv.org/login" class="ds-site-header-login">Log in</a>
+  </nav>
+</header>
+
+<div class="arxiv-search-overlay" id="arxiv-search-overlay" hidden>
+  <div class="arxiv-search-panel" role="search">
+    <form method="GET" action="/search">
+      <label for="arxiv-search-input" class="is-sr-only">Search arXiv</label>
+      <input type="text" name="query" id="arxiv-search-input" autocomplete="off"
+        placeholder="Search papers by title, author, abstract, or ID...">
+      <input type="hidden" name="searchtype" value="all">
+      <input type="hidden" name="source" value="header">
+    </form>
+    <div class="arxiv-search-hint">
+      Press Enter to search &middot; <a href="/search/advanced">Advanced search</a>
+    </div>
+  </div>
+</div>
+
+  </header>
+  <main class="container" id="main-container">
+    
+
+
+    
+  <div class="level is-marginless">
+    <div class="level-left">
+      <h1 class="title is-clearfix">
+    
+        Showing 1&ndash;25 of 25 results for all: <span class="mathjax">verifiability check evidence sufficiency</span>
+    
+</h1>
+    </div>
+    <div class="level-right is-hidden-mobile">
+      <!-- feedback for mobile is moved to footer -->
+      <span class="help" style="display: inline-block;"><a href="https://github.com/arXiv/arxiv-search/releases">Search v0.5.6 released 2020-02-24</a>&nbsp;&nbsp;</span>
+    </div>
+  </div>
+    <div class="content">
+      
+  <form method="GET" action="/search/"  aria-role="search">
+    
+
+    
+    <div class="field has-addons-tablet">
+      <div class="control is-expanded">
+        <label for="query" class="hidden-label">Search term or terms</label>
+        
+          <input class="input is-medium" id="query" name="query" placeholder="Search term..." type="text" value="verifiability check evidence sufficiency">
+        
+        
+      </div>
+      <div class="select control is-medium">
+        <label class="is-hidden" for="searchtype">Field</label>
+        <select class="is-medium" id="searchtype" name="searchtype"><option selected value="all">All fields</option><option value="title">Title</option><option value="author">Author(s)</option><option value="abstract">Abstract</option><option value="comments">Comments</option><option value="journal_ref">Journal reference</option><option value="acm_class">ACM classification</option><option value="msc_class">MSC classification</option><option value="report_num">Report number</option><option value="paper_id">arXiv identifier</option><option value="doi">DOI</option><option value="orcid">ORCID</option><option value="license">License (URI)</option><option value="author_id">arXiv author ID</option><option value="help">Help pages</option><option value="full_text">Full text</option></select>
+      </div>
+      <div class="control">
+          <button class="button is-link is-medium">Search</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="control is-size-7">
+        
+        <label class="radio">
+          <input checked id="abstracts-0" name="abstracts" type="radio" value="show"> Show abstracts
+        </label>
+        
+        <label class="radio">
+          <input id="abstracts-1" name="abstracts" type="radio" value="hide"> Hide abstracts
+        </label>
+        
+      </div>
+    </div>
+    <div class="is-clearfix" style="height: 2.5em"> 
+      <div class="is-pulled-right">
+        
+        <a href="/search/advanced?terms-0-term=verifiability+check+evidence+sufficiency&amp;terms-0-field=all&amp;size=50&amp;order=-announced_date_first">Advanced Search</a>
+        
+      </div>
+    </div>
+    <input type="hidden" name="order" value="-announced_date_first">
+    <input type="hidden" name="size" value="50">
+  </form>
+
+  
+
+  
+      
+<div class="level breathe-horizontal">
+  <div class="level-left">
+    <form method="GET" action="/search/">
+      <div style="display: none;">
+        
+          
+            <select id="searchtype" name="searchtype"><option selected value="all">All fields</option><option value="title">Title</option><option value="author">Author(s)</option><option value="abstract">Abstract</option><option value="comments">Comments</option><option value="journal_ref">Journal reference</option><option value="acm_class">ACM classification</option><option value="msc_class">MSC classification</option><option value="report_num">Report number</option><option value="paper_id">arXiv identifier</option><option value="doi">DOI</option><option value="orcid">ORCID</option><option value="license">License (URI)</option><option value="author_id">arXiv author ID</option><option value="help">Help pages</option><option value="full_text">Full text</option></select>
+          
+        
+          
+            <input id="query" name="query" type="text" value="verifiability check evidence sufficiency">
+          
+        
+          
+        
+          
+        
+          
+            <ul id="abstracts"><li><input checked id="abstracts-0" name="abstracts" type="radio" value="show"> <label for="abstracts-0">Show abstracts</label></li><li><input id="abstracts-1" name="abstracts" type="radio" value="hide"> <label for="abstracts-1">Hide abstracts</label></li></ul>
+          
+        
+      </div>
+      <div class="box field is-grouped is-grouped-multiline level-item">
+        <div class="control">
+          <span class="select is-small">
+            <select id="size" name="size"><option value="25">25</option><option selected value="50">50</option><option value="100">100</option><option value="200">200</option></select>
+          </span>
+          <label for="size">results per page</label>.
+        </div>
+        <div class="control">
+          <label for="order">Sort results by</label>
+          <span class="select is-small">
+            <select id="order" name="order"><option selected value="-announced_date_first">Announcement date (newest first)</option><option value="announced_date_first">Announcement date (oldest first)</option><option value="-submitted_date">Submission date (newest first)</option><option value="submitted_date">Submission date (oldest first)</option><option value="">Relevance</option></select>
+          </span>
+        </div>
+        <div class="control">
+          <button class="button is-small is-link">Go</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+      
+
+
+
+
+<ol class="breathe-horizontal" start="1"> 
+
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2607.21859">arXiv:2607.21859</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2607.21859">pdf</a>, <a href="https://arxiv.org/ps/2607.21859">ps</a>, <a href="https://arxiv.org/format/2607.21859">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        EviDAG: Auditable Causal DAG Authoring with Biomedical Literature
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Sheu%2C+Y">Yi-han Sheu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Steigman%2C+M+R">Michael R. Steigman</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zhou%2C+Y">Yu Zhou</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+B">Bo Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yen%2C+F">Fan-Yu Yen</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Smoller%2C+J+W">Jordan W. Smoller</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2607.21859v2-abstract-short" style="display: inline;">
+        &hellip;biomedical causal analysis, yet it remains a largely manual process. Analysts must connect study variables to prior literature, evaluate uncertain causal claims, and preserve <span class="search-hit mathjax">sufficient</span> provenance for expert review. We present EviDAG, a browser-based system for authoring causal DAGs as auditable,&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2607.21859v2-abstract-full').style.display = 'inline'; document.getElementById('2607.21859v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2607.21859v2-abstract-full" style="display: none;">
+        Constructing causal directed acyclic graphs (DAGs) is a core step in biomedical causal analysis, yet it remains a largely manual process. Analysts must connect study variables to prior literature, evaluate uncertain causal claims, and preserve <span class="search-hit mathjax">sufficient</span> provenance for expert review. We present EviDAG, a browser-based system for authoring causal DAGs as auditable, <span class="search-hit mathjax">evidence</span>-linked artifacts from biomedical literature. Given free-text descriptions of study concepts, EviDAG creates a reproducible literature snapshot, uses an LLM-based reasoning module to generate structured pairwise causal judgments, links literature-supported judgments to verbatim <span class="search-hit mathjax">evidence</span> excerpts, and assembles the judgments into a constraint-<span class="search-hit mathjax">checked</span> graph. Each proposed edge includes confidence estimates, provenance, and a reviewable rationale. The interface supports study specification, progress monitoring, <span class="search-hit mathjax">evidence</span> review, graph comparison, adjustment-set computation, and export. In evaluations against both compact benchmark DAGs and reference DAGs derived from published literature, EviDAG achieves high edge recall on the literature-based cohort while retaining <span class="search-hit mathjax">verifiable</span> <span class="search-hit mathjax">evidence</span> trails absent from LLM-only baselines. EviDAG thus reduces the burden of causal DAG curation while making the resulting assumptions auditable, supporting the design, analysis, and interpretation of biomedical studies.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2607.21859v2-abstract-full').style.display = 'none'; document.getElementById('2607.21859v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 27 July, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 23 July, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> July 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">10 pages, 2 figures</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2607.20543">arXiv:2607.20543</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2607.20543">pdf</a>, <a href="https://arxiv.org/ps/2607.20543">ps</a>, <a href="https://arxiv.org/format/2607.20543">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Machine Learning">cs.LG</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        When RLVR Shrinks the Reasoning Boundary: Diagnosing Pass@k Inversion
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Zhou%2C+T">Todd Zhou</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2607.20543v1-abstract-short" style="display: inline;">
+        Reinforcement learning with <span class="search-hit mathjax">verifiable</span> rewards (RLVR) can improve one-sample accuracy while making a model worse under repeated sampling. We study this pass@k inversion: after training, the policy may solve fewer distinct problems than its base model at large $k$. The failure concentrates on boundary prompts, where the base model contains rare correct trajec&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2607.20543v1-abstract-full').style.display = 'inline'; document.getElementById('2607.20543v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2607.20543v1-abstract-full" style="display: none;">
+        Reinforcement learning with <span class="search-hit mathjax">verifiable</span> rewards (RLVR) can improve one-sample accuracy while making a model worse under repeated sampling. We study this pass@k inversion: after training, the policy may solve fewer distinct problems than its base model at large $k$. The failure concentrates on boundary prompts, where the base model contains rare correct trajectories that are recoverable by sampling but too sparse to reliably appear in finite RLVR rollout groups. We argue that a two-mode account explains this as an absence-of-<span class="search-hit mathjax">evidence</span> failure: rare correct trajectories may disappear before RLVR samples and reinforces them often enough. The main contribution is this diagnostic and mechanistic framing. Per-Problem Base Anchoring (PBA) is a deliberately simple proof-of-concept: sharpen prompts with <span class="search-hit mathjax">sufficient</span> frozen-base correct <span class="search-hit mathjax">evidence</span>, and anchor risky prompts to the base distribution. Across three training seeds on Omni-MATH-Test, with MATH500 as a secondary high-coverage validation benchmark, PBA improves both \PassK{1} and high-budget coverage over matched GRPO. A 3000-prompt regime-controlled diagnostic study is consistent across seeds with the expected signature: ordinary GRPO loses base-solvable boundary prompts, while PBA preserves rare <span class="search-hit mathjax">verifier</span>-positive trajectories. We use mathematical <span class="search-hit mathjax">verifiers</span> as a controlled testbed for <span class="search-hit mathjax">verifier</span>-guided optimization; the same pass@k inversion risk applies to ECCV-relevant vision-language agents when repeated visual, spatial, or chart-reasoning attempts are <span class="search-hit mathjax">checked</span> by external tools or <span class="search-hit mathjax">verifiers</span>. Reasoning post-training should decide not only how strongly to optimize, but which prompts are safe to optimize.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2607.20543v1-abstract-full').style.display = 'none'; document.getElementById('2607.20543v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 12 July, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> July 2026.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2606.26057">arXiv:2606.26057</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2606.26057">pdf</a>, <a href="https://arxiv.org/ps/2606.26057">ps</a>, <a href="https://arxiv.org/format/2606.26057">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Cryptography and Security">cs.CR</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Machine Learning">cs.LG</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        The Unfireable Safety Kernel: Execution-Time AI Alignment for AI Agents and Other Escapable AI Systems
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Dobrin%2C+S">Seth Dobrin</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Chmiel%2C+%C5%81">Łukasz Chmiel</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2606.26057v1-abstract-short" style="display: inline;">
+        &hellip;output filters, and guardrail libraries. Any control in the agent&#39;s address space is reachable by inputs that influence it; this generalizes to any AI system with <span class="search-hit mathjax">sufficient</span> reach into its own runtime, a class we term escapable AI systems.
+  We identify four properties that an authorization mechanism must satisfy for architectural control rather than fo&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.26057v1-abstract-full').style.display = 'inline'; document.getElementById('2606.26057v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2606.26057v1-abstract-full" style="display: none;">
+        AI agents are granted access to tools, APIs, and other infrastructure, making them active principals in those systems. The dominant approach places controls inside the agent&#39;s own runtime: system prompts, output filters, and guardrail libraries. Any control in the agent&#39;s address space is reachable by inputs that influence it; this generalizes to any AI system with <span class="search-hit mathjax">sufficient</span> reach into its own runtime, a class we term escapable AI systems.
+  We identify four properties that an authorization mechanism must satisfy for architectural control rather than for cooperative requests: process separation, pre-action enforcement on a structurally only path, fail-closed at both the request and system levels, and externalized signed <span class="search-hit mathjax">evidence</span> <span class="search-hit mathjax">verifiable</span> outside the controlled system&#39;s trust boundary. We position this layer as execution-time AI alignment, complementing training-time alignment (RLHF, Constitutional AI) and inference-time alignment.
+  We present the Unfireable Safety Kernel, a Rust reference implementation realizing all four. Its fail-closed invariant is machine-<span class="search-hit mathjax">checked</span> at two levels: an SMT theorem (Z3) and an exhaustive bounded-model-<span class="search-hit mathjax">checking</span> proof of the production decision function (Kani, 4/4 harnesses). A Python-to-Rust migration was gated on byte-equivalence (1000/1000 fixtures; 17/17 adversarial classes). We evaluate the kernel governing a live, escapable AI system, a deterministic, self-improving world model, against an escape-seeking adversary driving its real self-modification seam: across 1,000 self-modifications, all 704 attempts on the safety-critical core are refused, with no escape; a further 300, under the operator kill switch, are also refused. A separate campaign of 6,240 authorization round-trips had no successful bypass. Against 3 contemporary systems claiming the agent control plane, the agent invokes control; here, it lacks that choice.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.26057v1-abstract-full').style.display = 'none'; document.getElementById('2606.26057v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 24 June, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Pre-print submitted for publication</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2606.24934">arXiv:2606.24934</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2606.24934">pdf</a>, <a href="https://arxiv.org/ps/2606.24934">ps</a>, <a href="https://arxiv.org/format/2606.24934">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Cryptography and Security">cs.CR</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Hardware Architecture">cs.AR</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Unprivileged Topology Certificates for Cloud GPU Attestation
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Alpay%2C+F">Faruk Alpay</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Alpay%2C+T">Taylan Alpay</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2606.24934v1-abstract-short" style="display: inline;">
+        &hellip;primitive for this setting. A CUDA probe measures an SM-by-memory-region latency matrix using physical SM labels and dependent global loads. A streaming reducer commits <span class="search-hit mathjax">sufficient</span> statistics, configuration, code hashes, network&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.24934v1-abstract-full').style.display = 'inline'; document.getElementById('2606.24934v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2606.24934v1-abstract-full" style="display: none;">
+        Cloud GPU tenants receive a model name and a region, but cannot directly inspect the physical accelerator that runs their job. We present a software-only attestation primitive for this setting. A CUDA probe measures an SM-by-memory-region latency matrix using physical SM labels and dependent global loads. A streaming reducer commits <span class="search-hit mathjax">sufficient</span> statistics, configuration, code hashes, network <span class="search-hit mathjax">evidence</span>, and a compressed raw data archive into a certificate that a <span class="search-hit mathjax">verifier</span> can <span class="search-hit mathjax">check</span> without a GPU. The certificate supports three claims. First, the per-SM latency map is a stable physical fingerprint. Over a six-hour full-load RTX 5090 run, its median temporal jitter is 0.09 cycles, while shape-only leave-one-out classification separates distinct Blackwell dies with 100.0% accuracy. Second, cache-bypassing HBM sweeps recover hardware-class topology across generations, including a unified Volta V100 memory domain, a two-way Hopper H200 L2 split, and a Blackwell B200 two-die NV-HBI package whose 74/74 SM partition carries a 30-cycle, 15.5 ns cross-die penalty. Third, public network landmarks bind the same certificate to a coarse location. In the B200 run, 169 RIPE Atlas probes place the server within 44 km of its claimed datacentre and reject all 11 decoy sites. Together, these measurements <span class="search-hit mathjax">check</span> cloud-GPU identity, class, and coarse location without privileged access or a vendor key.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.24934v1-abstract-full').style.display = 'none'; document.getElementById('2606.24934v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 22 June, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">12 pages, 2 figures, 4 tables. Source package includes code, certificates, JSON summaries, and a lossless SQLite ancillary payload for the full raw data tree with SHA-256 manifest</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">MSC Class:</span>
+          68M25; 68M20; 68M10
+        
+
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2606.09500">arXiv:2606.09500</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2606.09500">pdf</a>, <a href="https://arxiv.org/ps/2606.09500">ps</a>, <a href="https://arxiv.org/format/2606.09500">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Digital Libraries">cs.DL</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Deterministic Integrity Gates for LLM-Assisted Clinical Manuscript Preparation: An Auditable Biomedical Informatics Architecture
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Nam%2C+Y">Yoojin Nam</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Jeong%2C+J">Jinhoon Jeong</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Kim%2C+N">Namkug Kim</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2606.09500v4-abstract-short" style="display: inline;">
+        &hellip;to verification. Fluent LLM output can hide fabricated citations, numbers that drift from source tables, and unmet reporting-guideline items; existing tools generate without <span class="search-hit mathjax">verifying</span>, and self-critique inherits the blind spots that produce confident fabrication. We describe an architecture pairing generation with verification, resting on three principles: d&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.09500v4-abstract-full').style.display = 'inline'; document.getElementById('2606.09500v4-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2606.09500v4-abstract-full" style="display: none;">
+        As autonomous research agents and AI co-scientist systems push large language models (LLMs) from drafting toward end-to-end manuscript production, the bottleneck shifts from generation to verification. Fluent LLM output can hide fabricated citations, numbers that drift from source tables, and unmet reporting-guideline items; existing tools generate without <span class="search-hit mathjax">verifying</span>, and self-critique inherits the blind spots that produce confident fabrication. We describe an architecture pairing generation with verification, resting on three principles: decompose the workflow into self-contained skills, gate every stage transition with halt-on-failure, and resolve each integrity question with the cheapest <span class="search-hit mathjax">sufficient</span> mechanism, a deterministic, re-executable <span class="search-hit mathjax">check</span> where one suffices and a prose-level probe only where interpretation is unavoidable. This determinism-where-possible split, organized as an integrity-gate taxonomy, is the core contribution. It is realized as MedSci Skills, an open-source toolkit of 43 skills with a 21-detector deterministic tier, evaluated on three public-dataset pipelines (STARD, PRISMA, STROBE) and a seeded-defect ablation. Across the three pipelines every content-hash manifest <span class="search-hit mathjax">verified</span> clean and the gates surfaced real defects; on 27 identical injected defects the deterministic gates detected all 27 with no false positives on the matched clean fixtures, whereas a single-prompt LLM reviewer detected 11, its misses in code, bibliography, and style defects the prose hides. Determinism-where-possible verification yields an auditable, re-executable trail that exposes the <span class="search-hit mathjax">evidence</span> a human needs to <span class="search-hit mathjax">check</span> an LLM-assisted manuscript: feasibility and reproducibility <span class="search-hit mathjax">evidence</span>, not a claim of human-competitive quality, which a separate blinded study addresses. MedSci Skills is MIT-licensed and archived (v3.8.0).
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.09500v4-abstract-full').style.display = 'none'; document.getElementById('2606.09500v4-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 13 June, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 8 June, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">28 pages, 3 figures, 4 tables; includes supplementary material (deterministic-detector inventory, per-class defect breakdown, worked example). Software (MIT): https://github.com/Aperivue/medsci-skills . Archived on Zenodo: concept DOI https://doi.org/10.5281/zenodo.20155321 and version DOI (v3.8.0) https://doi.org/10.5281/zenodo.20582972</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">ACM Class:</span>
+          J.3; H.3.7; I.2.7
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.21993">arXiv:2605.21993</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.21993">pdf</a>, <a href="https://arxiv.org/ps/2605.21993">ps</a>, <a href="https://arxiv.org/format/2605.21993">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Machine Learning">cs.LG</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        ECPO: <span class="search-hit mathjax">Evidence</span>-Coupled Policy Optimization for <span class="search-hit mathjax">Evidence</span>-Certified Candidate Ranking
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Hu%2C+M">Miaobo Hu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Hu%2C+S">Shuhao Hu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+B">BoKun Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Sa%2C+Y">Yina Sa</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+X">Xin Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Guo%2C+X">Xiaobo Guo</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zha%2C+D">Daren Zha</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Xiao%2C+J">Jun Xiao</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.21993v1-abstract-short" style="display: inline;">
+        Ranking systems used in decision-support settings should not only order candidates but also expose <span class="search-hit mathjax">evidence</span> that can be independently&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.21993v1-abstract-full').style.display = 'inline'; document.getElementById('2605.21993v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.21993v1-abstract-full" style="display: none;">
+        Ranking systems used in decision-support settings should not only order candidates but also expose <span class="search-hit mathjax">evidence</span> that can be independently <span class="search-hit mathjax">checked</span>. We study <span class="search-hit mathjax">evidence</span>-certified candidate ranking: given an intent_id, a predefined plan skeleton, a window-local candidate roster, and text-derived candidate trajectories with span provenance, a system must output a Top-K list together with doc_id:span <span class="search-hit mathjax">evidence</span> certificates whose cited spans are <span class="search-hit mathjax">sufficient</span> to recover the decision. We instantiate this task on MAVEN-ERE and RAMS with fixed upstream extraction, window-local randomized candidate identifiers, skeleton-aligned trajectory supervision, hard negatives, and audit references. We introduce <span class="search-hit mathjax">Evidence</span>-Coupled Policy Optimization (ECPO), a listwise policy-optimization objective whose action is the joint object of ranking and <span class="search-hit mathjax">evidence</span> certificate. ECPO first learns an interpretable trajectory reward from skeleton alignment, argument consistency, and optional graph features; it then optimizes a constrained policy with three coupled rewards: listwise ranking utility, span-level certificate validity, and an <span class="search-hit mathjax">evidence</span>-cycle reward computed by a label-free deterministic <span class="search-hit mathjax">verifier</span> that reconstructs candidate support from claim-stripped cited spans. This reframes the goal from maximizing ordinary NDCG alone to maximizing CertNDCG and decision-<span class="search-hit mathjax">evidence</span> coupling. The evaluation compares ECPO against zero-shot, SFT, and GRPO policies, RM-only scoring with deterministic <span class="search-hit mathjax">evidence</span> attachment, grammar/JSON-constrained decoding, validator retry, best-of-N RM selection, and post-hoc <span class="search-hit mathjax">evidence</span> rationalization under closed-roster, predicted-roster, and hybrid-roster settings.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.21993v1-abstract-full').style.display = 'none'; document.getElementById('2605.21993v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 21 May, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.18555">arXiv:2605.18555</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.18555">pdf</a>, <a href="https://arxiv.org/ps/2605.18555">ps</a>, <a href="https://arxiv.org/format/2605.18555">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Number Theory">math.NT</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Three Brillhart-Lehmer-Selfridge primality proofs for Wagstaff numbers
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Dolotov%2C+A">Alexey Dolotov</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.18555v1-abstract-short" style="display: inline;">
+        &hellip;rely on the elliptic-curve primality proving algorithm of Atkin-Morain; Chebyshev/Lucas-type tests, while available as compositeness criteria, remain conjectural on the <span class="search-hit mathjax">sufficiency</span> side. We present fully <span class="search-hit mathjax">verified</span> primality proofs of $W_{2617}$ (788 digits), $W_{10501}$ (3161 digits), and $W_{12391}$ (3730 digits), ind&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.18555v1-abstract-full').style.display = 'inline'; document.getElementById('2605.18555v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.18555v1-abstract-full" style="display: none;">
+        The Wagstaff numbers $W_p = (2^p + 1)/3$ for odd primes $p$ are the natural $+1$ companions of the Mersenne numbers. Known primality proofs for $W_p$ with $p \geq 2617$ rely on the elliptic-curve primality proving algorithm of Atkin-Morain; Chebyshev/Lucas-type tests, while available as compositeness criteria, remain conjectural on the <span class="search-hit mathjax">sufficiency</span> side. We present fully <span class="search-hit mathjax">verified</span> primality proofs of $W_{2617}$ (788 digits), $W_{10501}$ (3161 digits), and $W_{12391}$ (3730 digits), independent of ECPP and relying only on classical $N-1$ machinery. The proofs apply the Brillhart-Lehmer-Selfridge (BLS) $N-1$ criterion to the cyclotomic decomposition $2^{p-1} - 1 = \prod_{d \mid p-1} Φ_d(2)$, harvesting factored content from the Cunningham project tables (used as <span class="search-hit mathjax">evidence</span>) and FactorDB (used only as a discovery aid, with every retrieved factor re-certified). As an independent <span class="search-hit mathjax">check</span> on the $\mathbb{Z}[\sqrt{2}]$ arithmetic implementation, the Chua $N+1$ congruence $ω_3^{(W_p + 1)/2} \equiv -1 \pmod{W_p}$ -- the $a=3$ case of the Chua framework with $ω_3 = 3 + 2\sqrt{2}$, a necessary condition for Wagstaff primality -- is <span class="search-hit mathjax">verified</span> at each $W_p$.
+  BLS $N-1$ requires $p-1$ <span class="search-hit mathjax">sufficiently</span> smooth that enough cyclotomic factors $Φ_d(2)$ are fully factored. On the factorisation data consulted (Cunningham project tables and FactorDB, January-April 2026), $p = 10501$ and $p = 12391$ are the only exponents above $2617$ in the known Wagstaff prime/probable-prime list meeting this ceiling. Every cofactor primality is certified unconditionally by APR-CL; the method is independent of the Chebyshev <span class="search-hit mathjax">sufficiency</span> conjecture, and every step is reproducible from the archived scripts.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.18555v1-abstract-full').style.display = 'none'; document.getElementById('2605.18555v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 18 May, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">11 pages. Code and certificates: https://doi.org/10.5281/zenodo.19645478</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">MSC Class:</span>
+          11Y11 (primary); 11A51; 11B39 (secondary)
+        
+
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.12981">arXiv:2605.12981</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.12981">pdf</a>, <a href="https://arxiv.org/ps/2605.12981">ps</a>, <a href="https://arxiv.org/format/2605.12981">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Software Engineering">cs.SE</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Machine Learning">cs.LG</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Protocol-Driven Development: Governing Generated Software Through Invariants and Continuous <span class="search-hit mathjax">Evidence</span>
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=He%2C+J">Jun He</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yu%2C+D">Deying Yu</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.12981v3-abstract-short" style="display: inline;">
+        &hellip;artifacts are admissible. Natural-language specifications are ambiguous, and example-based tests sample only part of the behavioral space. Used alone, neither provides a <span class="search-hit mathjax">sufficient</span> control boundary. We introduce Protocol-Driven Development (PDD), where the primary software artifact is a machine-enforceable protocol rather than code. We define a protocol as t&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.12981v3-abstract-full').style.display = 'inline'; document.getElementById('2605.12981v3-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.12981v3-abstract-full" style="display: none;">
+        Automated program synthesis lowers the cost of producing implementations but introduces a harder governance problem: determining which generated artifacts are admissible. Natural-language specifications are ambiguous, and example-based tests sample only part of the behavioral space. Used alone, neither provides a <span class="search-hit mathjax">sufficient</span> control boundary. We introduce Protocol-Driven Development (PDD), where the primary software artifact is a machine-enforceable protocol rather than code. We define a protocol as the triplet P = (S, B, O), specifying structural, behavioral, and operational invariants. Their conjunction defines the admissible implementation space of a software component. Under PDD, implementations are replaceable realizations discovered through constrained search. An implementation is admitted only if it satisfies the protocol and produces a <span class="search-hit mathjax">verifiable</span> <span class="search-hit mathjax">Evidence</span> Chain of compliance. Admission is grounded in protocol satisfaction and recorded <span class="search-hit mathjax">evidence</span> rather than trust in the generator. For deployed systems, we extend the <span class="search-hit mathjax">Evidence</span> Chain into a Dynamic <span class="search-hit mathjax">Evidence</span> Ledger. Runtime <span class="search-hit mathjax">verifiers</span> append signed observations, invariant <span class="search-hit mathjax">checks</span>, and violations to the ledger, allowing monitorable obligations to be continuously attested. This connects live failures back to the generation loop without granting the generator runtime authority. Combining formal methods, property testing, runtime verification, policy-as-code, and software provenance, PDD defines a governance model for automated software engineering. Its organizing principle is that code is transient, while the protocol carries durable authority.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.12981v3-abstract-full').style.display = 'none'; document.getElementById('2605.12981v3-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 19 May, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 13 May, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">20 pages, 2 tables</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.10366">arXiv:2605.10366</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.10366">pdf</a>, <a href="https://arxiv.org/ps/2605.10366">ps</a>, <a href="https://arxiv.org/format/2605.10366">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        EGL-SCA: Structural Credit Assignment for Co-Evolving Instructions and Tools in Graph Reasoning Agents
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Yuan%2C+Z">Zike Yuan</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Cao%2C+Y">Yukun Cao</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zhang%2C+H">Han Zhang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yan%2C+J">Jianzhi Yan</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+L">Le Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=ke%2C+C">Cai ke</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yu%2C+Y">Yue Yu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+H">Hui Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+M">Ming Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Qin%2C+B">Bing Qin</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.10366v1-abstract-short" style="display: inline;">
+        &hellip;from natural-language inputs must solve a coupled problem: they must reconstruct a structured graph instance from text, decide whether existing computational assets are <span class="search-hit mathjax">sufficient</span>, interact with tools under a strict execution protocol, and satisfy an external&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.10366v1-abstract-full').style.display = 'inline'; document.getElementById('2605.10366v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.10366v1-abstract-full" style="display: none;">
+        Graph reasoning agents operating from natural-language inputs must solve a coupled problem: they must reconstruct a structured graph instance from text, decide whether existing computational assets are <span class="search-hit mathjax">sufficient</span>, interact with tools under a strict execution protocol, and satisfy an external <span class="search-hit mathjax">verifier</span> that <span class="search-hit mathjax">checks</span> structured correctness rather than textual plausibility. Existing approaches usually improve either the instruction side or the tool side in isolation, which leaves unclear what should be updated after failure. We propose EGL-SCA, a <span class="search-hit mathjax">verifier</span>-centric dual-space framework that models a graph reasoning agent using two collaborative components: an instruction-side policy space for reasoning strategies, and a tool-side program space for executable algorithmic tools. Our central mechanism is structural credit assignment, which maps trajectory <span class="search-hit mathjax">evidence</span> to conditional updates, precisely routing failures to either prompt optimization or tool synthesis and repair. To provide <span class="search-hit mathjax">sufficient</span> learning signals for dual-space adaptation, we introduce a training distribution stratified by task family, coupled with a Pareto-style retention strategy to balance success, generality, and parsimony. Experiments on four graph reasoning benchmarks show that EGL-SCA achieves a state-of-the-art 92.0\% average success rate. By effectively co-evolving instructions and tools, our framework significantly outperforms both pure-prompting and fixed-toolbox baselines.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.10366v1-abstract-full').style.display = 'none'; document.getElementById('2605.10366v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 11 May, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.08747">arXiv:2605.08747</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.08747">pdf</a>, <a href="https://arxiv.org/ps/2605.08747">ps</a>, <a href="https://arxiv.org/format/2605.08747">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Done, But Not Sure: Disentangling World Completion from Self-Termination in Embodied Agents
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Chen%2C+Y">Ying Chen</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Fang%2C+L">Lihuang Fang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Jiang%2C+R">Rui Jiang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+M">Mingxu Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Gu%2C+Z">Zhifeng Gu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yi%2C+L">Lei Yi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Chen%2C+J">Jie Chen</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.08747v4-abstract-short" style="display: inline;">
+        &hellip;closure, a capacity we call terminal commitment. Behaviorally distinct failures--never completing the task, completing it but failing to stop, and reporting success without <span class="search-hit mathjax">sufficient</span>&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.08747v4-abstract-full').style.display = 'inline'; document.getElementById('2605.08747v4-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.08747v4-abstract-full" style="display: none;">
+        Standard embodied evaluations do not independently score whether an agent correctly commits to task completion at episode closure, a capacity we call terminal commitment. Behaviorally distinct failures--never completing the task, completing it but failing to stop, and reporting success without <span class="search-hit mathjax">sufficient</span> <span class="search-hit mathjax">evidence</span>--collapse into the same benchmark failure. We introduce VIGIL, an evaluation framework that makes terminal commitment independently measurable. Under VIGIL&#39;s default protocol, agents observe only egocentric RGB, receive no action-success signals, and must end each episode with a semantic report <span class="search-hit mathjax">checked</span> deterministically against hidden world state. This yields two separate scores: world-state completion (W) and benchmark success (B), where B additionally requires a correct terminal report. This decoupling makes four outcome categories distinguishable: missed execution, post-attainment drift, unsupported commitment, and <span class="search-hit mathjax">verified</span> success. Across 20 models on 1,000 frozen episodes, systems with comparable W differ by up to 19.7 pp in B: one model converts achieved states into correct reports, while another with near-identical execution drifts past the goal without closing. An action-feedback intervention further tests the separation: execution-oriented signals improve W broadly, yet commitment failures persist in models that do not already ground terminal reports in the achieved state. VIGIL provides a protocol that makes terminal commitment independently visible and scorable.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.08747v4-abstract-full').style.display = 'none'; document.getElementById('2605.08747v4-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 2 June, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 9 May, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.03534">arXiv:2605.03534</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.03534">pdf</a>, <a href="https://arxiv.org/ps/2605.03534">ps</a>, <a href="https://arxiv.org/format/2605.03534">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Information Retrieval">cs.IR</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Machine Learning">cs.LG</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        SURE-RAG: <span class="search-hit mathjax">Sufficiency</span> and Uncertainty-Aware <span class="search-hit mathjax">Evidence</span> Verification for Selective Retrieval-Augmented Generation
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Qiu%2C+J">Jingxi Qiu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Han%2C+Z">Zeyu Han</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Huang%2C+C">Cheng Huang</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.03534v2-abstract-short" style="display: inline;">
+        Retrieval-augmented generation (RAG) grounds answers in retrieved passages, yet relevance does not guarantee <span class="search-hit mathjax">sufficiency</span>: a topical passage may still fail to justify the answer. We study&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.03534v2-abstract-full').style.display = 'inline'; document.getElementById('2605.03534v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.03534v2-abstract-full" style="display: none;">
+        Retrieval-augmented generation (RAG) grounds answers in retrieved passages, yet relevance does not guarantee <span class="search-hit mathjax">sufficiency</span>: a topical passage may still fail to justify the answer. We study <span class="search-hit mathjax">evidence</span> <span class="search-hit mathjax">sufficiency</span> verification for selective RAG answering, in which a <span class="search-hit mathjax">verifier</span> receives a question, a candidate answer, and retrieved <span class="search-hit mathjax">evidence</span> and decides whether the <span class="search-hit mathjax">evidence</span> supports, refutes, or is insufficient for the answer, answering only when support is established. We present SURE-RAG, an aggregation protocol that treats <span class="search-hit mathjax">evidence</span> <span class="search-hit mathjax">sufficiency</span> as a set-level property: missing hops and unresolved conflicts cannot be detected by scoring passages independently. A shared claim-<span class="search-hit mathjax">evidence</span> <span class="search-hit mathjax">verifier</span> produces a local relation distribution for each (claim, passage) pair, which SURE-RAG aggregates into four interpretable answer-level feature blocks (coverage, relation strength, uncertainty, and retrieval), producing a three-way decision and an auditable selective score. We evaluate on HotpotQA-RAG v3, a controlled multi-hop benchmark, under an artifact-aware protocol (shortcut baselines, counterfactual swaps, no-oracle <span class="search-hit mathjax">checks</span>, and GPT-4o audits). Calibrated SURE-RAG attains 0.9075 Macro-F1 (raw 0.8951 +/- 0.0069), well above DeBERTa mean-pooling (0.6516) and a GPT-4o judge (0.7284), and on par with a strong concat cross-encoder (0.8888 +/- 0.0109) while remaining fully auditable. At 30% coverage, risk falls from 0.2588 to 0.1642, a 37% relative reduction. As a boundary-mapping experiment, we contrast SURE-RAG with GPT-4o on HaluBench unsafe detection: the ranking reverses (0.3343 vs. 0.7389 unsafe-F1), indicating that controlled <span class="search-hit mathjax">sufficiency</span> verification and natural hallucination detection are distinct problems.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.03534v2-abstract-full').style.display = 'none'; document.getElementById('2605.03534v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 24 July, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 5 May, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">8 pages, 2 figures, 8 tables. Submitted to IEEE PRAI 2026</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">ACM Class:</span>
+          I.2.7; I.2.6
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2604.28139">arXiv:2604.28139</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2604.28139">pdf</a>, <a href="https://arxiv.org/ps/2604.28139">ps</a>, <a href="https://arxiv.org/format/2604.28139">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Software Engineering">cs.SE</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Claw-Eval-Live: A Live Agent Benchmark for Evolving Real-World Workflows
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+C">Chenxin Li</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Tang%2C+Z">Zhengyang Tang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Huang%2C+M">Mingxin Huang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Lin%2C+Y">Yunlong Lin</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Huang%2C+S">Shijue Huang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+S">Shengyuan Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Ye%2C+B">Bowen Ye</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+R">Rang Li</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+L">Lei Li</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+B">Benyou Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yuan%2C+Y">Yixuan Yuan</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2604.28139v2-abstract-short" style="display: inline;">
+        &hellip;many agent benchmarks freeze a curated task set at release time and grade mainly the final response, making it difficult to evaluate agents against evolving workflow demand or <span class="search-hit mathjax">verify</span> whether a task was executed. We introduce Claw-Eval-Live, a live benchmark for workflow agents that separates a refreshable signal layer, updated across releases from public wor&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2604.28139v2-abstract-full').style.display = 'inline'; document.getElementById('2604.28139v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2604.28139v2-abstract-full" style="display: none;">
+        LLM agents are expected to complete end-to-end units of work across software tools, business services, and local workspaces. Yet many agent benchmarks freeze a curated task set at release time and grade mainly the final response, making it difficult to evaluate agents against evolving workflow demand or <span class="search-hit mathjax">verify</span> whether a task was executed. We introduce Claw-Eval-Live, a live benchmark for workflow agents that separates a refreshable signal layer, updated across releases from public workflow-demand signals, from a reproducible, time-stamped release snapshot. Each release is constructed from public workflow-demand signals, with ClawHub Top-500 skills used in the current release, and materialized as controlled tasks with fixed fixtures, services, workspaces, and graders. For grading, Claw-Eval-Live records execution traces, audit logs, service state, and post-run workspace artifacts, using deterministic <span class="search-hit mathjax">checks</span> when <span class="search-hit mathjax">evidence</span> is <span class="search-hit mathjax">sufficient</span> and structured LLM judging only for semantic dimensions. The release contains 105 tasks spanning controlled business services and local workspace repair, and evaluates 13 frontier models under a shared public pass rule. Experiments reveal that reliable workflow automation remains far from solved: the leading model passes only 66.7% of tasks and no model reaches 70%. Failures are structured by task family and execution surface, with HR, management, and multi-system business workflows as persistent bottlenecks and local workspace repair comparatively easier but unsaturated. Leaderboard rank alone is insufficient because models with similar pass rates can diverge in overall completion, and task-level discrimination concentrates in a middle band of tasks. Claw-Eval-Live suggests that workflow-agent evaluation should be grounded twice, in fresh external demand and in <span class="search-hit mathjax">verifiable</span> agent action.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2604.28139v2-abstract-full').style.display = 'none'; document.getElementById('2604.28139v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 1 May, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 30 April, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> April 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Project page: https://claw-eval-live.github.io</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2604.07468">arXiv:2604.07468</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2604.07468">pdf</a>, <a href="https://arxiv.org/ps/2604.07468">ps</a>, <a href="https://arxiv.org/format/2604.07468">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        M-ArtAgent: <span class="search-hit mathjax">Evidence</span>-Based Multimodal Agent for Implicit Art Influence Discovery
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+H">Hanyi Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Jiu%2C+Z">Zhonghao Jiu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+M">Minghao Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Xie%2C+Y">Yuhang Xie</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yang%2C+H">Heran Yang</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2604.07468v1-abstract-short" style="display: inline;">
+        &hellip;artistic influence, although visually plausible, is often undocumented and thus poses a historically constrained attribution problem: resemblance is necessary but not <span class="search-hit mathjax">sufficient</span>&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2604.07468v1-abstract-full').style.display = 'inline'; document.getElementById('2604.07468v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2604.07468v1-abstract-full" style="display: none;">
+        Implicit artistic influence, although visually plausible, is often undocumented and thus poses a historically constrained attribution problem: resemblance is necessary but not <span class="search-hit mathjax">sufficient</span> <span class="search-hit mathjax">evidence</span>. Most prior systems reduce influence discovery to embedding similarity or label-driven graph completion, while recent multimodal large language models (LLMs) remain vulnerable to temporal inconsistency and unverified attributions. This paper introduces M-ArtAgent, an <span class="search-hit mathjax">evidence</span>-based multimodal agent that reframes implicit influence discovery as probabilistic adjudication. It follows a four-phase protocol consisting of Investigation, Corroboration, Falsification, and Verdict governed by a Reasoning and Acting (ReAct)-style controller that assembles <span class="search-hit mathjax">verifiable</span> <span class="search-hit mathjax">evidence</span> chains from images and biographies, enforces art-historical axioms, and subjects each hypothesis to adversarial falsification via a prompt-isolated critic. Two theory-grounded operators, StyleComparator for Wolfflin formal analysis and ConceptRetriever for ICONCLASS-based iconographic grounding, ensure that intermediate claims are formally auditable. On the balanced WikiArt Influence Benchmark-100 (WIB-100) of 100 artists and 2,000 directed pairs, M-ArtAgent achieves 83.7% positive-class F1, 0.666 Matthews correlation coefficient (MCC), and 0.910 area under the receiver operating characteristic curve (ROC-AUC), with leakage-control and robustness <span class="search-hit mathjax">checks</span> confirming that the gains persist when explicit influence phrases are masked. By coupling multimodal perception with domain-constrained falsification, M-ArtAgent demonstrates that implicit influence analysis benefits from historically grounded adjudication rather than pattern matching alone.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2604.07468v1-abstract-full').style.display = 'none'; document.getElementById('2604.07468v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 8 April, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> April 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">13 pages, 5 figures, submitted to IEEE Access</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2603.13334">arXiv:2603.13334</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2603.13334">pdf</a>, <a href="https://arxiv.org/ps/2603.13334">ps</a>, <a href="https://arxiv.org/format/2603.13334">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Machine Learning">cs.LG</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Computer Vision and Pattern Recognition">cs.CV</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Programming Languages">cs.PL</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Lipschitz-Based Robustness Certification Under Floating-Point Execution
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Murray%2C+T">Toby Murray</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2603.13334v6-abstract-short" style="display: inline;">
+        &hellip;bounds a network&#39;s sensitivity through concrete numerical computation rather than symbolic reasoning, and so scales efficiently. It is increasingly used even where <span class="search-hit mathjax">verifiable</span> guarantees matter. Yet, as with most prior work on robustness certification and verification, soundness is typically proved against a semantic model assuming exact real arithmetic.&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2603.13334v6-abstract-full').style.display = 'inline'; document.getElementById('2603.13334v6-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2603.13334v6-abstract-full" style="display: none;">
+        Lipschitz-based robustness certification bounds a network&#39;s sensitivity through concrete numerical computation rather than symbolic reasoning, and so scales efficiently. It is increasingly used even where <span class="search-hit mathjax">verifiable</span> guarantees matter. Yet, as with most prior work on robustness certification and verification, soundness is typically proved against a semantic model assuming exact real arithmetic. Deployed networks instead execute in floating-point, creating a gap between certified properties and executed behaviour.
+  As motivating <span class="search-hit mathjax">evidence</span>, we give counterexamples showing that real arithmetic robustness guarantees can fail under floating-point execution, even for previously <span class="search-hit mathjax">verified</span> certifiers. We then develop a formal, compositional theory relating real arithmetic Lipschitz-based sensitivity bounds to floating-point execution under standard rounding-error models for feed-forward ReLU networks. We derive sound conditions for floating-point robustness, including bounds on certificate degradation and <span class="search-hit mathjax">sufficient</span> conditions for the absence of overflow. We also give an efficient floating-point Gram iteration algorithm for Lipschitz bounds and prove that it never under-estimates the true norm. Separately, when a model is certified pre-deployment, we show how measuring its actual deviation against a high-precision execution can substantially reduce certificate degradation.
+  We formalise the theory and its soundness, and implement an executable certifier, evaluated across dense networks spanning image, tabular, and many-class classification. To our knowledge, ours is the first method for soundly accounting for floating-point effects in Lipschitz-based robustness certification, and, done efficiently, the first floating-point-sound robustness <span class="search-hit mathjax">checking</span> procedure of any kind to certify models&#39; entire test set -- seven those with 500,000 examples -- while retaining enough precision to be practical.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2603.13334v6-abstract-full').style.display = 'none'; document.getElementById('2603.13334v6-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 19 July, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 6 March, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> March 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Includes supplemental appendices</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2602.13450">arXiv:2602.13450</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2602.13450">pdf</a>, <a href="https://arxiv.org/ps/2602.13450">ps</a>, <a href="https://arxiv.org/format/2602.13450">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Econometrics">econ.EM</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Applications">stat.AP</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Methodology">stat.ME</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Inference From Random Restarts
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Nehzati%2C+M">Moeen Nehzati</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Cussen%2C+D">Diego Cussen</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2602.13450v2-abstract-short" style="display: inline;">
+        &hellip;nonconvex optimization and equilibrium computation: practitioners run a local algorithm from many initial conditions and interpret repeated convergence to the same output as <span class="search-hit mathjax">evidence</span> that the result is robust, dominant, or even unique. Despite its widespread use, this reasoning is usually informal. We provide a probabilistic framework for interpreting restar&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2602.13450v2-abstract-full').style.display = 'inline'; document.getElementById('2602.13450v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2602.13450v2-abstract-full" style="display: none;">
+        Random-restart heuristics are widely used in nonconvex optimization and equilibrium computation: practitioners run a local algorithm from many initial conditions and interpret repeated convergence to the same output as <span class="search-hit mathjax">evidence</span> that the result is robust, dominant, or even unique. Despite its widespread use, this reasoning is usually informal. We provide a probabilistic framework for interpreting restart <span class="search-hit mathjax">evidence</span>. We give broad, easy-to-<span class="search-hit mathjax">verify</span> <span class="search-hit mathjax">sufficient</span> conditions under which repeated runs of a solver can be treated as independent draws from a categorical distribution induced by random initial conditions. Within this framework, we develop Bayesian inference from repeated identical outputs. We derive posterior concentration rates for basin size and uniqueness. These rates demonstrate that uniqueness is inherently harder than learning basin size: posterior concentration for uniqueness is polynomial, whereas basin size concentrates exponentially fast. We also provide a verification protocol for <span class="search-hit mathjax">checking</span> whether a given problem fits our framework. We demonstrate the protocol on a widely used equilibrium solver for mixed-logit demand with multi-product firms, and complement the verification exercise with posterior tables that apply to any restart experiment satisfying the protocol. We conclude by delineating limits of restart-based inference, including failures induced by solver--problem mismatch and limited visibility of alternative outcomes.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2602.13450v2-abstract-full').style.display = 'none'; document.getElementById('2602.13450v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 21 June, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 13 February, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> February 2026.
+      
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">MSC Class:</span>
+          62F15; 65K10; 34A60
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">ACM Class:</span>
+          G.3; G.1.6
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2507.09174">arXiv:2507.09174</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2507.09174">pdf</a>, <a href="https://arxiv.org/ps/2507.09174">ps</a>, <a href="https://arxiv.org/format/2507.09174">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        RAMA: Retrieval-Augmented Multi-Agent Framework for Misinformation Detection in Multimodal Fact-<span class="search-hit mathjax">Checking</span>
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Yang%2C+S">Shuo Yang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yu%2C+Z">Zijian Yu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Ying%2C+Z">Zhenzhe Ying</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Dai%2C+Y">Yuqin Dai</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+G">Guoqing Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Lan%2C+J">Jun Lan</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Xu%2C+J">Jinfeng Xu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+J">Jinze Li</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Ngai%2C+E+C+H">Edith C. H. Ngai</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2507.09174v1-abstract-short" style="display: inline;">
+        The rapid proliferation of multimodal misinformation presents significant challenges for automated fact-<span class="search-hit mathjax">checking</span> systems, especially when claims are ambiguous or lack&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2507.09174v1-abstract-full').style.display = 'inline'; document.getElementById('2507.09174v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2507.09174v1-abstract-full" style="display: none;">
+        The rapid proliferation of multimodal misinformation presents significant challenges for automated fact-<span class="search-hit mathjax">checking</span> systems, especially when claims are ambiguous or lack <span class="search-hit mathjax">sufficient</span> context. We introduce RAMA, a novel retrieval-augmented multi-agent framework designed for <span class="search-hit mathjax">verifying</span> multimedia misinformation. RAMA incorporates three core innovations: (1) strategic query formulation that transforms multimodal claims into precise web search queries; (2) cross-verification <span class="search-hit mathjax">evidence</span> aggregation from diverse, authoritative sources; and (3) a multi-agent ensemble architecture that leverages the complementary strengths of multiple multimodal large language models and prompt variants. Extensive experiments demonstrate that RAMA achieves superior performance on benchmark datasets, particularly excelling in resolving ambiguous or improbable claims by grounding verification in retrieved factual <span class="search-hit mathjax">evidence</span>. Our findings underscore the necessity of integrating web-based <span class="search-hit mathjax">evidence</span> and multi-agent reasoning for trustworthy multimedia verification, paving the way for more reliable and scalable fact-<span class="search-hit mathjax">checking</span> solutions. RAMA will be publicly available at https://github.com/kalendsyang/RAMA.git.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2507.09174v1-abstract-full').style.display = 'none'; document.getElementById('2507.09174v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 12 July, 2025; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> July 2025.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2506.20876">arXiv:2506.20876</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2506.20876">pdf</a>, <a href="https://arxiv.org/ps/2506.20876">ps</a>, <a href="https://arxiv.org/format/2506.20876">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Decide less, communicate more: On the construct validity of end-to-end fact-<span class="search-hit mathjax">checking</span> in medicine
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Joseph%2C+S">Sebastian Joseph</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Chen%2C+L">Lily Chen</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wei%2C+B">Barry Wei</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Mackert%2C+M">Michael Mackert</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Marshall%2C+I+J">Iain J. Marshall</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liang%2C+P+P">Paul Pu Liang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Kouzy%2C+R">Ramez Kouzy</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wallace%2C+B+C">Byron C. Wallace</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+J+J">Junyi Jessy Li</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2506.20876v4-abstract-short" style="display: inline;">
+        Technological progress has led to concrete advancements in tasks that were regarded as challenging, such as automatic fact-<span class="search-hit mathjax">checking</span>. Interest in adopting these systems for public health and medicine has grown due to the high-stakes nature of medical decisions and challenges in critically appraising a vast and diverse medical literature.&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2506.20876v4-abstract-full').style.display = 'inline'; document.getElementById('2506.20876v4-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2506.20876v4-abstract-full" style="display: none;">
+        Technological progress has led to concrete advancements in tasks that were regarded as challenging, such as automatic fact-<span class="search-hit mathjax">checking</span>. Interest in adopting these systems for public health and medicine has grown due to the high-stakes nature of medical decisions and challenges in critically appraising a vast and diverse medical literature. <span class="search-hit mathjax">Evidence</span>-based medicine connects to every individual, and yet the nature of it is highly technical, rendering the medical literacy of majority users inadequate to <span class="search-hit mathjax">sufficiently</span> navigate the domain. Such problems with medical communication ripen the ground for end-to-end fact-<span class="search-hit mathjax">checking</span> agents: <span class="search-hit mathjax">check</span> a claim against current medical literature and return with an <span class="search-hit mathjax">evidence</span>-backed verdict. And yet, such systems remain largely unused.
+  In this position paper, developed with expert input, we present the first study examining how clinical experts <span class="search-hit mathjax">verify</span> real claims from social media by synthesizing medical <span class="search-hit mathjax">evidence</span>. In searching for this upper-bound, we reveal fundamental challenges in end-to-end fact-<span class="search-hit mathjax">checking</span> when applied to medicine: Difficulties connecting claims in the wild to scientific <span class="search-hit mathjax">evidence</span> in the form of clinical trials; ambiguities in underspecified claims mixed with mismatched intentions; and inherently subjective veracity labels. We argue that fact-<span class="search-hit mathjax">checking</span> should be approached as an interactive communication problem, rather than an end-to-end process.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2506.20876v4-abstract-full').style.display = 'none'; document.getElementById('2506.20876v4-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 21 April, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 25 June, 2025;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2025.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">ACL 2026 Findings camera-ready</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2505.17978">arXiv:2505.17978</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2505.17978">pdf</a>, <a href="https://arxiv.org/ps/2505.17978">ps</a>, <a href="https://arxiv.org/format/2505.17978">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        AVerImaTeC: A Dataset for Automatic Verification of Image-Text Claims with <span class="search-hit mathjax">Evidence</span> from the Web
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Cao%2C+R">Rui Cao</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Ding%2C+Z">Zifeng Ding</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Guo%2C+Z">Zhijiang Guo</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Schlichtkrull%2C+M">Michael Schlichtkrull</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Vlachos%2C+A">Andreas Vlachos</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2505.17978v2-abstract-short" style="display: inline;">
+        &hellip;about the spread of misinformation. Existing datasets for automated verification of image-text claims remain limited, as they often consist of synthetic claims and lack <span class="search-hit mathjax">evidence</span> annotations to capture the reasoning behind the verdict. In this work, we introduce AVerImaTeC, a dataset consisting of 1,297 real-world image-text claims. Each claim is annotated wi&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2505.17978v2-abstract-full').style.display = 'inline'; document.getElementById('2505.17978v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2505.17978v2-abstract-full" style="display: none;">
+        Textual claims are often accompanied by images to enhance their credibility and spread on social media, but this also raises concerns about the spread of misinformation. Existing datasets for automated verification of image-text claims remain limited, as they often consist of synthetic claims and lack <span class="search-hit mathjax">evidence</span> annotations to capture the reasoning behind the verdict. In this work, we introduce AVerImaTeC, a dataset consisting of 1,297 real-world image-text claims. Each claim is annotated with question-answer (QA) pairs containing <span class="search-hit mathjax">evidence</span> from the web, reflecting a decomposed reasoning regarding the verdict. We mitigate common challenges in fact-<span class="search-hit mathjax">checking</span> datasets such as contextual dependence, temporal leakage, and <span class="search-hit mathjax">evidence</span> insufficiency, via claim normalization, temporally constrained <span class="search-hit mathjax">evidence</span> annotation, and a two-stage <span class="search-hit mathjax">sufficiency</span> <span class="search-hit mathjax">check</span>. We assess the consistency of the annotation in AVerImaTeC via inter-annotator studies, achieving a $κ=0.742$ on verdicts and $74.7\%$ consistency on QA pairs. We also propose a novel evaluation method for <span class="search-hit mathjax">evidence</span> retrieval and conduct extensive experiments to establish baselines for <span class="search-hit mathjax">verifying</span> image-text claims using open-web <span class="search-hit mathjax">evidence</span>.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2505.17978v2-abstract-full').style.display = 'none'; document.getElementById('2505.17978v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 7 October, 2025; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 23 May, 2025;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2025.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">accepted at NeurIPS 2025 Datasets and Benchmarks Track</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2403.16662">arXiv:2403.16662</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2403.16662">pdf</a>, <a href="https://arxiv.org/format/2403.16662">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        RU22Fact: Optimizing <span class="search-hit mathjax">Evidence</span> for Multilingual Explainable Fact-<span class="search-hit mathjax">Checking</span> on Russia-Ukraine Conflict
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Zeng%2C+Y">Yirong Zeng</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Ding%2C+X">Xiao Ding</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zhao%2C+Y">Yi Zhao</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+X">Xiangyu Li</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zhang%2C+J">Jie Zhang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yao%2C+C">Chao Yao</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+T">Ting Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Qin%2C+B">Bing Qin</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2403.16662v2-abstract-short" style="display: inline;">
+        Fact-<span class="search-hit mathjax">checking</span> is the task of&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2403.16662v2-abstract-full').style.display = 'inline'; document.getElementById('2403.16662v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2403.16662v2-abstract-full" style="display: none;">
+        Fact-<span class="search-hit mathjax">checking</span> is the task of <span class="search-hit mathjax">verifying</span> the factuality of a given claim by examining the available <span class="search-hit mathjax">evidence</span>. High-quality <span class="search-hit mathjax">evidence</span> plays a vital role in enhancing fact-<span class="search-hit mathjax">checking</span> systems and facilitating the generation of explanations that are understandable to humans. However, the provision of both <span class="search-hit mathjax">sufficient</span> and relevant <span class="search-hit mathjax">evidence</span> for explainable fact-<span class="search-hit mathjax">checking</span> systems poses a challenge. To tackle this challenge, we propose a method based on a Large Language Model to automatically retrieve and summarize <span class="search-hit mathjax">evidence</span> from the Web. Furthermore, we construct RU22Fact, a novel multilingual explainable fact-<span class="search-hit mathjax">checking</span> dataset on the Russia-Ukraine conflict in 2022 of 16K samples, each containing real-world claims, optimized <span class="search-hit mathjax">evidence</span>, and referenced explanation. To establish a baseline for our dataset, we also develop an end-to-end explainable fact-<span class="search-hit mathjax">checking</span> system to <span class="search-hit mathjax">verify</span> claims and generate explanations. Experimental results demonstrate the prospect of optimized <span class="search-hit mathjax">evidence</span> in increasing fact-<span class="search-hit mathjax">checking</span> performance and also indicate the possibility of further progress in the end-to-end claim verification and explanation generation tasks.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2403.16662v2-abstract-full').style.display = 'none'; document.getElementById('2403.16662v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 26 March, 2024; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 25 March, 2024;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> March 2024.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">12 pages, 3 figures, accepted by lrec-coling2024</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2305.16128">arXiv:2305.16128</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2305.16128">pdf</a>, <a href="https://arxiv.org/format/2305.16128">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Give Me More Details: Improving Fact-<span class="search-hit mathjax">Checking</span> with Latent Retrieval
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Hu%2C+X">Xuming Hu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Chen%2C+J">Junzhe Chen</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Guo%2C+Z">Zhijiang Guo</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yu%2C+P+S">Philip S. Yu</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2305.16128v2-abstract-short" style="display: inline;">
+        <span class="search-hit mathjax">Evidence</span> plays a crucial role in automated fact-&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2305.16128v2-abstract-full').style.display = 'inline'; document.getElementById('2305.16128v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2305.16128v2-abstract-full" style="display: none;">
+        <span class="search-hit mathjax">Evidence</span> plays a crucial role in automated fact-<span class="search-hit mathjax">checking</span>. When <span class="search-hit mathjax">verifying</span> real-world claims, existing fact-<span class="search-hit mathjax">checking</span> systems either assume the <span class="search-hit mathjax">evidence</span> sentences are given or use the search snippets returned by the search engine. Such methods ignore the challenges of collecting <span class="search-hit mathjax">evidence</span> and may not provide <span class="search-hit mathjax">sufficient</span> information to <span class="search-hit mathjax">verify</span> real-world claims. Aiming at building a better fact-<span class="search-hit mathjax">checking</span> system, we propose to incorporate full text from source documents as <span class="search-hit mathjax">evidence</span> and introduce two enriched datasets. The first one is a multilingual dataset, while the second one is monolingual (English). We further develop a latent variable model to jointly extract <span class="search-hit mathjax">evidence</span> sentences from documents and perform claim verification. Experiments indicate that including source documents can provide <span class="search-hit mathjax">sufficient</span> contextual clues even when gold <span class="search-hit mathjax">evidence</span> sentences are not annotated. The proposed system is able to achieve significant improvements upon best-reported models under different settings.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2305.16128v2-abstract-full').style.display = 'none'; document.getElementById('2305.16128v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 27 January, 2024; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 25 May, 2023;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2023.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Fixed minor issues, 11 pages</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2110.13090">arXiv:2110.13090</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2110.13090">pdf</a>, <a href="https://arxiv.org/format/2110.13090">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Computers and Society">cs.CY</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Information Retrieval">cs.IR</span>
+          
+        </div>
+      
+        
+          <div class="is-inline-block" style="margin-left: 0.5rem">
+            <div class="tags has-addons">
+              <span class="tag is-dark is-size-7">doi</span>
+              <span class="tag is-light is-size-7"><a class="" href="https://doi.org/10.1145/3459637.3482475">10.1145/3459637.3482475 <i class="fa fa-external-link" aria-hidden="true"></i></a></span>
+            </div>
+          </div>
+        
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        SciClops: Detecting and Contextualizing Scientific Claims for Assisting Manual Fact-<span class="search-hit mathjax">Checking</span>
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Smeros%2C+P">Panayiotis Smeros</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Castillo%2C+C">Carlos Castillo</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Aberer%2C+K">Karl Aberer</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2110.13090v1-abstract-short" style="display: inline;">
+        This paper describes SciClops, a method to help combat online scientific misinformation. Although automated fact-<span class="search-hit mathjax">checking</span> methods have gained significant attention recently, they require pre-existing ground-truth&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2110.13090v1-abstract-full').style.display = 'inline'; document.getElementById('2110.13090v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2110.13090v1-abstract-full" style="display: none;">
+        This paper describes SciClops, a method to help combat online scientific misinformation. Although automated fact-<span class="search-hit mathjax">checking</span> methods have gained significant attention recently, they require pre-existing ground-truth <span class="search-hit mathjax">evidence</span>, which, in the scientific context, is sparse and scattered across a constantly-evolving scientific literature. Existing methods do not exploit this literature, which can effectively contextualize and combat science-related fallacies. Furthermore, these methods rarely require human intervention, which is essential for the convoluted and critical domain of scientific misinformation. SciClops involves three main steps to process scientific claims found in online news articles and social media postings: extraction, clustering, and contextualization. First, the extraction of scientific claims takes place using a domain-specific, fine-tuned transformer model. Second, similar claims extracted from heterogeneous sources are clustered together with related scientific literature using a method that exploits their content and the connections among them. Third, <span class="search-hit mathjax">check</span>-worthy claims, broadcasted by popular yet unreliable sources, are highlighted together with an enhanced fact-<span class="search-hit mathjax">checking</span> context that includes related <span class="search-hit mathjax">verified</span> claims, news articles, and scientific papers. Extensive experiments show that SciClops tackles <span class="search-hit mathjax">sufficiently</span> these three steps, and effectively assists non-expert fact-checkers in the verification of complex scientific claims, outperforming commercial fact-<span class="search-hit mathjax">checking</span> systems.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2110.13090v1-abstract-full').style.display = 'none'; document.getElementById('2110.13090v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 25 October, 2021; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> October 2021.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Proceedings of the 30th ACM International Conference on Information and Knowledge Management (CIKM &#39;21). November 1-5, 2021. QLD, Australia</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">ACM Class:</span>
+          H.3.1; I.2.7
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2105.13897">arXiv:2105.13897</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2105.13897">pdf</a>, <a href="https://arxiv.org/ps/2105.13897">ps</a>, <a href="https://arxiv.org/format/2105.13897">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Geometric Topology">math.GT</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Jones rational coincidences
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Lawrence%2C+R">Ruth Lawrence</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Rosenstein%2C+O">Ori Rosenstein</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2105.13897v1-abstract-short" style="display: inline;">
+        &hellip;We provide moves on the continued fraction expansion of the associated rational which we prove do not change the Jones polynomial and conjecture (based on experimental <span class="search-hit mathjax">evidence</span> from all rational knots with determinant $&lt;900$) that these moves are&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2105.13897v1-abstract-full').style.display = 'inline'; document.getElementById('2105.13897v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2105.13897v1-abstract-full" style="display: none;">
+        We investigate coincidences of the (one-variable) Jones polynomial amongst rational knots, what we call `Jones rational coincidences&#39;. We provide moves on the continued fraction expansion of the associated rational which we prove do not change the Jones polynomial and conjecture (based on experimental <span class="search-hit mathjax">evidence</span> from all rational knots with determinant $&lt;900$) that these moves are <span class="search-hit mathjax">sufficient</span> to generate all Jones rational coincidences. These coincidences are generically not mutants, as is <span class="search-hit mathjax">verified</span> by <span class="search-hit mathjax">checking</span> the HOMFLYPT polynomial. In the process we give a new formula for the Jones polynomial of a rational knot based on a continued fraction expansion of the associated rational, which has significantly fewer terms than other formulae known to us. The paper is based on the second author&#39;s Ph.D. thesis and gives an essentially self-contained account.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2105.13897v1-abstract-full').style.display = 'none'; document.getElementById('2105.13897v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 28 May, 2021; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2021.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">24 pages, 6 figures</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">MSC Class:</span>
+          57K10
+        
+
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2005.03749">arXiv:2005.03749</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2005.03749">pdf</a>, <a href="https://arxiv.org/format/2005.03749">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Cryptography and Security">cs.CR</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Dispute Resolution in Voting
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Basin%2C+D">David Basin</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Radomirovic%2C+S">Sasa Radomirovic</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Schmid%2C+L">Lara Schmid</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2005.03749v2-abstract-short" style="display: inline;">
+        &hellip;both voters and the voting authority can make false claims and that voters may abstain from voting.
+  A central aspect of our work is timeliness: a voter should possess the <span class="search-hit mathjax">evidence</span> required to resolve disputes no later than the election&#39;s end. We characterize what assumptions are necessary and&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2005.03749v2-abstract-full').style.display = 'inline'; document.getElementById('2005.03749v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2005.03749v2-abstract-full" style="display: none;">
+        In voting, disputes arise when a voter claims that the voting authority is dishonest and did not correctly process his ballot while the authority claims to have followed the protocol. A dispute can be resolved if any third party can unambiguously determine who is right. We systematically characterize all relevant disputes for a generic, practically relevant, class of voting protocols. Based on our characterization, we propose a new definition of dispute resolution for voting that accounts for the possibility that both voters and the voting authority can make false claims and that voters may abstain from voting.
+  A central aspect of our work is timeliness: a voter should possess the <span class="search-hit mathjax">evidence</span> required to resolve disputes no later than the election&#39;s end. We characterize what assumptions are necessary and <span class="search-hit mathjax">sufficient</span> for timeliness in terms of a communication topology for our voting protocol class. We formalize the dispute resolution properties and communication topologies symbolically. This provides the basis for verification of dispute resolution for a broad class of protocols. To demonstrate the utility of our model, we analyze a mixnet-based voting protocol and prove that it satisfies dispute resolution as well as <span class="search-hit mathjax">verifiability</span> and receipt-freeness. To prove our claims, we combine machine-<span class="search-hit mathjax">checked</span> proofs with traditional pen-and-paper proofs.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2005.03749v2-abstract-full').style.display = 'none'; document.getElementById('2005.03749v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 28 May, 2020; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 7 May, 2020;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2020.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/1605.02156">arXiv:1605.02156</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/1605.02156">pdf</a>, <a href="https://arxiv.org/format/1605.02156">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computational Complexity">cs.CC</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Data Structures and Algorithms">cs.DS</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        The Complexity of Simulation and Matrix Multiplication
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Cairo%2C+M">Massimo Cairo</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Rizzi%2C+R">Romeo Rizzi</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="1605.02156v2-abstract-short" style="display: inline;">
+        &hellip;labeled vertices) has crucial applications in model <span class="search-hit mathjax">checking</span> of temporal logic. It amounts to solving a specific two-players reachability game, called simulation game. We offer the first conditional lower bounds for this problem, and we relate its complexity (for computation, verification, and certification) to some variants of $n\times n$ matrix multiplica&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('1605.02156v2-abstract-full').style.display = 'inline'; document.getElementById('1605.02156v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="1605.02156v2-abstract-full" style="display: none;">
+        Computing the simulation preorder of a given Kripke structure (i.e., a directed graph with $n$ labeled vertices) has crucial applications in model <span class="search-hit mathjax">checking</span> of temporal logic. It amounts to solving a specific two-players reachability game, called simulation game. We offer the first conditional lower bounds for this problem, and we relate its complexity (for computation, verification, and certification) to some variants of $n\times n$ matrix multiplication.
+  We show that any $O(n^α)$-time algorithm for simulation games, even restricting to acyclic games/structures, can be used to compute $n\times n$ boolean matrix multiplication (BMM) in $O(n^α)$ time. This is the first <span class="search-hit mathjax">evidence</span> that improving the existing $O(n^{3})$-time solutions may be difficult, without resorting to fast matrix multiplication. In the acyclic case, we match this lower bound presenting the first subcubic algorithm, based on fast BMM, and running in $n^{ω+o(1)}$ time (where $ω&lt;2.376$ is the exponent of matrix multiplication).
+  For both acyclic and cyclic structures, we point out the existence of natural and canonical $O(n^{2})$-size certificates, that can be <span class="search-hit mathjax">verified</span> in truly subcubic time. In the acyclic case, $O(n^{2})$ time is <span class="search-hit mathjax">sufficient</span>, employing standard matrix product verification. In the cyclic case, a $\max$-semi-boolean matrix multiplication (MSBMM) is used, i.e., a matrix multiplication on the semi-ring $(\max,\times)$ where one matrix contains only $0$&#39;s and $1$&#39;s. This MSBMM is computable (hence <span class="search-hit mathjax">verifiable</span>) in truly subcubic $n^{(3+ω)/2+o(1)}$ time by reduction to $(\max,\min)$-multiplication.
+  Finally, we show a reduction from MSBMM to cyclic simulation games which implies a separation between the cyclic and the acyclic cases, unless MSBMM can be <span class="search-hit mathjax">verified</span> in $n^{ω+o(1)}$ time.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('1605.02156v2-abstract-full').style.display = 'none'; document.getElementById('1605.02156v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 30 August, 2016; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 7 May, 2016;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2016.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Submitted. Changed in v2: This is a major rewrite of the paper. The introduction has been expanded considerably, some notation has been simplified, proofs of general results on reachability games have been moved to the appendix, more intuitive arguments for proofs have been provided, moving the formal arguments to the appendix, more references have been added</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/1401.4151">arXiv:1401.4151</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/1401.4151">pdf</a>, <a href="https://arxiv.org/format/1401.4151">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Cryptography and Security">cs.CR</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        A Peered Bulletin Board for Robust Use in <span class="search-hit mathjax">Verifiable</span> Voting Systems
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Culnane%2C+C">Chris Culnane</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Schneider%2C+S">Steve Schneider</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="1401.4151v1-abstract-short" style="display: inline;">
+        The Web Bulletin Board (WBB) is a key component of <span class="search-hit mathjax">verifiable</span> election systems. It is used in the context of election verification to publish&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('1401.4151v1-abstract-full').style.display = 'inline'; document.getElementById('1401.4151v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="1401.4151v1-abstract-full" style="display: none;">
+        The Web Bulletin Board (WBB) is a key component of <span class="search-hit mathjax">verifiable</span> election systems. It is used in the context of election verification to publish <span class="search-hit mathjax">evidence</span> of voting and tallying that voters and officials can <span class="search-hit mathjax">check</span>, and where challenges can be launched in the event of malfeasance. In practice, the election authority has responsibility for implementing the web bulletin board correctly and reliably, and will wish to ensure that it behaves correctly even in the presence of failures and attacks. To ensure robustness, an implementation will typically use a number of peers to be able to provide a correct service even when some peers go down or behave dishonestly. In this paper we propose a new protocol to implement such a Web Bulletin Board, motivated by the needs of the vVote <span class="search-hit mathjax">verifiable</span> voting system. Using a distributed algorithm increases the complexity of the protocol and requires careful reasoning in order to establish correctness. Here we use the Event-B modelling and refinement approach to establish correctness of the peered design against an idealised specification of the bulletin board behaviour. In particular we show that for n peers, a threshold of t &gt; 2n/3 peers behaving correctly is <span class="search-hit mathjax">sufficient</span> to ensure correct behaviour of the bulletin board distributed design. The algorithm also behaves correctly even if honest or dishonest peers temporarily drop out of the protocol and then return. The verification approach also establishes that the protocols used within the bulletin board do not interfere with each other. This is the first time a peered web bulletin board suite of protocols has been formally <span class="search-hit mathjax">verified</span>.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('1401.4151v1-abstract-full').style.display = 'none'; document.getElementById('1401.4151v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 16 January, 2014; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> January 2014.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">49 pages</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+</ol>
+
+
+  
+
+
+      <div class="is-hidden-tablet">
+        <!-- feedback for mobile only -->
+        <span class="help" style="display: inline-block;"><a href="https://github.com/arXiv/arxiv-search/releases">Search v0.5.6 released 2020-02-24</a>&nbsp;&nbsp;</span>
+      </div>
+    </div>
+
+  </main>
+  <footer>
+    
+<footer class="ds-site-footer">
+  <div class="ds-site-footer-grid">
+    <div class="ds-site-footer-main">
+      <div class="ds-site-footer-ack">
+        We gratefully acknowledge support from
+        our <strong>major funders</strong>,
+        <a href="https://info.arxiv.org/about/ourmembers.html"><strong>member institutions</strong></a><span class="ack-member-inline" hidden>, <strong></strong></span>,
+        and all contributors.
+      </div>
+      <nav class="ds-site-footer-links" aria-label="Site navigation">
+        <a href="https://info.arxiv.org/about">About</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help">Help</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/contact.html">Contact</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/subscribe">Subscribe</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/license/index.html">Copyright</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/policies/privacy_policy.html">Privacy</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/web_accessibility.html">Accessibility</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://status.arxiv.org" target="_blank" rel="noopener noreferrer">Operational Status<span class="is-sr-only"> (opens in new tab)</span></a>
+      </nav>
+    </div>
+    <div class="ds-site-footer-funders" aria-label="Major funders">
+      <div class="ds-site-footer-funders-label">Major funding support from</div>
+      <div class="ds-site-footer-funders-logos">
+        <a class="ds-funder-link" href="https://www.simonsfoundation.org/" target="_blank" rel="noopener noreferrer">
+          <img class="ds-funder-logo" src="https://static.arxiv.org/static/base/1.0.1/images/funders/simons-foundation.png" alt="Simons Foundation"></a>
+        <a class="ds-funder-link" href="https://www.sfi.org.bm/" target="_blank" rel="noopener noreferrer">
+          <img class="ds-funder-logo" src="https://static.arxiv.org/static/base/1.0.1/images/funders/simons-foundation-international.png" alt="Simons Foundation International"></a>
+        <a class="ds-funder-link" href="https://www.schmidtsciences.org/" target="_blank" rel="noopener noreferrer">
+          <img class="ds-funder-logo" src="https://static.arxiv.org/static/base/1.0.1/images/funders/schmidt-sciences.png" alt="Schmidt Sciences"></a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+  </footer>
+  <script src="https://static.arxiv.org/static/base/1.0.0a5/js/member_acknowledgement.js"></script>
+  </body>
+</html>

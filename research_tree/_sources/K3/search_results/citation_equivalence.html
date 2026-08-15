@@ -1,0 +1,1703 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<!-- new favicon config and versions by realfavicongenerator.net -->
+<link rel="apple-touch-icon" sizes="180x180" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/apple-touch-icon.png">
+<link rel="icon" type="image/png" sizes="32x32" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/favicon-32x32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/favicon-16x16.png">
+<link rel="manifest" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/site.webmanifest">
+<link rel="mask-icon" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/safari-pinned-tab.svg" color="#b31b1b">
+<link rel="shortcut icon" href="https://static.arxiv.org/static/base/1.0.0a5/images/icons/favicon.ico">
+<meta name="msapplication-TileColor" content="#b31b1b">
+<meta name="msapplication-config" content="images/icons/browserconfig.xml">
+<meta name="theme-color" content="#b31b1b">
+<!-- end favicon config -->
+<title>Search | arXiv e-print repository</title>
+<script defer src="https://static.arxiv.org/static/base/1.0.0a5/fontawesome-free-5.11.2-web/js/all.js"></script>
+<link rel="stylesheet" href="https://static.arxiv.org/static/base/1.0.0a5/css/arxivstyle.css" />
+<script type="text/x-mathjax-config">
+  MathJax.Hub.Config({
+    messageStyle: "none",
+    extensions: ["tex2jax.js"],
+    jax: ["input/TeX", "output/HTML-CSS"],
+    tex2jax: {
+      inlineMath: [ ['$','$'], ["\\(","\\)"] ],
+      displayMath: [ ['$$','$$'], ["\\[","\\]"] ],
+      processEscapes: true,
+      ignoreClass: '.*',
+      processClass: 'mathjax.*'
+    },
+    TeX: {
+        extensions: ["AMSmath.js", "AMSsymbols.js", "noErrors.js"],
+        noErrors: {
+          inlineDelimiters: ["$","$"],
+          multiLine: false,
+          style: {
+            "font-size": "normal",
+            "border": ""
+          }
+        }
+    },
+    "HTML-CSS": { availableFonts: ["TeX"] }
+  });
+</script>
+<script src='//static.arxiv.org/MathJax-2.7.3/MathJax.js'></script>
+<script src="https://static.arxiv.org/static/base/1.0.0a5/js/notification.js"></script>
+
+    
+  <script>document.documentElement.classList.add('js');</script>
+  <link rel="stylesheet" type="text/css" media="screen" href="https://static.arxiv.org/static/base/1.0.1/css/arxiv-header-footer.css?v=20260626" />
+  <script defer src="https://static.arxiv.org/static/base/1.0.1/js/arxiv-header.js?v=20260626"></script>
+  <link rel="stylesheet" href="https://static.arxiv.org/static/search/0.5.6/css/bulma-tooltip.min.css" />
+  <link rel="stylesheet" href="https://static.arxiv.org/static/search/0.5.6/css/search.css" />
+  <script
+    src="https://code.jquery.com/jquery-3.2.1.slim.min.js"
+    integrity="sha256-k2WSCIexGzOj3Euiig+TlR8gA0EmPjuc79OEeY5L45g="
+    crossorigin="anonymous"></script>
+
+  <script src="https://static.arxiv.org/static/search/0.5.6/js/fieldset.js"></script>
+  <style>
+  radio#cf-customfield_11400 {
+    display: none;
+  }
+  /* Render the spinout .ds-site-footer standalone / full-bleed. search extends the
+     legacy base, whose bare wrapping <footer> (in base/base.html, outside any
+     overridable block — so it can't be removed from here) is styled by
+     arxivstyle.css with a grey background (hsl(0,0%,95%)) + 1em 2em padding,
+     boxing our warm-wash footer inside a second grey band. display:contents drops
+     the wrapper's box entirely (cleaner than zeroing individual properties) so
+     .ds-site-footer renders in its place; it inherits flex-shrink:0 from the same
+     legacy `footer` rule, so the sticky footer still works. Search-specific
+     legacy-base integration; the shared chrome CSS stays byte-identical to the SSOT. */
+  body > footer {
+    display: contents;
+  }
+  </style>
+
+  </head>
+  <body>
+  
+  
+  <header><a href="#main-container" class="is-sr-only">Skip to main content</a>
+    <div class="ds-announcement" id="announcement-banner" role="region" aria-label="Announcement" data-banner-name="spinout-nonprofit">
+  <img class="ds-announcement-glyph" src="https://static.arxiv.org/static/base/1.0.1/images/icons/smileybones-small.svg" alt="" aria-hidden="true">
+  <span class="ds-announcement-text">arXiv is now an independent nonprofit!</span>
+  <a class="ds-announcement-link" href="https://info.arxiv.org/about">Learn more</a>
+  <button type="button" class="ds-announcement-close" aria-label="Dismiss announcement">&times;</button>
+</div>
+<header class="ds-site-header">
+  <a href="https://arxiv.org/" class="ds-site-header-logo" aria-label="archive home">
+    <img src="https://static.arxiv.org/static/base/1.0.1/images/arxiv-logo-primary-light.svg" alt="archive">
+  </a>
+  <button type="button" id="ds-nav-toggle" class="ds-site-header-nav-toggle"
+    aria-label="Open menu" aria-controls="ds-site-header-nav" aria-expanded="false">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+      <line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="18" x2="21" y2="18"/>
+    </svg>
+  </button>
+  <nav class="ds-site-header-nav" id="ds-site-header-nav" aria-label="Main navigation">
+    <a id="arxiv-search-toggle" href="/search" aria-controls="arxiv-search-overlay" aria-expanded="false">
+      <svg class="ds-nav-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+        <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      Search
+    </a>
+    <a href="https://arxiv.org/user/create">Submit</a>
+    <a href="https://info.arxiv.org/about/donate.html">Donate</a>
+    <span class="ds-site-header-divider" aria-hidden="true"></span>
+    <a href="https://arxiv.org/login" class="ds-site-header-login">Log in</a>
+  </nav>
+</header>
+
+<div class="arxiv-search-overlay" id="arxiv-search-overlay" hidden>
+  <div class="arxiv-search-panel" role="search">
+    <form method="GET" action="/search">
+      <label for="arxiv-search-input" class="is-sr-only">Search arXiv</label>
+      <input type="text" name="query" id="arxiv-search-input" autocomplete="off"
+        placeholder="Search papers by title, author, abstract, or ID...">
+      <input type="hidden" name="searchtype" value="all">
+      <input type="hidden" name="source" value="header">
+    </form>
+    <div class="arxiv-search-hint">
+      Press Enter to search &middot; <a href="/search/advanced">Advanced search</a>
+    </div>
+  </div>
+</div>
+
+  </header>
+  <main class="container" id="main-container">
+    
+
+
+    
+  <div class="level is-marginless">
+    <div class="level-left">
+      <h1 class="title is-clearfix">
+    
+        Showing 1&ndash;21 of 21 results for all: <span class="mathjax">citation faithfulness verifiable generation</span>
+    
+</h1>
+    </div>
+    <div class="level-right is-hidden-mobile">
+      <!-- feedback for mobile is moved to footer -->
+      <span class="help" style="display: inline-block;"><a href="https://github.com/arXiv/arxiv-search/releases">Search v0.5.6 released 2020-02-24</a>&nbsp;&nbsp;</span>
+    </div>
+  </div>
+    <div class="content">
+      
+  <form method="GET" action="/search/"  aria-role="search">
+    
+
+    
+    <div class="field has-addons-tablet">
+      <div class="control is-expanded">
+        <label for="query" class="hidden-label">Search term or terms</label>
+        
+          <input class="input is-medium" id="query" name="query" placeholder="Search term..." type="text" value="citation faithfulness verifiable generation">
+        
+        
+      </div>
+      <div class="select control is-medium">
+        <label class="is-hidden" for="searchtype">Field</label>
+        <select class="is-medium" id="searchtype" name="searchtype"><option selected value="all">All fields</option><option value="title">Title</option><option value="author">Author(s)</option><option value="abstract">Abstract</option><option value="comments">Comments</option><option value="journal_ref">Journal reference</option><option value="acm_class">ACM classification</option><option value="msc_class">MSC classification</option><option value="report_num">Report number</option><option value="paper_id">arXiv identifier</option><option value="doi">DOI</option><option value="orcid">ORCID</option><option value="license">License (URI)</option><option value="author_id">arXiv author ID</option><option value="help">Help pages</option><option value="full_text">Full text</option></select>
+      </div>
+      <div class="control">
+          <button class="button is-link is-medium">Search</button>
+      </div>
+    </div>
+    <div class="field">
+      <div class="control is-size-7">
+        
+        <label class="radio">
+          <input checked id="abstracts-0" name="abstracts" type="radio" value="show"> Show abstracts
+        </label>
+        
+        <label class="radio">
+          <input id="abstracts-1" name="abstracts" type="radio" value="hide"> Hide abstracts
+        </label>
+        
+      </div>
+    </div>
+    <div class="is-clearfix" style="height: 2.5em"> 
+      <div class="is-pulled-right">
+        
+        <a href="/search/advanced?terms-0-term=citation+faithfulness+verifiable+generation&amp;terms-0-field=all&amp;size=50&amp;order=-announced_date_first">Advanced Search</a>
+        
+      </div>
+    </div>
+    <input type="hidden" name="order" value="-announced_date_first">
+    <input type="hidden" name="size" value="50">
+  </form>
+
+  
+
+  
+      
+<div class="level breathe-horizontal">
+  <div class="level-left">
+    <form method="GET" action="/search/">
+      <div style="display: none;">
+        
+          
+            <select id="searchtype" name="searchtype"><option selected value="all">All fields</option><option value="title">Title</option><option value="author">Author(s)</option><option value="abstract">Abstract</option><option value="comments">Comments</option><option value="journal_ref">Journal reference</option><option value="acm_class">ACM classification</option><option value="msc_class">MSC classification</option><option value="report_num">Report number</option><option value="paper_id">arXiv identifier</option><option value="doi">DOI</option><option value="orcid">ORCID</option><option value="license">License (URI)</option><option value="author_id">arXiv author ID</option><option value="help">Help pages</option><option value="full_text">Full text</option></select>
+          
+        
+          
+            <input id="query" name="query" type="text" value="citation faithfulness verifiable generation">
+          
+        
+          
+        
+          
+        
+          
+            <ul id="abstracts"><li><input checked id="abstracts-0" name="abstracts" type="radio" value="show"> <label for="abstracts-0">Show abstracts</label></li><li><input id="abstracts-1" name="abstracts" type="radio" value="hide"> <label for="abstracts-1">Hide abstracts</label></li></ul>
+          
+        
+      </div>
+      <div class="box field is-grouped is-grouped-multiline level-item">
+        <div class="control">
+          <span class="select is-small">
+            <select id="size" name="size"><option value="25">25</option><option selected value="50">50</option><option value="100">100</option><option value="200">200</option></select>
+          </span>
+          <label for="size">results per page</label>.
+        </div>
+        <div class="control">
+          <label for="order">Sort results by</label>
+          <span class="select is-small">
+            <select id="order" name="order"><option selected value="-announced_date_first">Announcement date (newest first)</option><option value="announced_date_first">Announcement date (oldest first)</option><option value="-submitted_date">Submission date (newest first)</option><option value="submitted_date">Submission date (oldest first)</option><option value="">Relevance</option></select>
+          </span>
+        </div>
+        <div class="control">
+          <button class="button is-small is-link">Go</button>
+        </div>
+      </div>
+    </form>
+  </div>
+</div>
+      
+
+
+
+
+<ol class="breathe-horizontal" start="1"> 
+
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2608.07370">arXiv:2608.07370</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2608.07370">pdf</a>, <a href="https://arxiv.org/ps/2608.07370">ps</a>, <a href="https://arxiv.org/format/2608.07370">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        LitTraceQA: A Benchmark for Multi-Stage Grounding and Verification in Scientific Question Answering
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+X">Xuye Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+Y">Yimu Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Shi%2C+P">Peng Shi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Xue%2C+B">Bo Xue</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Ke%2C+X">Xiangrui Ke</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Cai%2C+S">Songcheng Cai</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Choi%2C+K">Kath Choi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wu%2C+D">Di Wu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Shi%2C+F">Freda Shi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Czarnecki%2C+K">Krzysztof Czarnecki</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2608.07370v1-abstract-short" style="display: inline;">
+        Scientific literature is increasingly used as a knowledge source for language models, retrieval-augmented <span class="search-hit mathjax">generation</span> systems, and research assistants, but answering research questions from papers requires more than fluent&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2608.07370v1-abstract-full').style.display = 'inline'; document.getElementById('2608.07370v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2608.07370v1-abstract-full" style="display: none;">
+        Scientific literature is increasingly used as a knowledge source for language models, retrieval-augmented <span class="search-hit mathjax">generation</span> systems, and research assistants, but answering research questions from papers requires more than fluent <span class="search-hit mathjax">generation</span>. A reliable system must identify the relevant papers, locate the concrete evidence that supports the answer, and produce a response that is <span class="search-hit mathjax">faithful</span> to that evidence. We present LitTraceQA, a benchmark for literature-grounded question answering over scientific papers. Given a research question and a metadata pool of papers, a system must return three connected outputs: canonical paper identifiers, supporting evidence locations, and answers in one or more requested formats, including free-form text, multiple-choice answers, and structured tables. LitTraceQA targets evidence types common in scientific reading: tables, figures, text spans, equations or algorithms, and <span class="search-hit mathjax">citation</span> contexts. The public development split contains 55 examples, including 26 hidden-source single-paper questions and 29 multi-paper questions, and provides gold papers, evidence annotations, and answers for local validation. We also analyze a larger final annotation collection with 4,978 unique-question records over 4,859 unique gold papers. By evaluating paper retrieval, evidence grounding, and answer accuracy separately, LitTraceQA provides a testbed for scientific QA systems that produce <span class="search-hit mathjax">verifiable</span> answers rather than unsupported summaries.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2608.07370v1-abstract-full').style.display = 'none'; document.getElementById('2608.07370v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 7 August, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> August 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Work in Progress</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2607.17883">arXiv:2607.17883</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2607.17883">pdf</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Zero Hallucination, by Construction: Hallucination-Aware Layered Oversight for Trustworthy Enterprise AI
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Raduta%2C+B">Bogdan Raduta</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Velicu%2C+H">Horia Velicu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Preda%2C+A">Alexandru Preda</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Chiricescu%2C+S">Serban Chiricescu</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2607.17883v1-abstract-short" style="display: inline;">
+        &hellip;not true. The common response is to wait for a model that does not hallucinate. We argue that this is the wrong target. Large language models are, by construction, capable of <span class="search-hit mathjax">generating</span> unsupported text, and no amount of scale removes the possibility; a&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2607.17883v1-abstract-full').style.display = 'inline'; document.getElementById('2607.17883v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2607.17883v1-abstract-full" style="display: none;">
+        Enterprises will not deploy AI agents they cannot trust, and the most-cited reason for distrust is hallucination: confident, fluent output that is simply not true. The common response is to wait for a model that does not hallucinate. We argue that this is the wrong target. Large language models are, by construction, capable of <span class="search-hit mathjax">generating</span> unsupported text, and no amount of scale removes the possibility; a <span class="search-hit mathjax">faithfulness</span> judge bolted onto a raw model catches some errors but still ships others, and even well-curated retrieval pipelines have been shown to fabricate <span class="search-hit mathjax">citations</span>. We reframe the goal: &#34;zero hallucination&#34; is not a property a model possesses but a property a system enforces. We present HALO (Hallucination-Aware Layered Oversight), an assurance architecture which treats hallucination as a containable failure mode rather than an eliminable one. HALO composes six layers of defense: grounded <span class="search-hit mathjax">generation</span> over retrieved, approved content; constrained, deterministic execution that bounds where the model can err; multi-signal verification that scores every output for groundedness and hallucination using both an LLM judge and evidence-based checks against the source text; calibrated abstention, so the system declines rather than guesses when grounding is insufficient; total traceability of every retrieval, tool call, and <span class="search-hit mathjax">generation</span>; and continuous oversight that detects drift, alerts on threshold breaches, and closes the loop by regenerating and statistically validating improved agents. We detail each layer, give particular attention to evidence-based confidence (which <span class="search-hit mathjax">verifies</span> extractions against the source document rather than trusting the model&#39;s self-reported certainty), and illustrate the architecture on a regulated claims-extraction workload
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2607.17883v1-abstract-full').style.display = 'none'; document.getElementById('2607.17883v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 20 July, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> July 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">12 pages, 2 figures</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">ACM Class:</span>
+          I.2.7; I.2.11
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2606.28358">arXiv:2606.28358</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2606.28358">pdf</a>, <a href="https://arxiv.org/ps/2606.28358">ps</a>, <a href="https://arxiv.org/format/2606.28358">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Information Retrieval">cs.IR</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+          
+        </div>
+      
+        
+          <div class="is-inline-block" style="margin-left: 0.5rem">
+            <div class="tags has-addons">
+              <span class="tag is-dark is-size-7">doi</span>
+              <span class="tag is-light is-size-7"><a class="" href="https://doi.org/10.1007/978-3-032-21324-2_35">10.1007/978-3-032-21324-2_35 <i class="fa fa-external-link" aria-hidden="true"></i></a></span>
+            </div>
+          </div>
+        
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        How Do LLMs Cite? A Mechanistic Interpretation of Attribution in Retrieval-Augmented <span class="search-hit mathjax">Generation</span>
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=van+Dort%2C+I">Ian van Dort</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Heuss%2C+M">Maria Heuss</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2606.28358v1-abstract-short" style="display: inline;">
+        Retrieval-Augmented <span class="search-hit mathjax">Generation</span> (RAG) aims to enhance the trustworthiness of Large Language Models (LLMs) by grounding their outputs in external documents, often using inline&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.28358v1-abstract-full').style.display = 'inline'; document.getElementById('2606.28358v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2606.28358v1-abstract-full" style="display: none;">
+        Retrieval-Augmented <span class="search-hit mathjax">Generation</span> (RAG) aims to enhance the trustworthiness of Large Language Models (LLMs) by grounding their outputs in external documents, often using inline <span class="search-hit mathjax">citations</span> for <span class="search-hit mathjax">verifiability</span>. However, the <span class="search-hit mathjax">faithfulness</span> of these <span class="search-hit mathjax">citations</span> -- whether the model genuinely uses a source to <span class="search-hit mathjax">generate</span> an answer -- remains a critical, unverified assumption. This paper offers the first mechanistic account of how a large language model decides whether to attach an inline <span class="search-hit mathjax">citation</span> while answering a factoid question. Using the Llama-3.1-8B-Instruct model in a controlled experimental environment based on the PopQA dataset, we employ an activation patching approach. We map the underlying mechanism responsible for <span class="search-hit mathjax">citation</span>, discovering that it is not a single, localized component but a distributed, multi-stage &#34;attributional ensemble&#34; of attention heads and MLP layers. We show that amplifying or attenuating only those critical heads and MLPs repairs over 90% of missed <span class="search-hit mathjax">citations</span> and eliminates 69% of spurious ones on PopQA without harming answer accuracy. Although gains on the multi-document HotpotQA benchmark are modest, the same component set still moves <span class="search-hit mathjax">citation</span> rates in the intended direction, indicating that the underlying mechanism is not dataset-specific. The results reveal a potential disconnect between the model&#39;s apparent reasoning and its internal computational pathway, suggesting that inline <span class="search-hit mathjax">citations</span> can create a false sense of security.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.28358v1-abstract-full').style.display = 'none'; document.getElementById('2606.28358v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 9 June, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">This preprint has not undergone peer review or any post-submission improvements or corrections. The Version of Record of this contribution is published in Advances in Information Retrieval, ECIR 2026, Lecture Notes in Computer Science, vol. 16485, pp. 458-473, and is available online at https://doi.org/10.1007/978-3-032-21324-2_35</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">ACM Class:</span>
+          I.2.7; H.3.3; I.2.6
+        
+      </p>
+    
+
+    
+      <p class="comments is-size-7">
+        <span class="has-text-black-bis has-text-weight-semibold">Journal ref:</span>
+        Advances in Information Retrieval, ECIR 2026. Lecture Notes in Computer Science, vol. 16485, pp. 458-473. Springer, Cham (2026)
+      </p>
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2606.23989">arXiv:2606.23989</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2606.23989">pdf</a>, <a href="https://arxiv.org/ps/2606.23989">ps</a>, <a href="https://arxiv.org/format/2606.23989">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        <span class="search-hit mathjax">Faithful</span> by Construction: Claim-Anchored Attribution for Multi-Document Summarization
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Guan%2C+S">Shuo Guan</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2606.23989v2-abstract-short" style="display: inline;">
+        &hellip;models (LLMs) produce fluent multi-document summaries but remain prone to hallucination, and the attributions they offer are typically coarse (whole documents or passages) and <span class="search-hit mathjax">generated</span> post hoc, leaving each summary statement hard to&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.23989v2-abstract-full').style.display = 'inline'; document.getElementById('2606.23989v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2606.23989v2-abstract-full" style="display: none;">
+        End-to-end large language models (LLMs) produce fluent multi-document summaries but remain prone to hallucination, and the attributions they offer are typically coarse (whole documents or passages) and <span class="search-hit mathjax">generated</span> post hoc, leaving each summary statement hard to <span class="search-hit mathjax">verify</span>. We revisit the modular Extract--Select--Rewrite paradigm and recast its intermediate representation as the unit of attribution. We present CAMS, a Claim-Anchored Multi-document Summarization framework that (i) extracts atomic claims with token-level provenance from every source document, (ii) clusters equivalent claims across documents while flagging inter-source conflicts, (iii) selects a support-aware and salient subset, and (iv) rewrites the selection into a summary in which every sentence is anchored to a support-checked claim that links back to one or more source spans. Because content is localized before it is realized, the pipeline is attribution-oriented by construction and <span class="search-hit mathjax">faithfulness</span>-oriented by construction: it structurally preserves fine-grained, multi-source traceability while using support-aware selection, constrained rewriting, and verification to encourage, rather than guarantee, factual <span class="search-hit mathjax">faithfulness</span>. We evaluate quality, <span class="search-hit mathjax">faithfulness</span>, and localization on MultiNews, analyze conflict handling on DiverseSumm, and test zero-shot transfer on WCEP, using a two-regime protocol that separates reference-free <span class="search-hit mathjax">citation</span> quality from gold-aligned localization accuracy, and we add an evaluator-decoupled audit that tests <span class="search-hit mathjax">citation</span> precision with a support model never used for selection or verification. CAMS matches strong end-to-end and span-attribution baselines on summary quality while substantially improving <span class="search-hit mathjax">faithfulness</span> and <span class="search-hit mathjax">citation</span> precision, lifting multi-source attribution accuracy by roughly two-thirds, and exposing a controllable <span class="search-hit mathjax">faithfulness</span>--coverage trade-off that end-to-end models leave implicit.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2606.23989v2-abstract-full').style.display = 'none'; document.getElementById('2606.23989v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 30 June, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 22 June, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2026.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.28565">arXiv:2605.28565</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.28565">pdf</a>, <a href="https://arxiv.org/ps/2605.28565">ps</a>, <a href="https://arxiv.org/format/2605.28565">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Digital Libraries">cs.DL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Information Retrieval">cs.IR</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        <span class="search-hit mathjax">Verified</span> Misguidance: Measuring Structural <span class="search-hit mathjax">Citation</span> Failures in Search-Augmented LLMs
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Seo%2C+Y">Yongsik Seo</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Jeong%2C+W">Wooseok Jeong</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Kim%2C+E">Eunyoung Kim</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Jang%2C+H">Hyeonseo Jang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Lee%2C+D">Dongha Lee</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.28565v1-abstract-short" style="display: inline;">
+        Users of search-augmented LLMs rely on <span class="search-hit mathjax">citations</span> as evidence that responses are grounded in real sources, and rarely&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.28565v1-abstract-full').style.display = 'inline'; document.getElementById('2605.28565v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.28565v1-abstract-full" style="display: none;">
+        Users of search-augmented LLMs rely on <span class="search-hit mathjax">citations</span> as evidence that responses are grounded in real sources, and rarely <span class="search-hit mathjax">verify</span> the cited pages themselves. Millions of queries per day now pass through these systems, making <span class="search-hit mathjax">citation</span> quality a silent determinant of whether users are informed or misled-yet existing benchmarks each address one facet in isolation, leaving the joint structure that determines <span class="search-hit mathjax">citation</span> trustworthiness unmeasured. We construct CITETRACE, a large-scale dataset that traces the full <span class="search-hit mathjax">citation</span> chain from user query through retrieved source to <span class="search-hit mathjax">generated</span> answer: 11,200 real-world queries from 28 communities paired with 112,000 responses from ten models across five providers, yielding 761,495 evaluable <span class="search-hit mathjax">citation</span> pairs. We design a three-dimension evaluation framework that scores each <span class="search-hit mathjax">citation</span> on intent-purpose alignment, source suitability, and answer-source fidelity, using expert-validated predefined matrices and a five-level fidelity rubric; the framework applies to any system that produces <span class="search-hit mathjax">citation</span>-bearing responses. Applying this framework at scale, we identify a systematic pattern we call <span class="search-hit mathjax">VERIFIED</span> MISGUIDANCE (VM): models cite real, accessible sources yet fail along one or more dimensions, producing a fidelity-suitability trade-off in which <span class="search-hit mathjax">faithful</span> models select inappropriate sources and vice versa. Across our pool, 30.6% of <span class="search-hit mathjax">citations</span> distort their sources and 27.1% originate from domain-inappropriate sources; at the response level, up to 96% of users encounter at least one structurally misleading <span class="search-hit mathjax">citation</span>. Provider-level differences explain 88-96% of <span class="search-hit mathjax">citation</span>-quality variance, suggesting that source selection is governed more by factors beyond individual model capability than by the LLMs themselves. Together, CITETRACE and its evaluation framework provide the first resource for diagnosing structural <span class="search-hit mathjax">citation</span> failures in deployed search-augmented systems.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.28565v1-abstract-full').style.display = 'none'; document.getElementById('2605.28565v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 27 May, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Working Progress</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.27700">arXiv:2605.27700</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.27700">pdf</a>, <a href="https://arxiv.org/ps/2605.27700">ps</a>, <a href="https://arxiv.org/format/2605.27700">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Digital Libraries">cs.DL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        CiteCheck: Retrieval-Grounded Detection of LLM <span class="search-hit mathjax">Citation</span> Hallucinations in Scientific Text
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Khajavi%2C+K">Khashayar Khajavi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Sadeghi%2C+S">Shaghayegh Sadeghi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Adhikari%2C+R">Rise Adhikari</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Tessier%2C+A">Alexander Tessier</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.27700v1-abstract-short" style="display: inline;">
+        Large language models (LLMs) are increasingly used to <span class="search-hit mathjax">generate</span> scientific reports, but they can produce references that appear plausible while containing corrupted metadata or pointing to papers that do not exist. We introduce CiteCheck, a hybrid framework for&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.27700v1-abstract-full').style.display = 'inline'; document.getElementById('2605.27700v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.27700v1-abstract-full" style="display: none;">
+        Large language models (LLMs) are increasingly used to <span class="search-hit mathjax">generate</span> scientific reports, but they can produce references that appear plausible while containing corrupted metadata or pointing to papers that do not exist. We introduce CiteCheck, a hybrid framework for <span class="search-hit mathjax">citation</span> hallucination detection that <span class="search-hit mathjax">verifies</span> whether a <span class="search-hit mathjax">citation</span> corresponds to a real scholarly work and whether its metadata is <span class="search-hit mathjax">faithful</span> to that work. CiteCheck retrieves candidate publications from external scholarly sources, compares the <span class="search-hit mathjax">citation</span> against the retrieved candidate using a structured LLM <span class="search-hit mathjax">verifier</span>, and maps <span class="search-hit mathjax">verifier</span> scores into three labels: Exact, Minor, and Major. We also construct a 982-<span class="search-hit mathjax">citation</span> physics benchmark with controlled corruptions that capture both subtle metadata drift and fully fabricated references. On the held-out test set, CiteCheck achieves 88.7 macro-F1 and 88.9% accuracy, outperforming GPT, Claude, and Gemini baselines, including web-search and few-shot variants. These results show that reliable <span class="search-hit mathjax">citation</span> verification benefits from combining scholarly retrieval, structured LLM-based comparison, and calibrated decision rules.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.27700v1-abstract-full').style.display = 'none'; document.getElementById('2605.27700v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 26 May, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.25964">arXiv:2605.25964</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.25964">pdf</a>, <a href="https://arxiv.org/ps/2605.25964">ps</a>, <a href="https://arxiv.org/format/2605.25964">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        LECTOR: Joint Optimization of Scientific Reasoning Graphs and Introduction <span class="search-hit mathjax">Generation</span>
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Xiao%2C+J">Jiabei Xiao</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+Y">Yizhou Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Tang%2C+C">Chen Tang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+P">Pengze Li</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Ouyang%2C+W">Wanli Ouyang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Tang%2C+S">Shixiang Tang</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.25964v1-abstract-short" style="display: inline;">
+        &hellip;paper writing remains a formidable challenge. The Introduction writing is especially challenging, which demands not only linguistic fluency, but logical soundness and <span class="search-hit mathjax">verifiable</span>&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.25964v1-abstract-full').style.display = 'inline'; document.getElementById('2605.25964v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.25964v1-abstract-full" style="display: none;">
+        AI Scientists have shown promising progress across multiple stages of the research pipeline, among which automatic scientific paper writing remains a formidable challenge. The Introduction writing is especially challenging, which demands not only linguistic fluency, but logical soundness and <span class="search-hit mathjax">verifiable</span> <span class="search-hit mathjax">faithfulness</span>. Most AI-assisted methods treat the task as text <span class="search-hit mathjax">generation</span> instead of reasoning and structuring, leading to severe drawbacks, e.g., hallucinating <span class="search-hit mathjax">citations</span>. To address this, we first formulate the Content-Conditional Introduction <span class="search-hit mathjax">Generation</span> (CCIG) task, which requires grounding the Introduction in the paper&#39;s core evidence. We then propose LECTOR, a novel Logic-Expression Co-Reinforcement Learning framework that can strictly follow the scientist&#39;s logic, add high-quality <span class="search-hit mathjax">citations</span> and keep structured expressions. LECTOR first constructs a logic-reasoning graph from the paper&#39;s main body to serve as a <span class="search-hit mathjax">verifiable</span> logical blueprint. Subsequently, it employs a Logic-Expression Co-Rewarding mechanism to jointly optimize for both the graph&#39;s structural fidelity and the final narrative&#39;s quality. We conduct a dataset from Nature Communications papers to assess our method. Extensive experiments show consistent improvements in both logic fidelity and Introduction <span class="search-hit mathjax">generation</span> quality metrics, e.g., Graph Quality (+26.7%), <span class="search-hit mathjax">Citation</span> Quality (+8.6%), and Paper Consistency (+3.3%). Code and data are available at https://github.com/Xiao-Youth/LECTOR.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.25964v1-abstract-full').style.display = 'none'; document.getElementById('2605.25964v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 25 May, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">25 pages</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2605.09934">arXiv:2605.09934</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2605.09934">pdf</a>, <a href="https://arxiv.org/ps/2605.09934">ps</a>, <a href="https://arxiv.org/format/2605.09934">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        TRACER: <span class="search-hit mathjax">Verifiable</span> <span class="search-hit mathjax">Generative</span> Provenance for Multimodal Tool-Using Agents
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Yu%2C+B">Bihui Yu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Jia%2C+C">Caijun Jia</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Chi%2C+J">Jing Chi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+X">Xiaohan Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+Y">Yining Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Bai%2C+H">He Bai</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+Y">Yuchen Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wei%2C+J">Jingxuan Wei</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zhu%2C+J">Junnan Zhu</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2605.09934v1-abstract-short" style="display: inline;">
+        &hellip;multi-step reasoning. Current tool-using agents usually expose the executed tool trajectory and the final answer, but they rarely specify which tool observation supports each <span class="search-hit mathjax">generated</span> claim. We call this missing claim-level dependency structure the provenance gap. The gap makes tool use hard to&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.09934v1-abstract-full').style.display = 'inline'; document.getElementById('2605.09934v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2605.09934v1-abstract-full" style="display: none;">
+        Multimodal large language models increasingly solve vision-centric tasks by calling external tools for visual inspection, OCR, retrieval, calculation, and multi-step reasoning. Current tool-using agents usually expose the executed tool trajectory and the final answer, but they rarely specify which tool observation supports each <span class="search-hit mathjax">generated</span> claim. We call this missing claim-level dependency structure the provenance gap. The gap makes tool use hard to <span class="search-hit mathjax">verify</span> and hard to optimize, because useful evidence, redundant exploration, and unsupported reasoning are mixed in the same trajectory. We introduce TRACER, a framework for <span class="search-hit mathjax">verifiable</span> <span class="search-hit mathjax">generative</span> provenance in multimodal tool-using agents. Instead of adding <span class="search-hit mathjax">citations</span> after <span class="search-hit mathjax">generation</span>, TRACER <span class="search-hit mathjax">generates</span> each answer sentence together with a structured provenance record that identifies the supporting tool turn, evidence unit, and semantic support relation. Its relation space contains Quotation, Compression, and Inference, covering direct reuse, <span class="search-hit mathjax">faithful</span> condensation, and grounded derivation. TRACER <span class="search-hit mathjax">verifies</span> each record through schema checking, tool-turn alignment, source authenticity, and relation rationality, and then converts <span class="search-hit mathjax">verified</span> provenance into traceability constraints and provenance-derived local credit for reinforcement learning. We further construct TRACE-Bench, a benchmark for sentence-level provenance reconstruction from coarse multimodal tool trajectories. On TRACE-Bench, simply adding tools often introduces noise. With Qwen3-VL-8B, TRACER reaches 78.23% answer accuracy and 95.72% summary accuracy, outperforming the strongest closed-source tool-augmented baseline by 23.80 percentage points. Compared with tool-only supervised fine-tuning, it also reduces total test-set tool calls from 4949 to 3486. These results show that reliable multimodal tool reasoning depends on provenance-aware use of observations, not on more tool calls alone.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2605.09934v1-abstract-full').style.display = 'none'; document.getElementById('2605.09934v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 10 May, 2026; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> May 2026.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2604.19755">arXiv:2604.19755</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2604.19755">pdf</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Machine Learning">cs.LG</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Explainable AML Triage with LLMs: Evidence Retrieval and Counterfactual Checks
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Torres%2C+D">Dorothy Torres</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Cheng%2C+W">Wei Cheng</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Hu%2C+K">Ke Hu</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2604.19755v2-abstract-short" style="display: inline;">
+        Anti-money laundering (AML) transaction monitoring <span class="search-hit mathjax">generates</span> large volumes of alerts that must be rapidly triaged by investigators under strict audit and governance constraints. While large language models (LLMs) can summarize heterogeneous evidence and draft rationales, unconstrained&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2604.19755v2-abstract-full').style.display = 'inline'; document.getElementById('2604.19755v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2604.19755v2-abstract-full" style="display: none;">
+        Anti-money laundering (AML) transaction monitoring <span class="search-hit mathjax">generates</span> large volumes of alerts that must be rapidly triaged by investigators under strict audit and governance constraints. While large language models (LLMs) can summarize heterogeneous evidence and draft rationales, unconstrained <span class="search-hit mathjax">generation</span> is risky in regulated workflows due to hallucinations, weak provenance, and explanations that are not <span class="search-hit mathjax">faithful</span> to the underlying decision. We propose an explainable AML triage framework that treats triage as an evidence-constrained decision process. Our method combines (i) retrieval-augmented evidence bundling from policy/typology guidance, customer context, alert triggers, and transaction subgraphs, (ii) a structured LLM output contract that requires explicit <span class="search-hit mathjax">citations</span> and separates supporting from contradicting or missing evidence, and (iii) counterfactual checks that validate whether minimal, plausible perturbations lead to coherent changes in both the triage recommendation and its rationale. We evaluate on public synthetic AML benchmarks and simulators and compare against rules, tabular and graph machine-learning baselines, and LLM-only/RAG-only variants. Results show that evidence grounding substantially improves auditability and reduces numerical and policy hallucination errors, while counterfactual validation further increases decision-linked explainability and robustness, yielding the best overall triage performance (PR-AUC 0.75; Escalate F1 0.62) and strong provenance and <span class="search-hit mathjax">faithfulness</span> metrics (<span class="search-hit mathjax">citation</span> validity 0.98; evidence support 0.88; counterfactual <span class="search-hit mathjax">faithfulness</span> 0.76). These findings indicate that governed, <span class="search-hit mathjax">verifiable</span> LLM systems can provide practical decision support for AML triage without sacrificing compliance requirements for traceability and defensibility.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2604.19755v2-abstract-full').style.display = 'none'; document.getElementById('2604.19755v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 6 June, 2026; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 22 March, 2026;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> April 2026.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2510.15682">arXiv:2510.15682</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2510.15682">pdf</a>, <a href="https://arxiv.org/ps/2510.15682">ps</a>, <a href="https://arxiv.org/format/2510.15682">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Information Retrieval">cs.IR</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+          
+        </div>
+      
+        
+          <div class="is-inline-block" style="margin-left: 0.5rem">
+            <div class="tags has-addons">
+              <span class="tag is-dark is-size-7">doi</span>
+              <span class="tag is-light is-size-7"><a class="" href="https://doi.org/10.1145/3746252.3761471">10.1145/3746252.3761471 <i class="fa fa-external-link" aria-hidden="true"></i></a></span>
+            </div>
+          </div>
+        
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        SQuAI: Scientific Question-Answering with Multi-Agent Retrieval-Augmented <span class="search-hit mathjax">Generation</span>
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Besrour%2C+I">Ines Besrour</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=He%2C+J">Jingbo He</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Schreieder%2C+T">Tobias Schreieder</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=F%C3%A4rber%2C+M">Michael Färber</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2510.15682v1-abstract-short" style="display: inline;">
+        We present SQuAI (https://squai.scads.ai/), a scalable and trustworthy multi-agent retrieval-augmented <span class="search-hit mathjax">generation</span> (RAG) framework for scientific question answering (QA) with large language models (LLMs). SQuAI addresses key limitations of existing RAG systems in the scholarly domain, where complex, open-domain questions demand accurate answers, explicit clai&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2510.15682v1-abstract-full').style.display = 'inline'; document.getElementById('2510.15682v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2510.15682v1-abstract-full" style="display: none;">
+        We present SQuAI (https://squai.scads.ai/), a scalable and trustworthy multi-agent retrieval-augmented <span class="search-hit mathjax">generation</span> (RAG) framework for scientific question answering (QA) with large language models (LLMs). SQuAI addresses key limitations of existing RAG systems in the scholarly domain, where complex, open-domain questions demand accurate answers, explicit claims with <span class="search-hit mathjax">citations</span>, and retrieval across millions of scientific documents. Built on over 2.3 million full-text papers from arXiv.org, SQuAI employs four collaborative agents to decompose complex questions into sub-questions, retrieve targeted evidence via hybrid sparse-dense retrieval, and adaptively filter documents to improve contextual relevance. To ensure <span class="search-hit mathjax">faithfulness</span> and traceability, SQuAI integrates in-line <span class="search-hit mathjax">citations</span> for each <span class="search-hit mathjax">generated</span> claim and provides supporting sentences from the source documents. Our system improves <span class="search-hit mathjax">faithfulness</span>, answer relevance, and contextual relevance by up to +0.088 (12%) over a strong RAG baseline. We further release a benchmark of 1,000 scientific question-answer-evidence triplets to support reproducibility. With transparent reasoning, <span class="search-hit mathjax">verifiable</span> <span class="search-hit mathjax">citations</span>, and domain-wide scalability, SQuAI demonstrates how multi-agent RAG enables more trustworthy scientific QA with LLMs.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2510.15682v1-abstract-full').style.display = 'none'; document.getElementById('2510.15682v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 17 October, 2025; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> October 2025.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Accepted at CIKM 2025</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2507.15863">arXiv:2507.15863</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2507.15863">pdf</a>, <a href="https://arxiv.org/ps/2507.15863">ps</a>, <a href="https://arxiv.org/format/2507.15863">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        eSapiens&#39;s DEREK Module: Deep Extraction &amp; Reasoning Engine for Knowledge with LLMs
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Shi%2C+I">Isaac Shi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+Z">Zeyuan Li</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+F">Fan Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+W">Wenli Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=He%2C+L">Lewei He</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yang%2C+Y">Yang Yang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Shi%2C+T">Tianyu Shi</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2507.15863v1-abstract-short" style="display: inline;">
+        We present the DEREK (Deep Extraction &amp; Reasoning Engine for Knowledge) Module, a secure and scalable Retrieval-Augmented <span class="search-hit mathjax">Generation</span> pipeline designed specifically for enterprise document question answering. Designed and implemented by eSapiens, the system ingests heterogeneous content (PDF, Office, web), splits it into 1,000-token overlapping chunks, an&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2507.15863v1-abstract-full').style.display = 'inline'; document.getElementById('2507.15863v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2507.15863v1-abstract-full" style="display: none;">
+        We present the DEREK (Deep Extraction &amp; Reasoning Engine for Knowledge) Module, a secure and scalable Retrieval-Augmented <span class="search-hit mathjax">Generation</span> pipeline designed specifically for enterprise document question answering. Designed and implemented by eSapiens, the system ingests heterogeneous content (PDF, Office, web), splits it into 1,000-token overlapping chunks, and indexes them in a hybrid HNSW+BM25 store. User queries are refined by GPT-4o, retrieved via combined vector+BM25 search, reranked with Cohere, and answered by an LLM using CO-STAR prompt engineering. A LangGraph <span class="search-hit mathjax">verifier</span> enforces <span class="search-hit mathjax">citation</span> overlap, regenerating answers until every claim is grounded. On four LegalBench subsets, 1000-token chunks improve Recall@50 by approximately 1 pp and hybrid+rerank boosts Precision@10 by approximately 7 pp; the <span class="search-hit mathjax">verifier</span> raises TRACe Utilization above 0.50 and limits unsupported statements to less than 3%. All components run in containers, enforce end-to-end TLS 1.3 and AES-256. These results demonstrate that the DEREK module delivers accurate, traceable, and production-ready document QA with minimal operational overhead. The module is designed to meet enterprise demands for secure, auditable, and context-<span class="search-hit mathjax">faithful</span> retrieval, providing a reliable baseline for high-stakes domains such as legal and finance.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2507.15863v1-abstract-full').style.display = 'none'; document.getElementById('2507.15863v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 13 July, 2025; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> July 2025.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">8 pages;1 figure;5 tables</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2506.16988">arXiv:2506.16988</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2506.16988">pdf</a>, <a href="https://arxiv.org/ps/2506.16988">ps</a>, <a href="https://arxiv.org/format/2506.16988">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Information Retrieval">cs.IR</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        RAGentA: Multi-Agent Retrieval-Augmented <span class="search-hit mathjax">Generation</span> for Attributed Question Answering
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Besrour%2C+I">Ines Besrour</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=He%2C+J">Jingbo He</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Schreieder%2C+T">Tobias Schreieder</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=F%C3%A4rber%2C+M">Michael Färber</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2506.16988v2-abstract-short" style="display: inline;">
+        We present RAGentA, a multi-agent retrieval-augmented <span class="search-hit mathjax">generation</span> (RAG) framework for attributed question answering (QA) with large language models (LLMs). With the goal of trustworthy answer&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2506.16988v2-abstract-full').style.display = 'inline'; document.getElementById('2506.16988v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2506.16988v2-abstract-full" style="display: none;">
+        We present RAGentA, a multi-agent retrieval-augmented <span class="search-hit mathjax">generation</span> (RAG) framework for attributed question answering (QA) with large language models (LLMs). With the goal of trustworthy answer <span class="search-hit mathjax">generation</span>, RAGentA focuses on optimizing answer correctness, defined by coverage and relevance to the question and <span class="search-hit mathjax">faithfulness</span>, which measures the extent to which answers are grounded in retrieved documents. RAGentA uses a multi-agent architecture that iteratively filters retrieved documents, <span class="search-hit mathjax">generates</span> attributed answers with in-line <span class="search-hit mathjax">citations</span>, and <span class="search-hit mathjax">verifies</span> completeness through dynamic refinement. Central to the framework is a hybrid retrieval strategy that combines sparse and dense methods, improving Recall@20 by 12.5% compared to the best single retrieval model, resulting in more correct and well-supported answers. Evaluated on a synthetic QA dataset derived from the FineWeb index, RAGentA outperforms standard RAG baselines, achieving gains of 1.09% in correctness and 10.72% in <span class="search-hit mathjax">faithfulness</span>. These results demonstrate the effectiveness of our multi-agent RAG architecture and hybrid retrieval strategy in advancing trustworthy QA with LLMs.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2506.16988v2-abstract-full').style.display = 'none'; document.getElementById('2506.16988v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 1 September, 2025; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 20 June, 2025;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2025.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Accepted at SIGIR 2025</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2412.18004">arXiv:2412.18004</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2412.18004">pdf</a>, <a href="https://arxiv.org/ps/2412.18004">ps</a>, <a href="https://arxiv.org/format/2412.18004">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Correctness is not <span class="search-hit mathjax">Faithfulness</span> in RAG Attributions
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Wallat%2C+J">Jonas Wallat</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Heuss%2C+M">Maria Heuss</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=de+Rijke%2C+M">Maarten de Rijke</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Anand%2C+A">Avishek Anand</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2412.18004v1-abstract-short" style="display: inline;">
+        Retrieving relevant context is a common approach to reduce hallucinations and enhance answer reliability. Explicitly citing source documents allows users to <span class="search-hit mathjax">verify</span>&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2412.18004v1-abstract-full').style.display = 'inline'; document.getElementById('2412.18004v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2412.18004v1-abstract-full" style="display: none;">
+        Retrieving relevant context is a common approach to reduce hallucinations and enhance answer reliability. Explicitly citing source documents allows users to <span class="search-hit mathjax">verify</span> <span class="search-hit mathjax">generated</span> responses and increases trust. Prior work largely evaluates <span class="search-hit mathjax">citation</span> correctness - whether cited documents support the corresponding statements. But <span class="search-hit mathjax">citation</span> correctness alone is insufficient. To establish trust in attributed answers, we must examine both <span class="search-hit mathjax">citation</span> correctness and <span class="search-hit mathjax">citation</span> <span class="search-hit mathjax">faithfulness</span>. In this work, we first disentangle the notions of <span class="search-hit mathjax">citation</span> correctness and <span class="search-hit mathjax">faithfulness</span>, which have been applied inconsistently in previous studies. <span class="search-hit mathjax">Faithfulness</span> ensures that the model&#39;s reliance on cited documents is genuine, reflecting actual reference use rather than superficial alignment with prior beliefs, which we call post-rationalization. We design an experiment that reveals the prevalent issue of post-rationalization, which undermines reliable attribution and may result in misplaced trust. Our findings suggest that current attributed answers often lack <span class="search-hit mathjax">citation</span> <span class="search-hit mathjax">faithfulness</span> (up to 57 percent of the <span class="search-hit mathjax">citations</span>), highlighting the need to evaluate correctness and <span class="search-hit mathjax">faithfulness</span> for trustworthy attribution in language models.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2412.18004v1-abstract-full').style.display = 'none'; document.getElementById('2412.18004v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 23 December, 2024; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> December 2024.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">13 pages, 3 figures</span>
+    </p>
+    
+
+    
+      <p class="comments is-size-7">
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">MSC Class:</span>
+          68T50 (Primary)
+        
+
+        
+          <span class="has-text-black-bis has-text-weight-semibold">ACM Class:</span>
+          I.2.7
+        
+      </p>
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2411.02448">arXiv:2411.02448</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2411.02448">pdf</a>, <a href="https://arxiv.org/format/2411.02448">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Rate, Explain and Cite (REC): Enhanced Explanation and Attribution in Automatic Evaluation by Large Language Models
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Hsu%2C+A+R">Aliyah R. Hsu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zhu%2C+J">James Zhu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+Z">Zhichao Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Bi%2C+B">Bin Bi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Mehrotra%2C+S">Shubham Mehrotra</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Pentyala%2C+S+K">Shiva K. Pentyala</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Tan%2C+K">Katherine Tan</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Mao%2C+X">Xiang-Bo Mao</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Omrani%2C+R">Roshanak Omrani</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Chaudhuri%2C+S">Sougata Chaudhuri</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Radhakrishnan%2C+R">Regunathan Radhakrishnan</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Asur%2C+S">Sitaram Asur</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Cheng%2C+C+N">Claire Na Cheng</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yu%2C+B">Bin Yu</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2411.02448v3-abstract-short" style="display: inline;">
+        LLMs have demonstrated impressive proficiency in <span class="search-hit mathjax">generating</span> coherent and high-quality text, making them valuable across a range of text-&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2411.02448v3-abstract-full').style.display = 'inline'; document.getElementById('2411.02448v3-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2411.02448v3-abstract-full" style="display: none;">
+        LLMs have demonstrated impressive proficiency in <span class="search-hit mathjax">generating</span> coherent and high-quality text, making them valuable across a range of text-<span class="search-hit mathjax">generation</span> tasks. However, rigorous evaluation of this <span class="search-hit mathjax">generated</span> content is crucial, as ensuring its quality remains a significant challenge due to persistent issues such as factual inaccuracies and hallucination. This paper introduces three fine-tuned <span class="search-hit mathjax">general</span>-purpose LLM autoevaluators, REC-8B, REC-12B and REC-70B, specifically designed to evaluate <span class="search-hit mathjax">generated</span> text across several dimensions: <span class="search-hit mathjax">faithfulness</span>, instruction following, coherence, and completeness. These models not only provide ratings for these metrics but also offer detailed explanation and <span class="search-hit mathjax">verifiable</span> <span class="search-hit mathjax">citation</span>, thereby enhancing trust in the content. Moreover, the models support various <span class="search-hit mathjax">citation</span> modes, accommodating different requirements for latency and granularity. Extensive evaluations on diverse benchmarks demonstrate that our <span class="search-hit mathjax">general</span>-purpose LLM auto-evaluator, REC-70B, outperforms state-of-the-art LLMs, excelling in content evaluation by delivering better quality explanation and <span class="search-hit mathjax">citation</span> with minimal bias. Our REC dataset and models are available at https://github.com/adelaidehsu/REC.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2411.02448v3-abstract-full').style.display = 'none'; document.getElementById('2411.02448v3-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 20 May, 2025; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 2 November, 2024;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> November 2024.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2410.02115">arXiv:2410.02115</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2410.02115">pdf</a>, <a href="https://arxiv.org/format/2410.02115">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        L-CiteEval: Do Long-Context Models Truly Leverage Context for Responding?
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Tang%2C+Z">Zecheng Tang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zhou%2C+K">Keyan Zhou</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+J">Juntao Li</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Ji%2C+B">Baibei Ji</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Hou%2C+J">Jianye Hou</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zhang%2C+M">Min Zhang</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2410.02115v2-abstract-short" style="display: inline;">
+        &hellip;in recent years, offering users great convenience for handling tasks that involve long context, such as document summarization. As the community increasingly prioritizes the <span class="search-hit mathjax">faithfulness</span> of&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2410.02115v2-abstract-full').style.display = 'inline'; document.getElementById('2410.02115v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2410.02115v2-abstract-full" style="display: none;">
+        Long-context models (LCMs) have made remarkable strides in recent years, offering users great convenience for handling tasks that involve long context, such as document summarization. As the community increasingly prioritizes the <span class="search-hit mathjax">faithfulness</span> of <span class="search-hit mathjax">generated</span> results, merely ensuring the accuracy of LCM outputs is insufficient, as it is quite challenging for humans to <span class="search-hit mathjax">verify</span> the results from the extremely lengthy context. Yet, although some efforts have been made to assess whether LCMs respond truly based on the context, these works either are limited to specific tasks or heavily rely on external evaluation resources like GPT4.In this work, we introduce L-CiteEval, a comprehensive multi-task benchmark for long-context understanding with <span class="search-hit mathjax">citations</span>, aiming to evaluate both the understanding capability and <span class="search-hit mathjax">faithfulness</span> of LCMs. L-CiteEval covers 11 tasks from diverse domains, spanning context lengths from 8K to 48K, and provides a fully automated evaluation suite. Through testing with 11 cutting-edge closed-source and open-source LCMs, we find that although these models show minor differences in their <span class="search-hit mathjax">generated</span> results, open-source models substantially trail behind their closed-source counterparts in terms of <span class="search-hit mathjax">citation</span> accuracy and recall. This suggests that current open-source LCMs are prone to responding based on their inherent knowledge rather than the given context, posing a significant risk to the user experience in practical applications. We also evaluate the RAG approach and observe that RAG can significantly improve the <span class="search-hit mathjax">faithfulness</span> of LCMs, albeit with a slight decrease in the <span class="search-hit mathjax">generation</span> quality. Furthermore, we discover a correlation between the attention mechanisms of LCMs and the <span class="search-hit mathjax">citation</span> <span class="search-hit mathjax">generation</span> process.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2410.02115v2-abstract-full').style.display = 'none'; document.getElementById('2410.02115v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 4 October, 2024; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 2 October, 2024;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> October 2024.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2409.02897">arXiv:2409.02897</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2409.02897">pdf</a>, <a href="https://arxiv.org/format/2409.02897">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        LongCite: Enabling LLMs to <span class="search-hit mathjax">Generate</span> Fine-grained <span class="search-hit mathjax">Citations</span> in Long-context QA
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Zhang%2C+J">Jiajie Zhang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Bai%2C+Y">Yushi Bai</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Lv%2C+X">Xin Lv</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Gu%2C+W">Wanjun Gu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Liu%2C+D">Danqing Liu</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Zou%2C+M">Minhao Zou</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Cao%2C+S">Shulin Cao</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Hou%2C+L">Lei Hou</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Dong%2C+Y">Yuxiao Dong</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Feng%2C+L">Ling Feng</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Li%2C+J">Juanzi Li</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2409.02897v3-abstract-short" style="display: inline;">
+        Though current long-context large language models (LLMs) have demonstrated impressive capacities in answering user questions based on extensive text, the lack of <span class="search-hit mathjax">citations</span> in their responses makes user verification difficult, leading to concerns about their trustworthiness due to their potential hallucinations. In this work, we aim to enable long-context LLM&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2409.02897v3-abstract-full').style.display = 'inline'; document.getElementById('2409.02897v3-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2409.02897v3-abstract-full" style="display: none;">
+        Though current long-context large language models (LLMs) have demonstrated impressive capacities in answering user questions based on extensive text, the lack of <span class="search-hit mathjax">citations</span> in their responses makes user verification difficult, leading to concerns about their trustworthiness due to their potential hallucinations. In this work, we aim to enable long-context LLMs to <span class="search-hit mathjax">generate</span> responses with fine-grained sentence-level <span class="search-hit mathjax">citations</span>, improving their <span class="search-hit mathjax">faithfulness</span> and <span class="search-hit mathjax">verifiability</span>. We first introduce LongBench-Cite, an automated benchmark for assessing current LLMs&#39; performance in Long-Context Question Answering with <span class="search-hit mathjax">Citations</span> (LQAC), revealing considerable room for improvement. To this end, we propose CoF (Coarse to Fine), a novel pipeline that utilizes off-the-shelf LLMs to automatically <span class="search-hit mathjax">generate</span> long-context QA instances with precise sentence-level <span class="search-hit mathjax">citations</span>, and leverage this pipeline to construct LongCite-45k, a large-scale SFT dataset for LQAC. Finally, we train LongCite-8B and LongCite-9B using the LongCite-45k dataset, successfully enabling their <span class="search-hit mathjax">generation</span> of accurate responses and fine-grained sentence-level <span class="search-hit mathjax">citations</span> in a single output. The evaluation results on LongBench-Cite show that our trained models achieve state-of-the-art <span class="search-hit mathjax">citation</span> quality, surpassing advanced proprietary models including GPT-4o.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2409.02897v3-abstract-full').style.display = 'none'; document.getElementById('2409.02897v3-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 10 September, 2024; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 4 September, 2024;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> September 2024.
+      
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2408.12398">arXiv:2408.12398</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2408.12398">pdf</a>, <a href="https://arxiv.org/format/2408.12398">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Information Retrieval">cs.IR</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        A Comparative Analysis of <span class="search-hit mathjax">Faithfulness</span> Metrics and Humans in <span class="search-hit mathjax">Citation</span> Evaluation
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Zhang%2C+W">Weijia Zhang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Aliannejadi%2C+M">Mohammad Aliannejadi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Pei%2C+J">Jiahuan Pei</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yuan%2C+Y">Yifei Yuan</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Huang%2C+J">Jia-Hong Huang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Kanoulas%2C+E">Evangelos Kanoulas</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2408.12398v1-abstract-short" style="display: inline;">
+        Large language models (LLMs) often <span class="search-hit mathjax">generate</span> content with unsupported or unverifiable content, known as &#34;hallucinations.&#34; To address this, retrieval-augmented LLMs are employed to include&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2408.12398v1-abstract-full').style.display = 'inline'; document.getElementById('2408.12398v1-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2408.12398v1-abstract-full" style="display: none;">
+        Large language models (LLMs) often <span class="search-hit mathjax">generate</span> content with unsupported or unverifiable content, known as &#34;hallucinations.&#34; To address this, retrieval-augmented LLMs are employed to include <span class="search-hit mathjax">citations</span> in their content, grounding the content in <span class="search-hit mathjax">verifiable</span> sources. Despite such developments, manually assessing how well a <span class="search-hit mathjax">citation</span> supports the associated statement remains a major challenge. Previous studies tackle this challenge by leveraging <span class="search-hit mathjax">faithfulness</span> metrics to estimate <span class="search-hit mathjax">citation</span> support automatically. However, they limit this <span class="search-hit mathjax">citation</span> support estimation to a binary classification scenario, neglecting fine-grained <span class="search-hit mathjax">citation</span> support in practical scenarios. To investigate the effectiveness of <span class="search-hit mathjax">faithfulness</span> metrics in fine-grained scenarios, we propose a comparative evaluation framework that assesses the metric effectiveness in distinguishing <span class="search-hit mathjax">citations</span> between three-category support levels: full, partial, and no support. Our framework employs correlation analysis, classification evaluation, and retrieval evaluation to measure the alignment between metric scores and human judgments comprehensively. Our results indicate no single metric consistently excels across all evaluations, highlighting the complexity of accurately evaluating fine-grained support levels. Particularly, we find that the best-performing metrics struggle to distinguish partial support from full or no support. Based on these findings, we provide practical recommendations for developing more effective metrics.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2408.12398v1-abstract-full').style.display = 'none'; document.getElementById('2408.12398v1-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 22 August, 2024; 
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> August 2024.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Accepted by the First Workshop on Large Language Model for Evaluation in Information Retrieval (LLM4Eval@SIGIR2024), non-archival. arXiv admin note: substantial text overlap with arXiv:2406.15264</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2406.15264">arXiv:2406.15264</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2406.15264">pdf</a>, <a href="https://arxiv.org/format/2406.15264">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Information Retrieval">cs.IR</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Towards Fine-Grained <span class="search-hit mathjax">Citation</span> Evaluation in <span class="search-hit mathjax">Generated</span> Text: A Comparative Analysis of <span class="search-hit mathjax">Faithfulness</span> Metrics
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Zhang%2C+W">Weijia Zhang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Aliannejadi%2C+M">Mohammad Aliannejadi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Yuan%2C+Y">Yifei Yuan</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Pei%2C+J">Jiahuan Pei</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Huang%2C+J">Jia-Hong Huang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Kanoulas%2C+E">Evangelos Kanoulas</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="has-text-black-bis has-text-weight-semibold">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2406.15264v2-abstract-short" style="display: inline;">
+        Large language models (LLMs) often produce unsupported or unverifiable content, known as &#34;hallucinations.&#34; To mitigate this, retrieval-augmented LLMs incorporate <span class="search-hit mathjax">citations</span>, grounding the content in&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2406.15264v2-abstract-full').style.display = 'inline'; document.getElementById('2406.15264v2-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2406.15264v2-abstract-full" style="display: none;">
+        Large language models (LLMs) often produce unsupported or unverifiable content, known as &#34;hallucinations.&#34; To mitigate this, retrieval-augmented LLMs incorporate <span class="search-hit mathjax">citations</span>, grounding the content in <span class="search-hit mathjax">verifiable</span> sources. Despite such developments, manually assessing how well a <span class="search-hit mathjax">citation</span> supports the associated statement remains a major challenge. Previous studies use <span class="search-hit mathjax">faithfulness</span> metrics to estimate <span class="search-hit mathjax">citation</span> support automatically but are limited to binary classification, overlooking fine-grained <span class="search-hit mathjax">citation</span> support in practical scenarios. To investigate the effectiveness of <span class="search-hit mathjax">faithfulness</span> metrics in fine-grained scenarios, we propose a comparative evaluation framework that assesses the metric effectiveness in distinguishing <span class="search-hit mathjax">citations</span> between three-category support levels: full, partial, and no support. Our framework employs correlation analysis, classification evaluation, and retrieval evaluation to measure the alignment between metric scores and human judgments comprehensively. Our results show no single metric consistently excels across all evaluations, revealing the complexity of assessing fine-grained support. Based on the findings, we provide practical recommendations for developing more effective metrics.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2406.15264v2-abstract-full').style.display = 'none'; document.getElementById('2406.15264v2-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 23 August, 2024; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 21 June, 2024;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2024.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Accepted by the 17th International Natural Language <span class="search-hit mathjax">Generation</span> Conference (INLG 2024) as an oral presentation</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2406.13663">arXiv:2406.13663</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2406.13663">pdf</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Machine Learning">cs.LG</span>
+          
+        </div>
+      
+        
+          <div class="is-inline-block" style="margin-left: 0.5rem">
+            <div class="tags has-addons">
+              <span class="tag is-dark is-size-7">doi</span>
+              <span class="tag is-light is-size-7"><a class="" href="https://doi.org/10.18653/v1/2024.emnlp-main.347">10.18653/v1/2024.emnlp-main.347 <i class="fa fa-external-link" aria-hidden="true"></i></a></span>
+            </div>
+          </div>
+        
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Model Internals-based Answer Attribution for Trustworthy Retrieval-Augmented <span class="search-hit mathjax">Generation</span>
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Qi%2C+J">Jirui Qi</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Sarti%2C+G">Gabriele Sarti</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Fern%C3%A1ndez%2C+R">Raquel Fernández</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Bisazza%2C+A">Arianna Bisazza</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2406.13663v4-abstract-short" style="display: inline;">
+        Ensuring the <span class="search-hit mathjax">verifiability</span> of model answers is a fundamental challenge for retrieval-augmented&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2406.13663v4-abstract-full').style.display = 'inline'; document.getElementById('2406.13663v4-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2406.13663v4-abstract-full" style="display: none;">
+        Ensuring the <span class="search-hit mathjax">verifiability</span> of model answers is a fundamental challenge for retrieval-augmented <span class="search-hit mathjax">generation</span> (RAG) in the question answering (QA) domain. Recently, self-<span class="search-hit mathjax">citation</span> prompting was proposed to make large language models (LLMs) <span class="search-hit mathjax">generate</span> <span class="search-hit mathjax">citations</span> to supporting documents along with their answers. However, self-citing LLMs often struggle to match the required format, refer to non-existent sources, and fail to faithfully reflect LLMs&#39; context usage throughout the <span class="search-hit mathjax">generation</span>. In this work, we present MIRAGE --Model Internals-based RAG Explanations -- a plug-and-play approach using model internals for <span class="search-hit mathjax">faithful</span> answer attribution in RAG applications. MIRAGE detects context-sensitive answer tokens and pairs them with retrieved documents contributing to their prediction via saliency methods. We evaluate our proposed approach on a multilingual extractive QA dataset, finding high agreement with human answer attribution. On open-ended QA, MIRAGE achieves <span class="search-hit mathjax">citation</span> quality and efficiency comparable to self-<span class="search-hit mathjax">citation</span> while also allowing for a finer-grained control of attribution parameters. Our qualitative evaluation highlights the <span class="search-hit mathjax">faithfulness</span> of MIRAGE&#39;s attributions and underscores the promising application of model internals for RAG answer attribution.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2406.13663v4-abstract-full').style.display = 'none'; document.getElementById('2406.13663v4-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 18 October, 2024; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 19 June, 2024;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> June 2024.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Accepted by EMNLP 2024 Main Conference. Code and data released at https://github.com/Betswish/MIRAGE</span>
+    </p>
+    
+
+    
+
+    
+      <p class="comments is-size-7">
+        <span class="has-text-black-bis has-text-weight-semibold">Journal ref:</span>
+        Proceedings of EMNLP (2024) 6037-6053
+      </p>
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2404.03381">arXiv:2404.03381</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2404.03381">pdf</a>, <a href="https://arxiv.org/format/2404.03381">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Learning to Plan and <span class="search-hit mathjax">Generate</span> Text with <span class="search-hit mathjax">Citations</span>
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Fierro%2C+C">Constanza Fierro</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Amplayo%2C+R+K">Reinald Kim Amplayo</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Huot%2C+F">Fantine Huot</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=De+Cao%2C+N">Nicola De Cao</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Maynez%2C+J">Joshua Maynez</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Narayan%2C+S">Shashi Narayan</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Lapata%2C+M">Mirella Lapata</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2404.03381v3-abstract-short" style="display: inline;">
+        The increasing demand for the deployment of LLMs in information-seeking scenarios has spurred efforts in creating <span class="search-hit mathjax">verifiable</span> systems, which&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2404.03381v3-abstract-full').style.display = 'inline'; document.getElementById('2404.03381v3-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2404.03381v3-abstract-full" style="display: none;">
+        The increasing demand for the deployment of LLMs in information-seeking scenarios has spurred efforts in creating <span class="search-hit mathjax">verifiable</span> systems, which <span class="search-hit mathjax">generate</span> responses to queries along with supporting evidence. In this paper, we explore the attribution capabilities of plan-based models which have been recently shown to improve the <span class="search-hit mathjax">faithfulness</span>, grounding, and controllability of <span class="search-hit mathjax">generated</span> text. We conceptualize plans as a sequence of questions which serve as blueprints of the <span class="search-hit mathjax">generated</span> content and its organization. We propose two attribution models that utilize different variants of blueprints, an abstractive model where questions are <span class="search-hit mathjax">generated</span> from scratch, and an extractive model where questions are copied from the input. Experiments on long-form question-answering show that planning consistently improves attribution quality. Moreover, the <span class="search-hit mathjax">citations</span> <span class="search-hit mathjax">generated</span> by blueprint models are more accurate compared to those obtained from LLM-based pipelines lacking a planning component.
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2404.03381v3-abstract-full').style.display = 'none'; document.getElementById('2404.03381v3-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 23 July, 2024; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 4 April, 2024;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> April 2024.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">Accepted at ACL 2024</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+  <li class="arxiv-result">
+    <div class="is-marginless">
+      <p class="list-title is-inline-block"><a href="https://arxiv.org/abs/2404.01019">arXiv:2404.01019</a>
+        <span>&nbsp;[<a href="https://arxiv.org/pdf/2404.01019">pdf</a>, <a href="https://arxiv.org/format/2404.01019">other</a>]&nbsp;</span>
+      </p>
+      <div class="tags is-inline-block">
+        <span class="tag is-small is-link tooltip is-tooltip-top" data-tooltip="Computation and Language">cs.CL</span>
+        
+          
+            <span class="tag is-small is-grey tooltip is-tooltip-top" data-tooltip="Artificial Intelligence">cs.AI</span>
+          
+        </div>
+      
+    </div>
+    
+    <p class="title is-5 mathjax">
+      
+        Source-Aware Training Enables Knowledge Attribution in Language Models
+      
+    </p>
+    <p class="authors">
+      <span class="has-text-black-bis has-text-weight-semibold">Authors:</span>
+      
+      <a href="/search/?searchtype=author&amp;query=Khalifa%2C+M">Muhammad Khalifa</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wadden%2C+D">David Wadden</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Strubell%2C+E">Emma Strubell</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Lee%2C+H">Honglak Lee</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Wang%2C+L">Lu Wang</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Beltagy%2C+I">Iz Beltagy</a>, 
+      
+      <a href="/search/?searchtype=author&amp;query=Peng%2C+H">Hao Peng</a>
+      
+    </p>
+    
+    <p class="abstract mathjax">
+      <span class="search-hit">Abstract</span>:
+      <span class="abstract-short has-text-grey-dark mathjax" id="2404.01019v3-abstract-short" style="display: inline;">
+        &hellip;(LLMs) learn a vast amount of knowledge during pretraining, but they are often oblivious to the source(s) of such knowledge. We investigate the problem of intrinsic source <span class="search-hit mathjax">citation</span>, where LLMs are required to cite the pretraining source supporting a&hellip;
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2404.01019v3-abstract-full').style.display = 'inline'; document.getElementById('2404.01019v3-abstract-short').style.display = 'none';">&#9661; More</a>
+      </span>
+      <span class="abstract-full has-text-grey-dark mathjax" id="2404.01019v3-abstract-full" style="display: none;">
+        Large language models (LLMs) learn a vast amount of knowledge during pretraining, but they are often oblivious to the source(s) of such knowledge. We investigate the problem of intrinsic source <span class="search-hit mathjax">citation</span>, where LLMs are required to cite the pretraining source supporting a <span class="search-hit mathjax">generated</span> response. Intrinsic source <span class="search-hit mathjax">citation</span> can enhance LLM transparency, interpretability, and <span class="search-hit mathjax">verifiability</span>. To give LLMs such ability, we explore source-aware training -- a recipe that involves (i) training the LLM to associate unique source document identifiers with the knowledge in each document, followed by (ii) an instruction-tuning stage to teach the LLM to cite a supporting pretraining source when prompted. Source-aware training borrows from existing pretraining/fine-tuning frameworks and requires minimal changes to the model architecture or implementation. Through experiments on synthetic data, we demonstrate that our training recipe can enable <span class="search-hit mathjax">faithful</span> attribution to the pretraining data without a substantial impact on the model&#39;s perplexity compared to standard pretraining. Our findings also highlight the importance of pretraining data augmentation in achieving attribution. Code and data available here: \url{https://github.com/mukhal/intrinsic-source-<span class="search-hit mathjax">citation</span>}
+        <a class="is-size-7" style="white-space: nowrap;" onclick="document.getElementById('2404.01019v3-abstract-full').style.display = 'none'; document.getElementById('2404.01019v3-abstract-short').style.display = 'inline';">&#9651; Less</a>
+      </span>
+    </p>
+    
+
+    <p class="is-size-7"><span class="has-text-black-bis has-text-weight-semibold">Submitted</span> 12 August, 2024; <span class="has-text-black-bis has-text-weight-semibold">v1</span> submitted 1 April, 2024;
+      <span class="has-text-black-bis has-text-weight-semibold">originally announced</span> April 2024.
+      
+    </p>
+    
+    <p class="comments is-size-7">
+      <span class="has-text-black-bis has-text-weight-semibold">Comments:</span>
+      <span class="has-text-grey-dark mathjax">COLM &#39;24</span>
+    </p>
+    
+
+    
+
+    
+  </li>
+
+</ol>
+
+
+  
+
+
+      <div class="is-hidden-tablet">
+        <!-- feedback for mobile only -->
+        <span class="help" style="display: inline-block;"><a href="https://github.com/arXiv/arxiv-search/releases">Search v0.5.6 released 2020-02-24</a>&nbsp;&nbsp;</span>
+      </div>
+    </div>
+
+  </main>
+  <footer>
+    
+<footer class="ds-site-footer">
+  <div class="ds-site-footer-grid">
+    <div class="ds-site-footer-main">
+      <div class="ds-site-footer-ack">
+        We gratefully acknowledge support from
+        our <strong>major funders</strong>,
+        <a href="https://info.arxiv.org/about/ourmembers.html"><strong>member institutions</strong></a><span class="ack-member-inline" hidden>, <strong></strong></span>,
+        and all contributors.
+      </div>
+      <nav class="ds-site-footer-links" aria-label="Site navigation">
+        <a href="https://info.arxiv.org/about">About</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help">Help</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/contact.html">Contact</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/subscribe">Subscribe</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/license/index.html">Copyright</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/policies/privacy_policy.html">Privacy</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://info.arxiv.org/help/web_accessibility.html">Accessibility</a>
+        <span class="ds-site-footer-sep" aria-hidden="true">&middot;</span>
+        <a href="https://status.arxiv.org" target="_blank" rel="noopener noreferrer">Operational Status<span class="is-sr-only"> (opens in new tab)</span></a>
+      </nav>
+    </div>
+    <div class="ds-site-footer-funders" aria-label="Major funders">
+      <div class="ds-site-footer-funders-label">Major funding support from</div>
+      <div class="ds-site-footer-funders-logos">
+        <a class="ds-funder-link" href="https://www.simonsfoundation.org/" target="_blank" rel="noopener noreferrer">
+          <img class="ds-funder-logo" src="https://static.arxiv.org/static/base/1.0.1/images/funders/simons-foundation.png" alt="Simons Foundation"></a>
+        <a class="ds-funder-link" href="https://www.sfi.org.bm/" target="_blank" rel="noopener noreferrer">
+          <img class="ds-funder-logo" src="https://static.arxiv.org/static/base/1.0.1/images/funders/simons-foundation-international.png" alt="Simons Foundation International"></a>
+        <a class="ds-funder-link" href="https://www.schmidtsciences.org/" target="_blank" rel="noopener noreferrer">
+          <img class="ds-funder-logo" src="https://static.arxiv.org/static/base/1.0.1/images/funders/schmidt-sciences.png" alt="Schmidt Sciences"></a>
+      </div>
+    </div>
+  </div>
+</footer>
+
+  </footer>
+  <script src="https://static.arxiv.org/static/base/1.0.0a5/js/member_acknowledgement.js"></script>
+  </body>
+</html>
