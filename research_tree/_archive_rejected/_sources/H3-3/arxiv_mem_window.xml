@@ -1,0 +1,266 @@
+<?xml version='1.0' encoding='UTF-8'?>
+<feed xmlns:opensearch="http://a9.com/-/spec/opensearch/1.1/" xmlns:arxiv="http://arxiv.org/schemas/atom" xmlns="http://www.w3.org/2005/Atom">
+  <id>https://arxiv.org/api/E4zMyLtJia+8ZL2sl1K2E4XsHSI</id>
+  <title>arXiv Query: search_query=cat:cs.CL AND (all:memgpt OR all:"memory window" OR all:"hierarchical memory")&amp;id_list=&amp;start=0&amp;max_results=8</title>
+  <updated>2026-08-14T11:50:35Z</updated>
+  <link href="https://arxiv.org/api/query?search_query=cat:cs.CL+AND+(all:memgpt+OR+(all:%22memory+window%22+OR+all:%22hierarchical+memory%22))&amp;start=0&amp;max_results=8&amp;id_list=" type="application/atom+xml"/>
+  <opensearch:itemsPerPage>8</opensearch:itemsPerPage>
+  <opensearch:totalResults>55</opensearch:totalResults>
+  <opensearch:startIndex>0</opensearch:startIndex>
+  <entry>
+    <id>http://arxiv.org/abs/2607.11487v1</id>
+    <title>LightMem-Ego: Your AI Memory for Everyday Life</title>
+    <updated>2026-07-13T12:40:17Z</updated>
+    <link href="https://arxiv.org/abs/2607.11487v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2607.11487v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Personal AI assistants on mobile and wearable devices continuously perceive users' daily lives through visual and audio streams. However, answering queries about past experiences requires lightweight multimodal memory that can continuously accumulate, organize, and retrieve long-term experiences, which remains challenging. To address this challenge, we present LightMem-Ego, a lightweight streaming multimodal memory system for everyday-life assistance. The system continuously captures egocentric visual and audio streams, aligns them on a shared timeline, and organizes them into a hierarchical memory consisting of current, short-term, and long-term memory. Given a user query, LightMem-Ego dynamically routes retrieval to the appropriate memory level and generates answers grounded in multimodal evidence. The demonstration can be deployed on smartphones and AI glasses, supporting object finding, conversation recall, life summarization, routine discovery, and personalized assistance. Code is available at https://github.com/zjunlp/LightMem-Ego.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.HC" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.MM" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-07-13T12:40:17Z</published>
+    <arxiv:comment>Ongoing work</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Yijun Chen</name>
+    </author>
+    <author>
+      <name>Boyi Xiao</name>
+    </author>
+    <author>
+      <name>Yixian Zhao</name>
+    </author>
+    <author>
+      <name>Haoting Xia</name>
+    </author>
+    <author>
+      <name>Buqiang Xu</name>
+    </author>
+    <author>
+      <name>Jizhan Fang</name>
+    </author>
+    <author>
+      <name>Yanya Li</name>
+    </author>
+    <author>
+      <name>Yaqi Zheng</name>
+    </author>
+    <author>
+      <name>Xuehai Wang</name>
+    </author>
+    <author>
+      <name>Zirui Xue</name>
+    </author>
+    <author>
+      <name>Liuxin Zhang</name>
+    </author>
+    <author>
+      <name>Hui Li</name>
+    </author>
+    <author>
+      <name>Ningyu Zhang</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2607.01523v1</id>
+    <title>Multi-Head Recurrent Memory Agents</title>
+    <updated>2026-07-01T22:38:54Z</updated>
+    <link href="https://arxiv.org/abs/2607.01523v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2607.01523v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Recurrent memory agents extend LLMs to arbitrarily long contexts by iteratively consolidating input into a fixed-size memory window. Despite their scalability, these agents exhibit a well-documented reliability problem: end-to-end performance degrades systematically as context length grows. We diagnose this failure by decomposing performance into two factors--memory capture and memory retention--and quantitatively confirm that retention is the dominant bottleneck. Retention collapses because existing designs maintain memory as a monolithic text block, forcing every update to risk overwriting previously retained content. Motivated by this diagnosis, we propose Multi-Head Recurrent Memory (MHM), a general, training-free framework that partitions memory into independent heads governed by a stage-wise select-then-update strategy. At each step, exactly one head is selected for update while the remaining heads are structurally shielded from overwriting, shifting the burden of retention from model behavior to architectural design. As a lightweight instantiation, we introduce Least-Recently-Updated MHM (MHM-LRU), which guarantees uniform head utilization with zero additional token overhead. Extensive experiments on long-context benchmarks show that MHM-LRU substantially improves both retention and end-to-end accuracy across the 100K--1M token range, where baselines degrade sharply. On RULER-HQA at 896K tokens, MHM-LRU improves the memory retention rate from less than 30% to 73.96%. These gains generalize across model families, scales, and task types, positioning architectural optimization as a practical and cost-efficient path toward reliable long-context recurrent memory.</summary>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-07-01T22:38:54Z</published>
+    <arxiv:comment>19 pages, 11 figures, 5 tables</arxiv:comment>
+    <arxiv:primary_category term="cs.LG"/>
+    <author>
+      <name>Jiatong Li</name>
+    </author>
+    <author>
+      <name>Samuel Yeh</name>
+    </author>
+    <author>
+      <name>Sharon Li</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2607.02588v1</id>
+    <title>Homer: Understanding Long-form Videos with Hierarchical Memory and Agentic Reasoning</title>
+    <updated>2026-07-01T05:53:09Z</updated>
+    <link href="https://arxiv.org/abs/2607.02588v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2607.02588v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Multimodal large language models excel on short clips but struggle on hour-long videos in an online setting, where frames are processed incrementally under limited memory. Existing online methods either retain compact visual representations that lack semantic structure, or build higher-level memory stores organized around temporal proximity rather than explicit causal links, leaving multi-hop narrative reasoning to be reconstructed by the LLM at every query. We bridge this gap with \textsc{Homer}, a Hierarchical Online Memory Exploration and Reasoning framework. \textsc{Homer}'s memory mirrors the multi-scale structure of long videos, ranging from raw perception, to recurring entities, to events connected by explicit temporal and causal relations. Its agentic reasoner then explores this memory the way humans do, locating the relevant scene, looking up details, and composing the answer through multi-round memory retrieval, with a harness that verifies and corrects each step. \textsc{Homer} outperforms the previous best agent method by $+5.5$, $+10.8$, and $+4.4$ points on M3-Bench-robot, M3-Bench-web, and Video-MME-Long, and consistently lifts three various LLM backbones, indicating a model-agnostic structural capability for grounded retrieval over long videos.</summary>
+    <category term="cs.CV" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-07-01T05:53:09Z</published>
+    <arxiv:comment>under review</arxiv:comment>
+    <arxiv:primary_category term="cs.CV"/>
+    <author>
+      <name>Yixin Ji</name>
+    </author>
+    <author>
+      <name>Fanghua Ye</name>
+    </author>
+    <author>
+      <name>Juntao Li</name>
+    </author>
+    <author>
+      <name>Bo Zhao</name>
+    </author>
+    <author>
+      <name>Zexuan Qiu</name>
+    </author>
+    <author>
+      <name>Zhaopeng Tu</name>
+    </author>
+    <author>
+      <name>Liefeng Bo</name>
+    </author>
+    <author>
+      <name>Min Zhang</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.29778v1</id>
+    <title>Mandol: An Agglomerative Agent Memory System for Long-Term Conversations</title>
+    <updated>2026-06-29T04:43:29Z</updated>
+    <link href="https://arxiv.org/abs/2606.29778v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.29778v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Long-term conversational agents need to remember and query cross-session, multi-typed information with complex correlations. Existing agent memory systems rely on heterogeneous vector and graph databases, which fragment memory information and cause high cross-database I/O latency. For retrieval, common RAG-style methods tend to introduce noise, miss correlated clues, and lack token budget control, degrading LLM accuracy and efficiency.
+  We propose Mandol, an agglomerative memory system that consolidates fragmented memory representations and storage into a unified memory-native architecture. Its core components include: (1) a hierarchical memory model that organizes memory into a basic layer representing raw memory information and a high-level abstract layer that agglomerates basic memories into traceable abstract memories, both uniformly represented as structured semantic graphs; (2) an agglomerative semantic data structure combining SemanticMap and SemanticGraph, which natively fuses key-value, vector, and graph structures and provides unified hybrid retrieval operators to eliminate cross-database I/O; and (3) a quantitative query mechanism with query-adaptive routing, quantitative denoising and conflict resolution, and token-constrained context generation, all without involving LLMs during retrieval. Experiments on two widely used long-term conversation benchmarks, LoCoMo and LongMemEval, show that Mandol achieves the best overall accuracy among representative agent memory systems. For performance comparison, Mandol also obtains a 5.4x retrieval speedup and a 4.8x insertion speedup under 10 QPS concurrent load, while still maintaining low latency on consumer-grade hardware.</summary>
+    <category term="cs.DB" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.IR" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-29T04:43:29Z</published>
+    <arxiv:comment>10 pages, 3 figures</arxiv:comment>
+    <arxiv:primary_category term="cs.DB"/>
+    <author>
+      <name>Yuhan Zhang</name>
+      <arxiv:affiliation>Institute of Software, Chinese Academy of Sciences</arxiv:affiliation>
+    </author>
+    <author>
+      <name>Zhiyuan Guo</name>
+      <arxiv:affiliation>Institute of Software, Chinese Academy of Sciences</arxiv:affiliation>
+    </author>
+    <author>
+      <name>Ziheng Zeng</name>
+      <arxiv:affiliation>Institute of Software, Chinese Academy of Sciences</arxiv:affiliation>
+    </author>
+    <author>
+      <name>Wei Wang</name>
+      <arxiv:affiliation>Institute of Software, Chinese Academy of Sciences</arxiv:affiliation>
+    </author>
+    <author>
+      <name>Wentao Wu</name>
+      <arxiv:affiliation>Microsoft Research</arxiv:affiliation>
+    </author>
+    <author>
+      <name>Lijie Xu</name>
+      <arxiv:affiliation>Institute of Software, Chinese Academy of Sciences</arxiv:affiliation>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2608.00009v1</id>
+    <title>AgentMemBench: A Systematic Benchmark for Evaluating Long-Term Memory Management Strategies in Conversational AI Agents</title>
+    <updated>2026-06-16T08:27:18Z</updated>
+    <link href="https://arxiv.org/abs/2608.00009v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2608.00009v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Long-term memory remains a critical bottleneck for conversational AI agents, whose finite context windows cannot support coherent recall across thousands of turns. We present AgentMemBench, a unified, reproducible benchmark evaluating five memory management strategies under identical conditions: in-context windowing (ICW), external key-value store (EKV), graph-based episodic memory (GEM), compression-based summarisation (CBS), and web-augmented memory (WAM). All are assessed across three public datasets covering long-term multi-session dialogue (LoCoMo), task-oriented document grounding (MultiDoc2Dial), and persona-grounded multi-session chat (MSC), using Recall@k, MRR, nDCG@k, Answer F1, an LLM-judge Faithfulness score, Memory Footprint, and Latency over 491 annotated question turns. Generation and judging both use Qwen2.5-7B-Instruct (4-bit), with greedy decoding for determinism. Our results show that (1) EKV dominates on every quality axis (macro Recall@5 0.792, MRR 0.677, F1 0.156, Faithfulness 0.354); (2) long-range recall is decisive: on LoCoMo, where the gold turn lies many sessions back, ICW, WAM, GEM, and CBS retrieve almost nothing (Recall@5 &lt;= 0.005) while EKV alone reaches 0.573, showing that recency windows, summaries, and entity graphs collapse at long horizons and only dense retrieval scales; (3) CBS is the runner-up on retrieval (0.556); (4) WAM equals ICW on in-corpus recall by construction, since external results carry no in-corpus provenance; and (5) EKV's recall advantage carries a footprint cost (~5,100 vs ~300 tokens for ICW/WAM), an explicit accuracy-efficiency trade-off. We additionally evaluate two published memory systems (MemGPT/Letta, HippoRAG) against the same harness, and release all code, environment, and result artefacts for full reproducibility.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-16T08:27:18Z</published>
+    <arxiv:comment>22 pages, 3 figures submitted on Neural Computing and Applications</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Ahmed Cherif</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.17162v1</id>
+    <title>MemSlides: A Hierarchical Memory Driven Agent Framework for Personalized Slide Generation with Multi-turn Local Revision</title>
+    <updated>2026-06-15T18:02:55Z</updated>
+    <link href="https://arxiv.org/abs/2606.17162v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.17162v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Personalized presentation generation requires more than conditioning on a current prompt or template: agents must preserve stable user preferences across tasks, retain newly introduced preferences and constraints during multi-turn revision, and carry out local edits reliably. We propose MemSlides, a hierarchical memory framework for personalized presentation agents that separates long-term memory from working memory and further divides long-term memory into user profile memory and tool memory. User profile memory stores intent-conditioned profiles for round-0 personalization, working memory carries active preferences and session constraints across revision rounds, and tool memory stores reusable execution experience for reliable localized editing. MemSlides pairs this memory design with scoped slide-local revision, so targeted updates act on the smallest affected region instead of repeatedly regenerating the full deck. In controlled experiments, user profile memory improves persona-alignment judgments on a multi-persona, multi-intent profile bank, tool-memory injection improves closed-loop modify behavior in diagnostic matched-pair settings, and qualitative cases illustrate working memory's ability to carryover preferences. Taken together, these results suggest that effective personalization in presentation authoring depends on separating persistent user profiles, session-level working memory, and reusable execution experience across generation and localized revision.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.HC" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.MA" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-15T18:02:55Z</published>
+    <arxiv:comment>Code, website, project page, and video are linked in the paper</arxiv:comment>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Ye Jin</name>
+    </author>
+    <author>
+      <name>Yangyang Xu</name>
+    </author>
+    <author>
+      <name>Jun Zhu</name>
+    </author>
+    <author>
+      <name>Yibo Yang</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.11680v1</id>
+    <title>Organize then Retrieve: Hierarchical Memory Navigation for Efficient Agents</title>
+    <updated>2026-06-10T05:49:14Z</updated>
+    <link href="https://arxiv.org/abs/2606.11680v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.11680v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Large language model (LLM) agents struggle with long-horizon tasks due to their inherent statelessness, requiring all task-relevant information to be encoded in growing input contexts. The resulting degraded reasoning quality, increased inference cost, and higher latency necessitate efficient working memory mechanisms. However, existing approaches either rely on lossy compression or similarity-based retrieval, which often fail to capture temporal structure and causal dependencies required for multi-step agentic tasks. In this work, we present HORMA, a Hierarchical Organize-and-Retrieve Memory Agent that organizes experience into a file-system-like hierarchical structure, where summarized entities are linked to the corresponding raw trajectories, enabling efficient access without losing detailed information. HORMA decomposes working memory into two stages: structured memory construction and navigation-based retrieval. The construction module iteratively refines how experiences are structured by distinguishing between failures caused by missing information and those caused by misleading or overloaded context. The navigation module retrieves task-relevant context by traversing the hierarchy using a lightweight agent trained with reinforcement learning to select minimal yet sufficient context, thereby reducing latency along the critical execution path. Across ALFWorld, LoCoMo, and LongMemEval, HORMA improves task performance under constrained context budgets while requiring at most 22.17% of the baseline token usage in long conversation tasks. Compared to existing methods, it consistently achieves better efficiency-performance trade-offs and generalizes effectively to unseen tasks.</summary>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.LG" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-10T05:49:14Z</published>
+    <arxiv:primary_category term="cs.AI"/>
+    <author>
+      <name>Hao-Lun Hsu</name>
+    </author>
+    <author>
+      <name>Nikki Lijing Kuang</name>
+    </author>
+    <author>
+      <name>Boyi Liu</name>
+    </author>
+    <author>
+      <name>Zhewei Yao</name>
+    </author>
+    <author>
+      <name>Yuxiong He</name>
+    </author>
+  </entry>
+  <entry>
+    <id>http://arxiv.org/abs/2606.04555v1</id>
+    <title>Temporal Order Matters for Agentic Memory: Segment Trees for Long-Horizon Agents</title>
+    <updated>2026-06-03T07:42:15Z</updated>
+    <link href="https://arxiv.org/abs/2606.04555v1" rel="alternate" type="text/html"/>
+    <link href="https://arxiv.org/pdf/2606.04555v1" rel="related" type="application/pdf" title="pdf"/>
+    <summary>Long-horizon conversational agents need to interact with users through evolving events, tasks, and goals. Such histories are naturally temporal, yet many existing memory systems organize information primarily by topical similarity and may ignore the order in which events occur. We introduce Segment Tree Memory, or SegTreeMem, a memory architecture that represents conversation history as a temporally ordered Segment Tree over utterances. SegTreeMem incrementally inserts new utterances through an online rightmost-frontier update rule, preserving chronological order while forming hierarchical memory segments. For retrieval, SegTreeMem propagates relevance scores through the tree to combine local semantic matching with hierarchical temporal context. Across three long-horizon memory benchmarks and two LLM backbones, SegTreeMem improves answer quality over flat retrieval, graph-structured memory, and tree-structured memory baselines. Additional temporal-order permutation analysis shows that the performance gain depends on preserving temporal order during memory construction, supporting the claim that temporal order is a key structure for agentic memory.</summary>
+    <category term="cs.CL" scheme="http://arxiv.org/schemas/atom"/>
+    <category term="cs.AI" scheme="http://arxiv.org/schemas/atom"/>
+    <published>2026-06-03T07:42:15Z</published>
+    <arxiv:primary_category term="cs.CL"/>
+    <author>
+      <name>Yifan Simon Liu</name>
+    </author>
+    <author>
+      <name>Liam Gallagher</name>
+    </author>
+    <author>
+      <name>Faeze Moradi Kalarde</name>
+    </author>
+    <author>
+      <name>Jiazhou Liang</name>
+    </author>
+    <author>
+      <name>Armin Toroghi</name>
+    </author>
+    <author>
+      <name>Scott Sanner</name>
+    </author>
+  </entry>
+</feed>

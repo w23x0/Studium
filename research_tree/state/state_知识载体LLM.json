@@ -53,7 +53,8 @@
       "created": "2026-08-14",
       "updated": "2026-08-14",
       "completed": "2026-08-14",
-      "audit_summary": "PASS。判死四条件全不触发；时代锚定 18/18 全 2025-12~2026-08；快照逐字命中 17/18（F16c 部分命中非承重）；工作量红线全达标（来源18/A级摘要17/候选验真≥5/关键词组5）。结论：2024-26 抛弃单一 RDF/Datalog/属性图本体，转向『经验/承诺原子化+分层/图谱/超图聚合+版本化/事务化/可审计载体』。对 Studium 双轨净增量（版本化/时间语义/事务边界缺失）+可推翻点（L1 RDF 作唯一结构层过约束、L0 JSONL 缺原子身份、无版本化长期可信性不成立）。"
+      "audit_summary": "PASS。判死四条件全不触发；时代锚定 18/18 全 2025-12~2026-08；快照逐字命中 17/18（F16c 部分命中非承重）；工作量红线全达标（来源18/A级摘要17/候选验真≥5/关键词组5）。结论：2024-26 抛弃单一 RDF/Datalog/属性图本体，转向『经验/承诺原子化+分层/图谱/超图聚合+版本化/事务化/可审计载体』。对 Studium 双轨净增量（版本化/时间语义/事务边界缺失）+可推翻点（L1 RDF 作唯一结构层过约束、L0 JSONL 缺原子身份、无版本化长期可信性不成立）。",
+      "state_note": "【2026-08-15 来源可信度审查】本卡支柱 F1 锚定的 Context Codec（2605.17304，作者资历不透明/实证薄弱）判定不可信，F1 及承诺集方向降级为 C 级线索；findings 头部已加审查标注。"
     },
     {
       "id": "K2",
@@ -81,9 +82,9 @@
         "不重复 V1/V2/V3/V7 旧结论（作基线，2024-26 新做法可推翻）",
         "抓不到原文标未核；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
-      "verdict": "accepted",
+      "verdict": "archived_rejected",
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/K2_数学科学知识表示_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/K2_审计.md",
       "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/K2",
@@ -92,7 +93,8 @@
       "completed": "2026-08-14",
       "audit_summary": "PASS。判死四条件全不触发；时代锚定 9 条 curl 实查全 2024+，_all_abstracts.txt 全量 29 条 0 条 2023-；快照逐字命中 23/23；工作量红线全达标（来源30/年代全2024-2026/候选验真29/关键词组8有结果+2零命中留证）。结论：2024-26 数学/科学表示主流已从『老形式化库+本体（mathlib/MML/Metamath/MaRDI/OntoMath）』转向『LLM 时代的表示即流程』——检索+上下文即表示、证明以验证闭环（Lean+LLM 辅助/自动形式化）形态存在、神经符号混合；FARS/FRR 普适性标 C，可移植模式 P1-P6 标 C。两处非致命整改：检索留证自报 8 实为 12（低估非虚报）；来源日期粒度统一为 citation_online_date。",
       "model": "Fable 5",
-      "batch": "K-batch-v2"
+      "batch": "K-batch-v2",
+      "state_note": "【2026-08-15 产品裁决】K2 数学/科学表示选题偏题（项目即学理科，数学表示即知识表示主体，无需单开专题），已随卡归档至 _archive_rejected/；findings/audit/_sources 均移出现行区。verdict=accepted 保留为历史记录，但不再作为设计依据。"
     },
     {
       "id": "K3",
