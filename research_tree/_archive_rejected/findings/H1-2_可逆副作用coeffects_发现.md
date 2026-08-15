@@ -1,4 +1,5 @@
 # 叶子 H1-2 可逆副作用与依赖解析 调研发现
+> ⚠ **已归档（2026-08-15 产品裁决）**：本卡属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与「个人多教材理科学习」项目不匹配，已移入 _archive_rejected/，仅作历史参考，不再作为 Studium 设计依据。
 
 > 任务 H1-2 / A=原文到手 B=二手转引 C=推断
 > 调研主题：把「组件移除副作用可逆 + 组件间依赖可解析」落到 agent harness 语境（revertible effects + reactive coeffects）

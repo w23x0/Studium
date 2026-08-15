@@ -980,7 +980,7 @@
         "不越过上下文工程边界进 harness 运行时编排（方向1 承接）",
         "抓不到原文标「未核」，不捏造；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -988,7 +988,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H3-1_上下文解构与重构_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H3-1_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-1"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-1",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H3-2",
@@ -1015,7 +1016,7 @@
         "不评估具体缓存产品（Anthropic/OpenAI 前缀缓存由官方文档快照），聚焦机制与边界",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1023,7 +1024,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H3-2_上下文预算切分_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H3-2_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-2"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-2",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H3-3",
@@ -1050,7 +1052,7 @@
         "压缩技术本身不实现（不写码），聚焦结构模式与可审计性",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1058,7 +1060,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H3-3_上下文压缩记忆窗口_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H3-3_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-3"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-3",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H3-4",
@@ -1085,7 +1088,7 @@
         "MCP 优先抓官方规范文档快照，实务局限标 A/B",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1093,7 +1096,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H3-4_上下文工具编排_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H3-4_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-4"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H3-4",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H1-1",
@@ -1120,7 +1124,7 @@
         "不越过到训练期 agent-native training（聚焦 harness 运行时自改进）",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1128,7 +1132,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H1-1_自演化harness_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H1-1_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H1-1"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H1-1",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H1-2",
@@ -1155,7 +1160,7 @@
         "不重复 H3-1 的上下文回滚（聚焦组件级 effect/coeffect 机制）",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1163,7 +1168,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H1-2_可逆副作用coeffects_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H1-2_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H1-2"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H1-2",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H2-1",
@@ -1190,7 +1196,7 @@
         "不评估具体向量库产品（聚焦检索触发/充分性机制）",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1198,7 +1204,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H2-1_知识检索充分性触发条件_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H2-1_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H2-1"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H2-1",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H2-2",
@@ -1225,7 +1232,7 @@
         "不重复 V6/P6/P9 已查证的向量假阳性结论（作基线深化）",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1233,7 +1240,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H2-2_检索失败模式_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H2-2_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H2-2"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H2-2",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H4-1",
@@ -1260,7 +1268,7 @@
         "不看 RDF/Datalog 老货，看 2024+ 做法",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1268,7 +1276,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H4-1_长程状态记忆层_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H4-1_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H4-1"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H4-1",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     },
     {
       "id": "H4-2",
@@ -1295,7 +1304,7 @@
         "不评估具体向量库产品选型",
         "抓不到原文标「未核」；推断标 C、实证标 A"
       ],
-      "status": "archived",
+      "status": "archived_rejected",
       "priority": 1,
       "created": "2026-08-14",
       "updated": "2026-08-14",
@@ -1303,7 +1312,8 @@
       "retries": 0,
       "findings_path": "C:/Users/Wang/Desktop/Studium/research_tree/findings/H4-2_向量库知识库_发现.md",
       "audit_path": "C:/Users/Wang/Desktop/Studium/research_tree/audit/H4-2_审计.md",
-      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H4-2"
+      "sources_dir": "C:/Users/Wang/Desktop/Studium/research_tree/_sources/H4-2",
+      "state_note": "【2026-08-15 产品裁决】H 系列属老旧范式（agent 记忆/RAG/知识库/上下文工程，临床办公场景），与个人多教材理科学习项目不匹配，已随 findings/audit/_sources 归档至 _archive_rejected/。verdict=accepted 保留为历史记录，不再作为设计依据。"
     }
   ],
   "conflicts": [],

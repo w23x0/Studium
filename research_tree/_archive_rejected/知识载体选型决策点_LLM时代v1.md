@@ -1,5 +1,7 @@
 # 知识载体选型决策点 LLM 时代 v1.0（合成终稿）
 
+> ⚠ **已归档（2026-08-15 产品裁决）**：本稿主体是 H 线（harness 自演化/检索/记忆/向量库/上下文工程），属 agent 记忆/RAG/知识库范式，与「个人多教材理科学习」项目场景不匹配，判为老旧范式产物。本稿及 H 系列卡移入 `research_tree/_archive_rejected/`，仅作历史参考，**不再作为 Studium 设计依据**。其中的 Context Codec（2605.17304）来源不可信，引用处已标注降级。**现行设计依据看 `知识载体选型决策点_LLM时代v1_K线终稿.md`**。
+>
 > 版本基线：research_tree LLM 主线 **R14（方向3 上下文工程，第一批）+ R15（方向1/2/4，第二批）十叶全部 accepted**（2026-08-14）
 > 前置：`知识载体选型决策点_v1.0`（V 系列，前 LLM 时代）+ `存储选型决策点_v1.3`（L0–L3）；本报告只答「LLM/agent 时代知识载体借/不借什么」，**不改存储层、不推翻 V 系列已定结构**，仅在可推翻处显式修正
 > 范围：方向1（harness 自演化/可逆副作用 H1-1/H1-2）+ 方向2（检索充分性/失败模式 H2-1/H2-2）+ 方向4（记忆层/向量库知识库 H4-1/H4-2）；方向3 上下文工程已独立成篇 `上下文工程决策点_v1.md`，此处只并入其结论
@@ -82,7 +84,7 @@
 
 ### D7 支线·上下文工程（H3，结论并入；详见 `上下文工程决策点_v1.md`）
 
-四根可移植支柱：①上下文组件可版本化可回滚（ChronoMem 整库快照）；②压缩形态选符号化原子（Context Codec round-trip recoverability，直接服务 L0 可 grep 红线）；③缓存策略按负载形态裁决（稳定长前缀会话 41-80% 降本，前缀多变 6% 适用）；④工具编排用主动发现（intention-tool graph，不全量 schema 注入）。——并入本文 §4 清单第 6-10 条。
+四根可移植支柱：①上下文组件可版本化可回滚（ChronoMem 整库快照）；②压缩形态选符号化原子（⚠Context Codec round-trip recoverability【不可信来源，降级 C 线索】，直接服务 L0 可 grep 红线）；③缓存策略按负载形态裁决（稳定长前缀会话 41-80% 降本，前缀多变 6% 适用）；④工具编排用主动发现（intention-tool graph，不全量 schema 注入）。——并入本文 §4 清单第 6-10 条。
 
 ## 2 跨方向横向对照（三个收敛点）
 
@@ -96,7 +98,7 @@
 
 | Studium 既有项 | LLM 主线证据 | 协调结论 |
 |---|---|---|
-| **L0 JSONL 锚点可 grep** | ReFind（词法索引胜结构）；Context Codec（round-trip recoverability）；Temporal Misgrounding（原子 nugget 确定性评分） | **强化成立**：原文可检索时结构化不必要；压缩/评分须锚定可机械验证的原子 |
+| **L0 JSONL 锚点可 grep** | ReFind（词法索引胜结构）；⚠Context Codec（round-trip recoverability）【不可信来源，降级 C】；Temporal Misgrounding（原子 nugget 确定性评分） | **强化成立**：原文可检索时结构化不必要；压缩/评分须锚定可机械验证的原子 |
 | **L1 RDF 语义层 + 锚点接地** | PolicyKG（谓词接地 Corpus Adapter + FOL 边界标注）；GPM（来源绑定） | **同向**：需要结构化时用「LLM 自动构造 + 谓词接地本体 + 显式边界」，不把单语料审计当普适证明 |
 | **L2 FHIR 式版本化（v1.3）** | GPM（双时态状态机）；Temporal Misgrounding（时序版本索引）；EvoTrustRAG（冲突来源归因含演化） | **同向且强化**：双时态/版本化是防 temporal misgrounding 的根本机制，GPM 独立印证 |
 | **机械信号只定向不结案** | D-SCAN 假置信（不确定性被专门击败）；Latent Critic（接地幻觉）；DenialRAG（无完美防御） | **对抗语境下必须成立**：攻击者正瞄准机械信号；须异质多层防御 |
@@ -118,7 +120,7 @@
 **方向1/3（harness 与上下文，承载知识载体）**
 7. **harness 自演化须准入护栏**：技能/规则写入前 pre-commit gating（结构/行为/语义三层批评，VaG 思路），因为污染一旦扩散到后代就不可逆（Backfires）——回滚不能替代准入把关。
 8. **上下文组件可版本化可回滚**：组件级走 effect inverse（轻、精确，DSH 思路）、跨会话走整库快照（重、观测等价，ChronoMem 思路）两层；回滚保证到「观测等价」而非比特一致（DSH observational equivalence）。
-9. **压缩/记忆选符号化原子**：可 grep/可锚点的压缩形态（Context Codec round-trip recoverability + Telegraph 符号重表达），时序事实显式保 temporal 原子。
+9. **压缩/记忆选符号化原子**：可 grep/可锚点的压缩形态（⚠Context Codec round-trip recoverability【不可信来源，降级 C 线索】+ Telegraph 符号重表达），时序事实显式保 temporal 原子。
 10. **上下文管理内建为 harness 职责**：把 context 列为 harness 运行时职责（六职责），不当作每轮让模型自选的提示技巧；工具编排用主动发现（intention-tool graph）不全量注入。
 
 ## 5 OPEN 项 / 待办
