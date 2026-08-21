@@ -1,5 +1,0 @@
-SOURCE: https://github.com/kuzudb/kuzu (fetched 2026-08-13 via WebFetch)
-"This repository was archived by the owner on Oct 10, 2025. It is now read-only."
-README: "Kuzu is working on something new!" — prior releases remain usable without code modifications;
-extension users: migrate to release 0.11.3 (bundles extensions algo, fts, json, vector) or run a local extension server via Docker.
-Docs/blog moved to kuzudb.github.io. MIT license.

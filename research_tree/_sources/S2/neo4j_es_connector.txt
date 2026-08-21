@@ -1,3 +1,0 @@
-SOURCE: https://github.com/neo4j-contrib/neo4j-elasticsearch (fetched 2026-08-13 via gh api)
-full_name: neo4j-contrib/neo4j-elasticsearch; description: "Neo4j ElasticSearch Integration";
-archived: false; pushed_at: 2020-10-13 (dormant since 2020). Classic ES+Neo4j hybrid: ES holds full-text index over graph data.

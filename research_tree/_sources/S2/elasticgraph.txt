@@ -1,4 +1,0 @@
-SOURCE: https://github.com/block/elasticgraph (fetched 2026-08-13 via gh api / WebFetch)
-ElasticGraph: "schema-driven, scalable, cloud-native, batteries-included GraphQL, backed by Elasticsearch / OpenSearch."
-Architecture: modular system, small core + built-in extensions; monorepo of Ruby gems. MIT License.
-Block Open Source. Represents a query layer over a document store (ES/OpenSearch), not a graph traversal engine.

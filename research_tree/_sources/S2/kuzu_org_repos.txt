@@ -1,3 +1,0 @@
-SOURCE: https://github.com/orgs/kuzudb/repositories (fetched 2026-08-13 via WebFetch)
-All 24 repositories are marked "Public archive." Core project kuzu: "Embedded property graph database built for speed.
-Vector search and full-text search built in. Implements Cypher." No visible successor project in the org.
