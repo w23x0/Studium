@@ -1,4 +1,4 @@
-# Secrets and local configuration
+﻿# Secrets and local configuration
 .env
 .env.*
 !.env.example
@@ -72,5 +72,3 @@ research_tree/logs/**
 !research_tree/logs/**/
 !research_tree/logs/**/*.md
 
-# DSH: PDF 解析中间产物（images/json/layout/full.md，可由 paper.pdf 重新生成）
-docs/DSH/paper/

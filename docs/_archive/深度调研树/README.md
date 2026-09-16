@@ -13,17 +13,18 @@
 | [`_engine/prompts/`](_engine/prompts/) | 生产段角色提示词：E-RES 调研员 · E-AUD 审计员 · E-SYN 汇总员 · E-COM 对比员 |
 | [`_engine/workflows/`](_engine/workflows/) | 引擎脚本：`run_batch.js`（调研→审计流水线）、`run_proto.js`（原型实测） |
 
-## 运行时产出（都在 `../../research_tree/`，不在本目录）
+## 运行时产出（保留部分在 `../../../research_tree/`，不在本目录）
 
 | 路径 | 内容 |
 | --- | --- |
-| [`state/state.json`](../../research_tree/state/state.json) | **唯一事实源**：meta / tasks[] / conflicts[] / rounds[] |
-| [`tasks/`](../../research_tree/tasks/) | 任务卡（人可读，与 state 同步） |
-| [`findings/`](../../research_tree/findings/) | 调研发现（含一句话结论 … 判死自查） |
-| [`audit/`](../../research_tree/audit/) | 审计结论（四条件判死 + URL 抽检 + 快照比对） |
-| [`_sources/`](../../research_tree/_sources/) | 原文快照（html/txt/md/pdf） |
-| [`synthesis/`](../../research_tree/synthesis/) | 合成稿 / 决策点终稿（**人最终读这一层**） |
-| [`logs/调度日志.md`](../../research_tree/logs/调度日志.md) | 每轮派发/回收/验收/去重/合并记录 |
+| `state/state.json` | 已于 2026-08-16 删除（Git 历史可恢复） |
+| `tasks/` | 已于 2026-08-16 删除（Git 历史可恢复） |
+| [`findings/`](../../../research_tree/findings/) | 调研发现（现行产出） |
+| [`audit/`](../../../research_tree/audit/) | 审计结论（现行产出） |
+| `_sources/` | 已于 2026-08-16 删除（Git 历史可恢复） |
+| [`synthesis/`](../../../research_tree/synthesis/) | 合成稿 / 决策点终稿（**人最终读这一层**） |
+| `logs/调度日志.md` | 已于 2026-08-16 删除（Git 历史可恢复） |
+| [`总目录.md`](../../../research_tree/总目录.md) | 当前目录结构、保留/删除状态和收口说明 |
 
 ## 状态机（每张任务卡）
 
