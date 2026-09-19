@@ -18,7 +18,6 @@
 | Harness 技术方向（已确认，路径 3） | [`docs/Harness设计/00-技术方向确认.md`](docs/Harness设计/00-技术方向确认.md) |
 | 执行图 / 上下文工程（暂缓） | [`docs/图工程调研/README.md`](docs/图工程调研/README.md) |
 | 自学方法调研 | [`docs/自学方法调研/INDEX.md`](docs/自学方法调研/INDEX.md) |
-| 自动化调研引擎（已归档） | [`docs/_archive/深度调研树/README.md`](docs/_archive/深度调研树/README.md) · 运行时产出仍在 [`research_tree/`](research_tree/) |
 
 ## 文档权威层级（防“两层混”）
 
@@ -31,7 +30,7 @@
 | 技术方向 | `docs/Harness设计/00-技术方向确认.md` | 已确认（路径 3，DSH）；**DSH 只是 runtime 底座，不是设计结论** |
 | 实现基线 | `docs/实现基线/模块关系提取.md`（R/P）· `模块检查点.md`（CP-00…39）· `模块问题清单.md` | **2026-08-31 生成**的关系/检查点视图；**早于 Harness 设计，组合层部分可能过期** |
 | 调研终稿 | `research_tree/synthesis/` | 现行以最新决策点为准 |
-| **不作依据** | `docs/_archive/` · `research_tree/_archive_rejected/` · `docs/图工程调研/` | 归档/实验，**不得用于设计** |
+| **不作依据** | `docs/图工程调研/` · `docs/_archive/07-M08历史想法打捞.md` | 归档/实验/用户历史原话，**不得用于设计** |
 
 > 逐文件「能不能信」见 [`docs/文档状态总表.md`](docs/文档状态总表.md)。
 
