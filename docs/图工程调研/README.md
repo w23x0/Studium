@@ -1,6 +1,6 @@
 # Graph Engineering Research: Structural Documentation
 
-> ⚠️ **中文警告（Agent 必读）**：本目录是**调研归档，不是设计依据**（`FOLDER_ROLE: RESEARCH_ARCHIVE_ONLY`）。实验结论与 schema 提案（含 `06-M08技术选型.md`）均未验证，**禁止直接用于 Studium 设计**。设计口径以 `docs/Harness设计/` 为准；M08/M09 存储以 [`../Harness设计/01-知识层设计.md`](../Harness设计/01-知识层设计.md) 为准。
+> ⚠️ **中文警告（Agent 必读）**：本目录是**调研归档，不是设计依据**（`FOLDER_ROLE: RESEARCH_ARCHIVE_ONLY`）。原实验结论与 schema 提案（`06-M08技术选型.md`，2026-09-19 已删除）均未验证。设计口径以 `docs/Harness设计/` 为准；M08/M09 存储以 [`../Harness设计/01-知识层设计.md`](../Harness设计/01-知识层设计.md) 为准。
 
 ```yaml
 doc_id: doc_01_02_03_04
@@ -9,7 +9,7 @@ phase: PRE_MODULE_COMPOSITION
 scope: [TERMINOLOGY, PROBLEM_LAYER, ENTRY_PROTOCOL, JOINT_DESIGN_SCOPE]
 activation_gate: MODULE_CONTRACTS_FINALIZED
 last_updated: 2026-09-09
-related_docs: [doc_05_M08_technical_evidence]
+related_docs: [doc_05_M08_technical_evidence (2026-09-19 已删除)]
 ```
 
 ---
@@ -63,7 +63,7 @@ ENFORCEMENT: STRICT
 
 **Prohibition**: MUST NOT merge these graphs because they share node/edge primitives.
 
-**Validation Source**: `doc_05:§9` (lines 488-491) - enforced as red line in M08 technical selection.
+**Validation Source**: `doc_05:§9`（原文件 2026-09-19 已删除）— enforced as red line in M08 technical selection.
 
 ### RED LINE C2: Graph Engineering ≠ Context Engineering
 
@@ -382,9 +382,9 @@ Before module contract completion, this folder maintained as research archive on
 - `MOD:M08` = Module M08 (Knowledge Structure & Concept Relations)
 - `MOD:M09` = Module M09 (Dynamic Learner Model)
 - `MOD:M15` = Module M15 (Learner State & Conditions)
-- `doc_05` = 06-M08技术选型.md
+- `doc_05` = 06-M08技术选型.md（2026-09-19 已删除）
 - `CP-##` = Checkpoint from `docs/实现基线/模块检查点.md`
-- `C#` = Constraint defined in `_INDEX.md`
+- `C#` = Constraint defined in this README（原 `_INDEX.md`，2026-09-19 删除）
 - `P##` = Prohibition from `docs/实现基线/模块关系提取.json`
 - `T##` = Temporal bound from relationship baseline
 
