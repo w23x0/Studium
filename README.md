@@ -33,6 +33,8 @@
 | 调研终稿 | `research_tree/synthesis/` | 现行以最新决策点为准 |
 | **不作依据** | `docs/_archive/` · `research_tree/_archive_rejected/` · `docs/图工程调研/` | 归档/实验，**不得用于设计** |
 
+> 逐文件「能不能信」见 [`docs/文档状态总表.md`](docs/文档状态总表.md)。
+
 ## 目录速览
 
 - `任务线路.md` — 任务线路与当前位置（人工维护，先读这个）
