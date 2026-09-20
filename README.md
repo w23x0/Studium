@@ -18,6 +18,7 @@
 | Harness 技术方向（已确认，路径 3） | [`docs/Harness设计/00-技术方向确认.md`](docs/Harness设计/00-技术方向确认.md) |
 | 执行图 / 上下文工程（暂缓） | [`docs/图工程调研/README.md`](docs/图工程调研/README.md) |
 | 自学方法调研 | [`docs/自学方法调研/INDEX.md`](docs/自学方法调研/INDEX.md) |
+| agent 系统工程的历史脉络（**学习资料，不作设计依据**） | [`docs/系统工程发展史/README.md`](docs/系统工程发展史/README.md) |
 
 ## 文档权威层级（防“两层混”）
 
@@ -37,7 +38,7 @@
 ## 目录速览
 
 - `任务线路.md` — 任务线路与当前位置（人工维护，先读这个）
-- `docs/` — 产品设计、实现基线、Harness 设计、执行图背景、自学方法
+- `docs/` — 产品设计、实现基线、Harness 设计、执行图背景、自学方法、系统工程发展史（学习资料）
 - `docs/_archive/` — 已归档的实验数据与旧调研引擎（不作设计依据）
 - `research_tree/` — 调研流水线产出（发现、审计、合成终稿）
 - `.agents/` — agent 技能（web-access 联网）
