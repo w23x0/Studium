@@ -1,14 +1,18 @@
 # Graph Engineering Research: Structural Documentation
 
-> ⚠️ **中文警告（Agent 必读）**：本目录是**调研归档，不是设计依据**（`FOLDER_ROLE: RESEARCH_ARCHIVE_ONLY`）。原实验结论与 schema 提案（`06-M08技术选型.md`，2026-09-19 已删除）均未验证。设计口径以 `docs/Harness设计/` 为准；M08/M09 存储以 [`../Harness设计/01-知识层设计.md`](../Harness设计/01-知识层设计.md) 为准。
+> ⚠️ **中文说明（Agent 必读）**：本目录自 **2026-09-21 起启用为阶段 6（执行图 / 上下文编排）的入口协议**——激活门 `MODULE_CONTRACTS_FINALIZED` 已满足（模块职责、输入输出、读写权限、缺料规则、读清单均已冻结，见 `docs/Harness设计/`）。
+>
+> **仍然不作依据的部分**：原实验结论与 schema 提案（`06-M08技术选型.md`，2026-09-19 已删除）未经验证，不得据此定 M08/M09 结构。设计口径以 `docs/Harness设计/` 为准；M08/M09 存储以 [`../Harness设计/01-知识层设计.md`](../Harness设计/01-知识层设计.md) 为准。
 
 ```yaml
 doc_id: doc_01_02_03_04
-status: RESEARCH_ARCHIVE
-phase: PRE_MODULE_COMPOSITION
+status: ACTIVE
+phase: GRAPH_CONTEXT_JOINT_DESIGN
 scope: [TERMINOLOGY, PROBLEM_LAYER, ENTRY_PROTOCOL, JOINT_DESIGN_SCOPE]
 activation_gate: MODULE_CONTRACTS_FINALIZED
-last_updated: 2026-09-09
+activation_gate_status: MET
+activated: 2026-09-21
+last_updated: 2026-09-21
 related_docs: [doc_05_M08_technical_evidence (2026-09-19 已删除)]
 ```
 
@@ -358,15 +362,16 @@ NON_DECISION_06: Letting model self-decide formal data ownership / promotion per
 
 ---
 
-## PAUSE MARKER
+## STAGE 6 ACTIVATION MARKER
 
 ```
-CURRENT_STATUS: WAITING_MODULE_CONTRACT_COMPLETION
-FOLDER_ROLE: RESEARCH_ARCHIVE_ONLY
-PROHIBITION: DO_NOT_GENERATE_STUDIUM_CONTEXT_OR_GRAPH_ARCHITECTURE_DECISIONS
+CURRENT_STATUS: ACTIVE — 阶段 6（执行图 / 上下文编排）入口协议，2026-09-21 启动
+FOLDER_ROLE: STAGE6_ENTRY_PROTOCOL
+ACTIVATION_GATE: MODULE_CONTRACTS_FINALIZED = MET（2026-09-21）
+STILL_VOID: 已删 `06-M08技术选型.md` 的实验结论与 schema 提案（不得据此定 M08/M09 结构）
 ```
 
-Before module contract completion, this folder maintained as research archive only.
+模块契约冻结后，本目录的**首会协议（SECTION III）与红线段（SECTION I）**为阶段 6 的工作方法；**SECTION IV 的暂缓项（DEFER_01–15）与非决策清单**仍按原样适用。
 
 ---
 
