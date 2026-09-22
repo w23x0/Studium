@@ -71,5 +71,3 @@
 ## 提交
 
 提交信息用中文 `type(scope): 说明`。已用过的 type：`docs` / `chore` / `feat` / `refactor`；scope 例：`harness` / `research` / `权威` / `基线` / `root`，可省略。
-
-提交后 `git push`：本仓库跨机使用（切换机器继续时要能拉到最新）。
