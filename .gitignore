@@ -72,3 +72,6 @@ research_tree/logs/**
 !research_tree/logs/**/
 !research_tree/logs/**/*.md
 
+
+# Studium prototype runtime data
+proto/runs/
