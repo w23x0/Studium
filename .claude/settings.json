@@ -1,0 +1,17 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git show:*)",
+      "Bash(node .claude/skills/web-access/scripts/*)"
+    ],
+    "deny": [
+      "Edit(//home/w23x/Deep/**)",
+      "Write(//home/w23x/Deep/**)",
+      "Read(./.env)",
+      "Read(./.env.*)"
+    ]
+  }
+}
