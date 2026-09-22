@@ -1,400 +1,87 @@
-# Graph Engineering Research: Structural Documentation
-
-> ⚠️ **中文说明（Agent 必读）**：本目录自 **2026-09-21 起启用为阶段 6（执行图 / 上下文编排）的入口协议**——激活门 `MODULE_CONTRACTS_FINALIZED` 已满足（模块职责、输入输出、读写权限、缺料规则、读清单均已冻结，见 `docs/Harness设计/`）。
->
-> **仍然不作依据的部分**：原实验结论与 schema 提案（`06-M08技术选型.md`，2026-09-19 已删除）未经验证，不得据此定 M08/M09 结构。设计口径以 `docs/Harness设计/` 为准；M08/M09 存储以 [`../Harness设计/01-知识层设计.md`](../Harness设计/01-知识层设计.md) 为准。
-
-```yaml
-doc_id: doc_01_02_03_04
-status: ACTIVE
-phase: GRAPH_CONTEXT_JOINT_DESIGN
-scope: [TERMINOLOGY, PROBLEM_LAYER, ENTRY_PROTOCOL, JOINT_DESIGN_SCOPE]
-activation_gate: MODULE_CONTRACTS_FINALIZED
-activation_gate_status: MET
-activated: 2026-09-21
-last_updated: 2026-09-21
-related_docs: [doc_05_M08_technical_evidence (2026-09-19 已删除)]
-```
-
----
-
-## SECTION I: TERMINOLOGY & RED LINES
-
-### Meta
-- Lines: 1-85
-- Type: TERMINOLOGY + BOUNDARY_CONSTRAINTS
-- Tags: `#terminology`, `#red-lines`, `#graph-vs-context`
-
-### Definition: Graph Engineering in AI Agent Domain
-
-**Status**: Research label, NOT standardized discipline.
-
-**Underlying Concepts** (pre-existing engineering):
-- Workflow orchestration + data flow graphs
-- Finite state machines + state transitions
-- Agent routing + multi-agent coordination
-- Persistent execution + checkpoints + fault recovery
-- Event logging + tracing + observability
-- Human approval gates + validation gates + permission control
-
-**Usage Rule**: Treat as research tag, NOT as mature discipline with unified methods/tech stack.
-
-### RED LINE C1: Four Graph Types Must Remain Separate
-
-```
-CONSTRAINT_ID: C1
-TYPE: SEPARATION_INVARIANT
-ENFORCEMENT: STRICT
-```
-
-**The Four Types**:
-
-1. **Product Module Graph**
-   - Question: "What responsibilities and data does the system own?"
-   - Elements: Modules, data ownership, judgment authority
-
-2. **Execution Workflow Graph**
-   - Question: "What steps does one concrete task go through?"
-   - Elements: Nodes (work units), edges (control/data flow), checkpoints
-
-3. **Knowledge Relation Graph**
-   - Question: "What relationships exist between concepts/materials/methods?"
-   - Elements: Concepts, theorems, methods, prerequisite/derivation/contrast relations
-
-4. **Learner State Change Graph**
-   - Question: "How does individual learning state change with evidence?"
-   - Elements: State nodes, evidence edges, temporal versions
-
-**Prohibition**: MUST NOT merge these graphs because they share node/edge primitives.
-
-**Validation Source**: `doc_05:§9`（原文件 2026-09-19 已删除）— enforced as red line in M08 technical selection.
-
-### RED LINE C2: Graph Engineering ≠ Context Engineering
-
-```
-CONSTRAINT_ID: C2
-TYPE: RESPONSIBILITY_SEPARATION
-ENFORCEMENT: STRICT
-```
-
-**Graph Engineering Responsibilities**:
-- Next step: which node runs
-- Control flow: fork, merge, loop, pause, resume
-- Guards: what conditions must pass to proceed
-
-**Context Engineering Responsibilities**:
-- Information: what current node needs to see
-- Sourcing: where information comes from
-- Operations: classify, cache, validate, compress
-- Write-back: what contract governs result persistence
-
-**Integration Requirement**: Both MUST be designed together, but responsibilities remain distinct. Without context contracts, graph has only control arrows. Without graph lifecycle, context cannot know when to assemble/invalidate/freeze/promote.
-
-**Prerequisite**: Product module data ownership + judgment authority finalized first.
-
-### Terminology: Original Trigger Source
-
-```
-SOURCE: https://x.com/0xCodez/status/2079165300625330317
-TITLE: "Graph Engineering with Claude: 14-Step roadmap"
-EXTRACTION_DATE: 2026-07-23
-KEY_QUOTES:
-  - "Prompt = sentence. Loop = cycle. Framework = floor agent stands on."
-  - "Node thinks. Edge passes result."
-INTERPRETATION_RULES:
-  - Node = task (not edge)
-  - Linear script = degenerate graph
-  - Node contract = bounded input + bounded output + exactly one task
-```
-
----
-
-## SECTION II: STUDIUM ASSOCIATION LAYER (PROBLEM ONLY)
-
-### Meta
-- Lines: 87-122
-- Type: PROBLEM_INVENTORY
-- Tags: `#problem-layer`, `#module-mapping`, `#no-solutions`
-- Warning: NO node/edge/state design, NO execution graph
-
-### Why This Research Matters
-
-**Problem Characteristics** (requiring graph-like execution):
-
-```
-P1: User input → different task types (not single fixed pipeline)
-P2: Teaching/practice/diagnosis/navigation → conditional branches + feedback loops
-P3: Materials + concept relations + historical evidence → may need independent/parallel reads
-P4: Learner state updates → require evidence + source stratification + time annotation
-    - M15 decision: NO user correction mechanism, NO learner veto on state records
-P5: Module outputs + sources + evidence → must be frontend-visible (横切原则 #5)
-P6: Some processes → must pause for learner answer/practice completion
-P7: Long-term projects → must save position + resume later
-P8: Different failures → need different handling (not all-or-nothing pipeline failure)
-P9: Product must explain → what materials/evidence/constraints informed each judgment
-P10: In-progress loop sync context ≠ M09 closed-loop async records (MUST separate)
-P11: M04→M09 guards ≠ M09→M08 guards (different candidate/audit standards)
-```
-
-**Conclusion**: These suggest graph-like workflow (routing, loops, parallel, evidence gates, checkpoints, permission edges, execution tracing) may fit better than single long chain.
-
-### Module Association Table
-
-```
-MODULE_ID | POTENTIAL_GRAPH_EXECUTION_INFO
-----------|--------------------------------
-M01 | Current goal, thread position, task lifecycle, resumable positions
-M02 | One teaching round behavior + next learner action
-M03 | Practice task + learner output + diagnostic evidence
-M04 | Judgment + basis + alternative interpretations + minimal补足 action
-M05 | Next action + review schedule + task priority
-M07 | Sourced, locatable material query results
-M08 | Prerequisite/derivation/confusion relations + basis
-M09 | Closed-loop personal knowledge + evidence edges + temporal versions (new evidence may overturn, but does NOT overwrite old versions)
-M10 | Strategy selection + intervention requirements + effect records
-M11 | Tools + context + permissions + failure + cross-module operation boundaries
-M13 | Actual input + basis + judgments + state changes + exceptions + downgrades
-M14 | Output object + version chain + revision comparison + source/object reference positions
-M15 | Time-bound, sourced, uncertain non-knowledge state; carrying-capacity readings direct-connect M05/M10, interpretation candidates await M04 裁决
-```
-
-**Note on M12**: Cancelled as product module (number reserved, not reassigned).
-
-### RED LINE C4: M09 ↔ M15 No Direct Reference
-
-```
-CONSTRAINT_ID: C4
-TYPE: NO_BIDIRECTIONAL_REFERENCE
-MODULES: [M09, M15]
-LINK_METHOD: VIA_M01
-```
-
-**Rule**: M09 (closed-loop personal knowledge) and M15 (learner state/conditions) are separate learner models. NO direct reference arrows in either direction.
-
-**Link Mechanism**: "What state existed when loop closed" obtained via M01 linkage. M01 stores facts (e.g., session startup intervals), NOT interpretations (e.g., "startup difficulty"). Interpretations re-derived each time by sub-modules.
-
-**Known Cost**: Input reproducible, derived interpretations NOT reproducible.
-
-### RED LINE C5: Association ≠ Node Mapping
-
-```
-CONSTRAINT_ID: C5
-TYPE: MAPPING_CARDINALITY_WARNING
-```
-
-**Rule**: One module MAY provide multiple nodes, or only data/rules. One execution node MAY combine read-only results from multiple modules (within contract bounds).
-
-**Anti-pattern**: Assuming "one module = one node in execution graph."
-
-### Deferred Items (15 items - NOT to be decided now)
-
-```
-DEFER_01: Existence of single "learning round total graph"
-DEFER_02: Teaching/practice/diagnosis modules → nodes vs subgraphs
-DEFER_03: Routing mechanism: rules, model, or hybrid
-DEFER_04: Which steps allow parallel execution
-DEFER_05: Which state belongs to one run vs module long-term data
-DEFER_06: State usage gate: M05/M10 at what evidence strength/time validity let M15 readings change actions
-          Status: Explicitly deferred to MODULE_COMPOSITION_PHASE system design
-DEFER_07: Single agent vs multi-agent vs pure workflow
-DEFER_08: Need for specialized graph runtime
-DEFER_09: Each node information types + minimum completeness + source proof
-DEFER_10: Which context resident in current-loop cache vs on-demand read vs reference-only
-DEFER_11: Summary/tags/compressed content → can only be index, how to return to authoritative original
-DEFER_12: [Additional items continue but list is complete at DEFER_15]
-```
-
-**Reason for Deferral**: Depends on corrected module contracts. Answering now would let unconfirmed workflow assumptions pollute product module design.
-
----
-
-## SECTION III: DISCUSSION ENTRY PROTOCOL
-
-### Meta
-- Lines: 124-162
-- Type: STARTUP_CONDITIONS + FIRST_SESSION_PROTOCOL
-- Tags: `#entry-protocol`, `#activation-gate`, `#deliverables`
-
-### Activation Gate (8 Preconditions)
-
-```
-GATE_ID: JOINT_DESIGN_ENTRY
-TYPE: ACTIVATION_PRECONDITIONS
-COUNT: 8
-STATUS: NOT_MET (waiting on module contract finalization)
-```
-
-**Required Confirmations**:
-
-1. `PRECOND_01`: Each module unique main responsibility + explicit non-responsibilities
-2. `PRECOND_02`: Input + output + error semantics
-3. `PRECOND_03`: Core objects + data ownership
-4. `PRECOND_04`: Allowed read/write operations + permissions
-5. `PRECOND_05`: Inter-module dependencies + invocation direction
-6. `PRECOND_06`: State changes requiring human confirmation
-7. `PRECOND_07`: Executable acceptance conditions
-8. `PRECOND_08`: At least one real user flow + its actual problems
-
-### First Session Protocol: Single Real Scenario (NOT Full System Graph)
-
-**Approach**: Select one clear-boundary, currently-needed user scenario.
-
-**11 Required Answers**:
-
-```
-Q01: User-observable start point + end point?
-Q02: Which steps always needed, which only under specific conditions?
-Q03: Which steps can run parallel, which have real prerequisite dependencies?
-Q04: What facts does each step consume and produce?
-Q05: Each fact source + type + time range + minimum completeness?
-Q06: Which context resident cache / on-demand read / compressed to index / reference-only?
-Q07: Which results must pass evidence gate or user confirmation?
-Q08: On failure: retry / rollback / pause / downgrade / terminate?
-Q09: Which positions need checkpoint + frozen context?
-Q10: How to reconstruct actual run path + then-visible context from process logs?
-Q11: Compared to simple function or state machine, what verifiable benefits does explicit graph bring?
-```
-
-### Exit Deliverables (7 Items)
-
-```
-DELIVERABLE_01: Scenario scope + exit conditions
-DELIVERABLE_02: Node candidates + input/output context contracts
-DELIVERABLE_03: Conditional edges + loops + stop conditions
-DELIVERABLE_04: Runtime context vs checkpoints vs process records vs module long-term data boundaries
-DELIVERABLE_05: Permissions + side effects + human confirmation points
-DELIVERABLE_06: Failure + recovery + review requirements
-DELIVERABLE_07: Comparison: simple linear implementation vs native state machine vs graph runtime
-```
-
-**Decision Rule**: Only proceed to framework evaluation + minimal experiment when explicit graph demonstrably improves branch expression / recovery / observation / testing / long-term maintenance.
-
----
-
-## SECTION IV: JOINT DESIGN SCOPE
-
-### Meta
-- Lines: 164-235
-- Type: CANDIDATE_CHECKLIST + PREREQUISITE_MATERIALS
-- Tags: `#joint-design`, `#candidate-checklist`, `#NOT-CONFIRMED-SPEC`
-- Warning: Items 133-187 are PROPOSALS, NOT confirmed product requirements
-
-### Why Joint Design is Mandatory
-
-**Problem**: Studium learning process ≠ fixed pipeline.
-
-**Graph Engineering Need**: M02/M03/M04/M10 must repeatedly trigger/fork/loop based on learner performance + diagnosis + strategy + route constraints. M01/M05 create fork sessions and resume main line after completion. → Requires expressing control relations.
-
-**Context Engineering Need**: Each judgment quality depends on node-received information types + sources + completeness + time range + teaching conditions. In-progress sync info stays in current-loop context. After loop closes, enters M09 per contract. M09 personal records can反向增益 M08 via candidate/audit. → Requires expressing information relations.
-
-**Integration Model**:
-
-```
-Product Module Contracts
-  ├─ Data ownership, judgment authority, input/output
-  ↓
-Context Engineering
-  ├─ Info types, sources, completeness, cache, selection, compression, write-back
-  ↕
-Graph Engineering
-  └─ Nodes, edges, triggers, forks, loops, guards, checkpoints, recovery
-```
-
-### Candidate Checklist (16 Items - NOT Confirmed Specs)
-
-```
-STATUS: CANDIDATE_PROPOSALS
-AUTHORITY: AWAITING_MODULE_COMPOSITION_PHASE_DECISION
-ORIGINAL_LABEL: "已确认" (2026-08-16 downgraded to CANDIDATE)
-REASON: Implementation details, not product boundaries
-```
-
-**Note**: Originally labeled "confirmed" but actually runtime/implementation mechanisms. File header states "does NOT design concrete nodes/edges/Agent count/framework." Now explicitly marked as CANDIDATE checklist for second-phase joint design.
-
-**Items** (abbreviated - see full text lines 133-187):
-
-```
-CANDIDATE_01: Define bounded input/output/source/failure semantics for each runtime node
-CANDIDATE_02: Distinguish raw observation vs business fact vs intermediate inference vs alternative interpretation vs strategy decision vs formal write
-CANDIDATE_03: Distinguish current-loop sync context vs cross-module process records vs closed-loop async data
-...
-CANDIDATE_16: Define write gate for forgetting-label ordering constraint (M04 in-session "used to know, now can't answer" is candidate, only loop-close submission writes to M09 record, must exclude fatigue degradation etc. state-side interpretations first)
-```
-
-**Key Cross-Module Mechanisms** (preserved from candidate list):
-
-- M04/M15 independent extraction from same M01 process records (different output contracts)
-- M15 → M04 strict unidirectional (M04 can only send re-confirm requests)
-- M04 → M09 closed-loop evidence guard + personal formation record contract
-- M09 → M08 de-personalized candidates + auto/manual review + promotion/return/撤回 + version mechanism
-- M09 ↔ M15 no reference (linked via M01)
-- State usage gate: M05/M10 at what evidence strength + time validity let M15 readings change actions (deferred to this phase)
-
-### Prerequisite Materials (6 Items)
-
-```
-PREREQ_01: M01-M10, M14, M15 finalized responsibilities + input/output + data ownership
-           (M12 cancelled, model/services handled as implementation-phase cross-cutting)
-           Status: Single-module review closed 2026-08-03
-           Note: THIS PHASE = "module composition & system design" per product doc
-PREREQ_02: M08/M09 storage structure + selection conclusion (blocks M09 scale issue)
-           M09 scale problem: not overwriting old conclusions → monotonic growth
-           Three directions all blocked on storage selection:
-           - Restructure M09 itself
-           - Historical versions transfer to different module (e.g., M01)
-           - M09 split into historical zone + current-edge zone
-PREREQ_03: M11/M13 valuable context + permissions + logging + review requirements
-PREREQ_04: M04-01 dynamic diagnosis context classification + caching problem
-PREREQ_05: M04-02 closed-loop write + candidate + review problem
-PREREQ_06: Each product module normal path + fork path + failure path + human confirmation requirements
-```
-
-### Explicit Non-Decisions (6 Items)
-
-```
-NON_DECISION_01: LangGraph / Microsoft Agent Framework / Temporal / other runtime
-NON_DECISION_02: Single agent / multi-agent / plain function nodes / hybrid form
-NON_DECISION_03: One product module = one node or Agent (anti-pattern)
-NON_DECISION_04: One giant graph covering all behaviors (anti-pattern)
-NON_DECISION_05: Using context window size to反推 which authoritative info product should discard (anti-pattern)
-NON_DECISION_06: Letting model self-decide formal data ownership / promotion permissions / closed-loop goals (anti-pattern)
-```
-
----
-
-## STAGE 6 ACTIVATION MARKER
-
-```
-CURRENT_STATUS: ACTIVE — 阶段 6（执行图 / 上下文编排）入口协议，2026-09-21 启动
-FOLDER_ROLE: STAGE6_ENTRY_PROTOCOL
-ACTIVATION_GATE: MODULE_CONTRACTS_FINALIZED = MET（2026-09-21）
-STILL_VOID: 已删 `06-M08技术选型.md` 的实验结论与 schema 提案（不得据此定 M08/M09 结构）
-```
-
-模块契约冻结后，本目录的**首会协议（SECTION III）与红线段（SECTION I）**为阶段 6 的工作方法；**SECTION IV 的暂缓项（DEFER_01–15）与非决策清单**仍按原样适用。
-
----
-
-## Cross-Reference Map
-
-**Internal**:
-- Section I (Terminology): lines 1-85
-- Section II (Studium Association): lines 87-122
-- Section III (Entry Protocol): lines 124-162
-- Section IV (Joint Design Scope): lines 164-235
-
-**External** (Machine-Readable):
-- `MOD:M08` = Module M08 (Knowledge Structure & Concept Relations)
-- `MOD:M09` = Module M09 (Dynamic Learner Model)
-- `MOD:M15` = Module M15 (Learner State & Conditions)
-- `doc_05` = 06-M08技术选型.md（2026-09-19 已删除）
-- `CP-##` = Checkpoint from `docs/实现基线/模块检查点.md`
-- `C#` = Constraint defined in this README（原 `_INDEX.md`，2026-09-19 删除）
-- `P##` = Prohibition from `docs/实现基线/模块关系提取.json`
-- `T##` = Temporal bound from relationship baseline
-
-**Downstream Citations** (updated 2026-09-09):
-- `docs/实现基线/模块检查点.md:81` → lines 88-122 (entry protocol)
-- `docs/实现基线/模块检查点.md:369` → lines 19-35 (terminology boundaries)
-- `docs/实现基线/模块检查点.md:945` → lines 19-35,88-122 (checkpoints + protocol)
-- `docs/实现基线/模块关系提取.md:15` → lines 3-13,124-187 (joint design positioning)
+# 图工程调研：阶段 6 工作方法
+
+> 状态：**现行**（2026-09-21 启用，2026-09-23 按技术方向改定重写）。
+> 定位：阶段 6「执行图 + 上下文编排」的**工作方法**——红线、首会协议、已定与暂缓项。**不新增产品结论**；产品结论只认 `../模块需求设计/模块审查单/`。
+> 技术方向已定为 ITS 结构 + 大模型隔离判断（`../Harness设计/00-技术方向确认.md`），本页中原先"待决"的运行形态问题已据此收口，见 §4。
+
+## 1 术语
+
+| 术语 | 本仓库含义 |
+| --- | --- |
+| 图工程 | 研究标签，不是成熟学科。指：下一步跑哪个判断点、分叉 / 合并 / 循环 / 暂停 / 恢复、过关条件 |
+| 上下文工程 | 每个判断点看到什么信息、从哪来、怎样分类 / 缓存 / 校验 / 压缩、结果按什么契约写回 |
+| 节点 | 一个**有界输入 + 有界输出 + 只做一件事**的判断点；在本项目中 = 一次隔离的大模型调用或一段确定性程序，**不是 agent** |
+
+## 2 红线
+
+| # | 红线 | 含义 |
+| --- | --- | --- |
+| C1 | 四种图分开 | ① 产品模块图（谁拥有什么数据与判断权）② 执行流程图（一次任务经过哪些步骤）③ 知识关系图（概念 / 方法间的关系）④ 学习者状态变化图（状态随证据的变化）。共用"点和边"也不得合并 |
+| C2 | 图工程 ≠ 上下文工程 | 两者必须一起设计，但职责分开：没有上下文契约，图只有控制箭头；没有图的生命周期，上下文不知道何时装配、失效、冻结、晋升 |
+| C4 | M09 ↔ M15 无引用 | 两者双向不读；"闭环完成时的状态"经 M01 链接获得 |
+| C5 | 模块 ≠ 节点 | 一个模块可提供多个判断点，或只提供数据 / 规则；一个判断点可在读清单范围内组合多个模块的只读结果 |
+| C6 | 反模式 | 一个模块 = 一个节点或 agent；一张覆盖所有行为的巨图；用上下文窗口大小反推该丢哪些权威信息；让模型自决数据归属、晋升权限或闭环目标 |
+
+## 3 为什么需要"图式"运行（问题清单）
+
+| # | 问题 |
+| --- | --- |
+| P1 | 学习者输入对应不同任务类型，不是单一固定流水线 |
+| P2 | 教学 / 练习 / 诊断 / 导航之间有条件分支和回流 |
+| P3 | 资料、概念关系、历史证据可能需要独立或并行读取 |
+| P4 | 学习者状态更新需要证据、来源分层与时间标注 |
+| P5 | 各模块产出、来源、依据须前端可见（横切原则 5） |
+| P6 | 部分流程必须暂停，等学习者作答或完成练习 |
+| P7 | 长期项目要能保存位置、日后恢复 |
+| P8 | 不同失败需要不同处理，不是整条流水线全有或全无 |
+| P9 | 产品须能说明每个判断用了哪些资料、证据与约束 |
+| P10 | 进行中闭环的同步上下文 ≠ M09 已结束闭环的异步记录，必须分开 |
+| P11 | M04 → M09 的守卫 ≠ M09 → M08 的候选审计，标准不同 |
+
+## 4 已定与暂缓
+
+| 问题 | 状态 | 结论 / 出处 |
+| --- | --- | --- |
+| 是否存在一张"学习回合总图" | 已定 | 不画全系统总图；按单一真实场景推进（§5） |
+| 模块是节点还是子图 | 已定 | 模块 = 若干隔离判断调用；M04 = 主体 + 闭环守卫子模块 + 阈值跨闭环子模块（Harness A-05） |
+| 路由靠规则、模型还是混合 | 已定 | 流程由确定性程序（状态机）控制，不交给模型自决（`00` §定位 原则 3） |
+| 单 agent / 多 agent / 纯流程 | 已定 | 不做 agent；确定性程序 + 固定判断点上的隔离调用 |
+| 是否需要专门的图运行框架 | 已定（第一版） | 第一版纯 Python 自写状态机；出现分叉 + 返回、多闭环并行时再评估（首选 LangGraph） |
+| 每个判断点的信息类型、最小完整度、来源 | 已定 | 读清单（`02` §6）+ 缺料 / 冲突规则（A-03，`01-*` 各模块节） |
+| 状态使用闸门（M05 / M10 何时让 M15 读数改变行动） | 已定 | `01-状态层设计.md` §9.12 |
+| 单次运行状态 vs 模块长期数据 | 已定（方向） | 会话与域数据分离（`00` §4） |
+| 摘要 / 压缩内容只能作索引，如何回到原文 | 已定 | M04-01 缓存要求；`02` §3.7 |
+| 哪些步骤可并行 | 暂缓 | 原型中定 |
+| 哪些上下文常驻缓存 / 按需读取 / 只留引用 | 暂缓 | Harness A-04，原型中定 |
+
+## 5 首会协议：单一真实场景（不是全系统图）
+
+选一个边界清楚、当前需要的真实场景，回答以下 11 问：
+
+| # | 问题 |
+| --- | --- |
+| Q01 | 学习者能观察到的起点和终点是什么 |
+| Q02 | 哪些步骤总是需要，哪些只在特定条件下需要 |
+| Q03 | 哪些步骤可并行，哪些有真实的前置依赖 |
+| Q04 | 每一步消费和产出哪些事实 |
+| Q05 | 每个事实的来源、类型、时间范围、最小完整度 |
+| Q06 | 哪些上下文常驻缓存 / 按需读取 / 压缩为索引 / 只留引用 |
+| Q07 | 哪些结果必须过证据门或学习者确认 |
+| Q08 | 失败时：重试 / 回滚 / 暂停 / 降级 / 终止 |
+| Q09 | 哪些位置需要检查点和冻结上下文 |
+| Q10 | 如何从过程记录重建实际运行路径与当时可见的上下文 |
+| Q11 | 与简单函数或状态机相比，显式的图带来哪些**可验证**的好处 |
+
+交付物：
+
+| # | 交付物 |
+| --- | --- |
+| D01 | 场景范围与退出条件 |
+| D02 | 判断点候选及其输入 / 输出上下文契约 |
+| D03 | 条件边、循环与停止条件 |
+| D04 | 运行时上下文 / 检查点 / 过程记录 / 模块长期数据的边界 |
+| D05 | 权限、副作用与学习者确认点 |
+| D06 | 失败、恢复与审查要求 |
+| D07 | 对比：简单线性实现 vs 状态机 vs 图运行时 |
+
+**决策规则**：只有当显式的图在分支表达、恢复、观察、测试或长期维护上**明显更好**时，才进入框架评估。第一个场景 = 单闭环最小原型（`00` §实施顺序 第 1 步）。
