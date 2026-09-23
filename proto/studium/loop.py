@@ -1,10 +1,9 @@
 """单闭环最小原型（CLI）：确定性状态机 + 固定判断点上的隔离模型调用。
 
-    python -m studium.loop --scene scenes/kernel.md --mode split
-    python -m studium.loop --scene scenes/kernel.md --mode single
+    python3 -m studium.loop --scene scenes/kernel.md
 
-split：学习者输入 → M04 诊断 →（提议结束则）守卫 → M10 策略 → M02 回复
-single：学习者输入 → 单一模型回复（同样信息）→（提议结束则）守卫        （对照组）
+每轮：学习者输入 → 教学调用（诊断记录 + 给学习者的话）→（提议结束则）闭环守卫（独立调用）
+教学主链 M04 / M10 / M02 / M03 在同一次调用内完成（M02 审查单「运行方式」）。
 """
 
 import argparse
@@ -16,30 +15,34 @@ from pathlib import Path
 from . import assemble, llm
 from .store import Session
 
+DIAG = "【诊断记录】"
+TO_LEARNER = "【给学习者】"
 END = "【提议结束】"
 PRACTICE = "【练习条件】"
 PASS = "【守卫结论】通过"
 
 
-def _split_hidden(text: str) -> tuple[str, str | None, bool]:
-    """拆出学习者看不到的【练习条件】与【提议结束】。"""
-    proposed = END in text
-    text = text.replace(END, "").strip()
-    if PRACTICE in text:
-        visible, hidden = text.split(PRACTICE, 1)
-        return visible.strip(), hidden.strip(), proposed
-    return text, None, proposed
+def parse_teach(text: str) -> tuple[str, str, str | None, bool]:
+    """拆成：诊断记录、给学习者的话、练习条件、是否提议结束。"""
+    diagnosis, _, rest = text.partition(TO_LEARNER)
+    diagnosis = diagnosis.replace(DIAG, "").strip()
+    if not rest:  # 未按格式输出：整段当回复，诊断记录记为缺失
+        rest, diagnosis = text, "（本轮未按格式输出诊断记录）"
+    proposed = END in rest
+    rest = rest.replace(END, "").strip()
+    visible, _, hidden = rest.partition(PRACTICE)
+    return diagnosis, visible.strip(), (hidden.strip() or None), proposed
 
 
 class Loop:
-    def __init__(self, session: Session, scene: str, mode: str, models: dict):
-        self.s, self.scene, self.mode, self.models = session, scene, mode, models
+    def __init__(self, session: Session, scene: str, models: dict):
+        self.s, self.scene, self.models = session, scene, models
         self.turn = 0
         self.guard_note: str | None = None
         self.closed = False
 
-    def _call(self, point: str, system: str, user: str) -> str:
-        res = llm.call(self.models[point], assemble.prompt(system), user)
+    def _call(self, point: str, prompt_name: str, user: str) -> str:
+        res = llm.call(self.models[point], assemble.prompt(prompt_name), user)
         self.s.log_call(self.turn, point, res)
         return res.text
 
@@ -50,62 +53,41 @@ class Loop:
             (self.s.root / "closure.md").write_text(out + "\n", encoding="utf-8")
             self.closed = True
             return True
-        self.guard_note = out  # 供下一轮 M10 / M04 作为核对事实读取，不是 M04 自身结论
+        self.guard_note = out  # 核对事实，供下一轮教学调用读取；不是诊断记录的回灌
         return False
 
     def step(self, learner_text: str) -> str:
         self.turn += 1
         self.s.append("学习者", learner_text)
-
-        if self.mode == "split":
-            m04 = self._call("m04", "m04", assemble.for_m04(self.s, self.scene, self.turn, self.guard_note))
-            self.s.write_asset(self.turn, "m04", m04)
-            if END in m04 and self._guard():
-                return self._close()
-            m10 = self._call("m10", "m10", assemble.for_m10(self.s, self.scene, self.turn, self.guard_note))
-            self.s.write_asset(self.turn, "m10", m10)
-            reply = self._call("m02", "m02", assemble.for_m02(self.s, self.scene, self.turn))
-            self.s.write_asset(self.turn, "m02", reply)
-            visible, hidden, _ = _split_hidden(reply)
-        else:
-            reply = self._call("single", "single", assemble.for_single(self.s, self.scene, self.guard_note))
-            self.s.write_asset(self.turn, "single", reply)
-            visible, hidden, proposed = _split_hidden(reply)
-            if proposed and self._guard():
-                return self._close()
-
+        raw = self._call("teach", "teach", assemble.for_teach(self.s, self.scene, self.guard_note))
+        diagnosis, visible, hidden, proposed = parse_teach(raw)
+        self.s.write_asset(self.turn, "diagnosis", diagnosis)
+        self.s.write_asset(self.turn, "reply", visible)
+        if proposed and self._guard():
+            msg = "闭环守卫已确认验收范围内的各条主张都有证据，本闭环结束。闭环总结见 closure.md。"
+            self.s.append("系统", msg)
+            return msg
         self.s.append("系统", visible)
         if hidden:
             self.s.append("练习条件", hidden.replace("\n", " ； "))
         return visible
 
-    def _close(self) -> str:
-        msg = "闭环守卫已确认验收范围内的各条主张都有证据，本闭环结束。闭环总结见 closure.md。"
-        self.s.append("系统", msg)
-        return msg
-
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Studium 单闭环最小原型")
     ap.add_argument("--scene", required=True, type=Path)
-    ap.add_argument("--mode", choices=["split", "single"], default="split")
     ap.add_argument("--run", help="运行名（默认按时间生成）")
-    ap.add_argument("--m04", default="opus")
+    ap.add_argument("--teach", default="opus")
     ap.add_argument("--guard", default="opus")
-    ap.add_argument("--m10", default="sonnet")
-    ap.add_argument("--m02", default="sonnet")
-    ap.add_argument("--single", default="opus")
     a = ap.parse_args(argv)
 
-    name = a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-{a.mode}"
+    name = a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}"
     root = Path(__file__).resolve().parent.parent / "runs" / name
     session = Session(root)
     shutil.copy(a.scene, root / "scene.md")
-    scene = a.scene.read_text(encoding="utf-8")
-    models = {"m04": a.m04, "guard": a.guard, "m10": a.m10, "m02": a.m02, "single": a.single}
-    loop = Loop(session, scene, a.mode, models)
+    loop = Loop(session, a.scene.read_text(encoding="utf-8"), {"teach": a.teach, "guard": a.guard})
 
-    print(f"运行目录：{root}\n模式：{a.mode}。输入你的话，空行结束一次输入；/quit 退出。\n")
+    print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/quit 退出。\n")
     while not loop.closed:
         lines = []
         try:
