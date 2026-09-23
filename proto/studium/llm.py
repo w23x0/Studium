@@ -33,7 +33,9 @@ def call(model: str, system: str, user: str, timeout: int = 600) -> Result:
         cwd=_ISOLATED_CWD, timeout=timeout, env=os.environ.copy(),
     )
     if proc.returncode != 0:
-        raise RuntimeError(f"claude -p 失败（{proc.returncode}）：{proc.stderr.strip()[:500]}")
+        detail = (proc.stderr.strip() or proc.stdout.strip() or "（无输出）")[:800]
+        raise RuntimeError(f"claude -p 失败（退出码 {proc.returncode}）：{detail}\n"
+                           f"排查：在同一终端运行  echo hi | claude -p  看能否正常返回")
     data = json.loads(proc.stdout)
     if data.get("is_error"):
         raise RuntimeError(f"模型调用出错：{data.get('result')}")

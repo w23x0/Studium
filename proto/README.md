@@ -14,7 +14,7 @@ python3 -m studium.sim --scene scenes/kernel.md --learner learners/typical.md   
 python3 -m studium.compare runs/<甲> runs/<乙>                                     # 两次运行盲评
 ```
 
-每轮：学习者输入 → **教学调用**（先写不给学习者看的诊断记录，再写给学习者的话）→ 提议结束时触发**闭环守卫**（独立调用）。输入一段话后按空行提交；`/quit` 退出。模型用 `--teach / --guard` 指定（默认都是 opus）。
+每轮：学习者输入 → **教学调用**（先写不放进回复、学习者可查阅的诊断记录，再写给学习者的话）→ 提议结束时触发**闭环守卫**（独立调用）。输入一段话后按空行提交；`/quit` 退出。模型用 `--teach / --guard` 指定（默认都是 opus）。
 
 ## 文件
 
