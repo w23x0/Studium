@@ -73,5 +73,5 @@ research_tree/logs/**
 !research_tree/logs/**/*.md
 
 
-# Studium prototype runtime data
-proto/runs/
+# Studium prototype runs 进 git（实验证据）；calls.log 不受 *.log 忽略
+!proto/runs/**/calls.log

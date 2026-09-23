@@ -7,6 +7,7 @@
       →（提议结束则）闭环守卫（独立调用）
 教学主链 M04 / M10 / M02 / M03 在同一次调用内完成（M02 审查单「运行方式」）。
 改线不来回踢：每轮至多调用一次 M05；M05 读自己的路线偏差记录，不做与已做调整相反的改动。
+会中不加深：学习者已超出范围 → 转确认、尽快结束，更深内容记为“下一闭环建议”（M05 审查单）。
 """
 
 import argparse
@@ -24,7 +25,8 @@ END = "【提议结束】"
 PRACTICE = "【练习条件】"
 PASS = "【守卫结论】通过"
 BASIS = "[改线依据]"
-ROUTE_ACTION, ROUTE_REASON, ROUTE_NOTE, ROUTE_SCENE = "【路线动作】", "【理由】", "【调整说明】", "【新场景】"
+ROUTE_ACTION, ROUTE_REASON, ROUTE_NOTE, ROUTE_NEXT, ROUTE_SCENE = (
+    "【路线动作】", "【理由】", "【调整说明】", "【下一闭环建议】", "【新场景】")
 
 
 def parse_teach(text: str) -> tuple[str, str, str | None, bool]:
@@ -60,15 +62,16 @@ def _field(text: str, name: str, following: list[str]) -> str:
     return rest.strip()
 
 
-def parse_route(text: str) -> tuple[str, str, str, str | None]:
-    """拆成：路线动作、理由、调整说明、新场景（维持时为 None）。"""
-    action = _field(text, ROUTE_ACTION, [ROUTE_REASON, ROUTE_NOTE, ROUTE_SCENE])
-    reason = _field(text, ROUTE_REASON, [ROUTE_NOTE, ROUTE_SCENE])
-    note = _field(text, ROUTE_NOTE, [ROUTE_SCENE])
+def parse_route(text: str) -> tuple[str, str, str, str, str | None]:
+    """拆成：路线动作、理由、调整说明、下一闭环建议、新场景（维持时为 None）。"""
+    action = _field(text, ROUTE_ACTION, [ROUTE_REASON, ROUTE_NOTE, ROUTE_NEXT, ROUTE_SCENE])
+    reason = _field(text, ROUTE_REASON, [ROUTE_NOTE, ROUTE_NEXT, ROUTE_SCENE])
+    note = _field(text, ROUTE_NOTE, [ROUTE_NEXT, ROUTE_SCENE])
+    nxt = _field(text, ROUTE_NEXT, [ROUTE_SCENE])
     scene = _field(text, ROUTE_SCENE, []) if ROUTE_SCENE in text else ""
     if action.startswith("维持") or "验收范围" not in scene:
         scene = None  # 维持，或新场景缺失 / 不完整 → 不改范围
-    return action or "（未按格式给出）", reason, note, scene
+    return action or "（未按格式给出）", reason, note, nxt, scene
 
 
 class Loop:
@@ -105,10 +108,10 @@ class Loop:
             print(f"[M05 调用失败，维持原范围：{e}]", file=sys.stderr)
             return False
         self.s.write_asset(self.turn, "route", out)
-        action, reason, note, scene = parse_route(out)
+        action, reason, note, nxt, scene = parse_route(out)
         self.s.append_route(
             f"## 第 {self.turn} 轮\n- 改线依据：{basis}\n- 路线动作：{action}\n- 理由：{reason}\n"
-            f"- 调整说明：{note or '无'}\n- 范围版本：{f'turns/{self.turn:03d}/scene.md' if scene else '未改'}"
+            f"- 调整说明：{note or '无'}\n- 下一闭环建议：{nxt or '无'}\n- 范围版本：{f'turns/{self.turn:03d}/scene.md' if scene else '未改'}"
         )
         self.s.append("路径", f"第 {self.turn} 轮改线依据交 M05：{action}。理由：{reason}"
                       + (f" 调整：{note}" if scene else ""))

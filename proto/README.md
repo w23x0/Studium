@@ -14,7 +14,7 @@ python3 -m studium.sim --scene scenes/kernel.md --learner learners/typical.md   
 python3 -m studium.compare runs/<甲> runs/<乙>                                     # 两次运行盲评
 ```
 
-每轮：学习者输入 → **教学调用**（先写不放进回复、学习者可查阅的诊断记录，再写给学习者的话）→ 诊断记录写出**改线依据**（缺前置 / 已超出范围）时触发 **M05 路线调用**（独立调用，改写当前闭环的验收范围：补前置 / 转确认 / 加深 / 维持）→ 范围改了则按新范围重做一次教学调用 → 提议结束时触发**闭环守卫**（独立调用）。改线不来回踢：每轮至多一次 M05，M05 读自己的路线偏差记录。输入一段话后按空行提交；`/quit` 退出。模型用 `--teach / --guard / --route` 指定（默认都是 opus）。
+每轮：学习者输入 → **教学调用**（先写不放进回复、学习者可查阅的诊断记录，再写给学习者的话）→ 诊断记录写出**改线依据**（缺前置 / 已超出范围）时触发 **M05 路线调用**（独立调用，改写当前闭环的验收范围：补前置 / 转确认 / 维持；会中不加深，学习者已超出范围就转确认、尽快结束，更深内容记为下一闭环建议）→ 范围改了则按新范围重做一次教学调用 → 提议结束时触发**闭环守卫**（独立调用）。改线不来回踢：每轮至多一次 M05，M05 读自己的路线偏差记录。输入一段话后按空行提交；`/quit` 退出。模型用 `--teach / --guard / --route` 指定（默认都是 opus）。
 
 ## 文件
 
@@ -28,7 +28,7 @@ python3 -m studium.compare runs/<甲> runs/<乙>                                
 | `studium/sim.py` · `compare.py` | 模拟学习者（`learners/`）与盲评 |
 | `scenes/` | 场景：`kernel.md` 线性变换的核（大学）、`newton2.md` 牛顿第二定律（高中）；验收范围按“主张 + 证据”写，每条标【教学】/【确认】 |
 | `learners/` | 模拟学习者：`typical.md` 典型大一（核）、`knows-newton2.md` 已会牛二（测改线） |
-| `runs/` | 运行数据（不进 git）：`transcript.md`（含系统侧 `[练习条件]` `[路径]` 行）、`turns/NNN/{diagnosis,reply,guard,route,scene}.md`（改线轮另存 `*-superseded.md`）、`route.md` 路线偏差记录、`calls.log`、`closure.md` |
+| `runs/` | 运行记录（**进 git**，实验证据；索引见 `runs/README.md`）：`transcript.md`（含系统侧 `[练习条件]` `[路径]` 行）、`turns/NNN/{diagnosis,reply,guard,route,scene}.md`（改线轮另存 `*-superseded.md`）、`route.md` 路线偏差记录、`calls.log`、`closure.md` |
 
 ## v0 与设计的已知差距
 

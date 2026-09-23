@@ -1,0 +1,3 @@
+mode=split
+turns=12
+status=未结束（达到 12 轮上限）
