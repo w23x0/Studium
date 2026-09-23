@@ -47,3 +47,14 @@ def for_teach(s: Session, scene: str, guard_note: str | None) -> str:
         _section("对话本体", _need(s.numbered_transcript(), "对话本体")),
     ]
     return "\n".join(parts)
+
+
+def for_route(scene: str, basis: str, route_log: str | None) -> str:
+    """M05 只读场景、改线依据、自己的路线偏差记录；不读对话本体、不判掌握。"""
+    parts = [
+        _section("当前场景", _need(scene, "当前场景")),
+        _section("改线依据（诊断方本轮报出）", _need(basis, "改线依据")),
+    ]
+    parts.append(_section("路线偏差记录", route_log) if route_log
+                 else _section("路线偏差记录", "（本闭环尚无调整）"))
+    return "\n".join(parts)

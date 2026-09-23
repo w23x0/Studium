@@ -2,8 +2,11 @@
 
     python3 -m studium.loop --scene scenes/kernel.md
 
-每轮：学习者输入 → 教学调用（诊断记录 + 给学习者的话）→（提议结束则）闭环守卫（独立调用）
+每轮：学习者输入 → 教学调用（诊断记录 + 给学习者的话）
+      →（诊断记录写出改线依据则）M05 路线调用（独立）→ 改了范围就按新范围重做一次教学调用
+      →（提议结束则）闭环守卫（独立调用）
 教学主链 M04 / M10 / M02 / M03 在同一次调用内完成（M02 审查单「运行方式」）。
+改线不来回踢：每轮至多调用一次 M05；M05 读自己的路线偏差记录，不做与已做调整相反的改动。
 """
 
 import argparse
@@ -20,6 +23,8 @@ TO_LEARNER = "【给学习者】"
 END = "【提议结束】"
 PRACTICE = "【练习条件】"
 PASS = "【守卫结论】通过"
+BASIS = "[改线依据]"
+ROUTE_ACTION, ROUTE_REASON, ROUTE_NOTE, ROUTE_SCENE = "【路线动作】", "【理由】", "【调整说明】", "【新场景】"
 
 
 def parse_teach(text: str) -> tuple[str, str, str | None, bool]:
@@ -32,6 +37,38 @@ def parse_teach(text: str) -> tuple[str, str, str | None, bool]:
     rest = rest.replace(END, "").strip()
     visible, _, hidden = rest.partition(PRACTICE)
     return diagnosis, visible.strip(), (hidden.strip() or None), proposed
+
+
+def parse_basis(diagnosis: str) -> str | None:
+    """取诊断记录里的 [改线依据] 段；写“无”或缺失则返回 None。"""
+    _, found, rest = diagnosis.partition(BASIS)
+    if not found:
+        return None
+    body = []
+    for line in rest.splitlines():
+        if body and line.lstrip().startswith("[") and not line.lstrip().startswith("[改线"):
+            break  # 下一个 [段名]
+        body.append(line)
+    text = "\n".join(body).strip()
+    return None if not text or text.lstrip("-*•： ").startswith("无") else text
+
+
+def _field(text: str, name: str, following: list[str]) -> str:
+    _, _, rest = text.partition(name)
+    for nxt in following:
+        rest = rest.partition(nxt)[0]
+    return rest.strip()
+
+
+def parse_route(text: str) -> tuple[str, str, str, str | None]:
+    """拆成：路线动作、理由、调整说明、新场景（维持时为 None）。"""
+    action = _field(text, ROUTE_ACTION, [ROUTE_REASON, ROUTE_NOTE, ROUTE_SCENE])
+    reason = _field(text, ROUTE_REASON, [ROUTE_NOTE, ROUTE_SCENE])
+    note = _field(text, ROUTE_NOTE, [ROUTE_SCENE])
+    scene = _field(text, ROUTE_SCENE, []) if ROUTE_SCENE in text else ""
+    if action.startswith("维持") or "验收范围" not in scene:
+        scene = None  # 维持，或新场景缺失 / 不完整 → 不改范围
+    return action or "（未按格式给出）", reason, note, scene
 
 
 class Loop:
@@ -56,17 +93,51 @@ class Loop:
         self.guard_note = out  # 核对事实，供下一轮教学调用读取；不是诊断记录的回灌
         return False
 
+    def _teach(self) -> tuple[str, str, str | None, bool]:
+        raw = self._call("teach", "teach", assemble.for_teach(self.s, self.scene, self.guard_note))
+        return parse_teach(raw)
+
+    def _route(self, basis: str) -> bool:
+        """M05：按改线依据调整当前闭环的验收范围，记为路径事实。返回范围是否改了。"""
+        try:
+            out = self._call("route", "route", assemble.for_route(self.scene, basis, self.s.read_route_log()))
+        except Exception as e:  # 路线调用失败：维持原范围继续，不影响本轮教学
+            print(f"[M05 调用失败，维持原范围：{e}]", file=sys.stderr)
+            return False
+        self.s.write_asset(self.turn, "route", out)
+        action, reason, note, scene = parse_route(out)
+        self.s.append_route(
+            f"## 第 {self.turn} 轮\n- 改线依据：{basis}\n- 路线动作：{action}\n- 理由：{reason}\n"
+            f"- 调整说明：{note or '无'}\n- 范围版本：{f'turns/{self.turn:03d}/scene.md' if scene else '未改'}"
+        )
+        self.s.append("路径", f"第 {self.turn} 轮改线依据交 M05：{action}。理由：{reason}"
+                      + (f" 调整：{note}" if scene else ""))
+        if not scene:
+            return False
+        self.s.write_asset(self.turn, "scene", scene)
+        self.scene = scene
+        self.guard_note = None  # 旧核对结果按旧编号写，范围改了就作废
+        return True
+
     def step(self, learner_text: str) -> str:
         self.turn += 1
         mark = self.s.size()
         self.s.append("学习者", learner_text)
         try:
-            raw = self._call("teach", "teach", assemble.for_teach(self.s, self.scene, self.guard_note))
+            diagnosis, visible, hidden, proposed = self._teach()
         except Exception:
             self.s.truncate(mark)
             self.turn -= 1
             raise
-        diagnosis, visible, hidden, proposed = parse_teach(raw)
+        basis = parse_basis(diagnosis)
+        if basis and self._route(basis):
+            # 本轮回复是按旧范围写的：按新范围重做一次；重做中再报的依据留到下一轮（每轮至多一次 M05）
+            self.s.write_asset(self.turn, "diagnosis-superseded", diagnosis)
+            self.s.write_asset(self.turn, "reply-superseded", visible)
+            try:
+                diagnosis, visible, hidden, proposed = self._teach()
+            except Exception as e:
+                print(f"[按新范围重做失败，沿用本轮原回复：{e}]", file=sys.stderr)
         self.s.write_asset(self.turn, "diagnosis", diagnosis)
         self.s.write_asset(self.turn, "reply", visible)
         if proposed and self._guard():
@@ -85,13 +156,14 @@ def main(argv=None):
     ap.add_argument("--run", help="运行名（默认按时间生成）")
     ap.add_argument("--teach", default="opus")
     ap.add_argument("--guard", default="opus")
+    ap.add_argument("--route", default="opus")
     a = ap.parse_args(argv)
 
     name = a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}"
     root = Path(__file__).resolve().parent.parent / "runs" / name
     session = Session(root)
     shutil.copy(a.scene, root / "scene.md")
-    loop = Loop(session, a.scene.read_text(encoding="utf-8"), {"teach": a.teach, "guard": a.guard})
+    loop = Loop(session, a.scene.read_text(encoding="utf-8"), {"teach": a.teach, "guard": a.guard, "route": a.route})
 
     print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/quit 退出。\n")
     while not loop.closed:

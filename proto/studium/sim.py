@@ -12,7 +12,7 @@ from . import llm
 from .loop import Loop
 from .store import Session
 
-OPENING = "我想学线性变换的核。"
+OPENING = "我想学线性变换的核。"  # 默认开场；其他场景用 --opening
 
 
 def learner_reply(persona: str, visible_dialogue: str, model: str) -> str:
@@ -20,7 +20,8 @@ def learner_reply(persona: str, visible_dialogue: str, model: str) -> str:
     return llm.call(model, persona, user).text
 
 
-def run(scene_path: Path, persona_path: Path, turns: int, name: str, learner_model: str, models: dict) -> Path:
+def run(scene_path: Path, persona_path: Path, turns: int, name: str, learner_model: str, models: dict,
+        opening: str = OPENING) -> Path:
     root = Path(__file__).resolve().parent.parent / "runs" / name
     session = Session(root)
     shutil.copy(scene_path, root / "scene.md")
@@ -28,7 +29,7 @@ def run(scene_path: Path, persona_path: Path, turns: int, name: str, learner_mod
     loop = Loop(session, scene_path.read_text(encoding="utf-8"), models)
     persona = persona_path.read_text(encoding="utf-8")
 
-    msg = OPENING
+    msg = opening
     for _ in range(turns):
         loop.step(msg)
         if loop.closed:
@@ -46,10 +47,11 @@ def main(argv=None):
     ap.add_argument("--turns", type=int, default=12)
     ap.add_argument("--run")
     ap.add_argument("--learner-model", default="sonnet")
+    ap.add_argument("--opening", default=OPENING)
     a = ap.parse_args(argv)
     name = a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-sim"
-    models = {"teach": "opus", "guard": "opus"}
-    root = run(a.scene, a.learner, a.turns, name, a.learner_model, models)
+    models = {"teach": "opus", "guard": "opus", "route": "opus"}
+    root = run(a.scene, a.learner, a.turns, name, a.learner_model, models, a.opening)
     print((root / "result.txt").read_text(encoding="utf-8"), f"目录：{root}", sep="")
 
 

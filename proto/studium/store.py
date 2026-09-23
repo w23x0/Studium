@@ -2,7 +2,8 @@
 
 目录结构（一个会话 = 一个闭环）：
     runs/<会话>/
-        scene.md                 闭环目标与验收范围（M05 给定，本原型手写）
+        scene.md                 闭环目标与验收范围（初版手写；M05 改线后的版本在 turns/NNN/scene.md）
+        route.md                 路线偏差记录（M05 自有，只追加）
         transcript.md            对话本体（只追加，带行号引用），含学习者看不到的【练习条件】
         turns/NNN/<模块>.md      每轮各判断点的产出资产
         calls.log                每次模型调用：判断点、实际模型、token、耗时
@@ -39,9 +40,9 @@ class Session:
         return "\n".join(f"transcript.md:{i} {line}" for i, line in enumerate(lines, 1))
 
     def learner_view(self) -> str:
-        """学习者能看到的对话（去掉【练习条件】这类系统侧记录）。"""
+        """学习者能看到的对话（去掉【练习条件】、[路径] 这类系统侧记录）。"""
         lines = self.transcript.read_text(encoding="utf-8").splitlines()
-        return "\n".join(l for l in lines if not l.startswith("[练习条件]"))
+        return "\n".join(l for l in lines if not l.startswith(("[练习条件]", "[路径]")))
 
     # ---- 轮次资产 ----
     def turn_dir(self, n: int) -> Path:
@@ -68,6 +69,18 @@ class Session:
             if p.exists():
                 return p.read_text(encoding="utf-8")
         return None
+
+    # ---- 路线偏差记录（M05 自有） ----
+    @property
+    def route_log(self) -> Path:
+        return self.root / "route.md"
+
+    def read_route_log(self) -> str | None:
+        return self.route_log.read_text(encoding="utf-8") if self.route_log.exists() else None
+
+    def append_route(self, text: str) -> None:
+        with self.route_log.open("a", encoding="utf-8") as f:
+            f.write(text.strip() + "\n\n")
 
     def log_call(self, turn: int, point: str, res) -> None:
         stamp = _dt.datetime.now().isoformat(timespec="seconds")
