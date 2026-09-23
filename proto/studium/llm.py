@@ -28,6 +28,7 @@ class Result:
     input_tokens: int  # 含读缓存与写缓存
     cache_read: int
     output_tokens: int
+    requests: int  # 实际发出的请求数；>1 说明 CLI 中途续写过（输出可能不完整）
     seconds: float
 
 
@@ -59,6 +60,7 @@ def _call_oc(model: str, system: str, user: str, timeout: int) -> Result:
         input_tokens=usage.get("prompt_tokens", 0),
         cache_read=(usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0),
         output_tokens=usage.get("completion_tokens", 0),
+        requests=1,
         seconds=time.monotonic() - start,
     )
 
@@ -96,5 +98,6 @@ def call(model: str, system: str, user: str, timeout: int = 600) -> Result:
         + usage.get("cache_creation_input_tokens", 0),
         cache_read=usage.get("cache_read_input_tokens", 0),
         output_tokens=usage.get("output_tokens", 0),
+        requests=len(usage.get("iterations") or [None]),
         seconds=data.get("duration_ms", 0) / 1000,
     )

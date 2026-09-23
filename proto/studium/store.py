@@ -86,4 +86,4 @@ class Session:
         stamp = _dt.datetime.now().isoformat(timespec="seconds")
         with (self.root / "calls.log").open("a", encoding="utf-8") as f:
             f.write(f"{stamp}\tturn={turn}\t{point}\tmodel={res.model}\t"
-                    f"in={res.input_tokens}\tcache_read={res.cache_read}\tout={res.output_tokens}\t{res.seconds:.1f}s\n")
+                    f"in={res.input_tokens}\tcache_read={res.cache_read}\tout={res.output_tokens}\treq={res.requests}\t{res.seconds:.1f}s\n")

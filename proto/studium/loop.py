@@ -12,6 +12,7 @@
 
 import argparse
 import datetime as _dt
+import readline  # noqa: F401  input() 获得行编辑（方向键、中文退格）
 import shutil
 import sys
 from pathlib import Path
@@ -29,12 +30,17 @@ ROUTE_ACTION, ROUTE_REASON, ROUTE_NOTE, ROUTE_NEXT, ROUTE_SCENE = (
     "【路线动作】", "【理由】", "【调整说明】", "【下一闭环建议】", "【新场景】")
 
 
+class BadFormat(Exception):
+    pass
+
+
 def parse_teach(text: str) -> tuple[str, str, str | None, bool]:
     """拆成：诊断记录、给学习者的话、练习条件、是否提议结束。"""
     diagnosis, _, rest = text.partition(TO_LEARNER)
     diagnosis = diagnosis.replace(DIAG, "").strip()
-    if not rest:  # 未按格式输出：整段当回复，诊断记录记为缺失
-        rest, diagnosis = text, "（本轮未按格式输出诊断记录）"
+    if not rest or not diagnosis:
+        # 未按格式输出（如调用中途断开、CLI 自动续写后模型只回一句元话语）：不把它当回复发给学习者
+        raise BadFormat(text[:200])
     proposed = END in rest
     rest = rest.replace(END, "").strip()
     visible, _, hidden = rest.partition(PRACTICE)
@@ -97,8 +103,12 @@ class Loop:
         return False
 
     def _teach(self) -> tuple[str, str, str | None, bool]:
-        raw = self._call("teach", "teach", assemble.for_teach(self.s, self.scene, self.guard_note))
-        return parse_teach(raw)
+        user = assemble.for_teach(self.s, self.scene, self.guard_note)
+        try:
+            return parse_teach(self._call("teach", "teach", user))
+        except BadFormat as e:  # 重新调一次；仍不对则抛出，由 step 撤回本轮输入
+            print(f"[教学调用未按格式输出，重试一次：{e}]", file=sys.stderr)
+            return parse_teach(self._call("teach", "teach", user))
 
     def _route(self, basis: str) -> bool:
         """M05：按改线依据调整当前闭环的验收范围，记为路径事实。返回范围是否改了。"""
@@ -199,6 +209,8 @@ def main(argv=None):
             print("\n" + loop.step("\n".join(lines)) + "\n")
         except assemble.MissingInput as e:
             print(f"[缺必需输入，本次不发：{e}]", file=sys.stderr)
+        except BadFormat:
+            print("[本轮调用两次都未按格式输出，你的输入已撤回，请重新发送]", file=sys.stderr)
 
 
 if __name__ == "__main__":

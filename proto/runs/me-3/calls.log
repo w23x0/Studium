@@ -1,0 +1,17 @@
+2026-09-23T17:38:25	turn=0	design	model=claude-opus-5-5	in=1584	cache_read=0	out=2512	26.5s
+2026-09-23T17:40:13	turn=1	teach	model=claude-opus-5-5	in=3004	cache_read=0	out=1145	13.9s
+2026-09-23T17:45:56	turn=2	teach	model=claude-opus-5-5	in=3539	cache_read=984	out=2677	29.9s
+2026-09-23T17:52:41	turn=3	teach	model=claude-opus-5-5	in=4413	cache_read=984	out=3339	43.2s
+2026-09-23T18:05:48	turn=4	teach	model=claude-opus-5-5	in=16302	cache_read=6243	out=5854	64.9s
+2026-09-23T18:08:07	turn=5	teach	model=claude-opus-5-5	in=5384	cache_read=984	out=4092	45.7s
+2026-09-23T18:10:12	turn=6	teach	model=claude-opus-5-5	in=6105	cache_read=984	out=4765	51.5s
+2026-09-23T18:31:51	turn=7	teach	model=claude-opus-5-5	in=7227	cache_read=984	out=5146	54.0s
+2026-09-23T18:35:51	turn=8	teach	model=claude-opus-5-5	in=8124	cache_read=984	out=3948	43.5s
+2026-09-23T18:39:43	turn=9	teach	model=claude-opus-5-5	in=9006	cache_read=984	out=4672	51.1s
+2026-09-23T18:41:26	turn=10	teach	model=claude-opus-5-5	in=9519	cache_read=984	out=4367	47.6s
+2026-09-23T18:45:46	turn=11	teach	model=claude-opus-5-5	in=10548	cache_read=984	out=4966	53.1s
+2026-09-23T18:49:23	turn=12	teach	model=claude-opus-5-5	in=11492	cache_read=984	out=4979	50.9s
+2026-09-23T18:55:16	turn=13	teach	model=claude-opus-5-5	in=12220	cache_read=984	out=5199	55.0s
+2026-09-23T19:02:33	turn=14	teach	model=claude-opus-5-5	in=13480	cache_read=984	out=3712	40.9s
+2026-09-23T19:03:12	turn=14	guard	model=claude-opus-5-5	in=12364	cache_read=0	out=3563	37.1s
+2026-09-23T19:04:36	turn=15	teach	model=claude-opus-5-5	in=15315	cache_read=984	out=4966	54.6s
