@@ -9,10 +9,10 @@ import shutil
 from pathlib import Path
 
 from . import llm
-from .loop import Loop
+from .loop import Loop, prepare_scene
 from .store import Session
 
-OPENING = "我想学线性变换的核。"  # 默认开场；其他场景用 --opening
+OPENING = "我想学线性变换的核。"  # 手写场景的默认开场；其他场景用 --opening
 
 
 def learner_reply(persona: str, visible_dialogue: str, model: str) -> str:
@@ -20,13 +20,15 @@ def learner_reply(persona: str, visible_dialogue: str, model: str) -> str:
     return llm.call(model, persona, user).text
 
 
-def run(scene_path: Path, persona_path: Path, turns: int, name: str, learner_model: str, models: dict,
-        opening: str = OPENING) -> Path:
+def run(scene_path: Path | None, persona_path: Path, turns: int, name: str, learner_model: str, models: dict,
+        opening: str | None = None) -> Path:
     root = Path(__file__).resolve().parent.parent / "runs" / name
+    scene = prepare_scene(root, scene_path)
     session = Session(root)
-    shutil.copy(scene_path, root / "scene.md")
     shutil.copy(persona_path, root / "learner.md")
-    loop = Loop(session, scene_path.read_text(encoding="utf-8"), models)
+    loop = Loop(session, scene, models)
+    goal = root / "goal.md"  # M05 设计的闭环：开场就是学习者说出的目标
+    opening = opening or (goal.read_text(encoding="utf-8").strip() if goal.exists() else OPENING)
     persona = persona_path.read_text(encoding="utf-8")
 
     msg = opening
@@ -42,12 +44,12 @@ def run(scene_path: Path, persona_path: Path, turns: int, name: str, learner_mod
 
 def main(argv=None):
     ap = argparse.ArgumentParser()
-    ap.add_argument("--scene", required=True, type=Path)
+    ap.add_argument("--scene", type=Path, help="手写场景；省略时用 --run 目录里 M05 设计好的 scene.md")
     ap.add_argument("--learner", required=True, type=Path)
     ap.add_argument("--turns", type=int, default=12)
     ap.add_argument("--run")
-    ap.add_argument("--learner-model", default="sonnet")
-    ap.add_argument("--opening", default=OPENING)
+    ap.add_argument("--learner-model", default="oc:deepseek-v4.1-flash")
+    ap.add_argument("--opening", help="开场白（默认：goal.md 或核的开场）")
     a = ap.parse_args(argv)
     name = a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-sim"
     models = {"teach": "opus", "guard": "opus", "route": "opus"}

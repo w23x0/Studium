@@ -58,3 +58,13 @@ def for_route(scene: str, basis: str, route_log: str | None) -> str:
     parts.append(_section("路线偏差记录", route_log) if route_log
                  else _section("路线偏差记录", "（本闭环尚无调整）"))
     return "\n".join(parts)
+
+
+def for_design(goal: str, about: str | None, cold_start: bool) -> str:
+    """M05 设计闭环：读学习目标、学习者自述（条件项）、是否冷启动；v0 无 M09 / M08。"""
+    return "\n".join([
+        _section("学习目标（学习者原话）", _need(goal, "学习目标")),
+        _section("学习者自述", about) if about
+        else _section("学习者自述", "（缺：学习者未提供；已学范围只能按学段假定）"),
+        _section("是否冷启动", "是：该学习者尚无已结束闭环的记录" if cold_start else "否"),
+    ])

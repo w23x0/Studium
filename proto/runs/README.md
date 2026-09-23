@@ -13,5 +13,7 @@
 | `me-2/` | 09-23 | 牛二 | 产品负责人真人 | 只有开场一句 | 中断 |
 | `sim3-m05/` | 09-23 | 牛二 | 模拟 knows-newton2 | 8 轮未结束 | 实验 2：M05 会中加深 → 闭环不结束 |
 | `sim4-m05-noextend/` | 09-23 | 牛二 | 模拟 knows-newton2 | 6 轮守卫通过 | 实验 2：改为转确认、尽快结束后 |
+| `design-a-kernel/` | 09-23 | 核（M05 设计） | 模拟 typical | 10 轮守卫通过 | 实验 3：M05 设计闭环（有自述） |
+| `design-b-newton/` | 09-23 | 牛顿（M05 设计） | 模拟 typical-newton | 8 轮守卫通过 | 实验 3：M05 设计闭环（笼统目标、无自述） |
 
-每个运行目录：`scene.md` 初版场景 · `transcript.md` 对话本体 · `turns/NNN/` 各轮资产 · `route.md` 路线偏差记录 · `calls.log` 调用记录 · `closure.md` 闭环总结 · `result.txt`（模拟运行）。`*.out` 为模拟运行的终端输出。
+每个运行目录：`goal.md` / `about.md` / `design.md`（M05 设计的闭环才有）· `scene.md` 初版场景 · `transcript.md` 对话本体 · `turns/NNN/` 各轮资产 · `route.md` 路线偏差记录 · `calls.log` 调用记录 · `closure.md` 闭环总结 · `result.txt`（模拟运行）。`*.out` 为模拟运行的终端输出。

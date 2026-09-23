@@ -153,9 +153,21 @@ class Loop:
         return visible
 
 
+def prepare_scene(root: Path, scene_path: Path | None) -> str:
+    """手写场景复制进运行目录；省略时读该目录里 M05 设计好的 scene.md。"""
+    if scene_path:
+        root.mkdir(parents=True, exist_ok=True)
+        shutil.copy(scene_path, root / "scene.md")
+    elif not (root / "scene.md").exists():
+        sys.exit(f"缺场景：给 --scene，或先用 studium.design 在 {root} 里设计闭环")
+    elif (root / "transcript.md").exists() and (root / "transcript.md").stat().st_size:
+        sys.exit(f"该运行已有对话，换一个 --run：{root}")
+    return (root / "scene.md").read_text(encoding="utf-8")
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(description="Studium 单闭环最小原型")
-    ap.add_argument("--scene", required=True, type=Path)
+    ap.add_argument("--scene", type=Path, help="手写场景；省略时用 --run 目录里 M05 设计好的 scene.md")
     ap.add_argument("--run", help="运行名（默认按时间生成）")
     ap.add_argument("--teach", default="opus")
     ap.add_argument("--guard", default="opus")
@@ -164,9 +176,9 @@ def main(argv=None):
 
     name = a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}"
     root = Path(__file__).resolve().parent.parent / "runs" / name
+    scene = prepare_scene(root, a.scene)
     session = Session(root)
-    shutil.copy(a.scene, root / "scene.md")
-    loop = Loop(session, a.scene.read_text(encoding="utf-8"), {"teach": a.teach, "guard": a.guard, "route": a.route})
+    loop = Loop(session, scene, {"teach": a.teach, "guard": a.guard, "route": a.route})
 
     print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/quit 退出。\n")
     while not loop.closed:
