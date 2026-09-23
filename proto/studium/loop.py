@@ -58,8 +58,14 @@ class Loop:
 
     def step(self, learner_text: str) -> str:
         self.turn += 1
+        mark = self.s.size()
         self.s.append("学习者", learner_text)
-        raw = self._call("teach", "teach", assemble.for_teach(self.s, self.scene, self.guard_note))
+        try:
+            raw = self._call("teach", "teach", assemble.for_teach(self.s, self.scene, self.guard_note))
+        except Exception:
+            self.s.truncate(mark)
+            self.turn -= 1
+            raise
         diagnosis, visible, hidden, proposed = parse_teach(raw)
         self.s.write_asset(self.turn, "diagnosis", diagnosis)
         self.s.write_asset(self.turn, "reply", visible)

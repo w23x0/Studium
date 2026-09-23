@@ -25,6 +25,14 @@ class Session:
         with self.transcript.open("a", encoding="utf-8") as f:
             f.write(f"[{speaker}] {text.strip()}\n")
 
+    def size(self) -> int:
+        return self.transcript.stat().st_size
+
+    def truncate(self, size: int) -> None:
+        """回退到指定长度（本轮调用失败时，撤回未得到回应的输入，含多行输入）。"""
+        with self.transcript.open("r+b") as f:
+            f.truncate(size)
+
     def numbered_transcript(self) -> str:
         """带行号的对话本体，供需要 `文件:行号` 引用的判断点读取。"""
         lines = self.transcript.read_text(encoding="utf-8").splitlines()
