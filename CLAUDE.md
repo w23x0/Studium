@@ -67,6 +67,7 @@
 | `research_tree/` | 调研流水线产出（findings / synthesis / logs） |
 | `docs/自学方法调研/` | 自学方法证据 |
 | `docs/学习理论/` | 从 Deep 档案转入的学习理论（**参考材料**，不作产品结论）；按消费模块索引；每份开头有取舍表（采纳 / 修正 / 只作词汇） |
+| `会话记录/` | 会话过程归档与换设备须知（记忆副本、密钥恢复），**不作依据** |
 | `proto/` | 单闭环最小原型（CLI，Python 标准库；判断点 = `claude -p` 隔离调用），见 `proto/README.md` |
 | `.agents/skills/` | agent 技能（`web-access` 联网；Claude Code 经 `.claude/skills/` 链接使用） |
 

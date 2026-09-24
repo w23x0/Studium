@@ -1,0 +1,2 @@
+- [只在需要确认时做实验](feedback-experiments-only-when-needed.md) — 原型改动不必每次跑模拟
+- [测试用模型](feedback-test-model-choice.md) — 判断点用最强模型，模拟学习者用 DeepSeek
