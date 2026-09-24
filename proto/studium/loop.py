@@ -87,6 +87,19 @@ class Loop:
         self.guard_note: str | None = None
         self.closed = False
 
+    def resume(self) -> None:
+        """从运行目录恢复中断的闭环：轮次、最新验收范围、守卫上次未通过的核对结果。"""
+        turns = sorted(int(d.name) for d in (self.s.root / "turns").iterdir() if d.name.isdigit())
+        self.turn = turns[-1] if turns else 0
+        self.closed = (self.s.root / "closure.md").exists()
+        scene_turn = 0
+        for n in turns:  # 范围以最后一次改线为准；改线前的守卫结果按旧编号写，作废
+            if self.s.read_asset(n, "scene"):
+                self.scene, scene_turn, self.guard_note = self.s.read_asset(n, "scene"), n, None
+            guard = self.s.read_asset(n, "guard")
+            if guard and n >= scene_turn and PASS not in guard:
+                self.guard_note = guard
+
     def _call(self, point: str, prompt_name: str, user: str) -> str:
         res = llm.call(self.models[point], assemble.prompt(prompt_name), user)
         self.s.log_call(self.turn, point, res)
@@ -163,14 +176,20 @@ class Loop:
         return visible
 
 
-def prepare_scene(root: Path, scene_path: Path | None) -> str:
+def has_dialogue(root: Path) -> bool:
+    return (root / "transcript.md").exists() and (root / "transcript.md").stat().st_size > 0
+
+
+def prepare_scene(root: Path, scene_path: Path | None, resume: bool = False) -> str:
     """手写场景复制进运行目录；省略时读该目录里 M05 设计好的 scene.md。"""
     if scene_path:
+        if has_dialogue(root):
+            sys.exit(f"该运行已有对话，换一个 --run：{root}")
         root.mkdir(parents=True, exist_ok=True)
         shutil.copy(scene_path, root / "scene.md")
     elif not (root / "scene.md").exists():
         sys.exit(f"缺场景：给 --scene，或先用 studium.design 在 {root} 里设计闭环")
-    elif (root / "transcript.md").exists() and (root / "transcript.md").stat().st_size:
+    elif has_dialogue(root) and not resume:
         sys.exit(f"该运行已有对话，换一个 --run：{root}")
     return (root / "scene.md").read_text(encoding="utf-8")
 
@@ -186,9 +205,16 @@ def main(argv=None):
 
     name = a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}"
     root = Path(__file__).resolve().parent.parent / "runs" / name
-    scene = prepare_scene(root, a.scene)
+    resuming = not a.scene and has_dialogue(root)
+    scene = prepare_scene(root, a.scene, resume=True)
     session = Session(root)
     loop = Loop(session, scene, {"teach": a.teach, "guard": a.guard, "route": a.route})
+    if resuming:
+        loop.resume()
+        if loop.closed:
+            print(f"该闭环已结束（见 {root / 'closure.md'}）。")
+            return
+        print(f"继续上次的运行：已进行 {loop.turn} 轮，接着输入即可。\n")
 
     print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/quit 退出。\n")
     while not loop.closed:
