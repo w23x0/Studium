@@ -166,10 +166,20 @@ class Loop:
                 print(f"[按新范围重做失败，沿用本轮原回复：{e}]", file=sys.stderr)
         self.s.write_asset(self.turn, "diagnosis", diagnosis)
         self.s.write_asset(self.turn, "reply", visible)
-        if proposed and self._guard():
-            msg = "闭环守卫已确认验收范围内的各条主张都有证据，本闭环结束。闭环总结见 closure.md。"
-            self.s.append("系统", msg)
-            return msg
+        if proposed:
+            if self._guard():
+                msg = "闭环守卫已确认验收范围内的各条主张都有证据，本闭环结束。闭环总结见 closure.md。"
+                self.s.append("系统", msg)
+                return msg
+            # 本轮回复是按“要结束”写的：带着守卫的核对结果重做一次，不把收尾话发给学习者；重做中再提议留到下一轮
+            self.s.write_asset(self.turn, "diagnosis-superseded", diagnosis)
+            self.s.write_asset(self.turn, "reply-superseded", visible)
+            try:
+                diagnosis, visible, hidden, _ = self._teach()
+                self.s.write_asset(self.turn, "diagnosis", diagnosis)
+                self.s.write_asset(self.turn, "reply", visible)
+            except Exception as e:
+                print(f"[守卫未通过后重做失败，沿用本轮原回复：{e}]", file=sys.stderr)
         self.s.append("系统", visible)
         if hidden:
             self.s.append("练习条件", hidden.replace("\n", " ； "))
@@ -215,6 +225,9 @@ def main(argv=None):
             print(f"该闭环已结束（见 {root / 'closure.md'}）。")
             return
         print(f"继续上次的运行：已进行 {loop.turn} 轮，接着输入即可。\n")
+        last = session.read_asset(loop.turn, "reply")
+        if last:
+            print(f"——上一轮系统的回复——\n{last}")
 
     print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/quit 退出。\n")
     while not loop.closed:
