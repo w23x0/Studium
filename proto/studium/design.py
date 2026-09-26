@@ -4,15 +4,17 @@
 
 产出 runs/NAME/{goal.md, scene.md, design.md, route.md, calls.log}；之后用
     python3 -m studium.loop --run NAME        或  python3 -m studium.sim --run NAME --learner ...
-在同一目录里接着跑。v0 没有 M09，一律按冷启动设计（M05 审查单「冷启动的首个闭环」）。
+在同一目录里接着跑。给了 --learner 时读该学习者的 M09 记录与停车场（records/<学习者>/，见 commit.py）；
+都没有则按冷启动设计（M05 审查单「冷启动的首个闭环」）。
 """
 
 import argparse
+import re
 import datetime as _dt
 import sys
 from pathlib import Path
 
-from . import assemble, llm
+from . import assemble, commit, llm
 from .loop import _field
 from .store import Session
 
@@ -26,7 +28,23 @@ def parse_design(text: str) -> tuple[str | None, str, str]:
     return (scene if "验收范围" in scene else None), _field(text, NOTE, [NEXT]), _field(text, NEXT, [])
 
 
-def design(goal: str, about: str | None, name: str, model: str = "opus") -> Path:
+def _history(learner: str | None) -> tuple[list[str], str | None, list[str]]:
+    """学习者的 M09 记录、停车场，以及这些闭环的路线偏差记录（M05 自有）。"""
+    if not learner:
+        return [], None, []
+    recs = commit.m09_records(learner)
+    parked = commit.parking(learner)
+    runs = [p.stem.split("-", 1)[1] for p in recs]
+    runs += re.findall(r"^## (\S+)（\d{4}-\d{2}-\d{2}", parked or "", flags=re.M)  # 停车场条目标题
+    logs = []
+    for r in dict.fromkeys(runs):
+        route = commit.RUNS / r / "route.md"
+        if route.exists():
+            logs.append(f"### {r}\n\n{route.read_text(encoding='utf-8').strip()}")
+    return [p.read_text(encoding="utf-8") for p in recs], parked, logs
+
+
+def design(goal: str, about: str | None, name: str, model: str = "opus", learner: str | None = None) -> Path:
     root = RUNS / name
     if (root / "scene.md").exists():
         sys.exit(f"运行目录已有场景，换一个 --run：{root}")
@@ -34,7 +52,11 @@ def design(goal: str, about: str | None, name: str, model: str = "opus") -> Path
     (root / "goal.md").write_text(goal.strip() + "\n", encoding="utf-8")
     if about:
         (root / "about.md").write_text(about.strip() + "\n", encoding="utf-8")
-    res = llm.call(model, assemble.prompt("design"), assemble.for_design(goal, about, cold_start=True))
+    if learner:
+        (root / "learner.txt").write_text(learner + "\n", encoding="utf-8")
+    m09, parked, logs = _history(learner)
+    cold = not m09 and not parked
+    res = llm.call(model, assemble.prompt("design"), assemble.for_design(goal, about, m09, parked, logs))
     s.log_call(0, "design", res)
     (root / "design.md").write_text(res.text + "\n", encoding="utf-8")
     scene, note, nxt = parse_design(res.text)
@@ -42,7 +64,7 @@ def design(goal: str, about: str | None, name: str, model: str = "opus") -> Path
         sys.exit(f"M05 未按格式给出场景，原文见 {root / 'design.md'}")
     (root / "scene.md").write_text(scene + "\n", encoding="utf-8")
     # 路线偏差记录从闭环设计开始：记计划范围，供会中改线与下一闭环设计对照
-    s.append_route(f"## 闭环设计（冷启动）\n- 学习目标：{goal.strip()}\n- 验收范围：scene.md\n"
+    s.append_route(f"## 闭环设计（{'冷启动' if cold else f'读 M09 {len(m09)} 条、停车场' + ('有' if parked else '无')}）\n- 学习目标：{goal.strip()}\n- 验收范围：scene.md\n"
                    f"- 设计说明：{note or '无'}\n- 下一闭环候选：\n{nxt or '无'}")
     return root
 
@@ -53,8 +75,13 @@ def main(argv=None):
     ap.add_argument("--about", help="学习者自述（学段、学过什么）；可省略")
     ap.add_argument("--run", help="运行名（默认按时间生成）")
     ap.add_argument("--model", default="opus")
+    ap.add_argument("--learner", help="学习者（读其 M09 记录与停车场；省略 = 冷启动）")
+    ap.add_argument("--dry", action="store_true", help="只打印装配好的输入，不调模型")
     a = ap.parse_args(argv)
-    root = design(a.goal, a.about, a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-design", a.model)
+    if a.dry:
+        print(assemble.for_design(a.goal, a.about, *_history(a.learner)))
+        return
+    root = design(a.goal, a.about, a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-design", a.model, a.learner)
     print((root / "scene.md").read_text(encoding="utf-8"), f"\n目录：{root}", sep="")
 
 

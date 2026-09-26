@@ -17,7 +17,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import assemble, llm
+from . import assemble, commit, llm
 from .store import Session
 
 DIAG = "【诊断记录】"
@@ -90,6 +90,9 @@ class Loop:
         self.guard_note: str | None = None
         self.closed = False
         self.replied_at: _dt.datetime | None = None  # 上一条回复发出的时刻（续跑时未知）
+        self.learner = commit.learner_of(session.root)
+        recs = commit.m09_records(self.learner) if self.learner else []
+        self.history = "\n\n---\n\n".join(p.read_text(encoding="utf-8") for p in recs) or None
 
     def resume(self) -> None:
         """从运行目录恢复中断的闭环：轮次、最新验收范围、守卫上次未通过的核对结果。"""
@@ -118,12 +121,14 @@ class Loop:
         if PASS in out:
             (self.s.root / "closure.md").write_text(out + "\n", encoding="utf-8")
             self.closed = True
+            if self.learner:  # 守卫通过是进 M09 的唯一过渡点
+                commit.commit_m09(self.s.root, self.learner)
             return True
         self.guard_note = out  # 核对事实，供下一轮教学调用读取；不是诊断记录的回灌
         return False
 
     def _teach(self) -> tuple[str, str, str | None, bool]:
-        user = assemble.for_teach(self.s, self.scene, self.guard_note)
+        user = assemble.for_teach(self.s, self.scene, self.guard_note, self.history)
         try:
             return parse_teach(self._call("teach", "teach", user))
         except BadFormat as e:  # 重新调一次；仍不对则抛出，由 step 撤回本轮输入

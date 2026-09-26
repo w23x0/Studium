@@ -38,8 +38,10 @@ def for_guard(s: Session, scene: str) -> str:
     ])
 
 
-def for_teach(s: Session, scene: str, guard_note: str | None) -> str:
+def for_teach(s: Session, scene: str, guard_note: str | None, history: str | None = None) -> str:
     parts = [_section("闭环目标与验收范围", _need(scene, "闭环目标"))]
+    if history:  # M09 条件接入：背景参考，不得覆盖本次对话里的证据（01-节点设计 §2）
+        parts.append(_section("个人历史（M09 已结束闭环记录；背景参考，不得覆盖本次对话证据）", history))
     if guard_note:
         parts.append(_section("闭环守卫上次核对结果", guard_note))
     parts += [
@@ -60,11 +62,19 @@ def for_route(scene: str, basis: str, route_log: str | None) -> str:
     return "\n".join(parts)
 
 
-def for_design(goal: str, about: str | None, cold_start: bool) -> str:
-    """M05 设计闭环：读学习目标、学习者自述（条件项）、是否冷启动；v0 无 M09 / M08。"""
-    return "\n".join([
+def for_design(goal: str, about: str | None, m09: list[str], parked: str | None,
+               route_logs: list[str]) -> str:
+    """M05 设计闭环：学习目标、自述（条件项）、M09 已结束闭环记录、停车场、相关路线偏差记录；v0 无 M08。"""
+    cold = not m09 and not parked
+    parts = [
         _section("学习目标（学习者原话）", _need(goal, "学习目标")),
         _section("学习者自述", about) if about
         else _section("学习者自述", "（缺：学习者未提供；已学范围只能按学段假定）"),
-        _section("是否冷启动", "是：该学习者尚无已结束闭环的记录" if cold_start else "否"),
-    ])
+        _section("是否冷启动", "是：该学习者尚无任何闭环记录" if cold else "否"),
+    ]
+    if not cold:
+        parts.append(_section("M09 已结束闭环记录", "\n\n---\n\n".join(m09) if m09 else "（无：还没有守卫通过的闭环）"))
+        parts.append(_section("停车场（未完成闭环）", parked or "（无）"))
+        if route_logs:
+            parts.append(_section("相关闭环的路线偏差记录", "\n\n---\n\n".join(route_logs)))
+    return "\n".join(parts)
