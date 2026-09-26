@@ -7,6 +7,7 @@
 import json
 import os
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.request
@@ -89,7 +90,10 @@ def call(model: str, system: str, user: str, timeout: int = 600) -> Result:
     data = json.loads(proc.stdout)
     if data.get("is_error"):
         raise RuntimeError(f"模型调用出错：{data.get('result')}")
-    actual = next(iter(data.get("modelUsage", {})), model)
+    used = list(data.get("modelUsage", {})) or [model]
+    actual = next((m for m in used if model in m), used[0])
+    if model not in actual or len(used) > 1:  # 模型被换掉（降级 / 回退）时当场提示，不静默
+        print(f"[注意：要求 {model}，实际用到 {', '.join(used)}]", file=sys.stderr)
     usage = data.get("usage", {})
     return Result(
         text=data["result"].strip(),

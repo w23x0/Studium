@@ -86,6 +86,7 @@ class Loop:
         self.turn = 0
         self.guard_note: str | None = None
         self.closed = False
+        self.replied_at: _dt.datetime | None = None  # 上一条回复发出的时刻（续跑时未知）
 
     def resume(self) -> None:
         """从运行目录恢复中断的闭环：轮次、最新验收范围、守卫上次未通过的核对结果。"""
@@ -147,6 +148,8 @@ class Loop:
 
     def step(self, learner_text: str) -> str:
         self.turn += 1
+        now = _dt.datetime.now()
+        idle = (now - self.replied_at).total_seconds() if self.replied_at else None
         mark = self.s.size()
         self.s.append("学习者", learner_text)
         try:
@@ -170,6 +173,7 @@ class Loop:
             if self._guard():
                 msg = "闭环守卫已确认验收范围内的各条主张都有证据，本闭环结束。闭环总结见 closure.md。"
                 self.s.append("系统", msg)
+                self.s.log_turn(self.turn, now, idle, len(learner_text))
                 return msg
             # 本轮回复是按“要结束”写的：带着守卫的核对结果重做一次，不把收尾话发给学习者；重做中再提议留到下一轮
             self.s.write_asset(self.turn, "diagnosis-superseded", diagnosis)
@@ -183,6 +187,8 @@ class Loop:
         self.s.append("系统", visible)
         if hidden:
             self.s.append("练习条件", hidden.replace("\n", " ； "))
+        self.s.log_turn(self.turn, now, idle, len(learner_text))
+        self.replied_at = _dt.datetime.now()
         return visible
 
 

@@ -82,6 +82,12 @@ class Session:
         with self.route_log.open("a", encoding="utf-8") as f:
             f.write(text.strip() + "\n\n")
 
+    def log_turn(self, turn: int, submitted: "_dt.datetime", idle: float | None, chars: int) -> None:
+        """每轮时间事实（供以后 M15 读取）：学习者提交时刻、距上一条回复的间隔、输入长度。只记事实，不作解释。"""
+        with (self.root / "timing.log").open("a", encoding="utf-8") as f:
+            f.write(f"{submitted.isoformat(timespec='seconds')}\tturn={turn}\t"
+                    f"since_reply={'-' if idle is None else f'{idle:.0f}s'}\tchars={chars}\n")
+
     def log_call(self, turn: int, point: str, res) -> None:
         stamp = _dt.datetime.now().isoformat(timespec="seconds")
         with (self.root / "calls.log").open("a", encoding="utf-8") as f:
