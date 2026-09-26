@@ -34,6 +34,9 @@ class BadFormat(Exception):
     pass
 
 
+AWAY_SECONDS = 30 * 60  # 超过这么久没回复算“离开”（实现期阈值）
+
+
 def parse_teach(text: str) -> tuple[str, str, str | None, bool]:
     """拆成：诊断记录、给学习者的话、练习条件、是否提议结束。"""
     diagnosis, _, rest = text.partition(TO_LEARNER)
@@ -100,6 +103,9 @@ class Loop:
             guard = self.s.read_asset(n, "guard")
             if guard and n >= scene_turn and PASS not in guard:
                 self.guard_note = guard
+        last = self.s.root / "turns" / f"{self.turn:03d}" / "reply.md"
+        if last.exists():  # 续跑：以上一条回复的写入时刻作为离开起点
+            self.replied_at = _dt.datetime.fromtimestamp(last.stat().st_mtime)
 
     def _call(self, point: str, prompt_name: str, user: str) -> str:
         res = llm.call(self.models[point], assemble.prompt(prompt_name), user)
@@ -151,6 +157,8 @@ class Loop:
         now = _dt.datetime.now()
         idle = (now - self.replied_at).total_seconds() if self.replied_at else None
         mark = self.s.size()
+        if idle is not None and idle >= AWAY_SECONDS:  # 离开时间照实记进对话，教学侧据此先请学习者回忆再接上
+            self.s.append("路径", f"学习者离开约 {idle / 60:.0f} 分钟后回来（上一条系统回复之后）")
         self.s.append("学习者", learner_text)
         try:
             diagnosis, visible, hidden, proposed = self._teach()
