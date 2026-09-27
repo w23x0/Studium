@@ -10,7 +10,8 @@
 ```bash
 cd proto
 python3 -m studium.design --goal "我想学线性变换的核。" --about "大一，学过……" --run NAME   # M05 设计闭环（先看 runs/NAME/scene.md）；加 --learner owner 读历史
-python3 -m studium.commit --run NAME --park "理由"                                 # 未完成闭环记入停车场（守卫通过的自动进 M09）
+python3 -m studium.commit --run NAME --park "理由" [--check]                      # 未完成闭环记入停车场（--check 先让守卫核对缺口；守卫通过的自动进 M09）
+python3 -m studium.design --learner owner --split RUN --goal … --run NEW           # 学到一半发现过大：M05 写拆分计划并设计第一个小闭环
 python3 -m studium.loop --run NAME                                                  # 在设计好的闭环里，你当学习者
 python3 -m studium.sim --run NAME --learner learners/typical.md                     # 或用模拟学习者跑
 python3 -m studium.loop --scene scenes/kernel.md                                   # 手写场景，你当学习者
@@ -18,7 +19,7 @@ python3 -m studium.sim --scene scenes/kernel.md --learner learners/typical.md   
 python3 -m studium.compare runs/<甲> runs/<乙>                                     # 两次运行盲评
 ```
 
-每轮：学习者输入 → **教学调用**（先写不放进回复、学习者可查阅的诊断记录，再写给学习者的话）→ 诊断记录写出**改线依据**（缺前置 / 已超出范围）时触发 **M05 路线调用**（独立调用，改写当前闭环的验收范围：补前置 / 转确认 / 维持；会中不加深，学习者已超出范围就转确认、尽快结束，更深内容记为下一闭环建议）→ 范围改了则按新范围重做一次教学调用 → 提议结束时触发**闭环守卫**（独立调用）。改线不来回踢：每轮至多一次 M05，M05 读自己的路线偏差记录。输入一段话后按空行提交；`/quit` 退出；中断后用同一条 `loop --run NAME` 命令接着跑（从运行目录恢复轮次、当前范围与守卫核对结果）。模型用 `--teach / --guard / --route` 指定（默认都是 opus：判断点用最强模型）。模拟学习者默认 `oc:deepseek-v4.1-flash`（`oc:` 前缀走 OpenAI 兼容接口，地址与密钥在 `.env`，不进 git，见 `.env.example`）。判断调用不加载任何 MCP 服务（保证隔离、缓存可命中）。
+每轮：学习者输入 → **教学调用**（先写不放进回复、学习者可查阅的诊断记录，再写给学习者的话）→ 诊断记录写出**改线依据**（缺前置 / 已超出范围）时触发 **M05 路线调用**（独立调用，改写当前闭环的验收范围：补前置 / 转确认 / 维持；会中不加深，学习者已超出范围就转确认、尽快结束，更深内容记为下一闭环建议）→ 范围改了则按新范围重做一次教学调用 → 提议结束时触发**闭环守卫**（独立调用）。改线不来回踢：每轮至多一次 M05，M05 读自己的路线偏差记录。输入一段话后按空行提交；`/图` 位置图、`/板书` 板书（续跑时自动打印）；`/quit` 退出；中断后用同一条 `loop --run NAME` 命令接着跑（从运行目录恢复轮次、当前范围与守卫核对结果）。模型用 `--teach / --guard / --route` 指定（默认都是 opus：判断点用最强模型）。模拟学习者默认 `oc:deepseek-v4.1-flash`（`oc:` 前缀走 OpenAI 兼容接口，地址与密钥在 `.env`，不进 git，见 `.env.example`）。判断调用不加载任何 MCP 服务（保证隔离、缓存可命中）。
 
 ## 文件
 

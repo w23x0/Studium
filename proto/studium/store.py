@@ -47,6 +47,11 @@ class Session:
         lines = self.transcript.read_text(encoding="utf-8").splitlines()
         return "\n".join(l for l in lines if not l.startswith(("[练习条件]", "[路径]", "[讲解稿]")))
 
+    # ---- 板书（系统维护：符号约定、已推出的式子、还悬着的问题；每版留在 turns/NNN/board.md） ----
+    @property
+    def board(self) -> Path:
+        return self.root / "board.md"
+
     # ---- 讲解稿（学习者自己的笔记；版本只追加，不是分支） ----
     @property
     def draft(self) -> Path:

@@ -18,6 +18,7 @@ import re
 import sys
 from pathlib import Path
 
+from . import assemble, llm
 from .store import Session
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -97,6 +98,16 @@ def commit_m09(run: Path, learner: str) -> Path:
     return out
 
 
+def guard_check(run: Path, model: str = "opus") -> None:
+    """搁置前让守卫核对一次（闭环从未提议结束时没有守卫结果），结果存进最后一轮。"""
+    s = Session(run)
+    scene = _current_scene(s)
+    res = llm.call(model, assemble.prompt("guard"), assemble.for_guard(s, scene))
+    n = _turns(s)
+    s.log_call(n, "guard", res)
+    s.write_asset(n, "guard", res.text)
+
+
 def park(run: Path, learner: str, reason: str) -> Path:
     """记入 M05 停车场：未完成闭环 + 最后一次守卫缺口 + 接续点。"""
     s = Session(run)
@@ -125,12 +136,15 @@ def main(argv=None):
     ap.add_argument("--run", required=True)
     ap.add_argument("--learner", help="学习者（缺省读运行目录的 learner.txt）")
     ap.add_argument("--park", metavar="理由", help="未完成闭环：记入停车场")
+    ap.add_argument("--check", action="store_true", help="记入停车场前先让守卫核对一次（缺口以它为准）")
     a = ap.parse_args(argv)
     run = RUNS / a.run
     learner = a.learner or learner_of(run)
     if not learner:
         sys.exit("不知道这是哪个学习者的闭环：加 --learner，或在运行目录写 learner.txt")
     (run / "learner.txt").write_text(learner + "\n", encoding="utf-8")
+    if a.park and a.check:
+        guard_check(run)
     out = park(run, learner, a.park) if a.park else commit_m09(run, learner)
     print(f"已写入：{out}")
 

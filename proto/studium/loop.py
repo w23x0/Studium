@@ -11,6 +11,7 @@
 """
 
 import argparse
+import re
 import datetime as _dt
 import readline  # noqa: F401  input() 获得行编辑（方向键、中文退格）
 import shutil
@@ -24,6 +25,7 @@ DIAG = "【诊断记录】"
 TO_LEARNER = "【给学习者】"
 END = "【提议结束】"
 PRACTICE = "【练习条件】"
+BOARD = "【板书】"
 PASS = "【守卫结论】通过"
 BASIS = "[改线依据]"
 ROUTE_ACTION, ROUTE_REASON, ROUTE_NOTE, ROUTE_NEXT, ROUTE_SCENE = (
@@ -48,6 +50,41 @@ def parse_teach(text: str) -> tuple[str, str, str | None, bool]:
     rest = rest.replace(END, "").strip()
     visible, _, hidden = rest.partition(PRACTICE)
     return diagnosis, visible.strip(), (hidden.strip() or None), proposed
+
+
+def split_board(diagnosis: str) -> tuple[str, str | None]:
+    """诊断记录末尾的【板书】段拆出来单独存（它给学习者看，不属于诊断）。"""
+    head, found, board = diagnosis.partition(BOARD)
+    return (head.strip(), board.strip() or None) if found else (diagnosis, None)
+
+
+def _diag_line(diagnosis: str, name: str) -> str:
+    """取诊断记录里某个 [段名] 的内容（到下一个 [段名] 为止）。"""
+    _, found, rest = diagnosis.partition(name)
+    if not found:
+        return ""
+    body = []
+    for line in rest.splitlines():
+        if body and line.lstrip().startswith("[") and not line.lstrip().startswith(name):
+            break
+        body.append(line)
+    return "\n".join(body).strip()
+
+
+def position_map(s: Session, scene: str) -> str:
+    """闭环内位置图（文字版）：主张、诊断的当前看法（位置 / 要点状态）、守卫最近一次结论。"""
+    claims = re.findall(r"^(\d+)\.\s*((?:【[^】]*】)+)\s*(.+)$", scene, flags=re.M)
+    lines = ["【位置图】"] + [f"  主张 {n} {tags} {text[:40]}{'…' if len(text) > 40 else ''}" for n, tags, text in claims]
+    diag = s.latest_asset("diagnosis") or ""
+    state, where = _diag_line(diag, "[要点状态]"), _diag_line(diag, "[位置]")
+    lines += ["", "  系统当前看法（不是守卫结论；✔ 独立 / ◐ 提示后或系统讲过 / ○ 未涉及）："]
+    lines += [f"    {l.strip()}" for l in (state or "（本轮诊断未给要点状态）").splitlines() if l.strip()]
+    lines += ["", f"  你在这里：{where or '（本轮诊断未给位置）'}"]
+    guard = s.latest_asset("guard")
+    if guard:
+        verdicts = re.findall(r"^\**主张 ?(\d+)[：:]\s*(有|无)", guard, flags=re.M)
+        lines += ["", "  守卫最近一次核对：" + "  ".join(f"主张{n} {'✔' if v == '有' else '✘'}" for n, v in verdicts)]
+    return "\n".join(lines)
 
 
 def parse_basis(diagnosis: str) -> str | None:
@@ -183,6 +220,10 @@ class Loop:
                 diagnosis, visible, hidden, proposed = self._teach()
             except Exception as e:
                 print(f"[按新范围重做失败，沿用本轮原回复：{e}]", file=sys.stderr)
+        diagnosis, board = split_board(diagnosis)
+        if board:
+            self.s.write_asset(self.turn, "board", board)
+            self.s.board.write_text(board + "\n", encoding="utf-8")
         self.s.write_asset(self.turn, "diagnosis", diagnosis)
         self.s.write_asset(self.turn, "reply", visible)
         if proposed:
@@ -196,6 +237,10 @@ class Loop:
             self.s.write_asset(self.turn, "reply-superseded", visible)
             try:
                 diagnosis, visible, hidden, _ = self._teach()
+                diagnosis, board = split_board(diagnosis)
+                if board:
+                    self.s.write_asset(self.turn, "board", board)
+                    self.s.board.write_text(board + "\n", encoding="utf-8")
                 self.s.write_asset(self.turn, "diagnosis", diagnosis)
                 self.s.write_asset(self.turn, "reply", visible)
             except Exception as e:
@@ -247,11 +292,14 @@ def main(argv=None):
             print(f"该闭环已结束（见 {root / 'closure.md'}）。")
             return
         print(f"继续上次的运行：已进行 {loop.turn} 轮，接着输入即可。\n")
+        print(position_map(session, loop.scene) + "\n")
+        if session.board.exists():
+            print("【板书】\n" + session.board.read_text(encoding="utf-8"))
         last = session.read_asset(loop.turn, "reply")
         if last:
             print(f"——上一轮系统的回复——\n{last}")
 
-    print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/quit 退出。\n")
+    print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/图 看位置图，/板书 看板书，/quit 退出。\n")
     if session.draft.exists():
         print(f"讲解稿：{session.draft}\n  用任意编辑器打开它写、改、补；改完在这里说一声（比如“改好了”）再提交。\n")
     while not loop.closed:
@@ -261,6 +309,11 @@ def main(argv=None):
                 line = input("你> " if not lines else "  > ")
                 if line.strip() == "/quit":
                     return
+                if not lines and line.strip() in ("/图", "/板书"):
+                    print(position_map(session, loop.scene) if line.strip() == "/图" else
+                          ("【板书】\n" + session.board.read_text(encoding="utf-8")) if session.board.exists()
+                          else "（还没有板书）")
+                    continue
                 if not line.strip():
                     break
                 lines.append(line)

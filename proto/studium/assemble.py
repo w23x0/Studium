@@ -48,6 +48,8 @@ def for_teach(s: Session, scene: str, guard_note: str | None, history: str | Non
     if s.numbered_draft():
         parts.append(_section("讲解稿（学习者自己的笔记，当前版，带行号；每轮改动记在对话本体的 [讲解稿] 行）",
                               s.numbered_draft()))
+    if s.board.exists():
+        parts.append(_section("板书（当前版，你上次写的）", s.board.read_text(encoding="utf-8")))
     parts += [
         _section("通用策略知识", prompt("strategy_knowledge")),
         _section("对话本体", _need(s.numbered_transcript(), "对话本体")),
@@ -67,7 +69,7 @@ def for_route(scene: str, basis: str, route_log: str | None) -> str:
 
 
 def for_design(goal: str, about: str | None, m09: list[str], parked: str | None,
-               route_logs: list[str]) -> str:
+               route_logs: list[str], plans: list[str] | None = None, split: str | None = None) -> str:
     """M05 设计闭环：学习目标、自述（条件项）、M09 已结束闭环记录、停车场、相关路线偏差记录；v0 无 M08。"""
     cold = not m09 and not parked
     parts = [
@@ -81,4 +83,9 @@ def for_design(goal: str, about: str | None, m09: list[str], parked: str | None,
         parts.append(_section("停车场（未完成闭环）", parked or "（无）"))
         if route_logs:
             parts.append(_section("相关闭环的路线偏差记录", "\n\n---\n\n".join(route_logs)))
+        if plans:
+            parts.append(_section("已有的拆分计划（后续小闭环按计划设计）", "\n\n---\n\n".join(plans)))
+    if split:
+        parts.append(_section("拆分要求", f"把停车场里的 {split} 拆成若干最小闭环：原主张与要点一条不删，全部分配；"
+                              f"按依赖排先后，前置不牢的先补；先写【拆分计划】，再为第一个小闭环写【场景】。"))
     return "\n".join(parts)

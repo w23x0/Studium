@@ -18,7 +18,7 @@ from . import assemble, commit, llm
 from .loop import _field
 from .store import Session
 
-SCENE, NOTE, NEXT = "【场景】", "【设计说明】", "【下一闭环候选】"
+SCENE, NOTE, NEXT, PLAN = "【场景】", "【设计说明】", "【下一闭环候选】", "【拆分计划】"
 RUNS = Path(__file__).resolve().parent.parent / "runs"
 
 
@@ -38,10 +38,10 @@ def draft_skeleton(scene: str) -> str | None:
     return f"# 讲解稿：{title}\n\n{body}\n"
 
 
-def _history(learner: str | None) -> tuple[list[str], str | None, list[str]]:
-    """学习者的 M09 记录、停车场，以及这些闭环的路线偏差记录（M05 自有）。"""
+def _history(learner: str | None) -> tuple[list[str], str | None, list[str], list[str]]:
+    """学习者的 M09 记录、停车场、这些闭环的路线偏差记录（M05 自有）、拆分计划。"""
     if not learner:
-        return [], None, []
+        return [], None, [], []
     recs = commit.m09_records(learner)
     parked = commit.parking(learner)
     runs = [p.stem.split("-", 1)[1] for p in recs]
@@ -51,10 +51,14 @@ def _history(learner: str | None) -> tuple[list[str], str | None, list[str]]:
         route = commit.RUNS / r / "route.md"
         if route.exists():
             logs.append(f"### {r}\n\n{route.read_text(encoding='utf-8').strip()}")
-    return [p.read_text(encoding="utf-8") for p in recs], parked, logs
+    plans_dir = commit.home(learner) / "plans"
+    plans = [f"### 拆分 {p.stem}\n\n{p.read_text(encoding='utf-8').strip()}" for p in sorted(plans_dir.glob("*.md"))] \
+        if plans_dir.exists() else []
+    return [p.read_text(encoding="utf-8") for p in recs], parked, logs, plans
 
 
-def design(goal: str, about: str | None, name: str, model: str = "opus", learner: str | None = None) -> Path:
+def design(goal: str, about: str | None, name: str, model: str = "opus", learner: str | None = None,
+           split: str | None = None) -> Path:
     root = RUNS / name
     if (root / "scene.md").exists():
         sys.exit(f"运行目录已有场景，换一个 --run：{root}")
@@ -64,12 +68,20 @@ def design(goal: str, about: str | None, name: str, model: str = "opus", learner
         (root / "about.md").write_text(about.strip() + "\n", encoding="utf-8")
     if learner:
         (root / "learner.txt").write_text(learner + "\n", encoding="utf-8")
-    m09, parked, logs = _history(learner)
+    m09, parked, logs, plans = _history(learner)
     cold = not m09 and not parked
-    res = llm.call(model, assemble.prompt("design"), assemble.for_design(goal, about, m09, parked, logs))
+    res = llm.call(model, assemble.prompt("design"), assemble.for_design(goal, about, m09, parked, logs, plans, split))
     s.log_call(0, "design", res)
     (root / "design.md").write_text(res.text + "\n", encoding="utf-8")
     scene, note, nxt = parse_design(res.text)
+    plan = _field(res.text, PLAN, [SCENE]) if split else ""
+    if split and plan:  # 拆分计划：M05 自有，后续小闭环按它设计；停车场追加一条承接记录
+        d = commit.home(learner) / "plans"
+        d.mkdir(parents=True, exist_ok=True)
+        (d / f"{split}.md").write_text(plan + f"\n\n- 第一个小闭环：`runs/{name}/`\n", encoding="utf-8")
+        with (commit.home(learner) / "parking.md").open("a", encoding="utf-8") as f:
+            f.write(f"### {split} 已拆分（{_dt.datetime.now():%Y-%m-%d %H:%M}）\n\n计划见 `records/{learner}/plans/{split}.md`；"
+                    f"第一个小闭环 `runs/{name}/`。\n\n")
     if not scene:
         sys.exit(f"M05 未按格式给出场景，原文见 {root / 'design.md'}")
     (root / "scene.md").write_text(scene + "\n", encoding="utf-8")
@@ -91,11 +103,14 @@ def main(argv=None):
     ap.add_argument("--model", default="opus")
     ap.add_argument("--learner", help="学习者（读其 M09 记录与停车场；省略 = 冷启动）")
     ap.add_argument("--dry", action="store_true", help="只打印装配好的输入，不调模型")
+    ap.add_argument("--split", metavar="RUN", help="把停车场里的 RUN 拆成若干最小闭环，并设计第一个（须配 --learner）")
     a = ap.parse_args(argv)
     if a.dry:
-        print(assemble.for_design(a.goal, a.about, *_history(a.learner)))
+        print(assemble.for_design(a.goal, a.about, *_history(a.learner), a.split))
         return
-    root = design(a.goal, a.about, a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-design", a.model, a.learner)
+    if a.split and not a.learner:
+        sys.exit("--split 须配 --learner")
+    root = design(a.goal, a.about, a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-design", a.model, a.learner, a.split)
     print((root / "scene.md").read_text(encoding="utf-8"), f"\n目录：{root}", sep="")
 
 
