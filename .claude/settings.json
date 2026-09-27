@@ -9,7 +9,6 @@
     ],
     "deny": [
       "Edit(//home/w23x/Deep/**)",
-      "Write(//home/w23x/Deep/**)",
       "Read(./.env)",
       "Read(./.env.*)"
     ]
