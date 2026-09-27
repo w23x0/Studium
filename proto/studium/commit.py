@@ -75,6 +75,26 @@ def _turns(s: Session) -> int:
     return max((int(d.name) for d in (s.root / "turns").iterdir() if d.name.isdigit()), default=0)
 
 
+def by_node(scene: str, guard: str) -> str | None:
+    """按知识点排的索引（由验收范围的节点标注与守卫逐条核对派生，可重建，不权威）。"""
+    tags = {n: re.findall(r"【([KP]\d+)】", head) for n, head in re.findall(r"^(\d+)\.\s*((?:【[^】]*】)+)", scene, flags=re.M)}
+    if not any(tags.values()):
+        return None
+    rows = []
+    for n, verdict, body in re.findall(r"^主张\s*(\d+)[^：\n]*：\s*(有|无)(.*?)(?=^主张\s*\d+|^【守卫结论】|\Z)", guard, flags=re.M | re.S):
+        field = lambda k: (re.search(rf"^- {k}：(.*)$", body, flags=re.M) or [None, "—"])[1].strip()
+        rows.append(f"| {'、'.join(tags.get(n, [])) or '—'} | {n} | {verdict} | {field('条件')} | {field('证据强度')} "
+                    f"| {field('缺口') if verdict == '无' else '—'} | {field('前置缺口')} |")
+    anchor = next((l for l in scene.splitlines() if l.startswith("锚定")), "")
+    return (f"{anchor}\n\n| 知识点 | 主张 | 守卫 | 条件 | 证据强度 | 缺口 | 前置缺口 |\n"
+            f"| --- | --- | --- | --- | --- | --- | --- |\n" + "\n".join(rows))
+
+
+def _m08_ref(run: Path) -> str:
+    ref = run / "m08.txt"
+    return f"- M08：`{ref.read_text(encoding='utf-8').strip()}`\n" if ref.exists() else ""
+
+
 def commit_m09(run: Path, learner: str) -> Path:
     """守卫通过后提交 M09：验收范围 + 守卫逐条核对（含证据强度）+ 范围外的下一闭环候选。"""
     s = Session(run)
@@ -90,8 +110,9 @@ def commit_m09(run: Path, learner: str) -> Path:
     out.write_text(
         f"# 已结束闭环：{run.name}\n\n"
         f"- 结束时间：{_dt.datetime.fromtimestamp(closure.stat().st_mtime):%Y-%m-%d %H:%M}\n"
-        f"- 轮数：{_turns(s)}\n\n"
-        f"## 验收范围（结束时版本）\n\n{_current_scene(s).strip()}\n\n"
+        f"- 轮数：{_turns(s)}\n{_m08_ref(run)}\n"
+        + (f"## 按知识点（派生索引，可重建；以下方守卫核对为准）\n\n{idx}\n\n" if (idx := by_node(_current_scene(s), closure.read_text(encoding="utf-8"))) else "")
+        + f"## 验收范围（结束时版本）\n\n{_current_scene(s).strip()}\n\n"
         f"## 守卫逐条核对\n\n{closure.read_text(encoding='utf-8').strip()}\n\n"
         f"## 范围外的下一闭环候选（诊断记录）\n\n" + ("\n".join(f"- {x}" for x in nxt) or "无") + "\n",
         encoding="utf-8")
@@ -124,7 +145,9 @@ def park(run: Path, learner: str, reason: str) -> Path:
     with p.open("a", encoding="utf-8") as f:
         f.write(f"## {run.name}（{_dt.datetime.now():%Y-%m-%d %H:%M} 记入）\n\n"
                 f"- 状态：未完成（{reason}）\n- 轮数：{turns}\n"
-                f"- 接续点：`python3 -m studium.loop --run {run.name}` 从第 {turns} 轮后接着跑；或由下一闭环承接缺口\n\n"
+                f"- 接续点：`python3 -m studium.loop --run {run.name}` 从第 {turns} 轮后接着跑；或由下一闭环承接缺口\n{_m08_ref(run)}\n"
+                + (f"### 按知识点（派生索引，可重建；以下方守卫核对为准）\n\n{idx}\n\n" if g and (idx := by_node(_current_scene(s), g[1])) else "")
+                + 
                 f"### 验收范围（当前版本）\n\n{_current_scene(s).strip()}\n\n"
                 f"### 缺口\n\n{gaps}\n\n### 范围外的下一闭环候选（诊断记录）\n\n"
                 + ("\n".join(f"- {x}" for x in nxt) or "无") + "\n\n")

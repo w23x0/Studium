@@ -15,6 +15,7 @@ import sys
 from pathlib import Path
 
 from . import assemble, commit, llm
+from . import m08 as m08mod
 from .loop import _field
 from .store import Session
 
@@ -57,8 +58,12 @@ def _history(learner: str | None) -> tuple[list[str], str | None, list[str], lis
     return [p.read_text(encoding="utf-8") for p in recs], parked, logs, plans
 
 
+def _m08(path: Path | None) -> str | None:
+    return path.read_text(encoding="utf-8") if path else None
+
+
 def design(goal: str, about: str | None, name: str, model: str = "opus", learner: str | None = None,
-           split: str | None = None) -> Path:
+           split: str | None = None, m08: Path | None = None) -> Path:
     root = RUNS / name
     if (root / "scene.md").exists():
         sys.exit(f"运行目录已有场景，换一个 --run：{root}")
@@ -68,9 +73,11 @@ def design(goal: str, about: str | None, name: str, model: str = "opus", learner
         (root / "about.md").write_text(about.strip() + "\n", encoding="utf-8")
     if learner:
         (root / "learner.txt").write_text(learner + "\n", encoding="utf-8")
+    if m08:
+        (root / "m08.txt").write_text(f"{m08.resolve().relative_to(m08mod.PROTO)}\n", encoding="utf-8")
     m09, parked, logs, plans = _history(learner)
     cold = not m09 and not parked
-    res = llm.call(model, assemble.prompt("design"), assemble.for_design(goal, about, m09, parked, logs, plans, split))
+    res = llm.call(model, assemble.prompt("design"), assemble.for_design(goal, about, m09, parked, logs, plans, split, _m08(m08)))
     s.log_call(0, "design", res)
     (root / "design.md").write_text(res.text + "\n", encoding="utf-8")
     scene, note, nxt = parse_design(res.text)
@@ -85,6 +92,9 @@ def design(goal: str, about: str | None, name: str, model: str = "opus", learner
     if not scene:
         sys.exit(f"M05 未按格式给出场景，原文见 {root / 'design.md'}")
     (root / "scene.md").write_text(scene + "\n", encoding="utf-8")
+    piece = m08mod.slice_of_run(root, scene)
+    if piece:  # 本闭环的 M08 片：教学调用与守卫读它（M10 审查单：M05 索引，下游不自己翻 M08）
+        (root / "m08-slice.md").write_text(piece, encoding="utf-8")
     skeleton = draft_skeleton(scene)
     if skeleton:  # 讲解稿：每条教学主张一节，只有标题（M02「讲解稿」）
         for f in ("draft.md", "draft.initial.md"):
@@ -102,15 +112,16 @@ def main(argv=None):
     ap.add_argument("--run", help="运行名（默认按时间生成）")
     ap.add_argument("--model", default="opus")
     ap.add_argument("--learner", help="学习者（读其 M09 记录与停车场；省略 = 冷启动）")
+    ap.add_argument("--m08", type=Path, help="本学习项目的 M08 知识结构文件（如 m08/力学-动量.md）；省略 = 无 M08")
     ap.add_argument("--dry", action="store_true", help="只打印装配好的输入，不调模型")
     ap.add_argument("--split", metavar="RUN", help="把停车场里的 RUN 拆成若干最小闭环，并设计第一个（须配 --learner）")
     a = ap.parse_args(argv)
     if a.dry:
-        print(assemble.for_design(a.goal, a.about, *_history(a.learner), a.split))
+        print(assemble.for_design(a.goal, a.about, *_history(a.learner), a.split, _m08(a.m08)))
         return
     if a.split and not a.learner:
         sys.exit("--split 须配 --learner")
-    root = design(a.goal, a.about, a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-design", a.model, a.learner, a.split)
+    root = design(a.goal, a.about, a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}-design", a.model, a.learner, a.split, a.m08)
     print((root / "scene.md").read_text(encoding="utf-8"), f"\n目录：{root}", sep="")
 
 

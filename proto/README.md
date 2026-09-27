@@ -1,6 +1,6 @@
 # proto：单闭环最小原型（CLI）
 
-> 状态：v0（2026-09-23 起，持续改动至 09-27）。对应 `../docs/Harness设计/00-技术方向确认.md` §实施顺序 第 1–3 步，下一步 3.5 最小 M08。每次改动的依据与原因见 `../docs/Harness设计/_research/原型变更记录.md`。
+> 状态：v0（2026-09-23 起，持续改动至 09-27）。对应 `../docs/Harness设计/00-技术方向确认.md` §实施顺序 第 1–3 步，当前 3.5 最小 M08。每次改动的依据与原因见 `../docs/Harness设计/_research/原型变更记录.md`。
 > 目的：检验设计假设。实验 1 结论（拆分串行不如同信息单一调用）已据此改定运行方式，见 `../docs/Harness设计/_research/原型实验-1-发现.md`。
 
 ## 运行
@@ -12,6 +12,9 @@ cd proto
 python3 -m studium.design --goal "我想学线性变换的核。" --about "大一，学过……" --run NAME   # M05 设计闭环（先看 runs/NAME/scene.md）；加 --learner owner 读历史
 python3 -m studium.commit --run NAME --park "理由" [--check]                      # 未完成闭环记入停车场（--check 先让守卫核对缺口；守卫通过的自动进 M09）
 python3 -m studium.design --learner owner --split RUN --goal … --run NEW           # 学到一半发现过大：M05 写拆分计划并设计第一个小闭环
+python3 -m studium.mineru <书.pdf> --ranges 1-200,201-400                          # 书 → md（M06 最小一段）
+python3 -m studium.extract --book <MinerU 目录> --part p1-200 --lines A-B --toc C-D --run NAME   # 一章 → M08 知识点 + 关系（引文逐字定页）
+# design 加 --m08 m08/力学-动量.md：M05 先选知识点再写主张，并切出本闭环 M08 片给教学调用与守卫
 python3 -m studium.loop --run NAME                                                  # 在设计好的闭环里，你当学习者
 python3 -m studium.sim --run NAME --learner learners/typical.md                     # 或用模拟学习者跑
 python3 -m studium.loop --scene scenes/kernel.md                                   # 手写场景，你当学习者
@@ -31,8 +34,12 @@ python3 -m studium.compare runs/<甲> runs/<乙>                                
 | `studium/loop.py` | 确定性状态机与 CLI |
 | `studium/design.py` | M05 设计闭环：按学习目标 + 自述写场景，存进新运行目录；`--learner` 读该学习者的 M09 记录与停车场（都没有 = 冷启动），`--dry` 只看装配的输入 |
 | `studium/commit.py` | 闭环结束后的提交：守卫通过 → M09（`loop` 自动）；未完成 → `--park` 记入 M05 停车场 |
+| `studium/mineru.py` | 书 PDF → md（MinerU API，M06 的最小一段）；密钥 `MINERU_TOKEN` |
+| `studium/extract.py` | M08 抽取调用：一章原文 + 全书目录 → 知识点表 + 关系表；引文逐字匹配 `content_list.json` 定页，匹配不上标“未匹配” |
+| `studium/m08.py` | 读 M08、按场景“锚定（M08）”行切出本闭环片（教学调用、守卫读它；M05 会中改线读整份） |
+| `m08/` | 最小 M08：每个学习项目一份知识结构（知识点 + 关系 + 原文锚点），见 `m08/README.md` |
 | `records/<学习者>/` | 真实学习者的跨闭环记录（进 git）：`m09/NNN-<运行>.md` 已结束闭环、`parking.md` 停车场 |
-| `studium/prompts/` | `teach.md` 教学调用、`guard.md` 闭环守卫、`route.md` M05 路线调用、`design.md` M05 设计闭环（最小约定，无角色设定）；`strategy_knowledge.md` = 通用策略知识（提炼自学习理论取舍表的“采纳”项） |
+| `studium/prompts/` | `teach.md` 教学调用、`guard.md` 闭环守卫、`route.md` M05 路线调用、`design.md` M05 设计闭环（最小约定，无角色设定）、`m08_extract.md` M08 抽取；`strategy_knowledge.md` = 通用策略知识（提炼自学习理论取舍表的“采纳”项） |
 | `studium/sim.py` · `compare.py` | 模拟学习者（`learners/`）与盲评 |
 | `scenes/` | 场景：`kernel.md` 线性变换的核（大学）、`newton2.md` 牛顿第二定律（高中）；验收范围按“主张 + 证据”写，每条标【教学】/【确认】 |
 | `learners/` | 模拟学习者：`typical.md` 典型大一（核）、`knows-newton2.md` 已会牛二（测改线）、`typical-newton.md` 典型高一（牛顿，带“力维持运动”前概念） |
@@ -43,8 +50,8 @@ python3 -m studium.compare runs/<甲> runs/<乙>                                
 | 差距 | 设计口径 | v0 做法 |
 | --- | --- | --- |
 | M02 历史层 | 按相关性取对话片段 | 取全部对话（单闭环很短） |
-| M05 闭环设计 | M05 按目标与 M09 设计闭环，并索引本次要用的 M08 片 | 按目标 + 自述 + M09 记录 + 停车场设计（不索引 M08）；会话中改线只改写当前闭环范围，不开分叉会话 |
-| M09 / M15 / M07 / M08 | 各自模块 | M09 只做按主张逐条的最小记录（`records/`）；M15 只记时间事实（`timing.log`）；M07 / M08 未接入 |
+| M05 闭环设计 | M05 按目标与 M09 设计闭环，并索引本次要用的 M08 片 | 按目标 + 自述 + M08（`--m08`，整份读入；在“锚定”行列节点，程序据此切片）+ M09 记录 + 停车场设计；会话中改线只改写当前闭环范围，不开分叉会话 |
+| M09 / M15 / M07 / M08 | 各自模块 | M09 只做按主张逐条的最小记录（`records/`）；M15 只记时间事实（`timing.log`）；M07 = 书库文件夹（无索引）；M08 = 每项目一份 md（`m08/`，抽取调用生成 + 人工更正），接入 M05 设计 / 改线、教学调用与守卫（本闭环片）；M09 记录按知识点加派生索引 |
 
 ## 提示词补丁登记
 

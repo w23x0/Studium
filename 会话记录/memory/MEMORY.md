@@ -1,3 +1,4 @@
 - [只在需要确认时做实验](feedback-experiments-only-when-needed.md) — 原型改动不必每次跑模拟
 - [测试用模型](feedback-test-model-choice.md) — 判断点用最强模型，模拟学习者用 DeepSeek
 - [保持自己的判断、先自检](feedback-own-judgment-and-validation.md) — 先找根因再改；改动先自己检验，不把真人试用当唯一测试
+- [书库与学习笔记位置](reference-learning-materials.md) — 书库 PDF、K&K 力学、线代 / 微积分个人笔记（M09 笔记导入用）

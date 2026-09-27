@@ -18,7 +18,7 @@ import shutil
 import sys
 from pathlib import Path
 
-from . import assemble, commit, llm
+from . import assemble, commit, llm, m08
 from .store import Session
 
 DIAG = "【诊断记录】"
@@ -175,7 +175,7 @@ class Loop:
     def _route(self, basis: str) -> bool:
         """M05：按改线依据调整当前闭环的验收范围，记为路径事实。返回范围是否改了。"""
         try:
-            out = self._call("route", "route", assemble.for_route(self.scene, basis, self.s.read_route_log()))
+            out = self._call("route", "route", assemble.for_route(self.scene, basis, self.s.read_route_log(), m08.of_run(self.s.root)))
         except Exception as e:  # 路线调用失败：维持原范围继续，不影响本轮教学
             print(f"[M05 调用失败，维持原范围：{e}]", file=sys.stderr)
             return False
