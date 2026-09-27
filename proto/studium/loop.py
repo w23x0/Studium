@@ -165,6 +165,9 @@ class Loop:
         if idle is not None and idle >= AWAY_SECONDS:  # 离开时间照实记进对话，教学侧据此先请学习者回忆再接上
             self.s.append("路径", f"学习者离开约 {idle / 60:.0f} 分钟后回来（上一条系统回复之后）")
         self.s.append("学习者", learner_text)
+        change = self.s.draft_change(self.turn)
+        if change:  # 稿子改动按时间记进对话本体：守卫据此判断每段讲解是在什么条件下写的
+            self.s.append("讲解稿", f"本轮改动：{change}")
         try:
             diagnosis, visible, hidden, proposed = self._teach()
         except Exception:
@@ -249,6 +252,8 @@ def main(argv=None):
             print(f"——上一轮系统的回复——\n{last}")
 
     print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/quit 退出。\n")
+    if session.draft.exists():
+        print(f"讲解稿：{session.draft}\n  用任意编辑器打开它写、改、补；改完在这里说一声（比如“改好了”）再提交。\n")
     while not loop.closed:
         lines = []
         try:

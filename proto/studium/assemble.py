@@ -32,10 +32,11 @@ def _section(title: str, body: str) -> str:
 
 
 def for_guard(s: Session, scene: str) -> str:
-    return "\n".join([
-        _section("验收范围", _need(scene, "验收范围")),
-        _section("对话本体", _need(s.numbered_transcript(), "对话本体")),
-    ])
+    parts = [_section("验收范围", _need(scene, "验收范围"))]
+    if s.numbered_draft():
+        parts.append(_section("讲解稿（定稿，带行号；每轮改动记在对话本体的 [讲解稿] 行）", s.numbered_draft()))
+    parts.append(_section("对话本体", _need(s.numbered_transcript(), "对话本体")))
+    return "\n".join(parts)
 
 
 def for_teach(s: Session, scene: str, guard_note: str | None, history: str | None = None) -> str:
@@ -44,6 +45,9 @@ def for_teach(s: Session, scene: str, guard_note: str | None, history: str | Non
         parts.append(_section("个人历史（M09 已结束闭环记录；背景参考，不得覆盖本次对话证据）", history))
     if guard_note:
         parts.append(_section("闭环守卫上次核对结果", guard_note))
+    if s.numbered_draft():
+        parts.append(_section("讲解稿（学习者自己的笔记，当前版，带行号；每轮改动记在对话本体的 [讲解稿] 行）",
+                              s.numbered_draft()))
     parts += [
         _section("通用策略知识", prompt("strategy_knowledge")),
         _section("对话本体", _need(s.numbered_transcript(), "对话本体")),

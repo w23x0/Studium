@@ -28,6 +28,16 @@ def parse_design(text: str) -> tuple[str | None, str, str]:
     return (scene if "验收范围" in scene else None), _field(text, NOTE, [NEXT]), _field(text, NEXT, [])
 
 
+def draft_skeleton(scene: str) -> str | None:
+    """讲解稿骨架：每条【教学】主张一节（确认类主张不进稿子）。"""
+    title = next((l[len("# 闭环："):].strip() for l in scene.splitlines() if l.startswith("# 闭环：")), "")
+    claims = re.findall(r"^(\d+)\.\s*(?:【[^】]*】)*?【教学】\s*(.+)$", scene, flags=re.M)
+    if not claims:
+        return None
+    body = "\n\n".join(f"## {n}. {text.strip()}\n\n（在这里用自己的话讲）" for n, text in claims)
+    return f"# 讲解稿：{title}\n\n{body}\n"
+
+
 def _history(learner: str | None) -> tuple[list[str], str | None, list[str]]:
     """学习者的 M09 记录、停车场，以及这些闭环的路线偏差记录（M05 自有）。"""
     if not learner:
@@ -63,6 +73,10 @@ def design(goal: str, about: str | None, name: str, model: str = "opus", learner
     if not scene:
         sys.exit(f"M05 未按格式给出场景，原文见 {root / 'design.md'}")
     (root / "scene.md").write_text(scene + "\n", encoding="utf-8")
+    skeleton = draft_skeleton(scene)
+    if skeleton:  # 讲解稿：每条教学主张一节，只有标题（M02「讲解稿」）
+        for f in ("draft.md", "draft.initial.md"):
+            (root / f).write_text(skeleton, encoding="utf-8")
     # 路线偏差记录从闭环设计开始：记计划范围，供会中改线与下一闭环设计对照
     s.append_route(f"## 闭环设计（{'冷启动' if cold else f'读 M09 {len(m09)} 条、停车场' + ('有' if parked else '无')}）\n- 学习目标：{goal.strip()}\n- 验收范围：scene.md\n"
                    f"- 设计说明：{note or '无'}\n- 下一闭环候选：\n{nxt or '无'}")
