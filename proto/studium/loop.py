@@ -1,123 +1,50 @@
-"""单闭环最小原型（CLI）：确定性状态机 + 固定判断点上的隔离模型调用。
+"""单闭环原型（CLI）：一个闭环 = 知识链上的一段（M05 设计，见 prompts/design.md）。
 
-    python3 -m studium.loop --scene scenes/kernel.md
+    python3 -m studium.loop --run NAME
 
-每轮：学习者输入 → 教学调用（诊断记录 + 给学习者的话）
-      →（诊断记录写出改线依据则）M05 路线调用（独立）→ 改了范围就按新范围重做一次教学调用
-      →（提议结束则）闭环守卫（独立调用）
-教学主链 M04 / M10 / M02 / M03 在同一次调用内完成（M02 审查单「运行方式」）。
-改线不来回踢：每轮至多调用一次 M05；M05 读自己的路线偏差记录，不做与已做调整相反的改动。
-会中不加深：学习者已超出范围 → 转确认、尽快结束，更深内容记为“下一闭环建议”（M05 审查单）。
+每轮：学习者输入 → 教学调用（带学习环境，可按需读 M08 / 教材路线 / 教材原文 / M09）
+      →（提议结束则）闭环守卫（独立调用，同样可读环境）：走通 → 闭环结束、提交 M09；
+        未走通 → 带着核对结果重做本轮教学。
+教学主链 M04 / M10 / M02 / M03 在同一次调用内完成（M02 审查单「运行方式」）；调用经 agent.run，与模型厂商无关。
 """
 
 import argparse
-import re
 import datetime as _dt
 import readline  # noqa: F401  input() 获得行编辑（方向键、中文退格）
+import re
 import shutil
 import sys
 from pathlib import Path
 
-from . import assemble, commit, llm, m08
+from . import agent, assemble, commit, env
 from .store import Session
 
-DIAG = "【诊断记录】"
+RECORD = "【记录】"
 TO_LEARNER = "【给学习者】"
 END = "【提议结束】"
-PRACTICE = "【练习条件】"
-BOARD = "【板书】"
 PASS = "【守卫结论】通过"
-BASIS = "[改线依据]"
-ROUTE_ACTION, ROUTE_REASON, ROUTE_NOTE, ROUTE_NEXT, ROUTE_SCENE = (
-    "【路线动作】", "【理由】", "【调整说明】", "【下一闭环建议】", "【新场景】")
+AWAY_SECONDS = 30 * 60  # 超过这么久没回复算“离开”（实现期阈值）
 
 
 class BadFormat(Exception):
     pass
 
 
-AWAY_SECONDS = 30 * 60  # 超过这么久没回复算“离开”（实现期阈值）
-
-
-def parse_teach(text: str) -> tuple[str, str, str | None, bool]:
-    """拆成：诊断记录、给学习者的话、练习条件、是否提议结束。"""
-    diagnosis, _, rest = text.partition(TO_LEARNER)
-    diagnosis = diagnosis.replace(DIAG, "").strip()
-    if not rest or not diagnosis:
-        # 未按格式输出（如调用中途断开、CLI 自动续写后模型只回一句元话语）：不把它当回复发给学习者
+def parse_teach(text: str) -> tuple[str, str, bool]:
+    """拆成：记录、给学习者的话、是否提议结束。"""
+    record, _, rest = text.partition(TO_LEARNER)
+    record = record.replace(RECORD, "").strip()
+    if not rest.strip() or not record:
         raise BadFormat(text[:200])
-    proposed = END in rest
-    rest = rest.replace(END, "").strip()
-    visible, _, hidden = rest.partition(PRACTICE)
-    return diagnosis, visible.strip(), (hidden.strip() or None), proposed
+    return record, rest.replace(END, "").strip(), END in rest
 
 
-def split_board(diagnosis: str) -> tuple[str, str | None]:
-    """诊断记录末尾的【板书】段拆出来单独存（它给学习者看，不属于诊断）。"""
-    head, found, board = diagnosis.partition(BOARD)
-    return (head.strip(), board.strip() or None) if found else (diagnosis, None)
-
-
-def _diag_line(diagnosis: str, name: str) -> str:
-    """取诊断记录里某个 [段名] 的内容（到下一个 [段名] 为止）。"""
-    _, found, rest = diagnosis.partition(name)
-    if not found:
-        return ""
-    body = []
-    for line in rest.splitlines():
-        if body and line.lstrip().startswith("[") and not line.lstrip().startswith(name):
-            break
-        body.append(line)
-    return "\n".join(body).strip()
-
-
-def position_map(s: Session, scene: str) -> str:
-    """闭环内位置图（文字版）：主张、诊断的当前看法（位置 / 要点状态）、守卫最近一次结论。"""
-    claims = re.findall(r"^(\d+)\.\s*((?:【[^】]*】)+)\s*(.+)$", scene, flags=re.M)
-    lines = ["【位置图】"] + [f"  主张 {n} {tags} {text[:40]}{'…' if len(text) > 40 else ''}" for n, tags, text in claims]
-    diag = s.latest_asset("diagnosis") or ""
-    state, where = _diag_line(diag, "[要点状态]"), _diag_line(diag, "[位置]")
-    lines += ["", "  系统当前看法（不是守卫结论；✔ 独立 / ◐ 提示后或系统讲过 / ○ 未涉及）："]
-    lines += [f"    {l.strip()}" for l in (state or "（本轮诊断未给要点状态）").splitlines() if l.strip()]
-    lines += ["", f"  你在这里：{where or '（本轮诊断未给位置）'}"]
-    guard = s.latest_asset("guard")
-    if guard:
-        verdicts = re.findall(r"^\**主张 ?(\d+)[：:]\s*(有|无)", guard, flags=re.M)
-        lines += ["", "  守卫最近一次核对：" + "  ".join(f"主张{n} {'✔' if v == '有' else '✘'}" for n, v in verdicts)]
-    return "\n".join(lines)
-
-
-def parse_basis(diagnosis: str) -> str | None:
-    """取诊断记录里的 [改线依据] 段；写“无”或缺失则返回 None。"""
-    _, found, rest = diagnosis.partition(BASIS)
-    if not found:
-        return None
-    body = []
-    for line in rest.splitlines():
-        if body and line.lstrip().startswith("[") and not line.lstrip().startswith("[改线"):
-            break  # 下一个 [段名]
-        body.append(line)
-    text = "\n".join(body).strip()
-    return None if not text or text.lstrip("-*•： ").startswith("无") else text
-
-
-def _field(text: str, name: str, following: list[str]) -> str:
-    _, _, rest = text.partition(name)
-    for nxt in following:
-        rest = rest.partition(nxt)[0]
-    return rest.strip()
-
-
-def parse_route(text: str) -> tuple[str, str, str, str, str | None]:
-    """拆成：路线动作、理由、调整说明、下一闭环建议、新场景（维持时为 None）。"""
-    action = _field(text, ROUTE_ACTION, [ROUTE_REASON, ROUTE_NOTE, ROUTE_NEXT, ROUTE_SCENE])
-    reason = _field(text, ROUTE_REASON, [ROUTE_NOTE, ROUTE_NEXT, ROUTE_SCENE])
-    note = _field(text, ROUTE_NOTE, [ROUTE_NEXT, ROUTE_SCENE])
-    nxt = _field(text, ROUTE_NEXT, [ROUTE_SCENE])
-    scene = _field(text, ROUTE_SCENE, []) if ROUTE_SCENE in text else ""
-    if action.startswith("维持") or "验收范围" not in scene:
-        scene = None  # 维持，或新场景缺失 / 不完整 → 不改范围
-    return action or "（未按格式给出）", reason, note, nxt, scene
+def chain_view(scene: str, record: str | None) -> str:
+    """位置图：这段链 + 教学侧当前看法（不是守卫结论）。"""
+    chain = re.findall(r"^\d+\.\s*.+$", scene, flags=re.M)
+    where = re.search(r"\[位置\](.*)", record or "")
+    return "\n".join(["【这段链】", *[f"  {l}" for l in chain], "",
+                      f"  现在：{where.group(1).strip() if where else '（还没开始）'}"])
 
 
 class Loop:
@@ -126,34 +53,42 @@ class Loop:
         self.turn = 0
         self.guard_note: str | None = None
         self.closed = False
-        self.replied_at: _dt.datetime | None = None  # 上一条回复发出的时刻（续跑时未知）
+        self.replied_at: _dt.datetime | None = None
         self.learner = commit.learner_of(session.root)
         recs = commit.m09_records(self.learner) if self.learner else []
         self.history = "\n\n---\n\n".join(p.read_text(encoding="utf-8") for p in recs) or None
+        self.env = env.build(session.root)
 
     def resume(self) -> None:
-        """从运行目录恢复中断的闭环：轮次、最新验收范围、守卫上次未通过的核对结果。"""
         turns = sorted(int(d.name) for d in (self.s.root / "turns").iterdir() if d.name.isdigit())
         self.turn = turns[-1] if turns else 0
         self.closed = (self.s.root / "closure.md").exists()
-        scene_turn = 0
-        for n in turns:  # 范围以最后一次改线为准；改线前的守卫结果按旧编号写，作废
-            if self.s.read_asset(n, "scene"):
-                self.scene, scene_turn, self.guard_note = self.s.read_asset(n, "scene"), n, None
+        for n in turns:
             guard = self.s.read_asset(n, "guard")
-            if guard and n >= scene_turn and PASS not in guard:
+            if guard and PASS not in guard:
                 self.guard_note = guard
         last = self.s.root / "turns" / f"{self.turn:03d}" / "reply.md"
-        if last.exists():  # 续跑：以上一条回复的写入时刻作为离开起点
+        if last.exists():
             self.replied_at = _dt.datetime.fromtimestamp(last.stat().st_mtime)
 
-    def _call(self, point: str, prompt_name: str, user: str) -> str:
-        res = llm.call(self.models[point], assemble.prompt(prompt_name), user)
+    def _call(self, point: str, user: str) -> str:
+        trace: list = []
+        res = agent.run(self.models[point], assemble.prompt(point), user, env=self.env, trace=trace)
         self.s.log_call(self.turn, point, res)
+        if trace:
+            self.s.write_asset(self.turn, f"{point}-tools", "\n".join(f"{n} {a} → {k} 字" for n, a, k in trace))
         return res.text
 
+    def _teach(self) -> tuple[str, str, bool]:
+        user = assemble.for_teach(self.s, self.scene, self.guard_note, self.history)
+        try:
+            return parse_teach(self._call("teach", user))
+        except BadFormat as e:
+            print(f"[教学调用未按格式输出，重试一次：{e}]", file=sys.stderr)
+            return parse_teach(self._call("teach", user))
+
     def _guard(self) -> bool:
-        out = self._call("guard", "guard", assemble.for_guard(self.s, self.scene))
+        out = self._call("guard", assemble.for_guard(self.s, self.scene))
         self.s.write_asset(self.turn, "guard", out)
         if PASS in out:
             (self.s.root / "closure.md").write_text(out + "\n", encoding="utf-8")
@@ -161,93 +96,40 @@ class Loop:
             if self.learner:  # 守卫通过是进 M09 的唯一过渡点
                 commit.commit_m09(self.s.root, self.learner)
             return True
-        self.guard_note = out  # 核对事实，供下一轮教学调用读取；不是诊断记录的回灌
+        self.guard_note = out
         return False
-
-    def _teach(self) -> tuple[str, str, str | None, bool]:
-        user = assemble.for_teach(self.s, self.scene, self.guard_note, self.history)
-        try:
-            return parse_teach(self._call("teach", "teach", user))
-        except BadFormat as e:  # 重新调一次；仍不对则抛出，由 step 撤回本轮输入
-            print(f"[教学调用未按格式输出，重试一次：{e}]", file=sys.stderr)
-            return parse_teach(self._call("teach", "teach", user))
-
-    def _route(self, basis: str) -> bool:
-        """M05：按改线依据调整当前闭环的验收范围，记为路径事实。返回范围是否改了。"""
-        try:
-            out = self._call("route", "route", assemble.for_route(self.scene, basis, self.s.read_route_log(), m08.of_run(self.s.root)))
-        except Exception as e:  # 路线调用失败：维持原范围继续，不影响本轮教学
-            print(f"[M05 调用失败，维持原范围：{e}]", file=sys.stderr)
-            return False
-        self.s.write_asset(self.turn, "route", out)
-        action, reason, note, nxt, scene = parse_route(out)
-        self.s.append_route(
-            f"## 第 {self.turn} 轮\n- 改线依据：{basis}\n- 路线动作：{action}\n- 理由：{reason}\n"
-            f"- 调整说明：{note or '无'}\n- 下一闭环建议：{nxt or '无'}\n- 范围版本：{f'turns/{self.turn:03d}/scene.md' if scene else '未改'}"
-        )
-        self.s.append("路径", f"第 {self.turn} 轮改线依据交 M05：{action}。理由：{reason}"
-                      + (f" 调整：{note}" if scene else ""))
-        if not scene:
-            return False
-        self.s.write_asset(self.turn, "scene", scene)
-        self.scene = scene
-        self.guard_note = None  # 旧核对结果按旧编号写，范围改了就作废
-        return True
 
     def step(self, learner_text: str) -> str:
         self.turn += 1
         now = _dt.datetime.now()
         idle = (now - self.replied_at).total_seconds() if self.replied_at else None
         mark = self.s.size()
-        if idle is not None and idle >= AWAY_SECONDS:  # 离开时间照实记进对话，教学侧据此先请学习者回忆再接上
+        if idle is not None and idle >= AWAY_SECONDS:
             self.s.append("路径", f"学习者离开约 {idle / 60:.0f} 分钟后回来（上一条系统回复之后）")
         self.s.append("学习者", learner_text)
-        change = self.s.draft_change(self.turn)
-        if change:  # 稿子改动按时间记进对话本体：守卫据此判断每段讲解是在什么条件下写的
-            self.s.append("讲解稿", f"本轮改动：{change}")
         try:
-            diagnosis, visible, hidden, proposed = self._teach()
+            record, visible, proposed = self._teach()
         except Exception:
             self.s.truncate(mark)
             self.turn -= 1
             raise
-        basis = parse_basis(diagnosis)
-        if basis and self._route(basis):
-            # 本轮回复是按旧范围写的：按新范围重做一次；重做中再报的依据留到下一轮（每轮至多一次 M05）
-            self.s.write_asset(self.turn, "diagnosis-superseded", diagnosis)
-            self.s.write_asset(self.turn, "reply-superseded", visible)
-            try:
-                diagnosis, visible, hidden, proposed = self._teach()
-            except Exception as e:
-                print(f"[按新范围重做失败，沿用本轮原回复：{e}]", file=sys.stderr)
-        diagnosis, board = split_board(diagnosis)
-        if board:
-            self.s.write_asset(self.turn, "board", board)
-            self.s.board.write_text(board + "\n", encoding="utf-8")
-        self.s.write_asset(self.turn, "diagnosis", diagnosis)
-        self.s.write_asset(self.turn, "reply", visible)
         if proposed:
+            self.s.write_asset(self.turn, "record-superseded", record)
+            self.s.write_asset(self.turn, "reply-superseded", visible)
             if self._guard():
-                msg = "闭环守卫已确认验收范围内的各条主张都有证据，本闭环结束。闭环总结见 closure.md。"
+                self.s.write_asset(self.turn, "record", record)
+                self.s.write_asset(self.turn, "reply", visible)
+                msg = visible + "\n\n（闭环守卫核对：这段链你已经能自己走通，本闭环结束。）"
                 self.s.append("系统", msg)
                 self.s.log_turn(self.turn, now, idle, len(learner_text))
                 return msg
-            # 本轮回复是按“要结束”写的：带着守卫的核对结果重做一次，不把收尾话发给学习者；重做中再提议留到下一轮
-            self.s.write_asset(self.turn, "diagnosis-superseded", diagnosis)
-            self.s.write_asset(self.turn, "reply-superseded", visible)
-            try:
-                diagnosis, visible, hidden, _ = self._teach()
-                diagnosis, board = split_board(diagnosis)
-                if board:
-                    self.s.write_asset(self.turn, "board", board)
-                    self.s.board.write_text(board + "\n", encoding="utf-8")
-                self.s.write_asset(self.turn, "diagnosis", diagnosis)
-                self.s.write_asset(self.turn, "reply", visible)
+            try:  # 未走通：带着核对结果重做本轮，不把收尾话发给学习者
+                record, visible, _ = self._teach()
             except Exception as e:
                 print(f"[守卫未通过后重做失败，沿用本轮原回复：{e}]", file=sys.stderr)
+        self.s.write_asset(self.turn, "record", record)
+        self.s.write_asset(self.turn, "reply", visible)
         self.s.append("系统", visible)
-        if hidden:
-            self.s.append("练习条件", hidden.replace("\n", " ； "))
         self.s.log_turn(self.turn, now, idle, len(learner_text))
         self.replied_at = _dt.datetime.now()
         return visible
@@ -265,19 +147,18 @@ def prepare_scene(root: Path, scene_path: Path | None, resume: bool = False) -> 
         root.mkdir(parents=True, exist_ok=True)
         shutil.copy(scene_path, root / "scene.md")
     elif not (root / "scene.md").exists():
-        sys.exit(f"缺场景：给 --scene，或先用 studium.design 在 {root} 里设计闭环")
+        sys.exit(f"缺场景：先用 studium.design 在 {root} 里设计闭环")
     elif has_dialogue(root) and not resume:
         sys.exit(f"该运行已有对话，换一个 --run：{root}")
     return (root / "scene.md").read_text(encoding="utf-8")
 
 
 def main(argv=None):
-    ap = argparse.ArgumentParser(description="Studium 单闭环最小原型")
+    ap = argparse.ArgumentParser(description="Studium 单闭环原型")
     ap.add_argument("--scene", type=Path, help="手写场景；省略时用 --run 目录里 M05 设计好的 scene.md")
     ap.add_argument("--run", help="运行名（默认按时间生成）")
-    ap.add_argument("--teach", default="opus")
+    ap.add_argument("--teach", default="opus", help="模型：opus / sonnet（claude -p）、oc:<模型>、anthropic:<模型>")
     ap.add_argument("--guard", default="opus")
-    ap.add_argument("--route", default="opus")
     a = ap.parse_args(argv)
 
     name = a.run or f"{_dt.datetime.now():%Y%m%d-%H%M%S}"
@@ -285,23 +166,18 @@ def main(argv=None):
     resuming = not a.scene and has_dialogue(root)
     scene = prepare_scene(root, a.scene, resume=True)
     session = Session(root)
-    loop = Loop(session, scene, {"teach": a.teach, "guard": a.guard, "route": a.route})
+    loop = Loop(session, scene, {"teach": a.teach, "guard": a.guard})
     if resuming:
         loop.resume()
         if loop.closed:
             print(f"该闭环已结束（见 {root / 'closure.md'}）。")
             return
         print(f"继续上次的运行：已进行 {loop.turn} 轮，接着输入即可。\n")
-        print(position_map(session, loop.scene) + "\n")
-        if session.board.exists():
-            print("【板书】\n" + session.board.read_text(encoding="utf-8"))
         last = session.read_asset(loop.turn, "reply")
         if last:
-            print(f"——上一轮系统的回复——\n{last}")
-
-    print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/图 看位置图，/板书 看板书，/quit 退出。\n")
-    if session.draft.exists():
-        print(f"讲解稿：{session.draft}\n  用任意编辑器打开它写、改、补；改完在这里说一声（比如“改好了”）再提交。\n")
+            print(f"——上一轮系统的回复——\n{last}\n")
+    print(chain_view(scene, session.latest_asset("record")) + "\n")
+    print(f"运行目录：{root}\n输入你的话，空行结束一次输入；/图 看这段链和当前位置，/quit 退出。\n")
     while not loop.closed:
         lines = []
         try:
@@ -309,10 +185,8 @@ def main(argv=None):
                 line = input("你> " if not lines else "  > ")
                 if line.strip() == "/quit":
                     return
-                if not lines and line.strip() in ("/图", "/板书"):
-                    print(position_map(session, loop.scene) if line.strip() == "/图" else
-                          ("【板书】\n" + session.board.read_text(encoding="utf-8")) if session.board.exists()
-                          else "（还没有板书）")
+                if not lines and line.strip() == "/图":
+                    print(chain_view(loop.scene, session.latest_asset("record")))
                     continue
                 if not line.strip():
                     break

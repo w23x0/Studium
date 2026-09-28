@@ -2,17 +2,16 @@
 
 目录结构（一个会话 = 一个闭环）：
     runs/<会话>/
-        scene.md                 闭环目标与验收范围（初版手写；M05 改线后的版本在 turns/NNN/scene.md）
+        scene.md                 这段知识链（M05 设计）
+        m08.txt / learner.txt    本闭环用的 M08、学习者
         route.md                 路线偏差记录（M05 自有，只追加）
-        transcript.md            对话本体（只追加，带行号引用），含学习者看不到的【练习条件】
+        transcript.md            对话本体（只追加，带行号引用）
         turns/NNN/<模块>.md      每轮各判断点的产出资产
         calls.log                每次模型调用：判断点、实际模型、token、耗时
-        closure.md               闭环守卫通过后的闭环总结
-        draft.md                 讲解稿当前版（学习者自己改；draft.initial.md = 开场骨架；turns/NNN/draft.md = 该轮看到的版本）
+        closure.md               闭环守卫通过后的核对结果
 """
 
 import datetime as _dt
-import difflib
 import re
 from pathlib import Path
 
@@ -43,46 +42,10 @@ class Session:
         return "\n".join(f"transcript.md:{i} {line}" for i, line in enumerate(lines, 1))
 
     def learner_view(self) -> str:
-        """学习者能看到的对话（去掉【练习条件】、[路径] 这类系统侧记录）。"""
+        """学习者能看到的对话（去掉 [路径] 这类系统侧记录）。"""
         lines = self.transcript.read_text(encoding="utf-8").splitlines()
-        return "\n".join(l for l in lines if not l.startswith(("[练习条件]", "[路径]", "[讲解稿]")))
+        return "\n".join(l for l in lines if not l.startswith("[路径]"))
 
-    # ---- 板书（系统维护：符号约定、已推出的式子、还悬着的问题；每版留在 turns/NNN/board.md） ----
-    @property
-    def board(self) -> Path:
-        return self.root / "board.md"
-
-    # ---- 讲解稿（学习者自己的笔记；版本只追加，不是分支） ----
-    @property
-    def draft(self) -> Path:
-        return self.root / "draft.md"
-
-    def numbered_draft(self) -> str | None:
-        if not self.draft.exists():
-            return None
-        lines = self.draft.read_text(encoding="utf-8").splitlines()
-        return "\n".join(f"draft.md:{i} {line}" for i, line in enumerate(lines, 1))
-
-    def draft_change(self, turn: int) -> str | None:
-        """与上一版相比本轮改了什么（按当前版行号），并存下本轮版本。无稿子或没改 → None。"""
-        if not self.draft.exists():
-            return None
-        cur = self.draft.read_text(encoding="utf-8")
-        prev_p = next((d / "draft.md" for d in sorted((self.root / "turns").iterdir(), reverse=True)
-                       if d.name.isdigit() and int(d.name) < turn and (d / "draft.md").exists()),
-                      self.root / "draft.initial.md")
-        prev = prev_p.read_text(encoding="utf-8") if prev_p.exists() else ""
-        (self.turn_dir(turn) / "draft.md").write_text(cur, encoding="utf-8")
-        a, b = prev.splitlines(), cur.splitlines()
-        out = []
-        for op, i1, i2, j1, j2 in difflib.SequenceMatcher(a=a, b=b, autojunk=False).get_opcodes():
-            if op in ("replace", "insert"):
-                out += [f"draft.md:{j} 写入「{b[j - 1].strip()}」" for j in range(j1 + 1, j2 + 1) if b[j - 1].strip()]
-            if op in ("replace", "delete"):
-                out += [f"删去「{x.strip()}」" for x in a[i1:i2] if x.strip()]
-        return " ； ".join(out) or None
-
-    # ---- 轮次资产 ----
     def turn_dir(self, n: int) -> Path:
         d = self.root / "turns" / f"{n:03d}"
         d.mkdir(parents=True, exist_ok=True)

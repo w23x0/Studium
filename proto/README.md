@@ -1,69 +1,61 @@
-# proto：单闭环最小原型（CLI）
+# proto：单闭环原型（CLI）
 
-> 状态：v0（2026-09-23 起，持续改动至 09-27）。对应 `../docs/Harness设计/00-技术方向确认.md` §实施顺序 第 1–3 步，当前 3.5 最小 M08。每次改动的依据与原因见 `../docs/Harness设计/_research/原型变更记录.md`。
-> 目的：检验设计假设。实验 1 结论（拆分串行不如同信息单一调用）已据此改定运行方式，见 `../docs/Harness设计/_research/原型实验-1-发现.md`。
+> 状态：v1（2026-09-28 重建）。闭环 = 知识链上的一段（产品总览「闭环定义」）；教学与守卫是带只读工具的 agent，在“学习环境”里按需翻 M08 / 教材路线 / 教材原文 / M09。v0（主张 + 证据、讲解稿、板书、会中改线）已删，理由见 `../docs/Harness设计/_research/原型实验-9-发现.md`。每次改动的依据见 `../docs/Harness设计/_research/原型变更记录.md`。
 
 ## 运行
 
-需要已登录的 Claude Code CLI（`claude`）。每个判断点是一次 `claude -p` 隔离调用：无工具、无会话持久化、在空目录中运行（不带项目上下文）。只用 Python 标准库。
+只用 Python 标准库。模型经 `studium/agent.py` 调用，模型名决定后端：`opus` / `sonnet` 走 `claude -p`（需已登录的 Claude Code，用订阅）；`oc:<模型>` 走 OpenAI 兼容接口（地址与密钥在 `.env`，见 `.env.example`）；`anthropic:<模型>` 走 Anthropic API（`ANTHROPIC_API_KEY`，未实测）。
 
 ```bash
 cd proto
-python3 -m studium.design --goal "我想学线性变换的核。" --about "大一，学过……" --run NAME   # M05 设计闭环（先看 runs/NAME/scene.md）；加 --learner owner 读历史
-python3 -m studium.commit --run NAME --park "理由" [--check]                      # 未完成闭环记入停车场（--check 先让守卫核对缺口；守卫通过的自动进 M09）
-python3 -m studium.design --learner owner --split RUN --goal … --run NEW           # 学到一半发现过大：M05 写拆分计划并设计第一个小闭环
-python3 -m studium.mineru <书.pdf> --ranges 1-200,201-400                          # 书 → md（M06 最小一段）
+# 资料 → 结构（每本书做一次）
+python3 -m studium.mineru <书.pdf> --ranges 1-200,201-400                                  # 书 → md（M06 最小一段；MINERU_TOKEN）
+python3 -m studium.m07 split --book <MinerU 目录> --toc A-B                                # 按目录切成小节 + 索引（M07；放在书库，不进 git）
 python3 -m studium.extract --book <MinerU 目录> --part p1-200 --lines A-B --toc C-D --run NAME   # 一章 → M08 知识点 + 关系（引文逐字定页）
-# design 加 --m08 m08/力学-动量.md：M05 先选知识点再写主张，并切出本闭环 M08 片给教学调用与守卫
-python3 -m studium.loop --run NAME                                                  # 在设计好的闭环里，你当学习者
-python3 -m studium.sim --run NAME --learner learners/typical.md                     # 或用模拟学习者跑
-python3 -m studium.loop --scene scenes/kernel.md                                   # 手写场景，你当学习者
-python3 -m studium.sim --scene scenes/kernel.md --learner learners/typical.md      # 模拟学习者自动跑
-python3 -m studium.compare runs/<甲> runs/<乙>                                     # 两次运行盲评
+# 学
+python3 -m studium.design --learner owner --m08 m08/力学-动量.md --goal "…" --about "…" --run NAME   # M05：在 M08 上选下一段知识链
+python3 -m studium.loop --run NAME                                                          # 在这段链上学（你当学习者；中断后同命令续跑）
+python3 -m studium.sim --run NAME --learner learners/owner-like.md                          # 或用模拟学习者跑
+python3 -m studium.commit --run NAME --park "理由" [--check]                                # 没走通就停：记入停车场（守卫通过的自动进 M09）
+python3 -m studium.compare runs/<甲> runs/<乙>                                              # 两次运行盲评
 ```
 
-每轮：学习者输入 → **教学调用**（先写不放进回复、学习者可查阅的诊断记录，再写给学习者的话）→ 诊断记录写出**改线依据**（缺前置 / 已超出范围）时触发 **M05 路线调用**（独立调用，改写当前闭环的验收范围：补前置 / 转确认 / 维持；会中不加深，学习者已超出范围就转确认、尽快结束，更深内容记为下一闭环建议）→ 范围改了则按新范围重做一次教学调用 → 提议结束时触发**闭环守卫**（独立调用）。改线不来回踢：每轮至多一次 M05，M05 读自己的路线偏差记录。输入一段话后按空行提交；`/图` 位置图、`/板书` 板书（续跑时自动打印）；`/quit` 退出；中断后用同一条 `loop --run NAME` 命令接着跑（从运行目录恢复轮次、当前范围与守卫核对结果）。模型用 `--teach / --guard / --route` 指定（默认都是 opus：判断点用最强模型）。模拟学习者默认 `oc:deepseek-v4.1-flash`（`oc:` 前缀走 OpenAI 兼容接口，地址与密钥在 `.env`，不进 git，见 `.env.example`）。判断调用不加载任何 MCP 服务（保证隔离、缓存可命中）。
+每轮：学习者输入 → **教学调用**（agent，可读学习环境；先写【记录】：位置 / 已会 / 前置缺口，再写给学习者的话）→ 提议结束时 **闭环守卫**（独立 agent 调用）逐步核对学习者能否自己走通这段链：通过 → 闭环结束、提交 M09；未通过 → 带核对结果重做本轮。`/图` 看这段链与当前位置，`/quit` 退出。
+
+## 学习环境
+
+每次调用前在临时目录搭好（`studium/env.py`），全是软链接：`README.md`（索引说明）、`m08.md`、`路线-*.md`、`m07/`（链到书库里切好的原文）、`m09/`（学习者已结束闭环，有才放）。工具三个、只读、限在环境以内：`read_file` / `grep` / `list_dir`（`claude -p` 后端对应 Read / Grep / Glob）。
 
 ## 文件
 
 | 路径 | 内容 |
 | --- | --- |
-| `studium/llm.py` | 隔离调用封装（`claude -p` / `oc:` 接口）；记录实际执行的模型名（横切原则 3）与读缓存量 |
-| `studium/store.py` | 纯文本、只追加的资产存储；读侧“取最新有效” |
-| `studium/assemble.py` | 按读清单装配上下文；缺必需项不发、缺条件项降级标注；诊断记录不回灌 |
-| `studium/loop.py` | 确定性状态机与 CLI |
-| `studium/design.py` | M05 设计闭环：按学习目标 + 自述写场景，存进新运行目录；`--learner` 读该学习者的 M09 记录与停车场（都没有 = 冷启动），`--dry` 只看装配的输入 |
-| `studium/commit.py` | 闭环结束后的提交：守卫通过 → M09（`loop` 自动）；未完成 → `--park` 记入 M05 停车场 |
-| `studium/mineru.py` | 书 PDF → md（MinerU API，M06 的最小一段）；密钥 `MINERU_TOKEN` |
-| `studium/extract.py` | M08 抽取调用：一章原文 + 全书目录 → 知识点表 + 关系表；引文逐字匹配 `content_list.json` 定页，匹配不上标“未匹配” |
-| `studium/m08.py` | 读 M08、按场景“锚定（M08）”行切出本闭环片（教学调用、守卫读它；M05 会中改线读整份） |
-| `m08/` | 最小 M08：每个学习项目一份知识结构（知识点 + 关系 + 原文锚点），见 `m08/README.md` |
-| `records/<学习者>/` | 真实学习者的跨闭环记录（进 git）：`m09/NNN-<运行>.md` 已结束闭环、`parking.md` 停车场 |
-| `studium/prompts/` | `teach.md` 教学调用、`guard.md` 闭环守卫、`route.md` M05 路线调用、`design.md` M05 设计闭环（最小约定，无角色设定）、`m08_extract.md` M08 抽取；`strategy_knowledge.md` = 通用策略知识（提炼自学习理论取舍表的“采纳”项） |
+| `studium/agent.py` | 统一调用接口（借鉴 pi：统一模型接口 + 工具循环）；三个只读工具；后端 claude -p / OpenAI 兼容 / Anthropic |
+| `studium/env.py` | 搭学习环境 |
+| `studium/llm.py` | 无工具的单次调用（M05 设计、M08 抽取、模拟学习者、盲评用） |
+| `studium/loop.py` | 闭环主循环与 CLI |
+| `studium/design.py` | M05 设计闭环：读 M08 + 教材路线 + M09 + 停车场，选一段知识链 |
+| `studium/commit.py` | 闭环结束后的提交：守卫通过 → M09；没走通 → 停车场；两者都带按知识点的派生索引 |
+| `studium/assemble.py` | 按读清单装配各调用的输入；缺必需项不发 |
+| `studium/store.py` | 纯文本、只追加的运行记录 |
+| `studium/mineru.py` · `m07.py` · `extract.py` · `m08.py` | 资料线：PDF → md → 小节 + 索引 → M08 抽取；M08 读取、切片、教材路线生成 |
+| `studium/prompts/` | `teach.md` 教学、`guard.md` 守卫、`design.md` M05 设计、`m08_extract.md` M08 抽取（只写闭环定义、底线与输出格式） |
 | `studium/sim.py` · `compare.py` | 模拟学习者（`learners/`）与盲评 |
-| `scenes/` | 场景：`kernel.md` 线性变换的核（大学）、`newton2.md` 牛顿第二定律（高中）；验收范围按“主张 + 证据”写，每条标【教学】/【确认】 |
-| `learners/` | 模拟学习者：`typical.md` 典型大一（核）、`knows-newton2.md` 已会牛二（测改线）、`typical-newton.md` 典型高一（牛顿，带“力维持运动”前概念） |
-| `runs/` | 运行记录（**进 git**，实验证据；索引见 `runs/README.md`）：`transcript.md`（含系统侧 `[练习条件]` `[路径]` 行）、`turns/NNN/{diagnosis,reply,guard,route,scene}.md`（改线轮另存 `*-superseded.md`）、`route.md` 路线偏差记录、`calls.log`、`closure.md` |
+| `m08/` | 每个学习项目的 M08 与教材路线，见 `m08/README.md` |
+| `records/<学习者>/` | 真实学习者的跨闭环记录（进 git）：`m09/` 已走通的闭环、`parking.md` 停车场 |
+| `learners/` | 模拟学习者人设；`owner-like.md` 接近产品负责人背景 |
+| `runs/` | 运行记录（**进 git**，实验证据；索引见 `runs/README.md`） |
 
-## v0 与设计的已知差距
+## 与设计的已知差距
 
-| 差距 | 设计口径 | v0 做法 |
+| 差距 | 设计口径 | 现在做法 |
 | --- | --- | --- |
-| M02 历史层 | 按相关性取对话片段 | 取全部对话（单闭环很短） |
-| M05 闭环设计 | M05 按目标与 M09 设计闭环，并索引本次要用的 M08 片 | 按目标 + 自述 + M08（`--m08`，整份读入；在“锚定”行列节点，程序据此切片）+ M09 记录 + 停车场设计；会话中改线只改写当前闭环范围，不开分叉会话 |
-| M09 / M15 / M07 / M08 | 各自模块 | M09 只做按主张逐条的最小记录（`records/`）；M15 只记时间事实（`timing.log`）；M07 = 书库文件夹（无索引）；M08 = 每项目一份 md（`m08/`，抽取调用生成 + 人工更正），接入 M05 设计 / 改线、教学调用与守卫（本闭环片）；M09 记录按知识点加派生索引 |
+| 会中改线（M05） | 学习者掉队 / 跑到前面时调整路线 | 闭环内只由教学侧跳过已会的步骤、记下前置缺口；路线调整放到闭环之间（下一次 design） |
+| M15 | 状态与条件 | 只记时间事实（`timing.log`）与离开时长 |
+| 审查单 | 按新闭环定义清理 M02 / M04 / M05 / M10 与组合层文档 | 待清理（`任务线路.md` §3） |
 
 ## 提示词补丁登记
 
-> 口径见 `../docs/Harness设计/00-技术方向确认.md` 核心原则 5：假设模型完美仍需要的是产品规则，不需要的是补丁。补丁只放提示词，登记于此（不写进提示词本身，免得模型读到），模型变强时逐条试删。
+> 口径见 `../docs/Harness设计/00-技术方向确认.md` 核心原则 5：假设模型完美仍需要的是产品规则，不需要的是补丁。补丁只放提示词，登记于此。
 
-| 提示词 | 规则 | 来由 |
-| --- | --- | --- |
-| `teach.md` | 已有完整证据的主张不报改线依据 | 实验 2：多余的 M05 调用 |
-| `route.md` | 整个范围偏浅时剩余教学主张一次全转确认，不逐条等 | 实验 2：逐条转确认拖慢结束 |
-| `design.md` | 证据不写成依赖某个特定追问才出现的表现 | 实验 3：守卫无从核对“被追问时” |
-| `design.md` | 纵深不把相邻主题拉进来当要点；一条主张要点一般不超过 4 个 | 实验 5 后首版 me-6 场景：纵向写足变成横向扩张（7 个要点） |
-| `design.md` | 题目深度来自物理 / 概念综合，不来自数学技巧 | 实验 5：综合题时间耗在拆项积分、取极限上 |
-| `teach.md` | 提议结束前按守卫标准自查，不对学习者下“你已经做到”的结论 | 实验 5：诊断自行放宽标准提议结束 |
-
-产品规则（不是补丁，不登记）：有限视角、作答前不给答案、教学 / 确认两类主张、会中不加深、改线不来回踢、诊断记录不回灌、纵向深度按学段写足（动机 / 边界 / 依赖）、纵深主动挖、讲过的内容须非复述取证、符号与题设首次出现即约定清楚、讲解稿（学习者自己的笔记，design 生成骨架，loop 每轮记改动）。
+（2026-09-28 重写后暂无补丁。）

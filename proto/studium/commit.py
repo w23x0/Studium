@@ -5,7 +5,7 @@
         parking.md           M05 停车场：未通过就结束 / 搁置的闭环，带缺口与接续点（只追加）
 
 口径（审查单）：闭环未结束不写 M09，守卫通过是唯一过渡点（M04-02、M09）；未完成闭环记入
-M05 停车场与未完成负债，可靠搁置 = 带具体恢复计划（M05）。M09 记录按验收主张逐条标证据强度（M04）。
+M05 停车场与未完成负债，可靠搁置 = 带具体恢复计划（M05）。M09 记录按知识链逐步记守卫核对，挂在 M08 知识点上。
 学习者身份记在运行目录的 learner.txt（设计闭环时写入）。
 
     python3 -m studium.commit --run NAME                  守卫已通过 → 提交 M09；否则须加 --park
@@ -18,13 +18,12 @@ import re
 import sys
 from pathlib import Path
 
-from . import assemble, llm
+from . import assemble
 from .store import Session
 
 ROOT = Path(__file__).resolve().parent.parent
 LEARNERS = ROOT / "records"  # learners/ 放模拟学习者人设；这里放真实学习者的跨闭环记录
 RUNS = ROOT / "runs"
-NEXT = "[下一闭环候选]"
 
 
 def learner_of(run: Path) -> str | None:
@@ -50,20 +49,6 @@ def _current_scene(s: Session) -> str:
     return s.latest_asset("scene") or (s.root / "scene.md").read_text(encoding="utf-8")
 
 
-def _next_candidates(s: Session) -> list[str]:
-    """诊断记录里的 [下一闭环候选]：学习者钻研到范围外的方向（去重，保留先后）。"""
-    seen: list[str] = []
-    for d in sorted((s.root / "turns").iterdir()):
-        text = (d / "diagnosis.md").read_text(encoding="utf-8") if (d / "diagnosis.md").exists() else ""
-        _, found, rest = text.partition(NEXT)
-        if not found:
-            continue
-        body = re.split(r"\n\s*\[", rest, maxsplit=1)[0].strip().lstrip("-*• ").strip()
-        if body and not body.startswith("无") and body not in seen:
-            seen.append(body)
-    return seen
-
-
 def _last_guard(s: Session) -> tuple[int, str] | None:
     for d in sorted((s.root / "turns").iterdir(), reverse=True):
         if (d / "guard.md").exists():
@@ -76,18 +61,17 @@ def _turns(s: Session) -> int:
 
 
 def by_node(scene: str, guard: str) -> str | None:
-    """按知识点排的索引（由验收范围的节点标注与守卫逐条核对派生，可重建，不权威）。"""
-    tags = {n: re.findall(r"【([KP]\d+)】", head) for n, head in re.findall(r"^(\d+)\.\s*((?:【[^】]*】)+)", scene, flags=re.M)}
-    if not any(tags.values()):
-        return None
+    """按知识点排的索引（由守卫逐步核对派生，可重建，不权威）。"""
     rows = []
-    for n, verdict, body in re.findall(r"^主张\s*(\d+)[^：\n]*：\s*(有|无)(.*?)(?=^主张\s*\d+|^【守卫结论】|\Z)", guard, flags=re.M | re.S):
+    for n, tags, verdict, body in re.findall(r"^第\s*(\d+)\s*步【([^】]*)】[^：\n]*：\s*(走通|未走通)(.*?)(?=^第\s*\d+\s*步|^【守卫结论】|\Z)",
+                                             guard, flags=re.M | re.S):
         field = lambda k: (re.search(rf"^- {k}：(.*)$", body, flags=re.M) or [None, "—"])[1].strip()
-        rows.append(f"| {'、'.join(tags.get(n, [])) or '—'} | {n} | {verdict} | {field('条件')} | {field('证据强度')} "
-                    f"| {field('缺口') if verdict == '无' else '—'} | {field('前置缺口')} |")
+        rows.append(f"| {n} | {tags} | {verdict} | {field('证据位置')} | {field('还差')} | {field('前置缺口')} |")
+    if not rows:
+        return None
     anchor = next((l for l in scene.splitlines() if l.startswith("锚定")), "")
-    return (f"{anchor}\n\n| 知识点 | 主张 | 守卫 | 条件 | 证据强度 | 缺口 | 前置缺口 |\n"
-            f"| --- | --- | --- | --- | --- | --- | --- |\n" + "\n".join(rows))
+    return (f"{anchor}\n\n| 步 | 知识点 | 守卫 | 证据位置 | 还差 | 前置缺口 |\n| --- | --- | --- | --- | --- | --- |\n"
+            + "\n".join(rows))
 
 
 def _m08_ref(run: Path) -> str:
@@ -96,7 +80,7 @@ def _m08_ref(run: Path) -> str:
 
 
 def commit_m09(run: Path, learner: str) -> Path:
-    """守卫通过后提交 M09：验收范围 + 守卫逐条核对（含证据强度）+ 范围外的下一闭环候选。"""
+    """守卫通过后提交 M09：这段知识链 + 守卫逐步核对 + 按知识点的派生索引。"""
     s = Session(run)
     closure = run / "closure.md"
     if not closure.exists():
@@ -105,25 +89,24 @@ def commit_m09(run: Path, learner: str) -> Path:
     d.mkdir(parents=True, exist_ok=True)
     if any(p.name.endswith(f"-{run.name}.md") for p in d.glob("*.md")):
         sys.exit(f"该闭环已提交过 M09：{run.name}")
-    nxt = _next_candidates(s)
     out = d / f"{len(m09_records(learner)) + 1:03d}-{run.name}.md"
     out.write_text(
         f"# 已结束闭环：{run.name}\n\n"
         f"- 结束时间：{_dt.datetime.fromtimestamp(closure.stat().st_mtime):%Y-%m-%d %H:%M}\n"
         f"- 轮数：{_turns(s)}\n{_m08_ref(run)}\n"
         + (f"## 按知识点（派生索引，可重建；以下方守卫核对为准）\n\n{idx}\n\n" if (idx := by_node(_current_scene(s), closure.read_text(encoding="utf-8"))) else "")
-        + f"## 验收范围（结束时版本）\n\n{_current_scene(s).strip()}\n\n"
-        f"## 守卫逐条核对\n\n{closure.read_text(encoding='utf-8').strip()}\n\n"
-        f"## 范围外的下一闭环候选（诊断记录）\n\n" + ("\n".join(f"- {x}" for x in nxt) or "无") + "\n",
+        + f"## 这段知识链\n\n{_current_scene(s).strip()}\n\n"
+        f"## 守卫逐步核对\n\n{closure.read_text(encoding='utf-8').strip()}\n",
         encoding="utf-8")
     return out
 
 
 def guard_check(run: Path, model: str = "opus") -> None:
     """搁置前让守卫核对一次（闭环从未提议结束时没有守卫结果），结果存进最后一轮。"""
+    from . import agent, env
     s = Session(run)
     scene = _current_scene(s)
-    res = llm.call(model, assemble.prompt("guard"), assemble.for_guard(s, scene))
+    res = agent.run(model, assemble.prompt("guard"), assemble.for_guard(s, scene), env=env.build(run))
     n = _turns(s)
     s.log_call(n, "guard", res)
     s.write_asset(n, "guard", res.text)
@@ -139,7 +122,6 @@ def park(run: Path, learner: str, reason: str) -> Path:
     gaps = (f"第 {g[0]} 轮守卫核对（此后又进行了 {turns - g[0]} 轮，缺口可能已部分补上）：\n\n{g[1].strip()}"
             if g and g[0] < turns else f"第 {g[0]} 轮守卫核对：\n\n{g[1].strip()}" if g
             else "无守卫核对：缺口未经核对，需看运行目录的对话与诊断记录")
-    nxt = _next_candidates(s)
     p = home(learner) / "parking.md"
     p.parent.mkdir(parents=True, exist_ok=True)
     with p.open("a", encoding="utf-8") as f:
@@ -147,10 +129,8 @@ def park(run: Path, learner: str, reason: str) -> Path:
                 f"- 状态：未完成（{reason}）\n- 轮数：{turns}\n"
                 f"- 接续点：`python3 -m studium.loop --run {run.name}` 从第 {turns} 轮后接着跑；或由下一闭环承接缺口\n{_m08_ref(run)}\n"
                 + (f"### 按知识点（派生索引，可重建；以下方守卫核对为准）\n\n{idx}\n\n" if g and (idx := by_node(_current_scene(s), g[1])) else "")
-                + 
-                f"### 验收范围（当前版本）\n\n{_current_scene(s).strip()}\n\n"
-                f"### 缺口\n\n{gaps}\n\n### 范围外的下一闭环候选（诊断记录）\n\n"
-                + ("\n".join(f"- {x}" for x in nxt) or "无") + "\n\n")
+                + f"### 这段知识链\n\n{_current_scene(s).strip()}\n\n"
+                f"### 未走通的地方\n\n{gaps}\n\n")
     return p
 
 

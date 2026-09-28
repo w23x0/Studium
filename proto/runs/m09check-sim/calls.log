@@ -1,0 +1,4 @@
+2026-09-28T17:33:14	turn=1	teach	model=claude-opus-5-5	in=45565	cache_read=36648	out=2615	req=6	34.4s
+2026-09-28T17:33:44	turn=2	teach	model=claude-opus-5-5	in=22102	cache_read=12101	out=1795	req=2	22.0s
+2026-09-28T17:34:48	turn=3	teach	model=claude-opus-5-5	in=40236	cache_read=27532	out=2978	req=3	35.9s
+2026-09-28T17:35:07	turn=3	guard	model=claude-opus-5-5	in=10309	cache_read=2500	out=1841	req=1	18.7s
