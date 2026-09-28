@@ -153,18 +153,47 @@ def _anthropic(model: str, system: str, user: str, env: Path, timeout: int, trac
     raise RuntimeError("工具循环超过上限仍未作答")
 
 
-def _claude_cli(model: str, system: str, user: str, env: Path, timeout: int) -> Result:
+def _env_path(env: Path, path: str) -> str:
+    """claude -p 报的绝对路径 → 相对学习环境的路径（软链接目标映射回链接名）。"""
+    links = [(str(p.resolve()), p.name) for p in env.iterdir() if p.is_symlink()]
+    for root, name in [(str(env), ""), (str(env.resolve()), ""), *links]:
+        if path == root or path.startswith(root + "/"):
+            rest = path[len(root):].lstrip("/")
+            return "/".join(x for x in (name, rest) if x) or "."
+    return path
+
+
+def _claude_cli(model: str, system: str, user: str, env: Path, timeout: int, trace: list) -> Result:
     extra = sorted({str(p.resolve().parent) for p in env.iterdir() if p.is_symlink()} |
                    {str(p.resolve()) for p in env.iterdir() if p.is_symlink() and p.resolve().is_dir()})
     cmd = ["claude", "-p", "--model", model, "--system-prompt", system,
            "--tools", "Read,Grep,Glob", "--allowedTools", "Read,Grep,Glob",
            "--no-session-persistence", "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
-           "--output-format", "json"] + (["--add-dir", *extra] if extra else [])
+           "--output-format", "stream-json", "--verbose"] + (["--add-dir", *extra] if extra else [])
     proc = subprocess.run(cmd, input=user, capture_output=True, text=True, cwd=env, timeout=timeout,
                           env=os.environ.copy())
     if proc.returncode != 0:
         raise RuntimeError(f"claude -p 失败（退出码 {proc.returncode}）：{(proc.stderr or proc.stdout)[:800]}")
-    data = json.loads(proc.stdout)
+    data, calls = {}, {}  # calls：tool_use_id → trace 里的下标，等结果回来补长度
+    for line in proc.stdout.splitlines():
+        ev = json.loads(line) if line.startswith("{") else {}
+        for c in ev.get("message", {}).get("content", []) if ev.get("type") in ("assistant", "user") else []:
+            if not isinstance(c, dict):
+                continue
+            if c.get("type") == "tool_use":
+                args = {k: _env_path(env, v) if k in ("file_path", "path") and isinstance(v, str) else v
+                        for k, v in c.get("input", {}).items()}
+                calls[c["id"]] = len(trace)
+                trace.append((c["name"], args, 0))
+            elif c.get("type") == "tool_result" and c.get("tool_use_id") in calls:
+                i = calls[c["tool_use_id"]]
+                body = c.get("content")
+                size = len(body) if isinstance(body, str) else len(json.dumps(body, ensure_ascii=False))
+                trace[i] = (*trace[i][:2], size)
+        if ev.get("type") == "result":
+            data = ev
+    if not data:
+        raise RuntimeError(f"claude -p 没有返回结果：{proc.stdout[-800:]}")
     if data.get("is_error"):
         raise RuntimeError(f"模型调用出错：{data.get('result')}")
     usage = data.get("usage", {})
@@ -192,7 +221,7 @@ def skill_index(env: Path) -> str:
 
 def run(model: str, system: str, user: str, env: Path | None = None, timeout: int = 900,
         trace: list | None = None) -> Result:
-    """trace：自己的工具循环会把每次工具调用 (名称, 参数, 返回长度) 追加进来；claude -p 后端不提供。"""
+    """trace：每次工具调用 (名称, 参数, 返回长度) 追加进来（claude -p 从 stream-json 取，路径换成相对环境）。"""
     if env is None:
         return llm.call(model, system, user, timeout)
     system += skill_index(env)
@@ -201,4 +230,4 @@ def run(model: str, system: str, user: str, env: Path | None = None, timeout: in
         return _openai(model[3:], system, user, env, timeout, trace)
     if model.startswith("anthropic:"):
         return _anthropic(model[len("anthropic:"):], system, user, env, timeout, trace)
-    return _claude_cli(model, system, user, env, timeout)
+    return _claude_cli(model, system, user, env, timeout, trace)
