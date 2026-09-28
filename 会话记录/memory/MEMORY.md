@@ -3,3 +3,4 @@
 - [保持自己的判断、先自检](feedback-own-judgment-and-validation.md) — 先找根因再改；改动先自己检验，不把真人试用当唯一测试
 - [书库与学习笔记位置](reference-learning-materials.md) — 书库 PDF、K&K 力学、线代 / 微积分个人笔记（M09 笔记导入用）
 - [先打地基再做实验](feedback-foundation-before-experiments.md) — 不在薄地基上靠加规则做最小实验；提示词只写定义与底线
+- [审查单权威性下降](feedback-sheets-authority-declined.md) — 审查单多从想象写成；设计模块从系统角度、以实验证据为准
