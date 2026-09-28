@@ -63,7 +63,7 @@ def _turns(s: Session) -> int:
 def by_node(scene: str, guard: str) -> str | None:
     """按知识点排的索引（由守卫逐步核对派生，可重建，不权威）。"""
     rows = []
-    for n, tags, verdict, body in re.findall(r"^第\s*(\d+)\s*步【([^】]*)】[^：\n]*：\s*(走通|未走通)(.*?)(?=^第\s*\d+\s*步|^【守卫结论】|\Z)",
+    for n, tags, verdict, body in re.findall(r"^第\s*(\d+)\s*步【([^】]*)】[^：\n]*：\s*(走通|未走通)(.*?)(?=^第\s*\d+\s*步|^【|\Z)",
                                              guard, flags=re.M | re.S):
         field = lambda k: (re.search(rf"^- {k}：(.*)$", body, flags=re.M) or [None, "—"])[1].strip()
         rows.append(f"| {n} | {tags} | {verdict} | {field('证据位置')} | {field('还差')} | {field('前置缺口')} |")

@@ -12,6 +12,10 @@
     oc:<模型>            OpenAI 兼容接口（地址与密钥读 proto/.env 的 STUDIUM_OC_*），自己的工具循环
     anthropic:<模型>     Anthropic Messages API（密钥 ANTHROPIC_API_KEY），自己的工具循环——未实测
 无环境目录时退化为一次无工具调用（与 llm.call 相同）。
+
+教学工具（skill）：环境里有 `skills/<名字>/SKILL.md` 时，把每份的名字与描述列进系统提示，正文由模型按需读
+（对齐 Claude Code 的 skill：描述常驻、正文按需）。由这里统一做，不用 claude -p 的原生 skill 机制——
+各后端行为一致，也不会混进 Claude Code 自带的 skill。
 """
 
 import json
@@ -172,11 +176,26 @@ def _claude_cli(model: str, system: str, user: str, env: Path, timeout: int) -> 
                   requests=data.get("num_turns", 1), seconds=data.get("duration_ms", 0) / 1000)
 
 
+def skill_index(env: Path) -> str:
+    """环境里的教学工具列表（名字 + 何时用）；没有则返回空串。"""
+    lines = []
+    for f in sorted((env / "skills").glob("*/SKILL.md")):
+        head = re.match(r"---\n(.*?)\n---", f.read_text(encoding="utf-8"), re.S)
+        meta = dict(re.findall(r"^(name|description):\s*(.+)$", head.group(1), re.M)) if head else {}
+        if meta.get("description"):
+            lines.append(f"- `skills/{f.parent.name}/SKILL.md`：{meta['description'].strip()}")
+    if not lines:
+        return ""
+    return ("\n\n## 教学工具\n\n下面每份是一个教学工具和它什么时候用。当前情形用得上时，先读它的 `SKILL.md` 再做；"
+            "用不上就不读。\n\n" + "\n".join(lines))
+
+
 def run(model: str, system: str, user: str, env: Path | None = None, timeout: int = 900,
         trace: list | None = None) -> Result:
     """trace：自己的工具循环会把每次工具调用 (名称, 参数, 返回长度) 追加进来；claude -p 后端不提供。"""
     if env is None:
         return llm.call(model, system, user, timeout)
+    system += skill_index(env)
     trace = [] if trace is None else trace
     if model.startswith("oc:"):
         return _openai(model[3:], system, user, env, timeout, trace)

@@ -6,6 +6,7 @@
     路线-*.md        教材路线：哪一节按什么顺序讲哪些知识点
     m07/             教材原文（按小节切好；m07/index.md 为目录）→ 书库里的原文
     m09/             学习者已结束闭环的记录（有才放）
+    skills/          教学工具（M03 维护，skill 格式）→ proto/skills/；描述由 agent.run 列进系统提示，正文按需读
 """
 
 import re
@@ -14,12 +15,15 @@ from pathlib import Path
 
 from . import commit, m08
 
+SKILLS = m08.PROTO / "skills"
+
 README = """# 学习环境
 
 - `m08.md`：本学习项目的知识结构——知识点（编号 K / P）与它们之间的关系（前置 / 推导 / 组成 / 混淆），每条带原文引文与页码。它是索引：要讲某个知识点时，先在这里找到它，再去读原文。
 - `路线-*.md`：教材路线——教材按什么顺序、在哪一节讲哪些知识点，以及对应的原文文件。
 - `m07/`：教材原文，按小节切好（`m07/index.md` 为全书目录；另有章末附注、习题与书末答案）。
-{m09}"""
+{m09}- `skills/`：教学工具，每份一个 `SKILL.md`；什么时候用见系统提示里的列表。
+"""
 
 
 def build(run: Path) -> Path | None:
@@ -39,6 +43,7 @@ def build(run: Path) -> Path | None:
     has_m09 = bool(learner and commit.m09_records(learner))
     if has_m09:
         (env / "m09").symlink_to((commit.home(learner) / "m09").resolve())
+    (env / "skills").symlink_to(SKILLS.resolve())
     note = "- `m09/`：这位学习者已结束闭环的记录（守卫核对过的、他已经走通的知识链）。\n" if has_m09 else ""
     (env / "README.md").write_text(README.format(m09=note), encoding="utf-8")
     return env

@@ -34,10 +34,11 @@ def run(scene_path: Path | None, persona_path: Path, turns: int, name: str, lear
     msg = opening
     for _ in range(turns):
         loop.step(msg)
-        if loop.closed:
+        if loop.ready_turn == loop.turn:  # 守卫判闭合、已建议结束：模拟学习者一律接受
+            loop.finish()
             break
         msg = learner_reply(persona, session.learner_view(), learner_model)
-    status = "已结束（守卫通过）" if loop.closed else f"未结束（达到 {turns} 轮上限）"
+    status = "已结束（守卫判闭合，模拟学习者接受）" if loop.closed else f"未结束（达到 {turns} 轮上限）"
     (root / "result.txt").write_text(f"turns={loop.turn}\nstatus={status}\n", encoding="utf-8")
     return root
 
