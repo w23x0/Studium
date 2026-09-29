@@ -1,0 +1,12 @@
+{
+ "calls": 456,
+ "errors": 0,
+ "wall_s": 633,
+ "sum_call_s": 1776,
+ "models": [
+  "claude-opus-5-5",
+  "claude-sonnet-5-5"
+ ],
+ "input_tokens": 489772,
+ "output_tokens": 119041
+}
