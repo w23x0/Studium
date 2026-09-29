@@ -73,7 +73,7 @@
 | `docs/_archive/` | 归档，**不作依据** |
 | `research_tree/` | 调研流水线产出（findings / synthesis / logs） |
 | `docs/自学方法调研/` | 自学方法证据 |
-| `docs/学习理论/` | 从 Deep 档案转入的学习理论（**参考材料**，不作产品结论）；按消费模块索引；每份开头有取舍表（采纳 / 修正 / 只作词汇） |
+| `docs/学习理论/` | 学习理论（**参考材料**，不作产品结论）；按消费模块索引；每份开头有取舍表（采纳 / 修正 / 只作词汇） |
 | `会话记录/` | 会话过程归档与换设备须知（记忆副本、密钥恢复），**不作依据** |
 | `proto/` | 单闭环原型（CLI，Python 标准库；判断点 = 隔离调用，可用只读工具读学习环境；统一接口 `studium/agent.py`），见 `proto/README.md` |
 | `.agents/skills/` | agent 技能（`web-access` 联网；Claude Code 经 `.claude/skills/` 链接使用） |
@@ -90,6 +90,5 @@
 
 ## 环境补充
 
-- 前代外部档案 `/home/w23x/Deep`：**只读、已冻结**，不是本仓库的设计依据；进去前先读它的 `CLAUDE.md`。
 - 联网操作走 `web-access` 技能（`.claude/skills/web-access` 是指向 `.agents/skills/web-access` 的链接）。
 - `.claude/settings.json` 进 git；本机特有的设置放 `.claude/settings.local.json`（不进 git）。
