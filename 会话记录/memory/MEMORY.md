@@ -10,3 +10,6 @@
 - [不拟合 Claude Code](feedback-no-fitting-claude-code.md) — 从原理出发组合框架，不以 CC 为标准答案
 - [模型范围](project-model-lineup.md) — 现在只做 Opus 5.5 / Sonnet 5.5；后续 OpenAI、DeepSeek、Kimi、智谱
 - [论文结论先实测](feedback-verify-research-on-current-models.md) — 模型行为类研究易过时，先用当下模型测再作依据；实验控额度
+- [讨论时守住观点](feedback-discussion-hold-view.md) — 被质疑先分清哪部分站不住，别整段收回；结尾不套模板
+- [上下文编排操控模型、提示词分层](feedback-layered-prompts-context-control.md) — 靠给什么事实、何时给来操控；提示词底层定义边界、上层按模型叠加
+- [调研筛选与未证实想法](feedback-research-fit-self-study-mirror.md) — 导师视角 / 商业辅导研究与旧实验多不适用；“镜子”仅 M02/M03 未证实想法，别扩成前提
