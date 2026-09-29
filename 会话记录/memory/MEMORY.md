@@ -8,3 +8,5 @@
 - [不直接删产品负责人原文](feedback-keep-owner-originals.md) — 验证过的进设计资产，被取代的进撤下原文，未来的进暂缓设计
 - [项目暂停、学 agent 原理](project-paused-learn-agent-principles.md) — 09-29 起产品负责人自学 pi → oh-my-pi；技术方向全部待重审
 - [不拟合 Claude Code](feedback-no-fitting-claude-code.md) — 从原理出发组合框架，不以 CC 为标准答案
+- [模型范围](project-model-lineup.md) — 现在只做 Opus 5.5 / Sonnet 5.5；后续 OpenAI、DeepSeek、Kimi、智谱
+- [论文结论先实测](feedback-verify-research-on-current-models.md) — 模型行为类研究易过时，先用当下模型测再作依据；实验控额度
