@@ -25,7 +25,7 @@ created: 2026-09-19
 
 | 文件 | 内容 | 关键标签 |
 | --- | --- | --- |
-| [`01-史线总表.md`](./01-史线总表.md) | 1969→2026 主干时间线，分三个时代 | `[TIMELINE]` `[ERA]` |
+| [`01-史线总表.md`](./01-史线总表.md) | 1965→2026 主干时间线，分三个时代 | `[TIMELINE]` `[ERA]` |
 | [`02-三个底座.md`](./02-三个底座.md) | 文件系统 / 沙箱 / 类型系统：各是什么、在 agent 里指什么、时间线 | `[FILESYSTEM]` `[SANDBOX]` `[TYPE]` |
 | [`03-PTC机制.md`](./03-PTC机制.md) | Programmatic tool calling 的工作原理、push→pull、渐进式披露、实测数据、代价 | `[PTC]` `[MECHANISM]` |
 | [`04-方向定位.md`](./04-方向定位.md) | 属于什么方向（ACI / context engineering / code-as-action）、谱系、相邻方向对比、中心问题 | `[ACI]` `[TAXONOMY]` |
@@ -63,3 +63,4 @@ LEVEL_C: 推演与判断，非事实
 ## 更新日志
 
 - 2026-09-19: 初始版本。来源为本机 pi 会话中关于 PTC / context engineering 的讨论，事实部分重新核对 Anthropic 与 Cloudflare 官方原文。
+- 2026-09-29: 核对年份：分层文件系统起源改为 Multics 1965（原写 Unix 1969）；Swagger 改为 2011；WSDL 补 1.1 年份。
