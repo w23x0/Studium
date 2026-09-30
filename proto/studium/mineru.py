@@ -39,15 +39,24 @@ def _call(method: str, path: str, body: dict | None = None) -> dict:
 
 def _upload(url: str, data: bytes) -> None:
     # 签名链接：不能带 Content-Type（urllib 的 PUT 会自动加），所以直接用 http.client
+    # 大文件（100 MB 级）上传偶尔中途断开：放长超时，断了重传
     u = urllib.parse.urlsplit(url)
-    conn = http.client.HTTPSConnection(u.netloc, timeout=300)
-    conn.putrequest("PUT", u.path + ("?" + u.query if u.query else ""), skip_accept_encoding=True)
-    conn.putheader("Content-Length", str(len(data)))
-    conn.endheaders()
-    conn.send(data)
-    r = conn.getresponse()
-    if r.status != 200:
-        raise RuntimeError(f"上传失败 {r.status}: {r.read()[:300]!r}")
+    for attempt in range(1, 4):
+        try:
+            conn = http.client.HTTPSConnection(u.netloc, timeout=1200)
+            conn.putrequest("PUT", u.path + ("?" + u.query if u.query else ""), skip_accept_encoding=True)
+            conn.putheader("Content-Length", str(len(data)))
+            conn.endheaders()
+            conn.send(data)
+            r = conn.getresponse()
+            if r.status == 200:
+                return
+            err = RuntimeError(f"上传失败 {r.status}: {r.read()[:300]!r}")
+        except OSError as e:
+            err = e
+        print(f"上传第 {attempt} 次失败：{err}", file=sys.stderr)
+        time.sleep(30 * attempt)
+    raise err
 
 
 def convert(pdf: Path, ranges: list[str], lang: str, out: Path) -> None:

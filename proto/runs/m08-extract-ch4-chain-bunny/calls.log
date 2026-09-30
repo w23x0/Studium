@@ -1,0 +1,19 @@
+2026-09-30T14:12:02	turn=1	m08_extract lines=4330-4361	model=space-bunny-free	in=3234	cache_read=138	out=16999	req=1	279.1s
+2026-09-30T14:16:43	turn=2	m08_extract lines=4362-4457	model=space-bunny-free	in=4774	cache_read=2620	out=18134	req=1	281.1s
+2026-09-30T14:23:51	turn=3	m08_extract lines=4458-4649	model=space-bunny-free	in=6285	cache_read=138	out=36231	req=1	427.6s
+2026-09-30T14:35:13	turn=4	m08_extract lines=4650-4862	model=space-bunny-free	in=7073	cache_read=140	out=34807	req=1	682.8s
+2026-09-30T14:39:57	turn=5	m08_extract lines=4863-4910	model=space-bunny-free	in=5185	cache_read=3655	out=27722	req=1	283.4s
+2026-09-30T14:44:19	turn=6	m08_extract lines=4911-5078	model=space-bunny-free	in=7708	cache_read=138	out=17892	req=1	262.0s
+2026-09-30T14:49:15	turn=7	m08_extract lines=5079-5194	model=space-bunny-free	in=6478	cache_read=138	out=22598	req=1	296.1s
+2026-09-30T14:57:25	turn=8	m08_extract lines=5195-5360	model=space-bunny-free	in=8067	cache_read=140	out=38430	req=1	490.2s
+2026-09-30T15:02:45	turn=9	m08_extract lines=5361-5432	model=space-bunny-free	in=7649	cache_read=138	out=29307	req=1	320.2s
+2026-09-30T15:08:12	turn=10	m08_extract lines=5433-5650	model=space-bunny-free	in=10837	cache_read=138	out=23328	req=1	326.1s
+2026-09-30T15:13:26	turn=11	m08_extract lines=5651-5804	model=space-bunny-free	in=9484	cache_read=6310	out=20505	req=1	314.2s
+2026-09-30T15:22:26	turn=99	m08_consolidate	model=space-bunny-free	in=15048	cache_read=138	out=19477	req=1	255.7s
+2026-09-30T15:31:38	turn=99	m08_consolidate	model=space-bunny-free	in=15932	cache_read=15930	out=18630	req=1	180.6s
+2026-09-30T19:28:48	turn=99	m08_consolidate	model=claude-opus-5-5	in=25850	cache_read=0	out=6216	req=1	58.2s
+2026-09-30T19:31:22	turn=99	m08_consolidate	model=claude-opus-5-5	in=25851	cache_read=621	out=5891	req=1	56.7s
+2026-09-30T19:32:45	turn=99	m08_consolidate	model=claude-opus-5-5	in=65379	cache_read=0	out=6286	req=1	61.1s
+2026-09-30T19:34:05	turn=99	m08_consolidate	model=claude-opus-5-5	in=65381	cache_read=627	out=6286	req=1	61.9s
+2026-09-30T19:35:16	turn=99	m08_consolidate	model=claude-opus-5-5	in=65330	cache_read=0	out=5719	req=1	56.3s
+2026-09-30T19:43:59	turn=99	m08_consolidate	model=space-bunny-free	in=41685	cache_read=138	out=35917	req=1	294.9s

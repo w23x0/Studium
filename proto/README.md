@@ -10,8 +10,12 @@
 cd proto
 # 资料 → 结构（每本书做一次）
 python3 -m studium.mineru <书.pdf> --ranges 1-200,201-400                                  # 书 → md（M06 最小一段；MINERU_TOKEN）
-python3 -m studium.m07 split --book <MinerU 目录> --toc A-B                                # 按目录切成小节 + 索引（M07；放在书库，不进 git）
+python3 -m studium.mineru_batch <书库目录> [并发数]                                        # 整个书库批量转换（每本一个 batch；可重跑续上）
+python3 -m studium.m07 split --book <MinerU 目录> --toc A-B                                # 按目录切成小节 + 索引（M07；K&K 专用格式；放在书库，不进 git）
+python3 -m studium.m07toc run --book <MinerU 目录>                                        # 任意书：模型整理目录 + 程序定位切分（M07 通用；手改 m07/toc.tsv 后用 split 重切）
 python3 -m studium.extract --book <MinerU 目录> --part p1-200 --lines A-B --toc C-D --run NAME   # 一章 → M08 知识点 + 关系（引文逐字定页）
+python3 -m studium.extract ... --lines A-B,C-D,... --model oc:<模型>                      # 按节接力：每节一次调用，带前文知识点表（raw-NN.md 可续跑）
+python3 -m studium.consolidate --run NAME --book <MinerU 目录> --model opus               # 整章收口：合并过碎的知识点（强模型；免费模型做不好）
 # 学
 python3 -m studium.design --learner owner --m08 m08/力学-动量.md --goal "…" --about "…" --run NAME   # M05：在 M08 上选下一段知识链
 python3 -m studium.loop --run NAME                                                          # 在这段链上学（你当学习者；中断后同命令续跑）
@@ -38,7 +42,7 @@ python3 -m studium.compare runs/<甲> runs/<乙>                                
 | `studium/commit.py` | 闭环结束后的提交：守卫通过 → M09；没走通 → 停车场；两者都带按知识点的派生索引 |
 | `studium/assemble.py` | 按读清单装配各调用的输入；缺必需项不发 |
 | `studium/store.py` | 纯文本、只追加的运行记录 |
-| `studium/mineru.py` · `m07.py` · `extract.py` · `m08.py` | 资料线：PDF → md → 小节 + 索引 → M08 抽取；M08 读取、切片、教材路线生成 |
+| `studium/mineru.py` · `mineru_batch.py` · `m07.py` · `m07toc.py` · `extract.py` · `consolidate.py` · `m08.py` | 资料线：PDF → md（单本 / 书库批量）→ 小节 + 索引（K&K 专用 / 通用）→ M08 抽取（整章或按节接力）→ 整章收口；M08 读取、切片、教材路线生成 |
 | `skills/` | 教学工具（M03 维护），对齐 Claude Code 的 skill 格式：每份一个文件夹 + `SKILL.md`（frontmatter 的 `name` / `description` 写什么时候用）。`agent.run` 把描述列进系统提示，正文由模型按需读；只写模型自己不会做对的东西 |
 | `studium/prompts/` | `teach.md` 教学、`guard.md` 守卫、`design.md` M05 设计、`m08_extract.md` M08 抽取（只写闭环定义、底线与输出格式） |
 | `studium/sim.py` · `compare.py` | 模拟学习者（`learners/`）与盲评 |

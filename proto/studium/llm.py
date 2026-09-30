@@ -10,6 +10,7 @@ import subprocess
 import sys
 import tempfile
 import time
+import urllib.error
 import urllib.request
 import uuid
 from dataclasses import dataclass
@@ -52,8 +53,17 @@ def _call_oc(model: str, system: str, user: str, timeout: int) -> Result:
         headers={"Authorization": f"Bearer {_env('STUDIUM_OC_API_KEY')}", "Content-Type": "application/json",
                  "x-opencode-session": _OC_SESSION, "User-Agent": "studium-proto"})
     start = time.monotonic()
-    with urllib.request.urlopen(req, timeout=timeout) as resp:
-        data = json.load(resp)
+    for attempt in range(1, 5):  # 服务端 5xx / 限流 / 断线是暂时的，等一会儿重发；4xx 其余直接报错
+        try:
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.load(resp)
+            break
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ConnectionError) as e:
+            code = getattr(e, "code", None)
+            if attempt == 4 or (code is not None and code < 500 and code != 429):
+                raise
+            print(f"[llm] 第 {attempt} 次失败（{code or e}），{30 * attempt}s 后重试", file=sys.stderr)
+            time.sleep(30 * attempt)
     usage = data.get("usage") or {}
     return Result(
         text=data["choices"][0]["message"]["content"].strip(),
@@ -61,7 +71,7 @@ def _call_oc(model: str, system: str, user: str, timeout: int) -> Result:
         input_tokens=usage.get("prompt_tokens", 0),
         cache_read=(usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0),
         output_tokens=usage.get("completion_tokens", 0),
-        requests=1,
+        requests=attempt,
         seconds=time.monotonic() - start,
     )
 
