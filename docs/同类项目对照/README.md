@@ -42,18 +42,34 @@
 
 ## 清单与顺序
 
-候选来自 `../agent框架学习/03-学习场景开源项目.md`、`04-厂商学习模式后续.md`（子代理调研，未逐条复核）。顺序可随时调整。
+顺序可随时调整；已看的在上表，待看的在下表。
+
+### 已看
 
 | # | 项目 | 类别 | 为什么看 | 状态 | 文件 |
 | --- | --- | --- | --- | --- | --- |
 | 1 | [DeepTutor](https://github.com/HKUDS/DeepTutor) | 开源 | 规模最大、离我们最近；掌握门、学习路径、模式切换；概念掌握由 tutor 自判（我们是独立守卫） | ✅ 10-01 | `01-DeepTutor.md` |
 | 8 | [WeSmartFlow](https://github.com/Tencent/WeSmartFlow)（腾讯） | 开源 | 通用 ReAct + 学习工具；掌握度从 agent 自写 0–1 数转向存证据（权重公式判）；只看学习核心，产品生态不看 | ✅ 10-01 | `02-WeSmartFlow.md` |
 | 9 | [ai-learning-support-test](https://github.com/69420pm/ai-learning-support-test) | 开源（个人） | 反认知外包、偏应试；核实后是通用工具循环 + LLM 概念图，学习者侧未做；反例 | ✅ 10-01 | `03-ai-learning-support-test.md` |
-| 2 | [CogniFlow](https://github.com/sohan1611/CogniFlow) | 开源 | 状态图 + 知识追踪 + 先修图；模型提议、规则裁决；带模拟学生消融评估 | 待看 | — |
-| 3 | [mastery-tutor](https://github.com/fanfanfanfanfan626/mastery-tutor) | 开源 | 追加式证据日志；机器校验每个教学回合；掌握要三类证据 | 待看 | — |
-| 4 | [open-learning-ai-tutor](https://github.com/mitodl/open-learning-ai-tutor)（MIT） | 开源 | 外部规则管教学策略的最小实例 | 待看 | — |
-| 5 | OpenAI Study Mode | 厂商 | 提示词方案的上限与问题；转向测量 | 待看 | — |
-| 6 | Google LearnLM / Guided Learning | 厂商 | 教学能力并入模型本身；有 RCT（教师主导） | 待看 | — |
-| 7 | Anthropic 学习模式 / Claude for Teachers | 厂商 | 重心转向教师端 | 待看 | — |
 
-备选：pi-learning-tutor、pi-tutor、GenMentor、cc-self-train、tutor-runtime-lab、TutorGym（见 `03` §2）。
+### 待看（2026-10-01 子代理按新标准调研；链接已抽查，其余事实未逐条复核，二手数字开讲前回原始出处核对）
+
+| # | 项目 | 类别 | 帮我们回答什么 | 技术材料 |
+| --- | --- | --- | --- | --- |
+| 10 | Math Academy | 经典代表：知识图谱 + 掌握度的数学自学 | 前置图怎么定位已会 / 未会的边界、排下一步、排复习；判学会靠做题（对照面）。**和 #22 闭环成环高度相关** | 书《The Math Academy Way》、[FIRe 文章](https://justinmath.com/individualized-spaced-repetition-in-hierarchical-knowledge-structures/) |
+| 11 | Google LearnLM / Guided Learning | 前沿：教学能力训进模型 | 厂商怎么定义、评测“好的教学行为”（可借作教学 / 守卫的评测维度） | [arXiv 2412.16429](https://arxiv.org/abs/2412.16429)、arXiv 2505.24477 |
+| 12 | AutoTutor（Graesser） | 经典代表：对话式辅导 | 从对话判学会的最早成熟做法：要点是否由学生自己说出 | 17 年谱系综述（2014） |
+| 13 | ALEKS / 知识空间理论 | 经典代表 | 知识状态 = 已会集合 + 外沿（下一步可学）；学习空间保证一步一步走 | arXiv 1511.06757 |
+| 14 | Andy Matuschak《How Might We Learn?》 | 前沿：方向主张 | 成年自学该不该脱离真实任务；质疑对话框式辅导 | [essay](https://andymatuschak.org/hmwl/)、笔记库 |
+| 15 | Eedi × DeepMind 课堂 RCT（2025） | 前沿：研究 | 独立把关环节（人审 AI 草稿）值多少 | [arXiv 2512.23633](https://arxiv.org/abs/2512.23633) |
+| 16 | Harvard 物理 AI 辅导 RCT（2025） | 前沿：研究 | 预置解答 + 教学原则约束一次教学调用的效果 | [Sci Rep 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12179260/) |
+| 17 | Betty's Brain（Vanderbilt） | 经典代表：教给 AI 学生 | 费曼式讲解的成熟设计与证据；讲解怎么落成可检查的结构 | 早期论文、综述 |
+| 18 | 对话中的知识追踪（UMass Lan 组） | 前沿：研究 | 学术界怎么从开放对话判学会；落到答对概率（对照面） | [arXiv 2409.16490](https://arxiv.org/abs/2409.16490)、2503.06424 |
+| 19 | Khanmigo | 经典代表：大规模 LLM 辅导 | 大规模部署时数学辅导在哪出错、上下文先放什么 | Khan 工程博客 |
+| 20 | Cognitive Tutor / MATHia | 经典代表：规则端标杆 | ITS 成熟时间线；程序全控的上限与代价 | 1995《Cognitive Tutors: Lessons Learned》 |
+| 21 | VanLehn 2011 元分析 | 经典代表：研究 | 判断粒度要细到哪一层才有收益 | 论文 |
+| 22 | [OpenMAIC](https://github.com/THU-MAIC/OpenMAIC)（清华） | 前沿：多身份 agent 课堂（开源，约 4 万星，2026-03 建） | 我们“不做多身份 agent”的反面参照 | 代码 |
+
+备选：OATutor（开源经典 ITS，BKT 端）。
+
+剔除（不符合“成熟代表或最新前沿、有技术材料”）：CogniFlow、mastery-tutor（小项目）；MIT open-learning-ai-tutor（仓库无架构材料，最多读论文 arXiv 2410.03781）；OpenAI Study Mode、Anthropic 学习模式（只有产品页 / 提示词，一句“提示词路线”带过）；`../agent框架学习/03` §2 的其余小项目。
