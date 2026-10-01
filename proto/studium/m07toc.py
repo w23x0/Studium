@@ -5,7 +5,8 @@
     python3 -m studium.m07toc split --book …    # 只做第 3–4 步：按 toc.tsv 定位、切分（改过 toc.tsv 后重跑用）
 
 分工：程序能做的都由程序做，模型只做程序做不好的一步。
-1. 找目录（程序）：在第一段开头找目录样式的行最密的一片；找不到就要 --toc 给行号。
+1. 找目录（程序）：在第一段开头找目录样式的行最密的一片；找不到就用 --toc 给行号；正文里有 ≥ 8 个一级标题时，
+   改为按一级标题生成章（没有目录的网页式读本）。
 2. 目录 → 条目表（模型）：层级 | 类型 | 编号 | 标题 | 页码。程序校验：每条标题在目录原文里找得到、
    目录原文每行都被某条覆盖、页码不倒退；能从原文确定的由程序改（按同编号那行更正标题、补上漏掉的
    带编号行），写进“校验”栏；模型输出存档（toc.llm.json），重跑不重调。
@@ -38,6 +39,7 @@ MODEL = "oc:space-bunny-free"
 KINDS = {"part": "part", "chapter": "ch", "section": "sec", "exercises": "prob", "appendix": "app",
          "front": "front", "back": "back", "other": "x"}
 OWN_FILE = {"exercises", "front", "back", "appendix", "part"}  # 不论层级都单独成文件
+BIG = 60000  # 切出的文件超过这么多字符，就再往下切一层
 CHUNK = 150  # 每次给模型的目录行数（非空行）
 
 
@@ -150,11 +152,12 @@ def expected_pdf(b: Book, printed: str) -> int | None:
     kind, n = ("a", int(p)) if p.isdigit() else ("r", _roman(p) or 0)
     if not n:
         return None
-    near = sorted((abs(v - n), pdf - v) for pdf, k, v in b.printed if k == kind)[:5]
-    if not near or near[0][0] > 15:
+    near = sorted((abs(v - n), pdf - v) for pdf, k, v in b.printed if k == kind and abs(v - n) <= 15)
+    if not near:
         return None
-    offs = sorted(o for _, o in near)
-    return n + offs[len(offs) // 2]
+    cnt = Counter(o for _, o in near)  # 偏移取众数（附近识别错的页码是少数）；并列取离得最近的
+    top = max(cnt.values())
+    return n + next(o for _, o in near if cnt[o] == top)
 
 
 def printed_of(b: Book, pdf: int) -> int | None:
@@ -220,8 +223,9 @@ def find_toc(text: list[str], limit: int) -> tuple[int, int] | None:
             a = heads[-1]  # 先有简目、后有详目：只取详目
         while a < z and not (_strong(text[a]) or _TOC_HEAD.match(key(text[a]))):
             a += 1
-        while z > a and not _strong(text[z]):
-            z -= 1
+        if sum(_strong(text[i]) for i in range(a, z + 1)) >= 0.3 * sum(_toc_like(text[i]) for i in range(a, z + 1)):
+            while z > a and not _strong(text[z]):  # 目录印了页码：末端修到最后一条带页码的行（其后多半是正文里的标题）
+                z -= 1
         body = [l for l in text[a:z + 1] if l.strip()]
         n = sum(_toc_like(l) for l in body)
         if n >= 15 and n >= 0.5 * len(body) and n > score:
@@ -266,9 +270,12 @@ def _parse_rows(txt: str) -> list[list[str]]:
     rows = []
     for l in txt.splitlines():
         l = l.strip().strip("`")
-        if l.count("|") < 4 or set(l) <= set("|-: "):
+        if l.count("|") < 3 or set(l) <= set("|-: "):
             continue
-        c = [x.strip() for x in l.strip("|").split("|")]
+        l = l.removeprefix("|").removesuffix("|")  # 只去一个：页码栏为空时行尾的 “ |” 是最后一栏的分隔
+        c = [x.strip() for x in l.split("|")]
+        if len(c) == 4 and c[0].isdigit():  # 没写页码栏
+            c.append("")
         if len(c) < 5 or not c[0].isdigit():
             continue
         rows.append([c[0], c[1], c[2], " | ".join(c[3:-1]), c[-1]])
@@ -323,6 +330,30 @@ def _repair(entries: list[Entry], raw: list[str]) -> tuple[list[Entry], list[str
     return out, uncovered
 
 
+def _drop_brief(entries: list[Entry]) -> list[Entry]:
+    """目录里先有简目（只列章）、后有详目时，模型会把两份都列出来：同一章 / 篇 / 附录（类型 + 编号 + 标题都相同）
+    出现两次，只留最后一次（详目），否则简目条目会按顺序抢走正文里的位置。"""
+    seen, drop = {}, set()
+    for i, e in enumerate(entries):
+        if e.number or e.kind in ("part", "front", "back", "appendix"):
+            k = (e.kind, e.number, key(e.title))
+            if k in seen:
+                drop.add(seen[k])
+            seen[k] = i
+    return [e for i, e in enumerate(entries) if i not in drop]
+
+
+def outline(b: Book) -> list[Entry]:
+    """没有目录的书（网页式读本）：每个正文里的一级标题（“# ”，代码块之外）当一章，不带编号和页码。"""
+    fence, out = False, []
+    for l in b.text:
+        if l.startswith("```"):
+            fence = not fence
+        elif not fence and l.startswith("# ") and (t := _strip(l)) and len(t) <= 100:
+            out.append(Entry(len(out), 1, "chapter", "", t, ""))
+    return out
+
+
 def make_toc(book: Path, out: Path, toc: str | None, model: str) -> list[Entry]:
     b = load(book)
     if toc:
@@ -330,6 +361,11 @@ def make_toc(book: Path, out: Path, toc: str | None, model: str) -> list[Entry]:
     else:
         first = (_parts(book)[0][0] / "full.md").read_text(encoding="utf-8").count("\n")
         found = find_toc(b.text, min(first, 4000))
+        if not found and len(entries := outline(b)) >= 8:
+            out.mkdir(parents=True, exist_ok=True)
+            save_toc(out / "toc.tsv", entries, (0, 0), [])
+            print(f"没有目录：按正文一级标题（# ）生成条目表，共 {len(entries)} 条", file=sys.stderr)
+            return entries
         if not found:
             raise SystemExit(f"未找到目录（前 {min(first, 4000)} 行没有目录样式的一片）：请用 --toc A-B 指定行号")
         a, z = found
@@ -362,6 +398,7 @@ def make_toc(book: Path, out: Path, toc: str | None, model: str) -> list[Entry]:
             num, title = m.group(1), m.group(2)
         entries.append(Entry(0, int(lv), kind if kind in KINDS else "other", num, title.strip(), page.strip(), chk))
     entries, uncovered = _repair(entries, raw)
+    entries = _drop_brief(entries)
     for i, e in enumerate(entries):
         e.seq = i
     # 页码不倒退（阿拉伯页码之间）；层级不跳级
@@ -449,6 +486,9 @@ def _subseq(rk: str, tk: str) -> bool:
     return len(rk) >= max(6, 0.3 * len(tk)) and all(c in it for c in rk)
 
 
+_LEAD = re.compile(r"^(?:appendix|chapter|附录)\b[\s.:：]*(?:(?:\d+|[A-Z])\b[\s.:：]*)?", re.I)  # 无编号条目：正文标题常带“APPENDIX.”前缀
+
+
 def _is_head(l: str) -> bool:
     return bool(re.match(r"^#{1,6}\s", l))
 
@@ -480,7 +520,7 @@ def locate(b: Book, entries: list[Entry], start: int, barrier: tuple[int, int]) 
                         yield i, (4 if k == 0 else 3), skip; break
                     if m and k == 0 and _subseq(key(s[m.end():]), tk):
                         yield i, 2.5, 1; break
-                    if (not rx or not m) and _tmatch(tk, key(s)):
+                    if (not rx or not m) and (_tmatch(tk, key(s)) or (not rx and _tmatch(tk, key(_LEAD.sub("", s))))):
                         yield i, 2, skip; break
                     if m and k == 0 and len(key(s[m.end():])) < 3:
                         if i in joined and _tmatch(tk, key(joined[i][0][m.end():])):
@@ -512,12 +552,33 @@ def locate(b: Book, entries: list[Entry], start: int, barrier: tuple[int, int]) 
         cs = [c for c in cands(e, pos, min(end, pos + 3000)) if c[1] >= 2]
         return (pick(cs), "无页码校验") if cs else None
 
+    HOW = {4: "编号+标题", 3: "编号+标题（两行）", 2.5: "编号+残缺标题", 2: "标题", 1: "正文行", 0.5: "仅编号"}
+
+    def weak(e: Entry) -> bool:  # 既没编号、又没有可换算的页码：只剩标题，“Summary / Problems”之类每章都有，不能往后乱找
+        return not e.number and not (e.page and expected_pdf(b, e.page) is not None)
+
     pos = start
     for e in entries:
-        if (r := search(e, pos, len(text))):
+        if not weak(e) and (r := search(e, pos, len(text))):
             (e.line, s, e.skip), e.note = r
-            e.how = {4: "编号+标题", 3: "编号+标题（两行）", 2.5: "编号+残缺标题", 2: "标题", 1: "正文行", 0.5: "仅编号"}[s]
+            e.how = HOW[s]
             pos = e.line + max(e.skip, 1)
+    for e in entries:  # 弱条目：只在前后两个已定位条目之间找
+        if e.line >= 0 or not weak(e):
+            continue
+        lo = next((x.line + max(x.skip, 1) for x in reversed(entries[:e.seq]) if x.line >= 0), start)
+        hi = next((x.line for x in entries[e.seq + 1:] if x.line >= 0), len(text))
+        if (r := search(e, lo, hi)):
+            (e.line, s, e.skip), e.note = r
+            e.how = HOW[s]
+    for e in entries:  # 标题与编号都找不到、但有页码：取该 PDF 页的第一行（整页近似；同页已被占用则不定位）
+        if e.line >= 0 or not e.page or (exp := expected_pdf(b, e.page)) is None:
+            continue
+        lo = next((x.line + max(x.skip, 1) for x in reversed(entries[:e.seq]) if x.line >= 0), start)
+        hi = next((x.line for x in entries[e.seq + 1:] if x.line >= 0), len(text))
+        i = next((i for i in range(lo, hi) if b.page[i] >= exp), None)
+        if i is not None and b.page[i] == exp and (i == 0 or b.page[i - 1] < exp) and not (barrier[0] <= i < barrier[1]):
+            e.line, e.skip, e.how, e.note = i, 0, "页码（整页近似）", "标题未在正文找到，按目录页码取该页第一行"
     for e in entries:  # 正文前的条目（前言等）可能排在目录之前
         if e.line < 0 and e.kind == "front" and barrier[0] > 0 and (r := search(e, 0, barrier[0])):
             (e.line, s, e.skip), e.note = r
@@ -530,14 +591,31 @@ def _slug(s: str) -> str:
     return re.sub(r"[\s/\\:*?\"<>|]+", "_", unicodedata.normalize("NFKC", s)).strip("_.")[:24] or "x"
 
 
+_BACK = re.compile(r"^(index|subjectindex|answers.*|selectedanswers.*|solutionstoodd.*|bibliography|credits|photocredits|glossary|appendices|appendix.*|索引|参考文献|习题答案|答案|附录.*)$")
+
+
+def _tail_end(b: Book, e: Entry) -> int:
+    """最后一个切分文件的止行：目录只列到最后一章 / 节，其后的附录、答案、索引不能全吞进去。
+    先看印刷页码：最后一个与本节页码连续的页之后，如果还有 ≥ 15 页，就在那里止；再看标题行，遇到附录 / 答案 / 索引之类的标题止。"""
+    end, p0 = len(b.text), b.page[e.line]
+    off = sorted(pdf - v for pdf, k, v in b.printed if k == "a" and abs(pdf - p0) <= 15)
+    if off:
+        o = off[len(off) // 2]
+        last = max((pdf for pdf, k, v in b.printed if k == "a" and pdf >= p0 and pdf - v == o), default=0)
+        if last and b.page[-1] - last >= 15:
+            end = next((i for i in range(e.line, len(b.text)) if b.page[i] > last), end)
+    for i in range(e.line + 1, end):
+        if _is_head(b.text[i]) and _BACK.match(key(_strip(b.text[i]))):
+            return i
+    return end
+
+
 def split(book: Path, out: Path, depth: int | None) -> dict:
+    a_depth = depth is not None
     entries, span, uncovered = read_toc(out / "toc.tsv")
     b = load(book)
     barrier = (span[0] - 1, span[1])
     locate(b, entries, span[1], barrier)
-    # 切分层：最浅的 section 所在层（有篇就是 3，否则 2）
-    secs = [e.level for e in entries if e.kind == "section"]
-    depth = depth or (min(secs) if secs else max(e.level for e in entries))
     # 父子关系
     parent, stack = {}, []
     for e in entries:
@@ -545,6 +623,27 @@ def split(book: Path, out: Path, depth: int | None) -> dict:
             stack.pop()
         parent[e.seq] = stack[-1] if stack else None
         stack.append(e)
+    # 切分层：每章自己的最浅的 section 所在层（有篇的书里，篇外的章与篇内的章层级不同，不能全书取一个）；
+    # 章下没有节就切到章；不在章里的条目（前言、篇名等）用全书最浅节层。--depth 给了就全书一律。
+    secs = [e.level for e in entries if e.kind == "section"]
+    base = depth or (min(secs) if secs else max(e.level for e in entries))
+    depth = base
+    cut = {}
+    for e in entries:
+        if e.kind in ("chapter", "appendix"):
+            sub = []
+            for x in entries[e.seq + 1:]:
+                if x.level <= e.level:
+                    break
+                if x.kind == "section":
+                    sub.append(x.level)
+            cut[e.seq] = base if a_depth else (min(sub) if sub else e.level)
+
+    def limit(e: Entry) -> int:
+        x = e
+        while x and x.kind not in ("chapter", "appendix"):
+            x = parent[x.seq]
+        return cut[x.seq] if x else base
 
     def chapter_dir(e: Entry) -> str:
         chain, x = [], e
@@ -568,7 +667,26 @@ def split(book: Path, out: Path, depth: int | None) -> dict:
             x = parent[x.seq]
         return x.number if x else ""
 
-    owners = [e for e in entries if e.line >= 0 and (e.level <= depth or e.kind in OWN_FILE)]
+    owners = [e for e in entries if e.line >= 0 and (e.level <= limit(e) or e.kind in OWN_FILE)]
+    owners.sort(key=lambda e: e.line)
+
+    def end_of(os: list[Entry], k: int) -> int:
+        e = os[k]
+        end = os[k + 1].line if k + 1 < len(os) else (_tail_end(b, e) if e.kind in ("chapter", "section", "other") else len(b.text))
+        return barrier[0] if e.line < barrier[0] < end else end
+
+    while True:  # 文件过大（> BIG 字符）且里面有已定位的下一层小节：再往下切一层（整节一次调用会把抽取拖差）
+        os_ = sorted(owners, key=lambda e: e.line)
+        have, add = {e.seq for e in owners}, []
+        for k, e in enumerate(os_):
+            end = end_of(os_, k)
+            if sum(len(l) + 1 for l in b.text[e.line:end]) <= BIG:
+                continue
+            inner = [x for x in entries if e.line < x.line < end and x.kind == "section" and x.level > e.level and x.seq not in have]
+            add += [x for x in inner if x.level == min(y.level for y in inner)]
+        if not add:
+            break
+        owners = os_ + add
     owners.sort(key=lambda e: e.line)
     if (out / "index.md").exists():
         for d in out.iterdir():  # 重跑：清掉上次切出的文件
@@ -578,9 +696,7 @@ def split(book: Path, out: Path, depth: int | None) -> dict:
     rows = []
     stats = Counter()
     for k, e in enumerate(owners):
-        end = owners[k + 1].line if k + 1 < len(owners) else len(b.text)
-        if e.line < barrier[0] < end:
-            end = barrier[0]
+        end = end_of(owners, k)
         body = b.text[e.line + max(e.skip, 1):end]
         files[e.seq] = (e.line, end)
         e.src = b.src(e.line, end)
@@ -615,7 +731,7 @@ def split(book: Path, out: Path, depth: int | None) -> dict:
             if any(x.line >= 0 for x in kids[:3]):
                 e.note = "正文无此标题，内容见下级条目"
             elif prev is not None and prev.file:
-                e.note = f"未定位；内容在 `{prev.file}` 里（{'未定出行号' if e.level > depth and e.kind not in OWN_FILE else '并在该文件末尾'}）"
+                e.note = f"未定位；内容在 `{prev.file}` 里（{'未定出行号' if e.level > limit(e) and e.kind not in OWN_FILE else '并在该文件末尾'}）"
                 prev.note = (prev.note + "；" if prev.note else "") + f"可能含未定位的「{' '.join(x for x in (e.number, e.title) if x)}」"
             else:
                 e.note = "未定位"
@@ -645,7 +761,7 @@ def split(book: Path, out: Path, depth: int | None) -> dict:
                     f"{e.src} | {e.how or '未找到'} | {'；'.join(x for x in (e.check, e.note) if x)} |")
     title = json.loads((book / "source.json").read_text(encoding="utf-8"))["file"] if (book / "source.json").exists() else book.name
     head = (f"# M07 索引：{title}\n\n"
-            f"> 按全书目录切分（`studium.m07toc`，条目表见 `toc.tsv`）。切分层 = 第 {depth} 层；更深的条目在所在文件内，“说明”栏给出行号。"
+            f"> 按全书目录切分（`studium.m07toc`，条目表见 `toc.tsv`）。切分层 = 各章最浅的节所在层（全书通常 {depth}）；更深的条目在所在文件内，“说明”栏给出行号。"
             "页 = 书上印的页码（起页取自目录，止页由页码块推算）；PDF 页 = 原 PDF 的页序；原文 = MinerU 页段 full.md 内的行号范围（含标题行，到下一条目之前）。"
             "类型：part 篇 / ch 章 / sec 节 / prob 习题 / app 附录 / front 正文前 / back 正文后 / x 其他。\n"
             f"> 定位 {stats['定位']} / {stats['条目']}；未找到 {stats['未找到']}（逐条见“说明”）。\n\n"

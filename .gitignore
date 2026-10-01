@@ -75,3 +75,6 @@ research_tree/logs/**
 
 # Studium prototype runs 进 git（实验证据）；calls.log 不受 *.log 忽略
 !proto/runs/**/calls.log
+
+# 书库整本抽取（书的原文摘录不进仓库）
+proto/runs/lib-*/
