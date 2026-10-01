@@ -6,7 +6,7 @@
 - [审查单权威性下降](feedback-sheets-authority-declined.md) — 审查单多从想象写成；设计模块从系统角度、以实验证据为准
 - [先模拟、少真人](feedback-sim-before-human-trials.md) — 09-28 起非必要不做真人试用；先理顺方向与结构
 - [不直接删产品负责人原文](feedback-keep-owner-originals.md) — 验证过的进设计资产，被取代的进撤下原文，未来的进暂缓设计
-- [项目暂停、学 agent 原理](project-paused-learn-agent-principles.md) — 09-29 学完（3.3 一半停），现逐条重审技术方向原则
+- [项目暂停、学 agent 原理](project-paused-learn-agent-principles.md) — 09-29 学完后重审技术方向；10-01 冻结、转看同类项目（位置看任务线路）
 - [不拟合 Claude Code](feedback-no-fitting-claude-code.md) — 从原理出发组合框架，不以 CC 为标准答案
 - [模型范围](project-model-lineup.md) — 现在只做 Opus 5.5 / Sonnet 5.5；后续 OpenAI、DeepSeek、Kimi、智谱
 - [论文结论先实测](feedback-verify-research-on-current-models.md) — 模型行为类研究易过时，先用当下模型测再作依据；外部结论读正文、标边界；实验控额度
