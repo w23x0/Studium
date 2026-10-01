@@ -45,7 +45,7 @@
 | # | 项目 | 类别 | 为什么看 | 状态 | 文件 |
 | --- | --- | --- | --- | --- | --- |
 | 1 | [DeepTutor](https://github.com/HKUDS/DeepTutor) | 开源 | 规模最大、离我们最近；掌握门、学习路径、模式切换；概念掌握由 tutor 自判（我们是独立守卫） | ✅ 10-01 | `01-DeepTutor.md` |
-| 8 | [WeSmartFlow](https://github.com/Tencent/WeSmartFlow)（腾讯） | 开源 | 完整产品形态：agent 自写掌握度、知识图谱、SM-2 复习；范围宽（含少儿游戏化、微信） | ⏳ 10-01 并发 | `02-WeSmartFlow.md` |
+| 8 | [WeSmartFlow](https://github.com/Tencent/WeSmartFlow)（腾讯） | 开源 | 通用 ReAct + 学习工具；掌握度从 agent 自写 0–1 数转向存证据（权重公式判）；只看学习核心，产品生态不看 | ✅ 10-01 | `02-WeSmartFlow.md` |
 | 9 | [ai-learning-support-test](https://github.com/69420pm/ai-learning-support-test) | 开源（个人） | 反认知外包、偏应试；核实后是通用工具循环 + LLM 概念图，学习者侧未做；反例 | ✅ 10-01 | `03-ai-learning-support-test.md` |
 | 2 | [CogniFlow](https://github.com/sohan1611/CogniFlow) | 开源 | 状态图 + 知识追踪 + 先修图；模型提议、规则裁决；带模拟学生消融评估 | 待看 | — |
 | 3 | [mastery-tutor](https://github.com/fanfanfanfanfan626/mastery-tutor) | 开源 | 追加式证据日志；机器校验每个教学回合；掌握要三类证据 | 待看 | — |
