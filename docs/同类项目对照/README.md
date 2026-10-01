@@ -12,6 +12,8 @@
 | 3 讨论 | 产品负责人直接指出和我们不同的地方；agent **先对照我们的设计分析再记**：它为什么这样设计（根因取舍），双方各自的代价，不一概否认；拿不准就标出来 |
 | 4 记 | 当场写进 `NN-<项目名>.md`：§1–4 事实（带出处），§5 产品负责人判断 + agent 分析，§6 启示 |
 | 5 收尾 | 产品负责人说够了就停，不为“看全”而硬挖技术细节；更新本页清单与 `任务线路.md` §3 #20 |
+| 预扫 | 产品负责人在外部对话里做过快速预扫的，摘要放进项目文件 §0、标未核实；第 1 步子代理逐条核对，讲的时候只讲核过的，核完删 §0 |
+| 并发 | 两个会话同时看两个项目时：各自只写自己的项目文件；本页清单、`任务线路.md` 收尾时先重读再改、只改自己那一行；提交只 `git add` 自己改的文件，不推送 |
 
 ## 讨论时守的规矩
 
@@ -43,7 +45,9 @@
 | # | 项目 | 类别 | 为什么看 | 状态 | 文件 |
 | --- | --- | --- | --- | --- | --- |
 | 1 | [DeepTutor](https://github.com/HKUDS/DeepTutor) | 开源 | 规模最大、离我们最近；掌握门、学习路径、模式切换；概念掌握由 tutor 自判（我们是独立守卫） | ✅ 10-01 | `01-DeepTutor.md` |
-| 2 | [CogniFlow](https://github.com/sohan1611/CogniFlow) | 开源 | 状态图 + 知识追踪 + 先修图；模型提议、规则裁决；带模拟学生消融评估 | 下一个 | — |
+| 8 | [WeSmartFlow](https://github.com/Tencent/WeSmartFlow)（腾讯） | 开源 | 完整产品形态：agent 自写掌握度、知识图谱、SM-2 复习；范围宽（含少儿游戏化、微信） | ⏳ 10-01 并发 | `02-WeSmartFlow.md` |
+| 9 | [ai-learning-support-test](https://github.com/69420pm/ai-learning-support-test) | 开源（个人） | 反认知外包；卡住时后台沿前置链回溯、结果对模型极简、不展示给学习者；偏应试 | ⏳ 10-01 并发 | `03-ai-learning-support-test.md` |
+| 2 | [CogniFlow](https://github.com/sohan1611/CogniFlow) | 开源 | 状态图 + 知识追踪 + 先修图；模型提议、规则裁决；带模拟学生消融评估 | 待看 | — |
 | 3 | [mastery-tutor](https://github.com/fanfanfanfanfan626/mastery-tutor) | 开源 | 追加式证据日志；机器校验每个教学回合；掌握要三类证据 | 待看 | — |
 | 4 | [open-learning-ai-tutor](https://github.com/mitodl/open-learning-ai-tutor)（MIT） | 开源 | 外部规则管教学策略的最小实例 | 待看 | — |
 | 5 | OpenAI Study Mode | 厂商 | 提示词方案的上限与问题；转向测量 | 待看 | — |
