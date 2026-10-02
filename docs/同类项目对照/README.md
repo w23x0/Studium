@@ -7,7 +7,7 @@
 
 | 步 | 做什么 |
 | --- | --- |
-| 1 准备 | 读本页；`git clone --depth 1` 到 `~/参考项目/<名字>`（仓库外，不进 git）；同时派两个子代理：**读码**（流程谁控制 / 学习者状态 / “学会了”怎么判 / 知识结构 / 路线 / 上下文与记忆 / 评测），**读文档**（方向 / 边界 / 证据 / 定位变化 / 团队）。主会话抽查关键行再讲。**以代码为准**：README、落地页宣称的功能可能没实现（`03`） |
+| 1 准备 | 读本页；同时派两个 `researcher` 子代理（只读、能联网）：**读码 / 读材料**（流程谁控制 / 学习者状态 / “学会了”怎么判 / 知识结构 / 路线 / 上下文与记忆 / 评测；没有代码的读论文、书稿、技术博客），**读背景**（方向 / 边界 / 证据 / 定位变化 / 团队 / 时间线）。有代码才 `git clone --depth 1` 到 `~/参考项目/<名字>`（仓库外，不进 git）。主会话抽查关键行再讲。**以代码 / 原文为准**：README、落地页宣称的功能可能没实现（`03`） |
 | 2 讲 | 一次一条，等回应再讲下一条。**每条先说它帮我们回答什么问题，说不出就不讲**。只讲技术核心与方向；产品形态、内容生态、营销功能（课件、游戏、积分、接入渠道等）一句带过 |
 | 3 放进外部光谱 | 讲一个技术点时不局限于这个项目：外面还有谁这样做、这种做法何时出现、何时流行 / 成熟、我们在光谱的哪一端。**举例只举成熟代表作或最新前沿**，小项目、非最终版本不作论据。多讲对比，让产品负责人对它的设计有具体概念 |
 | 4 讨论 | 产品负责人直接指出和我们不同的地方；agent 先讲它为什么这样设计（在它的约束下是否自洽）、双方各自的代价，再记；拿不准就标出来 |
@@ -52,23 +52,21 @@
 | 8 | [WeSmartFlow](https://github.com/Tencent/WeSmartFlow)（腾讯） | 开源 | 通用 ReAct + 学习工具；掌握度从 agent 自写 0–1 数转向存证据（权重公式判）；只看学习核心，产品生态不看 | ✅ 10-01 | `02-WeSmartFlow.md` |
 | 9 | [ai-learning-support-test](https://github.com/69420pm/ai-learning-support-test) | 开源（个人） | 反认知外包、偏应试；核实后是通用工具循环 + LLM 概念图，学习者侧未做；反例 | ✅ 10-01 | `03-ai-learning-support-test.md` |
 
-### 待看（2026-10-01 子代理按新标准调研；链接已抽查，其余事实未逐条复核，二手数字开讲前回原始出处核对）
+### 待看：按会话分组（2026-10-02 整理）
 
-| # | 项目 | 类别 | 帮我们回答什么 | 技术材料 |
+闭环定义 10-02 已改为“从已会的几个出发点到一个新点的连线，靠出发点理解到目标层次”（产品总览「闭环定义」），下表“帮我们回答什么”按新定义写。几个项目只是一篇论文或一篇 essay，按要回答的问题合并成一个会话；文件名预先分好，并发时不撞号。候选由子代理调研（10-01），链接已抽查，其余事实未逐条复核，二手数字开讲前回原始出处核对。
+
+| 会话 | 项目 | 帮我们回答什么 | 材料 | 文件 |
 | --- | --- | --- | --- | --- |
-| 10 | Math Academy | 经典代表：知识图谱 + 掌握度的数学自学 | 前置图怎么定位已会 / 未会的边界、排下一步、排复习；判学会靠做题（对照面）。**和 #22 闭环成环高度相关** | 书《The Math Academy Way》、[FIRe 文章](https://justinmath.com/individualized-spaced-repetition-in-hierarchical-knowledge-structures/) |
-| 11 | Google LearnLM / Guided Learning | 前沿：教学能力训进模型 | 厂商怎么定义、评测“好的教学行为”（可借作教学 / 守卫的评测维度） | [arXiv 2412.16429](https://arxiv.org/abs/2412.16429)、arXiv 2505.24477 |
-| 12 | AutoTutor（Graesser） | 经典代表：对话式辅导 | 从对话判学会的最早成熟做法：要点是否由学生自己说出 | 17 年谱系综述（2014） |
-| 13 | ALEKS / 知识空间理论 | 经典代表 | 知识状态 = 已会集合 + 外沿（下一步可学）；学习空间保证一步一步走 | arXiv 1511.06757 |
-| 14 | Andy Matuschak《How Might We Learn?》 | 前沿：方向主张 | 成年自学该不该脱离真实任务；质疑对话框式辅导 | [essay](https://andymatuschak.org/hmwl/)、笔记库 |
-| 15 | Eedi × DeepMind 课堂 RCT（2025） | 前沿：研究 | 独立把关环节（人审 AI 草稿）值多少 | [arXiv 2512.23633](https://arxiv.org/abs/2512.23633) |
-| 16 | Harvard 物理 AI 辅导 RCT（2025） | 前沿：研究 | 预置解答 + 教学原则约束一次教学调用的效果 | [Sci Rep 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12179260/) |
-| 17 | Betty's Brain（Vanderbilt） | 经典代表：教给 AI 学生 | 费曼式讲解的成熟设计与证据；讲解怎么落成可检查的结构 | 早期论文、综述 |
-| 18 | 对话中的知识追踪（UMass Lan 组） | 前沿：研究 | 学术界怎么从开放对话判学会；落到答对概率（对照面） | [arXiv 2409.16490](https://arxiv.org/abs/2409.16490)、2503.06424 |
-| 19 | Khanmigo | 经典代表：大规模 LLM 辅导 | 大规模部署时数学辅导在哪出错、上下文先放什么 | Khan 工程博客 |
-| 20 | Cognitive Tutor / MATHia | 经典代表：规则端标杆 | ITS 成熟时间线；程序全控的上限与代价 | 1995《Cognitive Tutors: Lessons Learned》 |
-| 21 | VanLehn 2011 元分析 | 经典代表：研究 | 判断粒度要细到哪一层才有收益 | 论文 |
-| 22 | [OpenMAIC](https://github.com/THU-MAIC/OpenMAIC)（清华） | 前沿：多身份 agent 课堂（开源，约 4 万星，2026-03 建） | 我们“不做多身份 agent”的反面参照 | 代码 |
+| A | Math Academy | 知识图谱驱动的数学自学：怎么从已会的点定位下一步、前置图多细、复习怎么沿图传导；判学会靠做题（对照面）。**与新闭环定义最近** | 书《The Math Academy Way》、[FIRe 文章](https://justinmath.com/individualized-spaced-repetition-in-hierarchical-knowledge-structures/) | `04-MathAcademy.md` |
+| B | ALEKS / 知识空间理论 | 知识状态 = 已会集合 + 外沿（下一步能学的点）——“外沿”与“出发点”是不是一回事；学习空间怎么保证一步一步走 | arXiv 1511.06757、McGraw Hill 技术说明 | `05-ALEKS-知识空间理论.md` |
+| C | 经典 ITS 谱系：Cognitive Tutor / MATHia · AutoTutor · VanLehn 2011 元分析 | 成熟时间线；程序全控的上限与代价；从对话判学会的最早做法（要点是否由学生自己说出）；判断粒度细到哪一层才有收益 | 1995《Cognitive Tutors: Lessons Learned》、AutoTutor 17 年综述（2014）、VanLehn 2011 | `06-经典ITS谱系.md` |
+| D | 讲解与对话判学会：Betty's Brain · 对话知识追踪（UMass Lan 组） | 费曼式讲解的成熟设计与证据；学术界从开放对话判学会、落到答对概率（对照面）；能否借来校验守卫 | Betty's Brain 论文、[arXiv 2409.16490](https://arxiv.org/abs/2409.16490)、2503.06424 | `07-讲解与对话判学会.md` |
+| E | 大模型原生辅导：Google LearnLM / Guided Learning · Eedi × DeepMind RCT · Harvard 物理 RCT · Khanmigo | 厂商怎么定义、评测好的教学行为；独立把关环节值多少；预置解答 + 教学原则约束一次教学调用的效果；大规模部署时数学辅导在哪出错 | [arXiv 2412.16429](https://arxiv.org/abs/2412.16429)、2505.24477、[2512.23633](https://arxiv.org/abs/2512.23633)、[Sci Rep 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12179260/)、Khan 工程博客 | `08-大模型原生辅导.md` |
+| F | Andy Matuschak《How Might We Learn?》 | 成年自学该不该脱离真实任务；质疑对话框式辅导——检验我们纯对话闭环的前提 | [essay](https://andymatuschak.org/hmwl/)、笔记库 | `09-Matuschak-方向.md` |
+| G | [OpenMAIC](https://github.com/THU-MAIC/OpenMAIC)（清华，约 4 万星，2026-03 建） | 多身份 agent 课堂的完整开源实现——我们“不做多身份 agent”的反面参照 | 代码 | `10-OpenMAIC.md` |
+
+建议顺序：A → B（与新闭环定义直接相关，也给 #22 的实验当参照）→ C → D → E → F → G。A、B 互不依赖，可以并发。
 
 备选：OATutor（开源经典 ITS，BKT 端）。
 
