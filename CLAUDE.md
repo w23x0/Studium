@@ -86,6 +86,8 @@
 
 当前仓库以**产品设计与调研**为主；可运行代码只有 `proto/` 下的单闭环原型，用于检验设计假设，不是产品实现。
 
+**基础层不按 MVP 砍窄**：原型实现基础层（如 M08 的关系类型、读料范围）按审查单的设计做全；要收窄，先写明理由并问产品负责人（2026-10-02，起因：最小 M08 只抽 4 种关系、未记原因，闭环在结构上合不成环）。
+
 ## 提交
 
 提交信息用中文 `type(scope): 说明`。已用过的 type：`docs` / `chore` / `feat` / `refactor` / `fix`；scope 例：`harness` / `research` / `权威` / `基线` / `root` / `proto`，可省略。
@@ -98,5 +100,6 @@
 
 ## 环境补充
 
+- 产品负责人多设备开发：**跨会话要遵守的工作规则写进本文件（进 git）**，本机记忆不跨设备。
 - 联网操作走 `web-access` 技能（`.claude/skills/web-access` 是指向 `.agents/skills/web-access` 的链接）。
 - `.claude/settings.json` 进 git；本机特有的设置放 `.claude/settings.local.json`（不进 git）。
