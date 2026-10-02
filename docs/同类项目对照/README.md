@@ -51,6 +51,7 @@
 | 1 | [DeepTutor](https://github.com/HKUDS/DeepTutor) | 开源 | 规模最大、离我们最近；掌握门、学习路径、模式切换；概念掌握由 tutor 自判（我们是独立守卫） | ✅ 10-01 | `01-DeepTutor.md` |
 | 8 | [WeSmartFlow](https://github.com/Tencent/WeSmartFlow)（腾讯） | 开源 | 通用 ReAct + 学习工具；掌握度从 agent 自写 0–1 数转向存证据（权重公式判）；只看学习核心，产品生态不看 | ✅ 10-01 | `02-WeSmartFlow.md` |
 | 9 | [ai-learning-support-test](https://github.com/69420pm/ai-learning-support-test) | 开源（个人） | 反认知外包、偏应试；核实后是通用工具循环 + LLM 概念图，学习者侧未做；反例 | ✅ 10-01 | `03-ai-learning-support-test.md` |
+| A | Math Academy | 无代码（书 + 文章） | 知识图谱驱动的数学自学；程序全控、只判做题；FIRe 复习沿包含图传导 | ✅ 10-02 | `04-MathAcademy.md` |
 
 ### 待看：按会话分组（2026-10-02 整理）
 
@@ -58,15 +59,14 @@
 
 | 会话 | 项目 | 帮我们回答什么 | 材料 | 文件 |
 | --- | --- | --- | --- | --- |
-| A | Math Academy | 知识图谱驱动的数学自学：怎么从已会的点定位下一步、前置图多细、复习怎么沿图传导；判学会靠做题（对照面）。**与新闭环定义最近** | 书《The Math Academy Way》、[FIRe 文章](https://justinmath.com/individualized-spaced-repetition-in-hierarchical-knowledge-structures/) | `04-MathAcademy.md` |
-| B | ALEKS / 知识空间理论 | 知识状态 = 已会集合 + 外沿（下一步能学的点）——“外沿”与“出发点”是不是一回事；学习空间怎么保证一步一步走 | arXiv 1511.06757、McGraw Hill 技术说明 | `05-ALEKS-知识空间理论.md` |
+| B | ALEKS / 知识空间理论 | 知识状态 = 已会集合 + 外沿（下一步能学的点）——“外沿”与“出发点”是不是一回事；学习空间怎么保证一步一步走；一个点能否有几组可选前置（对应“出发点不同”，`04` 1.1 待核）；产品负责人要系统学这套理论 | arXiv 1511.06757、McGraw Hill 技术说明 | `05-ALEKS-知识空间理论.md` |
 | C | 经典 ITS 谱系：Cognitive Tutor / MATHia · AutoTutor · VanLehn 2011 元分析 | 成熟时间线；程序全控的上限与代价；从对话判学会的最早做法（要点是否由学生自己说出）；判断粒度细到哪一层才有收益 | 1995《Cognitive Tutors: Lessons Learned》、AutoTutor 17 年综述（2014）、VanLehn 2011 | `06-经典ITS谱系.md` |
 | D | 讲解与对话判学会：Betty's Brain · 对话知识追踪（UMass Lan 组） | 费曼式讲解的成熟设计与证据；学术界从开放对话判学会、落到答对概率（对照面）；能否借来校验守卫 | Betty's Brain 论文、[arXiv 2409.16490](https://arxiv.org/abs/2409.16490)、2503.06424 | `07-讲解与对话判学会.md` |
 | E | 大模型原生辅导：Google LearnLM / Guided Learning · Eedi × DeepMind RCT · Harvard 物理 RCT · Khanmigo | 厂商怎么定义、评测好的教学行为；独立把关环节值多少；预置解答 + 教学原则约束一次教学调用的效果；大规模部署时数学辅导在哪出错 | [arXiv 2412.16429](https://arxiv.org/abs/2412.16429)、2505.24477、[2512.23633](https://arxiv.org/abs/2512.23633)、[Sci Rep 2025](https://pmc.ncbi.nlm.nih.gov/articles/PMC12179260/)、Khan 工程博客 | `08-大模型原生辅导.md` |
 | F | Andy Matuschak《How Might We Learn?》 | 成年自学该不该脱离真实任务；质疑对话框式辅导——检验我们纯对话闭环的前提 | [essay](https://andymatuschak.org/hmwl/)、笔记库 | `09-Matuschak-方向.md` |
 | G | [OpenMAIC](https://github.com/THU-MAIC/OpenMAIC)（清华，约 4 万星，2026-03 建） | 多身份 agent 课堂的完整开源实现——我们“不做多身份 agent”的反面参照 | 代码 | `10-OpenMAIC.md` |
 
-建议顺序：A → B（与新闭环定义直接相关，也给 #22 的实验当参照）→ C → D → E → F → G。A、B 互不依赖，可以并发。
+建议顺序：B（与新闭环定义直接相关，也给 #22 的实验当参照；A 看完后产品负责人要专门学知识空间理论）→ C → D → E → F → G。
 
 备选：OATutor（开源经典 ITS，BKT 端）。
 
