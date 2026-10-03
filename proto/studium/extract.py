@@ -72,14 +72,22 @@ def locate(quote: str, pages: list[tuple[tuple[str, str], int]]) -> int | None:
     return next((p for (ta, tb), p in pages if qa in ta or qb in tb), None)
 
 
+def _is_zh(pages: list[tuple[tuple[str, str], int]]) -> bool:
+    """中文书：正文里汉字多于拉丁字母。"""
+    t = "".join(a for (a, _), _ in pages)
+    return len(re.findall(r"[\u4e00-\u9fff]", t)) > len(re.findall(r"[a-z]", t))
+
+
 def anchor(raw: str, pages: list[tuple[tuple[str, str], int]]) -> tuple[str, int, int]:
     """给每条引文补页码；返回 (改写后的文本, 匹配数, 总数)。"""
     hit = total = 0
+    zh = _is_zh(pages)
 
     def sub(m: re.Match) -> str:
         nonlocal hit, total
         q = m.group(1) or m.group(2)
-        if not re.search(r"[A-Za-z]{3}", q):  # 中文引号里的说明，不是原文引文
+        # 英文书：不含英文的引号内容是中文说明，不是原文引文；中文书：提示词要求引文用直引号，直引号一律算引文
+        if not (zh and m.group(1)) and not re.search(r"[A-Za-z]{3}", q):
             return m.group(0)
         total += 1
         p = locate(q, pages)
