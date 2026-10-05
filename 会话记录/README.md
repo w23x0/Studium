@@ -12,14 +12,12 @@
 | `2026-09-29-交接-重审技术方向.md` | 09-29 会话交接：讲 3.2（一轮何时结束）、输出风格讨论存档（06）、会话层方向、3.3 讲一半后停止学习 → 重审技术方向；原则 2 改写草稿待确认 |
 | `2026-10-05-补理论-已有认识怎么变.md` | #23 讨论记录：设计侧扫描、逐条讨论（产品负责人原话与 agent 判断分列）、研究样本条件、本次改动对照原设计 |
 | `2026-10-05-旧定义清点.md` | 旧闭环定义（09-28 知识链一段、更早的验收范围）残留清点：38 条按可直接改 / 要产品负责人判断 / 不用改分类，#12 清理的工作清单 |
-| `memory/` | Claude Code 本机记忆（`~/.claude/projects/<项目路径>/memory/`）的副本 |
 
 ## 换设备后
 
 | 步 | 做法 |
 | --- | --- |
 | 1 | `git clone` 后在仓库根目录启动 Claude Code，先读 `任务线路.md` |
-| 2 | 恢复记忆：把 `会话记录/memory/*.md` 复制到新机器的 `~/.claude/projects/<项目路径转成的目录名>/memory/`（目录名 = 仓库绝对路径把 `/` 换成 `-`，如 `/home/w23x/Studium` → `-home-w23x-Studium`） |
-| 3 | 原型的密钥**不在 git 里**：复制 `proto/.env.example` 为 `proto/.env`，填入 `STUDIUM_OC_API_KEY`（模拟学习者）与 `MINERU_TOKEN`（书 PDF 转 md） |
-| 4 | 原型判断调用需要已登录的 `claude` CLI（`echo hi \| claude -p` 能返回即可） |
-| 5 | 看交接文件（最新：`2026-09-29-交接-重审技术方向.md`）；书库（`~/w23x/学习资料/`）不在 git 里，切好的教材原文在书库各书目录的 `m07/`；停车场里的闭环见 `proto/records/owner/parking.md` |
+| 2 | 原型的密钥**不在 git 里**：复制 `proto/.env.example` 为 `proto/.env`，填入 `STUDIUM_OC_API_KEY`（模拟学习者）与 `MINERU_TOKEN`（书 PDF 转 md） |
+| 3 | 原型判断调用需要已登录的 `claude` CLI（`echo hi \| claude -p` 能返回即可） |
+| 4 | 先读 `任务线路.md` 与 `方向记录.md`，再看相关交接文件；书库（`~/w23x/学习资料/`）不在 git 里，切好的教材原文在书库各书目录的 `m07/`；停车场里的闭环见 `proto/records/owner/parking.md` |
