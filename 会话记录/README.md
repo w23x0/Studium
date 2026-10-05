@@ -18,6 +18,6 @@
 | 步 | 做法 |
 | --- | --- |
 | 1 | `git clone` 后在仓库根目录启动 Claude Code，先读 `任务线路.md` |
-| 2 | 原型的密钥**不在 git 里**：复制 `proto/.env.example` 为 `proto/.env`，填入 `STUDIUM_OC_API_KEY`（模拟学习者）与 `MINERU_TOKEN`（书 PDF 转 md） |
-| 3 | 原型判断调用需要已登录的 `claude` CLI（`echo hi \| claude -p` 能返回即可） |
-| 4 | 先读 `任务线路.md` 与 `方向记录.md`，再看相关交接文件；书库（`~/w23x/学习资料/`）不在 git 里，切好的教材原文在书库各书目录的 `m07/`；停车场里的闭环见 `proto/records/owner/parking.md` |
+| 2 | 书库处理的密钥**不在 git 里**：复制 `书库处理/.env.example` 为 `书库处理/.env`，填入 `STUDIUM_OC_API_KEY` 与 `MINERU_TOKEN` |
+| 3 | 用 `opus` / `sonnet` 时需要已登录的 `claude` CLI（`echo hi \| claude -p` 能返回即可） |
+| 4 | 先读 `任务线路.md` 与 `方向记录.md`，再看相关交接文件；书库（`~/w23x/学习资料/`）不在 git 里，切好的教材原文在书库各书目录的 `m07/`；M08 抽取结果在私有仓库 `w23x0/studium-m08-data` |

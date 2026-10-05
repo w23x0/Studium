@@ -1,4 +1,0 @@
-book=/home/w23x/w23x/学习资料/大学物理/力学/Kleppner-Kolenkow-2014
-part=p1-200
-lines=4863-4910
-toc=59-243
