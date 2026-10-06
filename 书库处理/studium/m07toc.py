@@ -10,6 +10,7 @@
 2. 目录 → 条目表（模型）：层级 | 类型 | 编号 | 标题 | 页码。程序校验：每条标题在目录原文里找得到、
    目录原文每行都被某条覆盖、页码不倒退；能从原文确定的由程序改（按同编号那行更正标题、补上漏掉的
    带编号行），写进“校验”栏；模型输出存档（toc.llm.json），重跑不重调。
+   并排两栏的目录（HTML 表格）先由程序展开成逐行、按栏排序再交模型；编号末尾的星号是编号的一部分（6.2* ≠ 6.2）。
 3. 定位（程序）：按目录顺序在正文标题行里逐条找（编号 + 标题；标题行缺编号时只比标题；
    标题拆成两行时接起来比；K&K 式“正文行以编号开头”兜底）。页码校验：content_list 的页码块
    给出 PDF 页 ↔ 印刷页，定位只在目录页码对应的 PDF 页附近找，防止撞到习题编号或页眉。
@@ -282,7 +283,26 @@ def _parse_rows(txt: str) -> list[list[str]]:
     return rows
 
 
-_RAW_ENTRY = re.compile(r"^[\\*\s§]*(\d+(?:\.\d+)+|[A-Z]\.\d+)\s*(.+?)[\s.…·]*(\d{1,4})\s*$")
+_RAW_ENTRY = re.compile(r"^[\\*\s§]*(\d+(?:\.\d+)+\\?\*?|[A-Z]\.\d+)\s*(.+?)[\s.…·]*(\d{1,4})\s*$")
+
+_CELL_NUM = re.compile(r"^\\?\*?\d+(?:\.\d+)*\\?\*?$")
+
+
+def _flatten_tables(raw: list[str]) -> list[str]:
+    """目录里的并排两栏常被转成 HTML 表格（一行一个 <table>，每行两对「编号 | 标题 页码」）。
+    展开成逐行条目：按栏逐栏（先整个左栏、再整个右栏）才是书里的先后顺序（如 6.2–6.4 之后才是 6.2*–6.4*）；
+    编号原样保留（含星号）。不是“编号 + 标题”成对的表格不动。"""
+    out = []
+    for l in raw:
+        if "<table" not in l:
+            out.append(l); continue
+        rows = [[re.sub(r"<[^>]+>", "", c).strip() for c in re.findall(r"<t[dh][^>]*>(.*?)</t[dh]>", r, flags=re.S)]
+                for r in re.findall(r"<tr[^>]*>(.*?)</tr>", l, flags=re.S)]
+        if rows and all(len(r) == len(rows[0]) and len(r) % 2 == 0 and all(_CELL_NUM.match(r[i]) for i in range(0, len(r), 2)) for r in rows):
+            out += [f"{r[c]} {r[c + 1]}" for c in range(0, len(rows[0]), 2) for r in rows]
+        else:
+            out.append(l)
+    return out
 
 
 def _raw_title(l: str) -> str:
@@ -369,7 +389,7 @@ def make_toc(book: Path, out: Path, toc: str | None, model: str) -> list[Entry]:
         if not found:
             raise SystemExit(f"未找到目录（前 {min(first, 4000)} 行没有目录样式的一片）：请用 --toc A-B 指定行号")
         a, z = found
-    raw = [re.sub(r"^#+\s*", "", l) for l in b.text[a - 1:z]]
+    raw = _flatten_tables([re.sub(r"^#+\s*", "", l) for l in b.text[a - 1:z]])
     print(f"目录：第 {a}–{z} 行（{sum(1 for l in raw if l.strip())} 行非空）", file=sys.stderr)
     out.mkdir(parents=True, exist_ok=True)
     cache_f = out / "toc.llm.json"
@@ -393,7 +413,7 @@ def make_toc(book: Path, out: Path, toc: str | None, model: str) -> list[Entry]:
     entries = []
     for lv, kind, num, title, page, chk in rows:
         kind = kind.strip().lower()
-        num = num.strip().strip("§*\\ ").rstrip(".")
+        num = re.sub(r"\\+\*", "*", num.strip()).lstrip("§*\\ ").rstrip(". ")  # 去前缀包装；末尾星号是编号的一部分（6.2* ≠ 6.2）
         if not num and (m := re.match(r"^(\d+(?:\.\d+)+)\s+(.+)$", title)):
             num, title = m.group(1), m.group(2)
         entries.append(Entry(0, int(lv), kind if kind in KINDS else "other", num, title.strip(), page.strip(), chk))
@@ -457,13 +477,16 @@ def num_rx(num: str) -> re.Pattern | None:
     n = num.strip()
     if not n:
         return None
+    star = n.endswith("*")
+    n = n.rstrip("*")
     if n.isdigit():
         v = int(n)
         alt = "|".join(re.escape(x) for x in {str(v), _cn(v), _ROMAN_UP.get(v, str(v))})
         body = rf"(?:{alt})(?:\s*[章讲篇部节])?"
     else:
         body = r"(?:\s*[.．]\s*|\s+)".join(re.escape(p) for p in re.split(r"[.．]", n))  # OCR 有时把点丢成空格
-    return re.compile(_PRE + body + r"(?![\dA-Za-z])(?!\s*[.．]\s*\d)", re.I)
+    tail = r"\s*\\?\*" if star else r"(?![\dA-Za-z])(?!\s*[.．]\s*\d)(?!\s*\\?\*)"
+    return re.compile(_PRE + body + tail + (r"(?![\dA-Za-z])" if star else ""), re.I)
 
 
 def _strip(l: str) -> str:
@@ -529,13 +552,15 @@ def locate(b: Book, entries: list[Entry], start: int, barrier: tuple[int, int]) 
             elif rx and l[:1].isalnum() and (m := rx.match(l.strip())) and _tmatch(tk, key(l.strip()[m.end():])[:len(tk) + 2]):
                 yield i, 1, 0  # K&K 式：标题没转成标题行，正文行以“编号 标题”开头
 
-    def pick(cs):
+    def pick(cs, tk):
         if not cs:
             return None
         top = max(s for _, s, _ in cs)
         best = [c for c in cs if c[1] == top]
-        plain = [c for c in best if repeat[_strip(text[c[0]])] < 3]  # 同一文字反复出现的多半是页眉
-        return (plain or best)[0]
+        # 标题与目录完全相等（允许末尾粘着节号）优先于“以它开头”：章名 Derivatives 不能被「Derivatives and Rates of Change2.1」抢走
+        exact = [c for c in best if re.fullmatch(re.escape(tk) + r"\d*", key(_strip(text[c[0]])))]
+        plain = [c for c in (exact or best) if repeat[_strip(text[c[0]])] < 3]  # 同一文字反复出现的多半是页眉
+        return (plain or exact or best)[0]
 
     def search(e: Entry, pos: int, end: int) -> tuple | None:
         exp = expected_pdf(b, e.page) if e.page else None
@@ -543,14 +568,14 @@ def locate(b: Book, entries: list[Entry], start: int, barrier: tuple[int, int]) 
             hi = next((i for i in range(pos, end) if b.page[i] > exp + 10), end)
             cs = list(cands(e, pos, hi))
             win = [c for c in cs if exp - 1 <= b.page[c[0]] <= exp + 2]
-            if (got := pick(win)):
+            if (got := pick(win, key(e.title))):
                 return got, ""
             near = [c for c in cs if c[1] >= 3]
-            if (got := pick(near)):
+            if (got := pick(near, key(e.title))):
                 return got, f"页码偏差：目录 p.{e.page} ≈ PDF {exp}，正文在 PDF {b.page[got[0]]}"
             return None
         cs = [c for c in cands(e, pos, min(end, pos + 3000)) if c[1] >= 2]
-        return (pick(cs), "无页码校验") if cs else None
+        return (pick(cs, key(e.title)), "无页码校验") if cs else None
 
     HOW = {4: "编号+标题", 3: "编号+标题（两行）", 2.5: "编号+残缺标题", 2: "标题", 1: "正文行", 0.5: "仅编号"}
 
@@ -579,6 +604,27 @@ def locate(b: Book, entries: list[Entry], start: int, barrier: tuple[int, int]) 
         i = next((i for i in range(lo, hi) if b.page[i] >= exp), None)
         if i is not None and b.page[i] == exp and (i == 0 or b.page[i - 1] < exp) and not (barrier[0] <= i < barrier[1]):
             e.line, e.skip, e.how, e.note = i, 0, "页码（整页近似）", "标题未在正文找到，按目录页码取该页第一行"
+    for e in entries:  # 只按标题定位的条目：标题前若有一行单独的本节编号（6.2\* 式开篇块：编号、说明、图在标题之前），起点前移到编号行
+        if e.how != "标题" or not (rx := num_rx(e.number)):
+            continue
+        lo = max((x.line + max(x.skip, 1) for x in entries[:e.seq] if x.line >= 0), default=start)
+        for i in range(e.line - 1, max(e.line - 25, lo) - 1, -1):
+            t = _strip(text[i])
+            if (m := rx.match(t)) and not key(t[m.end():]):
+                e.line, e.skip, e.how = i, 1, "标题（编号行在前）"
+                break
+            if _is_head(text[i]):
+                break
+    for e in entries:  # 章 / 篇 / 附录的开篇页：照片、图注、章号图在标题之前（版式如此，MinerU 顺序与原页一致）；起点前移到该 PDF 页第一行
+        if e.kind not in ("chapter", "part", "appendix") or e.line <= 0 or e.how in ("", "页码（整页近似）"):
+            continue
+        lo = max((x.line + max(x.skip, 1) for x in entries[:e.seq] if x.line >= 0), default=start)
+        i0 = e.line
+        while i0 - 1 > lo and b.page[i0 - 1] == b.page[e.line]:
+            i0 -= 1
+        if i0 < e.line and not any(_is_head(text[i]) for i in range(i0, e.line)) and any(text[i].strip() for i in range(i0, e.line)):
+            e.line, e.skip = i0 - 1, 1  # 起点取页首前的空行（只略过它），开篇内容与标题行都留在正文里
+            e.how += "（含开篇页）"
     for e in entries:  # 正文前的条目（前言等）可能排在目录之前
         if e.line < 0 and e.kind == "front" and barrier[0] > 0 and (r := search(e, 0, barrier[0])):
             (e.line, s, e.skip), e.note = r
@@ -703,13 +749,13 @@ def split(book: Path, out: Path, depth: int | None) -> dict:
         if sum(1 for l in body if l.strip() and not _is_head(l)) < 2:
             continue  # 只有标题、没有正文（如章名后直接是第一节）
         pre = KINDS[e.kind]
-        name = f"{pre}-{_slug(e.number)}" if e.number else f"{pre}-{(_slug(ctx_num(e)) + '-') if ctx_num(e) else ''}{_slug(e.title)}"
+        name = f"{pre}-{_slug(e.number.replace('*', 'star'))}" if e.number else f"{pre}-{(_slug(ctx_num(e)) + '-') if ctx_num(e) else ''}{_slug(e.title)}"
         path, n = f"{chapter_dir(e)}/{name}", 2
         while path in names:
             path = f"{chapter_dir(e)}/{name}-{n}"; n += 1
         names.add(path)
         e.file = path + ".md"
-        p0, p1 = b.page[e.line], b.page[max(end - 1, e.line)]
+        p0, p1 = b.page[min(e.line + max(e.skip, 1), end - 1)], b.page[max(end - 1, e.line)]
         a0, a1 = e.page or (str(printed_of(b, p0)) if printed_of(b, p0) else ""), printed_of(b, p1)
         e.pages = (f"p.{a0}" + (f"–{a1}" if a1 and a0.isdigit() and a1 > int(a0) else "")) if a0 else ""
         e.pdf = f"{p0}" + (f"–{p1}" if p1 > p0 else "")
