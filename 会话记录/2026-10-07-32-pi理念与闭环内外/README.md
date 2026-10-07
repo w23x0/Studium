@@ -1,6 +1,6 @@
 # 2026-10-07 · #32：pi 背后的 agent 理念 → 闭环内外怎么分
 
-> 会话：云端项目线程会话 `session_01HxrrzbLstNS9qUfaXGT648`（https://claude.ai/code/session_01HxrrzbLstNS9qUfaXGT648）；不在本机，`~/studium-sessions` 导出不适用，对话原文以该会话为准。本页不写讨论过程。
+> 对话原文：`~/studium-sessions/对话/2026-10-07-24e2d431.md`（会话 id `24e2d431-336c-583f-96ab-fb6de7c5f323`；云端项目线程会话 `session_01HxrrzbLstNS9qUfaXGT648`，云端存档格式与本机不同，用一次性脚本按同一格式导出）。本页不写讨论过程。
 
 ## 推的线
 
