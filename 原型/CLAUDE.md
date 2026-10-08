@@ -48,7 +48,7 @@
 | `npm run eval [-- --k 3]`       | 跑行为评测目录（假模型），k 次全过才算过                                                              |
 | `npm run review [-- --dry-run]` | 独立审查：全新上下文、换模型（默认 Sonnet）、只读，只报正确性与需求缺口                               |
 
-环境变量：`STUDIUM_MODEL=claude|fake`（默认 claude）· `STUDIUM_CLAUDE_MODEL` · `STUDIUM_DATA`（默认 `原型/var/`）· `STUDIUM_PORT`（默认 4317）· `STUDIUM_TOKEN` · `STUDIUM_LIBRARY`（书库根目录，默认 `样例/书库`）· `STUDIUM_M08`（M08 产出目录，默认复制 `样例/m08`）· `STUDIUM_TAPE`（录带文件；录的时候配一个新的空 `STUDIUM_DATA`）。
+环境变量：`STUDIUM_MODEL=claude|fake`（默认 claude）· `STUDIUM_CLAUDE_MODEL`（全局默认模型）· `STUDIUM_PROFILES`（按会话类覆盖模型 / 强度的 JSON，如 `{"loop":{"effort":"max"}}`；默认见 `src/core/model/profiles.ts`）· `STUDIUM_DATA`（默认 `原型/var/`）· `STUDIUM_PORT`（默认 4317）· `STUDIUM_TOKEN` · `STUDIUM_LIBRARY`（书库根目录，默认 `样例/书库`）· `STUDIUM_M08`（M08 产出目录，默认复制 `样例/m08`）· `STUDIUM_TAPE`（录带文件；录的时候配一个新的空 `STUDIUM_DATA`）。
 
 工具名和参数名只能用英文（中文会被接口拒绝）；给模型看的说明可以用中文。
 

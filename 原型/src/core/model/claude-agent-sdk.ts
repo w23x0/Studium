@@ -18,12 +18,15 @@ import {
   type ModelEvent,
   type TurnInput,
 } from './port.ts';
+import type { Profiles } from './profiles.ts';
 
 const SERVER = 'studium';
 
 export interface ClaudeAgentSdkOptions {
   /** 不填用 SDK 默认模型。 */
   model?: string;
+  /** 按会话类分开配的模型与强度；没配的类用 SDK 默认。 */
+  profiles?: Profiles;
   /** SDK 子进程的工作目录。SDK 按它归档自己的会话文件，续接时要一致，所以固定成数据目录。 */
   cwd?: string;
 }
@@ -68,6 +71,8 @@ class SdkConversation implements ModelConversation {
         }),
       ),
     });
+    const profile = this.spec.session ? this.options.profiles?.[this.spec.session.kind] : undefined;
+    const model = profile?.model ?? this.options.model;
     const q = query({
       prompt: this.input,
       options: {
@@ -79,7 +84,8 @@ class SdkConversation implements ModelConversation {
         strictMcpConfig: true,
         includePartialMessages: true,
         ...(this.spec.resumeToken !== undefined ? { resume: this.spec.resumeToken } : {}),
-        ...(this.options.model !== undefined ? { model: this.options.model } : {}),
+        ...(model !== undefined ? { model } : {}),
+        ...(profile?.effort !== undefined ? { effort: profile.effort } : {}),
         ...(this.options.cwd !== undefined ? { cwd: this.options.cwd } : {}),
         env: cleanEnv(),
       },
