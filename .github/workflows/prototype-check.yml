@@ -1,0 +1,31 @@
+# 原型检查：与本地 `npm run check` 同一条命令；另跑功能主路径（Playwright，假模型）。
+name: 原型检查
+
+on:
+  push:
+    branches: [main]
+    paths: ['原型/**', '.github/workflows/prototype-check.yml']
+  pull_request:
+    paths: ['原型/**', '.github/workflows/prototype-check.yml']
+
+defaults:
+  run:
+    working-directory: 原型
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: 原型/package-lock.json
+      - run: npm ci
+      - run: npm run check
+      - name: 测试改动报告（删改了哪些断言）
+        if: github.event_name == 'pull_request'
+        run: node scripts/test-diff-report.mjs origin/${{ github.base_ref }}
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
