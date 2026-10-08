@@ -136,5 +136,6 @@
 - 产品负责人多设备开发：**跨会话要遵守的工作规则写进本文件（进 git）**；Claude Code 记忆功能已关闭（2026-10-05），不往本机记忆写规则。
 - 对话原文私有仓库 `~/studium-sessions`（换设备先 clone）：收尾时 `python3 -I ~/studium-sessions/导出.py <会话 id 前缀>`，提交并推送；存档只在开会话的设备上，各设备各自导出。
 - 书库与个人笔记（在书库所在设备上）：书库 `/home/w23x/w23x/学习资料/`（按学科分目录；MinerU 转换在各书 `p<页段>/full.md`，M07 切分在各书 `m07/`；力学主教材 Kleppner & Kolenkow 在 `大学物理/力学/`）；个人笔记 `/home/w23x/Note/`（线代 `线性代数/Gilbert Strang/笔记1.0`、微积分 `微积分/同济八`，供 M09 笔记导入）。
+- 云端会话推到 `claude/*` 分支、不合并：本机 agent 可直接拉取、合并进 `main`、跑 `npm run check`（动了原型时）、推送，不必先问（2026-10-08 产品负责人授权，`gh` 已登录 w23x0）；有冲突自己解决，拿不准的才问。合并后告诉产品负责人合了什么。
 - 联网操作走 `web-access` 技能（`.claude/skills/web-access` 是指向 `.agents/skills/web-access` 的链接）。
 - `.claude/settings.json` 进 git；本机特有的设置放 `.claude/settings.local.json`（不进 git）。
