@@ -1,23 +1,36 @@
 # 书库处理（M06 / M07 / M08 原料）
 
-> 状态：现行（2026-10-05 从已删除的 `proto/` 移出）。只做书库 → M07 切分 → M08 抽取，不含教学循环。旧全库抽取结果 10-06 已从私有仓库 `w23x0/studium-m08-data` 工作区删除（不作新 M08 输入，历史见该仓库提交 `ba7c729`）；该仓库现放模型基准原始输出（`bench/`）。未做：整章收口、关系纠错、跨书合并。
+> 状态：现行（2026-10-05 从已删除的 `proto/` 移出；10-08 M08 部分改写为“先生成后回扫”）。只做书库 → M07 切分 → M08 点与子句，不含教学循环。M08 按 M08 审查单「点与子句」「点与子句的生成」做；现只在 Strang《Introduction to Linear Algebra》5e 第 3 章跑过一次，方案未定稿前不扩大范围（`任务线路.md` #22）。旧的“逐节接力抽点 + 两两关系表”代码 10-08 删除（`方向记录.md` 10-06 M08 抽取行）。
 
 ## 运行
 
-只用 Python 标准库，在本目录下运行。密钥：复制 `.env.example` 为 `.env`（不进 git），填 `STUDIUM_OC_BASE_URL` / `STUDIUM_OC_API_KEY`（`oc:<模型>`）与 `MINERU_TOKEN`；也可直接用同名环境变量。`opus` / `sonnet` 走已登录的 `claude -p`。
+只用 Python 标准库，在本目录下运行。密钥只经环境变量（或不进 git 的 `.env`，见 `.env.example`）：`STUDIUM_OC_BASE_URL` / `STUDIUM_OC_API_KEY`（`oc:<模型>`）与 `MINERU_TOKEN`。`opus` / `sonnet` 走已登录的 `claude -p`。
 
 ```bash
 cd 书库处理
 python3 -m studium.mineru <书.pdf> --ranges 1-200,201-400          # 书 → md（MinerU）
 python3 -m studium.mineru_batch <书库目录> [并发数]                # 整个书库批量转换（可重跑续上）
-python3 -m studium.m07toc run --book <MinerU 目录>                 # 模型整理目录 + 程序定位切分（M07；手改 m07/toc.tsv 后用 m07 split 重切）
-python3 -m studium.m07 split --book <MinerU 目录> --toc A-B        # 按目录切成小节 + 索引
-python3 -m studium.extract --book <MinerU 目录> --whole            # 整本书逐节接力抽 M08 知识点 + 关系（引文逐字定页；可续跑）
-python3 -m studium.library <书库目录> [并发数]                     # 全书库：书间并发、书内顺序；进度 runs/lib-progress.log
-python3 -m studium.consolidate --run NAME --book <MinerU 目录> --model opus   # 整章收口：合并过碎的知识点（强模型）
+python3 -m studium.m07toc run --book <书目录> [--model sonnet]     # 模型整理目录 + 程序定位切分（M07；手改 m07/toc.tsv 后用 split 重切）
+python3 -m studium.m07 split --book <MinerU 目录> --toc A-B        # K&K 专用切分
+python3 -m studium.m08 run   --book <书目录> --chapter 3 --out <产出目录>   # M08：生成 → 逐节审核回扫 → 合并 → 检查（可续跑）
+python3 -m studium.m08 build --book <书目录> --chapter 3 --out <产出目录>   # 只重做程序部分（核锚点、定来源、写 jsonl、检查）
+python3 -m studium.m08 check --out <产出目录>                               # 只重出 report.md
 ```
 
-输出在 `runs/`（已在 `.gitignore` 忽略：含书的原文摘录）。
+- 书目录 = 含 `p<页段>/full.md` 的目录（或 `source.json` 列出页段）；M07 产出在书目录的 `m07/`（书的原文不进 git）。
+- M08 产出放私有仓库工作区 `~/studium-m08-data/m08/<书>-<范围>/`：`points.jsonl`、`clauses.jsonl`（原型 `STUDIUM_M08` 直接读）、`report.md`（程序检查）、`work/`（每次模型调用的原样输出与 `calls.log`）。已有的步骤跳过；`--redo gen` 重生成（连带重审），`--redo audit` 只重审。
+- 原型用真书：`STUDIUM_LIBRARY=<含书目录的上一级> STUDIUM_M08=<产出目录> npm start`。
+
+## M08 流程（`studium/m08.py`）
+
+| 步 | 谁做 | 做什么 |
+| --- | --- | --- |
+| 生成 | 模型（opus，1 次） | 只给学科、范围（章名 + 节名）与本书此前的章节标题，不给原文；凭自身知识写点（按定义拆）与子句（出发点 → 新点 + 一两句话），范围外的出发点标“前置” |
+| 审核 + 回扫 | 模型（opus，每节 1 次，按书序串行） | 给当前清单 + 本节正文（不含习题）：点落位（一致 / 书的定义不同 → 拆出书的点）、子句判书给的 / 零件、补书有清单没有的点与路线、书里明写的“别混淆”、疑似转录错误 |
+| 合并 | 程序 | 摘录回原文核对（只容写法差）；核过的摘录对到 MinerU `content_list` 块，得原件 PDF 页 + 位置框；来源：有核过的支撑 = 书给的，范围内其余 = 模型补的，前置点本次没讲到 = 未审 |
+| 检查 | 程序 | 来源比例、锚点核对、孤立点、环、学不到的点、重复子句、句子长短、多定义拆分清单、随机抽样锚点 → `report.md` |
+
+每条点 / 子句记生成与审核的提示词版本（文件名@哈希）与模型，提示词改了可整批重写。
 
 ## 文件
 
@@ -26,6 +39,6 @@ python3 -m studium.consolidate --run NAME --book <MinerU 目录> --model opus   
 | `studium/llm.py` | 模型调用（`claude -p` / OpenAI 兼容接口） |
 | `studium/mineru.py`、`mineru_batch.py` | PDF → md |
 | `studium/m07.py`、`m07toc.py` | M07 切书（K&K 专用 / 通用） |
-| `studium/extract.py`、`library.py`、`consolidate.py` | M08 抽取、全库调度、整章收口 |
-| `studium/store.py` | 调用记录（`calls.log`） |
-| `studium/prompts/` | M07 目录整理、M08 抽取与收口的提示词 |
+| `studium/m08.py` | M08 点与子句：生成、审核回扫、合并、检查 |
+| `studium/prompts/m07_toc.md` | M07 目录整理提示词 |
+| `studium/prompts/m08_generate.md`、`m08_audit.md` | M08 生成、审核回扫提示词 |
