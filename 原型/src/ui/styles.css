@@ -1,0 +1,17 @@
+@import 'tailwindcss';
+
+/* 颜色、字号、间距往 Claude 桌面版靠；精调在界面里程碑做 */
+:root {
+  --bg: #faf9f5;
+  --panel: #f0eee6;
+  --text: #141413;
+  --muted: #73726c;
+  --accent: #c96442;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: ui-sans-serif, system-ui, 'PingFang SC', 'Noto Sans CJK SC', sans-serif;
+}
