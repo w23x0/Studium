@@ -1,5 +1,6 @@
 // 链路评测的运行器：每类学生跑 k 次（各自一个新核心、新数据目录、一份录带），可并行几个；
 // 跑完先做程序判定，再开判分会话，最后合起来定归因。
+import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   attribute,
@@ -66,7 +67,10 @@ export async function runChain(opts: ChainOptions): Promise<StudentResult[]> {
         ...(opts.log !== undefined ? { log: opts.log } : {}),
       });
       opts.log?.(`[${job.s.id}] 链路${run.error === undefined ? '走完' : '中断'}，开始判定`);
-      const judge = run.usage.wrap(opts.models.judge(join(job.dir, 'judge-cwd')), () => '判分');
+      // SDK 子进程的工作目录不存在时起不来（报“native binary failed to launch”）
+      const judgeDir = join(job.dir, 'judge-cwd');
+      await mkdir(judgeDir, { recursive: true });
+      const judge = run.usage.wrap(opts.models.judge(judgeDir), () => '判分');
       let judged: CheckResult[];
       try {
         judged = await modelChecks(run, judge);

@@ -591,7 +591,7 @@ async function interjection(run: ChainRun): Promise<CheckResult> {
       id: '中途插话（只记录）',
       by: '程序',
       outcome: '未判',
-      detail: '没插成话（学习对话没到第 3 轮或学生没打字）',
+      detail: '没插成话（学习对话不到 2 句就结束，或学生一直点按钮）',
     };
   }
   const merged = await tapeInterjections(run.tapePath);

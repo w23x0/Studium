@@ -21,7 +21,7 @@ export interface Student {
   teachingFocus: string;
   /** 额外观察项（跑题、放弃），给判分器的观察提示；没有就不跑。 */
   observeFocus?: string;
-  /** 学习对话第 3 轮在模型答到一半时插的一句话。 */
+  /** 学习对话里第 2 句起、模型答到一半时插的一句话。 */
   interjection: string;
   /** 学习对话里学生最多说几轮（到了驱动代点“先到这里”）。 */
   maxLoopTurns: number;
