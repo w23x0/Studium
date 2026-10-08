@@ -12,7 +12,7 @@
 
 | 项 | 结论 |
 | --- | --- |
-| 闭环内循环 | Anthropic 官方 SDK 的 Tool Runner，第一版只接 Claude |
+| 闭环内循环 | 先定 Anthropic 官方 SDK 的 Tool Runner；因订阅不能给 API 用，当日改为 Claude Agent SDK、用自己的订阅登录（个人自用，官方条款原文见 code.claude.com「Legal and compliance」）|
 | 语言 / 形态 / 外壳 | TS 全栈；核心是本地服务；先浏览器，桌面外壳打包时再选（产品负责人：Electron 太重，迭代快就先这样，后期肯定要换） |
 | 存储 | 每会话 JSONL 正本永不改写 + SQLite 派生层 |
 | 界面 / 质量 | shadcn/ui + assistant-ui；界面产品负责人看，不做截图检查；P0–P2 清单，Playwright 只走功能主路径 |
@@ -22,7 +22,7 @@
 
 | # | 问题 | 线索 |
 | --- | --- | --- |
-| 1 | 跑原型要 Anthropic API 密钥：订阅（Pro / Max）不能给自建程序调 API 用，API 按用量另计费 | Agent SDK 概览页“不允许第三方产品用 claude.ai 登录或订阅额度” |
+| 1 | 订阅只走 Agent SDK（个人自用）；公开给别人用时每人用自己的账号或密钥，届时可能换回 API | code.claude.com「Legal and compliance」 |
 | 2 | 产品负责人账号创建日期是否在 2026-08-31 后（决定思考块前缀校验是否默认强制）；实现上一律按强制处理 | `04-实现选型.md`「实现时要守的」 |
 | 3 | 原型代码目录名、第一批功能清单 | 实现期 |
 
