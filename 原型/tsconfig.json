@@ -19,5 +19,5 @@
       "@/*": ["./src/ui/*"]
     }
   },
-  "include": ["src", "tests", "e2e", "scripts", "*.ts"]
+  "include": ["src", "tests", "e2e", "scripts", "evals", "*.ts"]
 }

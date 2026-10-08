@@ -8,6 +8,7 @@ import type {
   ChooseResponse,
   CreateSessionResponse,
   ErrorResponse,
+  ListProjectsResponse,
   ProjectResponse,
   ListSessionsResponse,
   RecordsResponse,
@@ -96,8 +97,25 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, { mainSessionId: await studium.ensureMain() } satisfies ProjectResponse);
       return;
     }
+    if (parts[1] === 'projects' && parts.length === 2) {
+      if (method === 'GET') {
+        send(res, 200, { projects: await studium.listProjects() } satisfies ListProjectsResponse);
+        return;
+      }
+      if (method === 'POST') {
+        const body = (await readJson(req)) as { title?: unknown };
+        const id = await studium.createProject(
+          typeof body.title === 'string' ? body.title : undefined,
+        );
+        send(res, 201, { mainSessionId: id } satisfies ProjectResponse);
+        return;
+      }
+    }
     if (method === 'POST' && parts[1] === 'cards' && parts[2] === 'request' && parts.length === 3) {
-      background('出选择卡', () => studium.requestCard('学习者在界面上点了“下一步”'));
+      const body = (await readJson(req)) as { projectId?: unknown };
+      const projectId = typeof body.projectId === 'string' ? body.projectId : undefined;
+      if (projectId !== undefined) await hub.opened(projectId);
+      background('出选择卡', () => studium.requestCard('学习者在界面上点了“下一步”', projectId));
       send(res, 202, {});
       return;
     }
@@ -169,9 +187,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   }
 
   function background(what: string, fn: () => Promise<unknown>): void {
-    fn().catch((err: unknown) => {
-      console.error(`${what}失败：`, err);
-    });
+    opts.studium.background(what, fn);
   }
 
   function openSse(res: ServerResponse): void {

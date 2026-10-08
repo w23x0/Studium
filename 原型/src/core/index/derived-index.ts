@@ -7,7 +7,7 @@ import type { LogRecord, NumberedRecord } from '../../shared/records.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 2;
+const SCHEMA_VERSION = 3;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -56,6 +56,11 @@ export class DerivedIndex {
           'INSERT OR REPLACE INTO sessions (session_id, kind, title, parent, opened_at, last_at) VALUES (?, ?, ?, ?, ?, ?)',
         )
         .run(sessionId, record.kind, record.title, record.parent ?? null, record.at, record.at);
+    } else if (record.type === 'project_title') {
+      // 项目名随方向变：正本开头那行不改，派生层取最新一条
+      this.db
+        .prepare('UPDATE sessions SET title = ?, last_at = ? WHERE session_id = ?')
+        .run(record.title, record.at, sessionId);
     } else {
       this.db
         .prepare('UPDATE sessions SET last_at = ? WHERE session_id = ?')
@@ -70,11 +75,14 @@ export class DerivedIndex {
 
   listSessions(): SessionSummary[] {
     const rows = this.db
-      .prepare('SELECT session_id, kind, title, opened_at FROM sessions ORDER BY opened_at DESC')
+      .prepare(
+        'SELECT session_id, kind, title, parent, opened_at FROM sessions ORDER BY opened_at DESC',
+      )
       .all() as {
       session_id: string;
       kind: SessionSummary['kind'];
       title: string;
+      parent: string | null;
       opened_at: string;
     }[];
     return rows.map((r) => ({
@@ -82,6 +90,7 @@ export class DerivedIndex {
       kind: r.kind,
       title: r.title,
       openedAt: r.opened_at,
+      ...(r.parent !== null ? { parent: r.parent } : {}),
     }));
   }
 

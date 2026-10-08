@@ -56,6 +56,9 @@
     "start": "vite build && tsx src/core/main.ts",
     "dev": "tsx watch src/core/main.ts",
     "features": "node scripts/features.mjs",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "replay": "tsx src/core/tape/cli.ts",
+    "eval": "tsx evals/cli.ts",
+    "review": "node scripts/review.mjs"
   }
 }

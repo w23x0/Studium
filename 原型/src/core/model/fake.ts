@@ -36,6 +36,12 @@ export interface FakeOptions {
   delayMs?: number;
 }
 
+/** 一个假对话的本轮状态：本轮在跑时收下的插话，等下一个停顿处处理。 */
+interface FakeTurnState {
+  active: boolean;
+  pending: TurnInput[];
+}
+
 export class FakeModel implements ModelAdapter {
   readonly name = 'fake';
   readonly opened: ConversationSpec[] = [];
@@ -50,32 +56,64 @@ export class FakeModel implements ModelAdapter {
     const token = spec.resumeToken ?? `fake-${String(this.opened.length)}`;
     let announced = spec.resumeToken !== undefined;
     let localTurn = 0;
+    const state: FakeTurnState = { active: false, pending: [] };
     return {
       send: (input) =>
-        this.run(spec, input, localTurn++, () => {
+        this.run(spec, state, input, localTurn++, () => {
           if (announced) return undefined;
           announced = true;
           return token;
         }),
+      interject: (input) => {
+        if (!state.active) return false;
+        state.pending.push(input);
+        return true;
+      },
       close: () => Promise.resolve(),
     };
   }
 
   private async *run(
     spec: ConversationSpec,
+    state: FakeTurnState,
     input: TurnInput,
     localTurn: number,
     newToken: () => string | undefined,
   ): AsyncGenerator<ModelEvent> {
-    const n = this.turn++;
-    const seen = input.role === 'program' ? formatProgramFact(input.text) : input.text;
-    this.inputs.push({ spec, text: seen });
-    const token = newToken();
-    if (token !== undefined) yield { kind: 'session', token };
-    if (n === this.options.failOnTurn) {
-      yield { kind: 'turn_error', reason: '假模型按设定失败' };
-      return;
+    state.active = true;
+    try {
+      const token = newToken();
+      if (token !== undefined) yield { kind: 'session', token };
+      if (this.turn === this.options.failOnTurn) {
+        this.turn++;
+        this.inputs.push({ spec, text: seenText(input) });
+        yield { kind: 'turn_error', reason: '假模型按设定失败' };
+        return;
+      }
+      yield* this.respond(spec, state, input, localTurn, true);
+      // 本轮最后一个停顿处：还没处理的插话在这里接着答
+      for (let x = state.pending.shift(); x; x = state.pending.shift()) {
+        yield* this.respond(spec, state, x, localTurn, false);
+      }
+      // 同步收尾：此后的插话由调用方按新一轮发
+      state.active = false;
+      yield { kind: 'turn_end' };
+    } finally {
+      state.active = false;
     }
+  }
+
+  /** 答一条输入；outer 为真时在工具调用之间处理插话（模拟模型在停顿处看到新消息）。 */
+  private async *respond(
+    spec: ConversationSpec,
+    state: FakeTurnState,
+    input: TurnInput,
+    localTurn: number,
+    outer: boolean,
+  ): AsyncGenerator<ModelEvent> {
+    const n = this.turn++;
+    const seen = seenText(input);
+    this.inputs.push({ spec, text: seen });
     yield { kind: 'raw', payload: { role: 'user', content: seen } };
     const results: string[] = [];
     const ctx: FakeContext = { spec, input, turn: localTurn, results };
@@ -85,6 +123,12 @@ export class FakeModel implements ModelAdapter {
         text: `（假模型）收到：${input.text}`,
       };
     for (const call of step.calls ?? []) {
+      if (this.options.delayMs) await sleep(this.options.delayMs);
+      if (outer) {
+        for (let x = state.pending.shift(); x; x = state.pending.shift()) {
+          yield* this.respond(spec, state, x, localTurn, false);
+        }
+      }
       const t = spec.tools.find((x) => x.name === call.name);
       yield {
         kind: 'raw',
@@ -113,8 +157,11 @@ export class FakeModel implements ModelAdapter {
       yield { kind: 'raw', payload: { role: 'assistant', content: [{ type: 'text', text }] } };
       yield { kind: 'assistant_text', text };
     }
-    yield { kind: 'turn_end' };
   }
+}
+
+function seenText(input: TurnInput): string {
+  return input.role === 'program' ? formatProgramFact(input.text) : input.text;
 }
 
 function chunks(s: string): string[] {

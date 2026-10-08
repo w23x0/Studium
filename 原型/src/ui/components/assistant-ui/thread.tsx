@@ -12,13 +12,22 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
-import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CopyIcon } from 'lucide-react';
+import { ArrowDownIcon, ArrowRightIcon, ArrowUpIcon, CheckIcon, CopyIcon } from 'lucide-react';
+import { useOpenSession } from '@/open-session';
 import type { FC, ReactNode } from 'react';
 
-export const Thread: FC<{ welcome?: string; footer?: ReactNode; disabled?: boolean }> = ({
+export const Thread: FC<{
+  welcome?: string;
+  header?: ReactNode;
+  footer?: ReactNode;
+  disabled?: boolean;
+  placeholder?: string;
+}> = ({
   welcome = '今天想学点什么？',
+  header,
   footer,
   disabled = false,
+  placeholder = '回复…',
 }) => {
   const isEmpty = useAuiState((s) => s.thread.messages.length === 0);
   return (
@@ -29,6 +38,7 @@ export const Thread: FC<{ welcome?: string; footer?: ReactNode; disabled?: boole
         ['--composer-radius' as string]: '1.25rem',
       }}
     >
+      {header}
       <ThreadPrimitive.Viewport
         turnAnchor="top"
         className="relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
@@ -71,7 +81,7 @@ export const Thread: FC<{ welcome?: string; footer?: ReactNode; disabled?: boole
               </TooltipIconButton>
             </ThreadPrimitive.ScrollToBottom>
             {footer}
-            {!disabled && <Composer />}
+            {!disabled && <Composer placeholder={placeholder} />}
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -79,11 +89,11 @@ export const Thread: FC<{ welcome?: string; footer?: ReactNode; disabled?: boole
   );
 };
 
-const Composer: FC = () => (
+const Composer: FC<{ placeholder: string }> = ({ placeholder }) => (
   <ComposerPrimitive.Root className="relative flex w-full flex-col">
     <div className="border-foreground/15 focus-within:border-foreground/30 bg-card flex w-full cursor-text flex-col gap-2 rounded-(--composer-radius) border p-3 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] transition-[border-color]">
       <ComposerPrimitive.Input
-        placeholder="回复…"
+        placeholder={placeholder}
         className="placeholder:text-muted-foreground/70 max-h-48 min-h-10 w-full resize-none bg-transparent px-1.5 py-1 text-base leading-6 outline-none"
         rows={1}
         autoFocus
@@ -163,24 +173,36 @@ const UserMessage: FC = () => (
   </MessagePrimitive.Root>
 );
 
-/** 程序事实、守卫判定等：不是学习者也不是教学的话，小字显示，长的折起来。 */
+/** 程序给的一句结果（掌握了、学完了、记下方向）或去别的对话的入口：小字显示，不是谁说的话。 */
 const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const [first, ...rest] = text.split('\n');
+  const link = useAuiState((s) => s.message.metadata.custom.link as UiLink | undefined);
+  const open = useOpenSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
-      <div className="border-border text-muted-foreground border-l-2 py-0.5 ps-3 text-sm">
-        {rest.length === 0 ? (
-          first
-        ) : (
-          <details>
-            <summary className="cursor-pointer">{first}</summary>
-            <div className="mt-1 whitespace-pre-wrap">{rest.join('\n')}</div>
-          </details>
-        )}
-      </div>
+      {link ? (
+        <button
+          type="button"
+          data-testid="conversation-link"
+          className="bg-card hover:bg-accent/60 text-foreground inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm shadow-xs transition-colors"
+          onClick={() => open(link.sessionId)}
+        >
+          {link.label}
+          <ArrowRightIcon className="text-muted-foreground size-3.5" />
+        </button>
+      ) : (
+        <div className="text-muted-foreground flex items-center gap-2 text-sm">
+          <span className="bg-border h-px w-4" />
+          {text}
+        </div>
+      )}
     </MessagePrimitive.Root>
   );
 };
+
+interface UiLink {
+  sessionId: string;
+  label: string;
+}

@@ -1,6 +1,7 @@
 // 与核心通话：口令从地址栏 ?token= 取一次，存进 sessionStorage。
 import type {
   ChooseResponse,
+  ListProjectsResponse,
   ListSessionsResponse,
   ProjectResponse,
   RecordsResponse,
@@ -31,8 +32,10 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   listSessions: () => call<ListSessionsResponse>('/sessions'),
-  project: () => call<ProjectResponse>('/project'),
-  requestCard: () => call<object>('/cards/request', { method: 'POST', body: '{}' }),
+  projects: () => call<ListProjectsResponse>('/projects'),
+  createProject: () => call<ProjectResponse>('/projects', { method: 'POST', body: '{}' }),
+  requestCard: (projectId: string) =>
+    call<object>('/cards/request', { method: 'POST', body: JSON.stringify({ projectId }) }),
   choose: (cardId: string, option: number) =>
     call<ChooseResponse>(`/cards/${cardId}/choose`, {
       method: 'POST',

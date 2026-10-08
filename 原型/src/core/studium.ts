@@ -7,13 +7,16 @@ import type {
   ChoiceOption,
   ConversationKind,
   GuardVerdict,
+  LogRecord,
   NumberedRecord,
   Ticket,
 } from '../shared/records.ts';
-import type { Hub, KindConfig } from './hub.ts';
+import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import type { Library } from './knowledge/m07.ts';
 import type { M08 } from './knowledge/m08.ts';
 import type { M09 } from './knowledge/m09.ts';
+import type { M10 } from './knowledge/m10.ts';
+import { STAGES, type M15 } from './knowledge/m15.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
 
@@ -21,18 +24,74 @@ export class BadRequestError extends Error {}
 
 /** 学习者离开多久算“隔了一阵回来”，回来时程序追加离开多久。 */
 const AWAY_MS = 30 * 60 * 1000;
+/** 隔多久回来算“隔很久”，M15 顺带整理一次（03「M15」何时整理；阈值属实现细节，先定 12 小时）。 */
+const LONG_AWAY_MS = 12 * 3600 * 1000;
+/** M15 开场里教学行只放开头一段（作紧邻前序事件），全文用 read_session 查。 */
+const TEACHING_EXCERPT = 160;
 
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
   m07: Library;
   m08: M08;
   m09: M09;
+  m10: M10;
+  m15: M15;
+  now?: () => Date;
 }
 
 export class Studium {
   private hubRef: Hub | undefined;
+  private readonly now: () => Date;
+  /** 后台跑着的清单（合上之后、M15 整理、M10 记录……），回放与测试用来等它们跑完。 */
+  private readonly tasks = new Set<Promise<unknown>>();
+  /** M15 整理一次只跑一个，后到的排在后面。 */
+  private stateChain: Promise<void> = Promise.resolve();
 
-  constructor(private readonly o: StudiumOptions) {}
+  constructor(private readonly o: StudiumOptions) {
+    this.now = o.now ?? (() => new Date());
+  }
+
+  private iso(): string {
+    return this.now().toISOString();
+  }
+
+  private readonly idListeners = new Set<(prefix: string, id: string) => void>();
+
+  /** 程序生成的编号（选择卡、M09 / M15 / M10 记录）；录带按生成顺序给它们稳定记号。 */
+  private newId(prefix: string): string {
+    const id = `${prefix}-${randomBytes(4).toString('hex')}`;
+    for (const fn of this.idListeners) fn(prefix, id);
+    return id;
+  }
+
+  onNewId(fn: (prefix: string, id: string) => void): () => void {
+    this.idListeners.add(fn);
+    return () => this.idListeners.delete(fn);
+  }
+
+  /** 后台还有事在跑吗（录带记下学习者动作时系统是否空闲）。 */
+  busy(): boolean {
+    return this.tasks.size > 0 || this.hub.anyRunning();
+  }
+
+  /** 在后台跑一件事，不挡调用方；失败写进核心日志（不吞）。 */
+  background(what: string, fn: () => Promise<unknown>): void {
+    const p = fn()
+      .catch((e: unknown) => {
+        console.error(`${what}失败：`, e);
+      })
+      .finally(() => this.tasks.delete(p));
+    this.tasks.add(p);
+  }
+
+  /** 等后台清单与所有会话都停下（回放、测试用）。 */
+  async settled(): Promise<void> {
+    for (;;) {
+      await Promise.all([...this.tasks]);
+      await this.hub.idleAll();
+      if (this.tasks.size === 0 && !this.hub.anyRunning()) return;
+    }
+  }
 
   attach(hub: Hub): void {
     this.hubRef = hub;
@@ -51,6 +110,8 @@ export class Studium {
       switch (kind) {
         case 'main':
           return this.mainTools(sessionId);
+        case 'talk':
+          return [...this.readTools(), this.settleGoalTool(sessionId)];
         case 'loop':
           return [...this.readTools(), ...this.loopTools(sessionId)];
         case 'guard':
@@ -58,7 +119,20 @@ export class Studium {
         case 'm09':
           return [...this.readTools({ m09: false }), this.formationTool(sessionId)];
         case 'm05':
-          return [...this.readTools(), this.loopTranscriptTool(), this.cardTool(sessionId)];
+          return [
+            ...this.readTools(),
+            this.loopTranscriptTool(),
+            this.stateQueryTool(),
+            this.cardTool(sessionId),
+          ];
+        case 'm15':
+          return this.stateTools(sessionId);
+        case 'm10':
+          return [
+            ...this.readTools({ m07: false, m09: false }),
+            this.stateQueryTool(),
+            this.strategyTool(sessionId),
+          ];
       }
     },
   });
@@ -69,40 +143,80 @@ export class Studium {
   async ensureMain(): Promise<string> {
     const main = this.hub.listSessions().find((s) => s.kind === 'main');
     if (main) return main.sessionId;
-    return (await this.hub.createSession('main', { title: '主对话' })).sessionId;
+    return this.createProject();
+  }
+
+  /** 开一个新项目（= 一条新的主对话）。 */
+  async createProject(title?: string): Promise<string> {
+    const n = this.hub.listSessions().filter((s) => s.kind === 'main').length + 1;
+    const t = title?.trim() ? title.trim() : `项目 ${String(n)}`;
+    return (await this.hub.createSession('main', { title: t })).sessionId;
+  }
+
+  /** 所有项目：主对话 + 最近谈定的方向目标；项目名取最新一条 project_title（没有就用开项目时的名字）。 */
+  async listProjects(): Promise<{ mainSessionId: string; title: string; goal?: string }[]> {
+    const out: { mainSessionId: string; title: string; goal?: string }[] = [];
+    for (const m of this.hub.listSessions().filter((s) => s.kind === 'main')) {
+      const recs = (await this.hub.records(m.sessionId)).map((r) => r.record);
+      const goal = recs.filter((r) => r.type === 'project_goal').at(-1);
+      const title = recs.filter((r) => r.type === 'project_title').at(-1);
+      const opened = recs[0];
+      out.push({
+        mainSessionId: m.sessionId,
+        title:
+          title?.type === 'project_title'
+            ? title.title
+            : opened?.type === 'session_opened'
+              ? opened.title
+              : m.title,
+        ...(goal?.type === 'project_goal' ? { goal: goal.text } : {}),
+      });
+    }
+    return out;
   }
 
   /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（03「闭环外」暂停）。 */
   async learnerSays(sessionId: string, text: string): Promise<void> {
     const recs = await this.hub.records(sessionId);
+    if (recs.some((r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended')) {
+      throw new BadRequestError('这段对话已经结束了，回到项目里接着聊。');
+    }
     const last = recs
       .map((r) => r.record)
       .filter((r) => r.type === 'user_message' || r.type === 'assistant_message')
       .at(-1);
     if (last !== undefined) {
-      const away = Date.now() - Date.parse(last.at);
+      const away = this.now().getTime() - Date.parse(last.at);
       if (away > AWAY_MS) {
         await this.hub.send(sessionId, {
           role: 'program',
           text: `学习者离开了约 ${formatDuration(away)}，现在回来了。`,
         });
       }
+      await this.hub.send(sessionId, { role: 'learner', text });
+      if (away > LONG_AWAY_MS) {
+        this.organizeStateLater(`学习者隔了约 ${formatDuration(away)} 回来`, sessionId);
+      }
+      return;
     }
     await this.hub.send(sessionId, { role: 'learner', text });
   }
 
   /** M05 出选择卡，贴进主对话。trigger 写明为什么要卡。 */
-  async requestCard(trigger: string): Promise<ChoiceCard> {
-    const mainId = await this.ensureMain();
+  async requestCard(trigger: string, projectId?: string): Promise<ChoiceCard> {
+    const mainId = projectId ?? (await this.ensureMain());
     const m05 = await this.hub.createSession('m05', { title: '出选择卡', parent: mainId });
-    await this.hub.send(m05.sessionId, { role: 'program', text: await this.m05Opening(trigger) });
+    await this.hub.send(m05.sessionId, {
+      role: 'program',
+      text: await this.m05Opening(trigger, mainId),
+    });
     await this.hub.idle(m05.sessionId);
     const card = this.cards.get(m05.sessionId);
     if (!card) throw new Error('M05 没有提交选择卡（见该会话记录）');
     const record: ChoiceCard = {
       type: 'choice_card',
-      at: new Date().toISOString(),
-      cardId: `card-${randomBytes(4).toString('hex')}`,
+      at: this.iso(),
+      cardId: this.newId('card'),
       m05SessionId: m05.sessionId,
       options: card.options,
       recommended: card.recommended,
@@ -114,18 +228,33 @@ export class Studium {
 
   /** 学习者在选择卡上选定：存路线事实，开闭环对话，交开场。 */
   async choose(cardId: string, option: number): Promise<string> {
-    const mainId = await this.ensureMain();
-    const recs = (await this.hub.records(mainId)).map((r) => r.record);
-    const card = recs.find((r) => r.type === 'choice_card' && r.cardId === cardId);
-    if (card?.type !== 'choice_card') throw new BadRequestError(`没有这张选择卡：${cardId}`);
+    let mainId = '';
+    let recs: LogRecord[] = [];
+    let card: LogRecord | undefined;
+    for (const m of this.hub.listSessions().filter((s) => s.kind === 'main')) {
+      const rs = (await this.hub.records(m.sessionId)).map((r) => r.record);
+      const found = rs.find((r) => r.type === 'choice_card' && r.cardId === cardId);
+      if (found) {
+        mainId = m.sessionId;
+        recs = rs;
+        card = found;
+        break;
+      }
+    }
+    if (card?.type !== 'choice_card') throw new BadRequestError('找不到这组选项，刷新一下再选。');
     if (recs.some((r) => r.type === 'choice_made' && r.cardId === cardId)) {
-      throw new BadRequestError('这张选择卡已经选过了');
+      throw new BadRequestError('这组选项已经选过了。');
     }
     const picked = card.options[option];
-    if (!picked) throw new BadRequestError(`选择卡没有第 ${String(option + 1)} 项`);
+    if (!picked) throw new BadRequestError(`没有第 ${String(option + 1)} 个选项。`);
     // 必需项：单子（新点 + 子句）在 M08 里查得到，否则不开（03「缺料与冲突」）
     const problem = this.ticketProblem(picked.ticket);
-    if (problem) throw new BadRequestError(`单子有问题，不开闭环对话：${problem}`);
+    if (problem) {
+      console.error(
+        `选择卡 ${cardId} 第 ${String(option)} 项的单子有问题，不开闭环对话：${problem}`,
+      );
+      throw new BadRequestError('这个选项现在开不了（资料里查不到它要学的内容），换一个试试。');
+    }
 
     const loop = await this.hub.createSession('loop', {
       title: picked.title,
@@ -134,7 +263,7 @@ export class Studium {
     });
     await this.hub.record(mainId, {
       type: 'choice_made',
-      at: new Date().toISOString(),
+      at: this.iso(),
       cardId,
       option,
       loopSessionId: loop.sessionId,
@@ -155,7 +284,7 @@ export class Studium {
     await this.assertOpenLoop(loopId);
     await this.hub.record(loopId, {
       type: 'close_requested',
-      at: new Date().toISOString(),
+      at: this.iso(),
       by,
       reason,
     });
@@ -173,17 +302,18 @@ export class Studium {
     const recs = (await this.hub.records(loopId)).map((r) => r.record);
     const verdict = recs.filter((r) => r.type === 'guard_verdict').at(-1);
     if (verdict?.type !== 'guard_verdict' || !verdict.closed) {
+      // 守卫还没判合上，不能确认结束；没合上要结束走“先到这里”
       throw new BadRequestError(
-        '守卫还没判合上，不能确认结束；没合上要结束请用“结束闭环（没合上）”',
+        '还没确认你掌握了这部分：先点“我觉得懂了”；想先停下就点“先到这里”。',
       );
     }
     await this.hub.record(loopId, {
       type: 'loop_ended',
-      at: new Date().toISOString(),
+      at: this.iso(),
       closed: true,
       note,
     });
-    void this.afterLoop(loopId, true);
+    this.background('合上之后的清单', () => this.afterLoop(loopId, true));
   }
 
   /** 学习者要结束、没合上：不开守卫、不写 M09，M05 读原文出下一张卡。 */
@@ -191,19 +321,24 @@ export class Studium {
     await this.assertOpenLoop(loopId);
     await this.hub.record(loopId, {
       type: 'loop_ended',
-      at: new Date().toISOString(),
+      at: this.iso(),
       closed: false,
       note,
     });
-    void this.afterLoop(loopId, false);
+    this.background('没合上之后的清单', () => this.afterLoop(loopId, false));
   }
 
   // ───────────── 清单 ─────────────
 
-  /** 合上之后：① 存盘（已在 loop_ended）② 写 M09 ③ M05 出选择卡（② 在 ③ 前）。没合上：跳过 ②。 */
+  /**
+   * 合上之后：① 存盘（已在 loop_ended）② 写 M09 ③ M05 出选择卡（② 在 ③ 前）④ M15 整理、M10 记录在后台跑、不等。
+   * 没合上：跳过 ②。
+   */
   private async afterLoop(loopId: string, closed: boolean): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const mainId = opened.parent ?? (await this.ensureMain());
+    this.organizeStateLater(`一段学习（${loopId}）结束了`, loopId);
+    this.background('M10 记录', () => this.recordStrategy(loopId));
     try {
       await this.hub.send(mainId, {
         role: 'program',
@@ -215,7 +350,7 @@ export class Studium {
         await this.writeM09(loopId);
         await this.hub.record(loopId, {
           type: 'after_loop_step',
-          at: new Date().toISOString(),
+          at: this.iso(),
           step: 'm09_written',
           detail: '形成记录已写入 M09',
         });
@@ -224,10 +359,11 @@ export class Studium {
         closed
           ? `闭环“${opened.title}”（${loopId}）合上了`
           : `闭环“${opened.title}”（${loopId}）没合上就结束了；可读它的原文`,
+        mainId,
       );
       await this.hub.record(loopId, {
         type: 'after_loop_step',
-        at: new Date().toISOString(),
+        at: this.iso(),
         step: 'card_ready',
         detail: card.cardId,
       });
@@ -235,7 +371,7 @@ export class Studium {
       console.error(`闭环 ${loopId} 结束后的清单失败：`, err);
       await this.hub.record(loopId, {
         type: 'after_loop_step',
-        at: new Date().toISOString(),
+        at: this.iso(),
         step: 'failed',
         detail: err instanceof Error ? err.message : String(err),
       });
@@ -267,7 +403,7 @@ export class Studium {
     this.guardTarget.delete(guard.sessionId);
     return {
       type: 'guard_verdict',
-      at: new Date().toISOString(),
+      at: this.iso(),
       ...(v ?? {
         guardSessionId: guard.sessionId,
         closed: false,
@@ -366,8 +502,8 @@ export class Studium {
         if (bad.length > 0)
           return err(`第 ${bad.join('、')} 行不是学习者说的话；证据只引学习者的行`);
         await this.o.m09.add({
-          id: `f-${randomBytes(4).toString('hex')}`,
-          at: new Date().toISOString(),
+          id: this.newId('f'),
+          at: this.iso(),
           loopSessionId: target.loopId,
           newPoint: a.new_point as string,
           clause: a.clause as string,
@@ -389,11 +525,10 @@ export class Studium {
 
   private readonly cards = new Map<string, { options: ChoiceOption[]; recommended: number }>();
 
-  private async m05Opening(trigger: string): Promise<string> {
-    const mainId = await this.ensureMain();
+  private async m05Opening(trigger: string, mainId: string): Promise<string> {
     const main = (await this.hub.records(mainId)).map((r) => r.record);
     const goal = main.filter((r) => r.type === 'project_goal').at(-1);
-    const loops = this.hub.listSessions().filter((s) => s.kind === 'loop');
+    const loops = this.hub.listSessions().filter((s) => s.kind === 'loop' && s.parent === mainId);
     const loopStates: string[] = [];
     for (const l of loops) {
       const recs = (await this.hub.records(l.sessionId)).map((r) => r.record);
@@ -414,7 +549,7 @@ export class Studium {
       '',
       this.o.m08.empty ? 'M08：空（缺通用知识依据）' : `M08 提纲：\n${this.o.m08.outline()}`,
       '',
-      '学习者状态（M15）：缺，按无状态约束。',
+      '学习者状态（M15）：要用时用 query_state 查；没有记录按无状态约束。',
     ].join('\n');
   }
 
@@ -462,12 +597,22 @@ export class Studium {
   private loopTranscriptTool(): ToolSpec {
     return {
       name: 'read_loop',
-      description: '读某个闭环对话的原文（带行号），用于没合上就结束的闭环。',
-      input: { session: z.string().describe('闭环对话的会话 id') },
+      description:
+        '读某个闭环对话的原文（带行号），用于没合上就结束的闭环；with_diagnosis 为真时连同闭环里写的诊断记录（M04）一起给，用来看状态解释候选有没有被裁决。',
+      input: {
+        session: z.string().describe('闭环对话的会话 id'),
+        with_diagnosis: z.boolean().optional(),
+      },
       run: async (a) => {
         const opened = await this.hub.opened(a.session as string);
         if (opened.kind !== 'loop') return err('这不是闭环对话');
-        return ok(renderTranscript(await this.hub.records(opened.sessionId)));
+        const records = await this.hub.records(opened.sessionId);
+        const text = renderTranscript(records);
+        if (a.with_diagnosis !== true) return ok(text);
+        const notes = records.flatMap((r) =>
+          r.record.type === 'loop_note' ? [`L${String(r.line)} 诊断：${r.record.text}`] : [],
+        );
+        return ok(`${text}\n\n诊断记录：\n${notes.join('\n') || '（无）'}`);
       },
     };
   }
@@ -477,16 +622,42 @@ export class Studium {
   private mainTools(mainId: string): ToolSpec[] {
     return [
       {
-        name: 'set_goal',
-        description: '记下（或更新）这个项目的方向目标。',
-        input: { goal: z.string() },
-        run: async (a) => {
-          await this.hub.record(mainId, {
-            type: 'project_goal',
-            at: new Date().toISOString(),
-            text: a.goal as string,
+        name: 'open_goal_talk',
+        description:
+          '学习者说出新的学习方向、或想改方向时调用：在他刚才这条消息下开一个单独谈方向的对话。主对话自己不谈方向。',
+        input: {},
+        run: async () => {
+          const recs = await this.hub.records(mainId);
+          const asked = recs.filter((r) => r.record.type === 'user_message').at(-1);
+          if (asked?.record.type !== 'user_message') return err('主对话里还没有学习者的话');
+          const goal = recs
+            .map((r) => r.record)
+            .filter((r) => r.type === 'project_goal')
+            .at(-1);
+          const title = '谈方向';
+          const talk = await this.hub.createSession('talk', {
+            title,
+            parent: mainId,
+            anchorLine: asked.line,
           });
-          return ok('方向目标已记下');
+          await this.hub.send(talk.sessionId, {
+            role: 'program',
+            text: [
+              `学习者在主对话里说（主对话第 ${String(asked.line)} 行）：${asked.record.text}`,
+              ...(goal?.type === 'project_goal' ? [`已有方向目标：${goal.text}`] : []),
+              '',
+              '接着学习者这句话谈。',
+            ].join('\n'),
+          });
+          await this.hub.record(mainId, {
+            type: 'task_opened',
+            at: this.iso(),
+            sessionId: talk.sessionId,
+            kind: 'talk',
+            title,
+            anchorLine: asked.line,
+          });
+          return ok('已在学习者这条消息下开了谈方向的对话，学习者点进去谈；谈定后会交回这里。');
         },
       },
       {
@@ -494,7 +665,10 @@ export class Studium {
         description: '请 M05 出下一闭环的选择卡；出好后贴在主对话里，由学习者选。',
         input: { reason: z.string() },
         run: async (a) => {
-          const card = await this.requestCard(`学习者在主对话里要下一步：${a.reason as string}`);
+          const card = await this.requestCard(
+            `学习者在主对话里要下一步：${a.reason as string}`,
+            mainId,
+          );
           return ok(
             `选择卡已贴出（${String(card.options.length)} 个选项，推荐第 ${String(card.recommended + 1)} 个）。学习者会在卡上选。`,
           );
@@ -502,18 +676,20 @@ export class Studium {
       },
       {
         name: 'list_learned',
-        description: '按记录列出合上过的闭环与进行中、没合上的闭环。',
+        description: '按记录列出本项目合上过的、进行中的、没合上的闭环，以及 M09 形成记录。',
         input: {},
         run: async () => {
           const rows = this.o.m09.all().map((r) => this.o.m09.describe(r));
           const loops: string[] = [];
-          for (const l of this.hub.listSessions().filter((s) => s.kind === 'loop')) {
+          for (const l of this.hub
+            .listSessions()
+            .filter((s) => s.kind === 'loop' && s.parent === mainId)) {
             const ended = (await this.hub.records(l.sessionId))
               .map((r) => r.record)
               .filter((r) => r.type === 'loop_ended')
               .at(-1);
             loops.push(
-              `- 「${l.title}」：${ended?.type === 'loop_ended' ? (ended.closed ? '合上' : '没合上就结束') : '进行中'}`,
+              `- ${l.sessionId}「${l.title}」：${ended?.type === 'loop_ended' ? (ended.closed ? '合上' : '没合上就结束') : '进行中'}`,
             );
           }
           return ok(
@@ -521,7 +697,62 @@ export class Studium {
           );
         },
       },
+      {
+        name: 'point_to_conversation',
+        description:
+          '学习者要接着某个已有的对话（比如一个还在进行的闭环）时调用：在主对话里放一个回到那里的入口。',
+        input: { session: z.string().describe('会话 id（list_learned 里有）') },
+        run: async (a) => {
+          const id = a.session as string;
+          const opened = await this.hub.opened(id).catch((e: unknown) => {
+            if (e instanceof NotFoundError) return undefined;
+            throw e;
+          });
+          if (opened?.parent !== mainId || (opened.kind !== 'loop' && opened.kind !== 'talk')) {
+            return err(`本项目里没有这个对话：${id}`);
+          }
+          await this.hub.record(mainId, {
+            type: 'conversation_pointer',
+            at: this.iso(),
+            sessionId: id,
+          });
+          return ok('入口已放好。');
+        },
+      },
     ];
+  }
+
+  // ───────────── 畅谈对话 ─────────────
+
+  private settleGoalTool(talkId: string): ToolSpec {
+    return {
+      name: 'settle_goal',
+      description:
+        '方向谈清了（学什么、学到什么程度、为什么学）时调用：把方向目标交回项目，本对话随之结束。只调一次。',
+      input: {
+        goal: z.string().describe('一两句：学什么、学到什么程度、为什么学'),
+        project_name: z.string().describe('项目名：几个字，学习者一眼认得出'),
+      },
+      run: async (a) => {
+        const recs = await this.hub.records(talkId);
+        if (recs.some((r) => r.record.type === 'talk_ended')) return err('已经交回过了');
+        const opened = await this.hub.opened(talkId);
+        const mainId = opened.parent;
+        if (mainId === undefined) return err('找不到这个对话所属的项目');
+        const goal = (a.goal as string).trim();
+        if (goal === '') return err('方向目标不能是空的');
+        const title = (a.project_name as string).trim() || shortTitle(goal);
+        const at = this.iso();
+        await this.hub.record(mainId, { type: 'project_goal', at, text: goal });
+        await this.hub.record(mainId, { type: 'project_title', at, title, source: 'goal' });
+        await this.hub.record(talkId, { type: 'talk_ended', at, goal, title });
+        await this.hub.send(mainId, {
+          role: 'program',
+          text: `谈方向的对话（${talkId}）交回了：方向目标是“${goal}”，项目名改为“${title}”。`,
+        });
+        return ok('方向已交回项目，本对话结束。和学习者简短说一句就好。');
+      },
+    };
   }
 
   // ───────────── 闭环对话 ─────────────
@@ -535,7 +766,7 @@ export class Studium {
         run: async (a) => {
           await this.hub.record(loopId, {
             type: 'loop_note',
-            at: new Date().toISOString(),
+            at: this.iso(),
             text: a.text as string,
           });
           return ok('已记');
@@ -554,6 +785,31 @@ export class Studium {
         run: async (a) => {
           const v = await this.requestClose(loopId, 'model', a.reason as string);
           return ok(verdictFact(v));
+        },
+      },
+      this.stateQueryTool(),
+      {
+        name: 'query_strategy_records',
+        description:
+          '查这位学习者以前的教法记录（M10 个人策略过程）：在什么条件下用过什么做法、之后怎样。单条不证明因果。',
+        input: {},
+        run: () => {
+          const rows = this.o.m10.all();
+          return ok(
+            rows.length > 0 ? rows.map((r) => this.o.m10.describe(r)).join('\n') : '还没有记录',
+          );
+        },
+      },
+      {
+        name: 'request_state_recheck',
+        description:
+          '请 M15 重新确认某条状态记录（M04 → M15 唯一的反向请求）：只带记录 id，不带你的判断。',
+        input: { record_id: z.string() },
+        run: (a) => {
+          const id = a.record_id as string;
+          if (!this.o.m15.record(id)) return err(`没有这条状态记录：${id}`);
+          this.organizeStateLater(`M04 请求重新确认状态记录 ${id}`, loopId, true);
+          return ok('已请 M15 重新确认；结果之后用 query_state 查。');
         },
       },
       {
@@ -594,10 +850,349 @@ export class Studium {
       starts || '（无）',
       '',
       `M09 相关记录：${history.length > 0 ? '\n' + history.join('\n') : '缺历史背景（这些出发点还没有闭环记录）'}`,
-      '学习者状态（M15）：缺，按无状态约束。',
+      '学习者状态（M15）与以前的教法记录（M10）：要用时查。',
       '',
       '现在开始这个闭环：先简短说明这次学什么、从哪出发，然后开始。',
     ].join('\n');
+  }
+
+  // ───────────── M15 学习者状态（存放处 + 后台整理）─────────────
+
+  /** 排一次 M15 整理（03「M15」何时整理）；force = M04 重新确认请求，没有新记录也跑。 */
+  organizeStateLater(trigger: string, from?: string, force = false): void {
+    const run = this.stateChain.then(() => this.organizeState(trigger, from, force));
+    // 链上只管排队：这次失败不挡下一次；失败本身由 background 写进核心日志
+    this.stateChain = run.catch(() => undefined);
+    this.background('M15 整理', () => run);
+  }
+
+  private async organizeState(trigger: string, from: string | undefined, force: boolean) {
+    const covered = this.o.m15.covered();
+    const facts = await this.stateFacts(covered);
+    // 没有新记录不整理（03「M15」）
+    if (facts.newLearnerLines === 0 && !force) return;
+    const s = await this.hub.createSession('m15', {
+      title: '整理学习者状态',
+      ...(from !== undefined ? { parent: from } : {}),
+    });
+    await this.hub.send(s.sessionId, {
+      role: 'program',
+      text: [`触发原因：${trigger}`, '', this.o.m15.describeCurrent(), '', facts.text].join('\n'),
+    });
+    await this.hub.idle(s.sessionId);
+    const failed = (await this.hub.records(s.sessionId)).some(
+      (r) => r.record.type === 'turn_failed',
+    );
+    if (!failed) {
+      await this.o.m15.addRun({
+        at: this.iso(),
+        trigger,
+        m15SessionId: s.sessionId,
+        covered: facts.covered,
+      });
+    }
+  }
+
+  /**
+   * 交给 M15 的 M01 事实：与 M04 取不同的字段（03「M15」读什么）——时间、间隔、停顿、中断与停下的地方、
+   * 学习者的话（含紧邻的前一句教学作前序事件）。不给诊断记录、守卫判定、M09，也不给“合上没有”。
+   */
+  private async stateFacts(covered: Record<string, number>) {
+    const sessions = this.hub
+      .listSessions()
+      .filter((x) => x.kind === 'main' || x.kind === 'talk' || x.kind === 'loop')
+      .sort((a, b) => a.openedAt.localeCompare(b.openedAt));
+    const label = { main: '项目主对话', talk: '谈方向', loop: '一段学习' } as const;
+    const out: string[] = [];
+    const starts: string[] = [];
+    const nextCovered: Record<string, number> = {};
+    let newLearnerLines = 0;
+    for (const x of sessions) {
+      const recs = await this.hub.records(x.sessionId);
+      const last = recs.at(-1)?.line ?? 0;
+      nextCovered[x.sessionId] = last;
+      const since = covered[x.sessionId] ?? 0;
+      const talk = recs.filter(
+        (r) => r.record.type === 'user_message' || r.record.type === 'assistant_message',
+      );
+      const firstLearner = talk.find((r) => r.record.type === 'user_message');
+      if (firstLearner)
+        starts.push(
+          `${firstLearner.record.at.slice(0, 16).replace('T', ' ')}（${label[x.kind as keyof typeof label]}）`,
+        );
+      const fresh = talk.filter((r) => r.line > since);
+      const freshLearner = fresh.filter((r) => r.record.type === 'user_message');
+      newLearnerLines += freshLearner.length;
+      if (freshLearner.length === 0) continue;
+      const kindLabel = label[x.kind as keyof typeof label];
+      const lines: string[] = [];
+      let prev: NumberedRecord | undefined;
+      for (const r of talk) {
+        if (r.record.type === 'user_message' && r.line > since) {
+          // 停顿：与上一条对话之间隔了多久
+          if (prev !== undefined) {
+            const gap = Date.parse(r.record.at) - Date.parse(prev.record.at);
+            if (gap > AWAY_MS) lines.push(`（停了约 ${formatDuration(gap)}）`);
+            if (prev.record.type === 'assistant_message' && prev.line <= since) {
+              lines.push(excerpt(prev));
+            }
+          }
+          lines.push(renderTranscript([r]));
+        } else if (r.record.type === 'assistant_message' && r.line > since) {
+          lines.push(excerpt(r));
+        }
+        prev = r;
+      }
+      const ended = recs.find(
+        (r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended',
+      );
+      const stopped =
+        ended?.record.type === 'loop_ended' && !ended.record.closed
+          ? `学习者选择先停下（${ended.record.at.slice(0, 16).replace('T', ' ')}）`
+          : ended
+            ? `已结束（${ended.record.at.slice(0, 16).replace('T', ' ')}）`
+            : '还开着';
+      out.push(
+        [
+          `### ${kindLabel} ${x.sessionId}「${x.title}」`,
+          `开始 ${x.openedAt.slice(0, 16).replace('T', ' ')}；最近一条 ${(recs.at(-1)?.record.at ?? '').slice(0, 16).replace('T', ' ')}；${stopped}；这次新增学习者的话 ${String(freshLearner.length)} 条`,
+          ...lines,
+        ].join('\n'),
+      );
+    }
+    const text = [
+      `各次开始说话的时间（节奏）：${starts.slice(-10).join('、') || '（无）'}`,
+      '',
+      '上次整理之后的新记录（L 后是该会话正本的行号；教学行只放开头一段，全文用 read_session 查）：',
+      out.join('\n\n') || '（没有新的学习者的话）',
+    ].join('\n');
+    return { text, covered: nextCovered, newLearnerLines };
+  }
+
+  private stateQueryTool(): ToolSpec {
+    return {
+      name: 'query_state',
+      description:
+        '查学习者的非知识状态与条件（M15）：先看“当前状态”页；detail 为真时列出全部状态记录（每条标承载读数 / 解释候选、来源、时间范围、依据行号）。解释候选须经 M04 裁决才能当行动依据。',
+      input: { detail: z.boolean().optional() },
+      run: (a) => {
+        const rows = this.o.m15.allRecords();
+        if (rows.length === 0 && !this.o.m15.current()) {
+          return ok('还没有状态记录（按无状态约束）');
+        }
+        const parts = [this.o.m15.describeCurrent()];
+        if (a.detail === true || !this.o.m15.current()) {
+          parts.push('', '状态记录：', ...rows.map((r) => this.o.m15.describeRecord(r)));
+        }
+        return ok(parts.join('\n'));
+      },
+    };
+  }
+
+  /** M15 会话的工具：读 M01 对话（不含诊断与判定）、读自己的底层，只写自己的两层。 */
+  private stateTools(m15Id: string): ToolSpec[] {
+    return [
+      {
+        name: 'read_session',
+        description:
+          '读某个会话（项目主对话 / 谈方向 / 一段学习）里学习者与教学的对话原文，带行号与时间；不含诊断记录与判定。',
+        input: {
+          session: z.string(),
+          from_line: z.number().int().optional(),
+          to_line: z.number().int().optional(),
+        },
+        run: async (a) => {
+          const opened = await this.hub.opened(a.session as string).catch((e: unknown) => {
+            if (e instanceof NotFoundError) return undefined;
+            throw e;
+          });
+          if (!opened || !['main', 'talk', 'loop'].includes(opened.kind)) {
+            return err('没有这个对话（只能读项目主对话、谈方向、学习对话）');
+          }
+          const from = (a.from_line as number | undefined) ?? 1;
+          const to = (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER;
+          const recs = (await this.hub.records(opened.sessionId)).filter(
+            (r) =>
+              r.line >= from &&
+              r.line <= to &&
+              (r.record.type === 'user_message' || r.record.type === 'assistant_message'),
+          );
+          return ok(renderTranscript(recs) || '（这一段没有对话）');
+        },
+      },
+      {
+        name: 'read_state_records',
+        description: '读 M15 自己的底层状态记录（全部）与当前状态页。',
+        input: {},
+        run: () =>
+          ok(
+            [
+              this.o.m15.describeCurrent(),
+              '',
+              ...this.o.m15.allRecords().map((r) => this.o.m15.describeRecord(r)),
+            ].join('\n'),
+          ),
+      },
+      {
+        name: 'write_state_record',
+        description:
+          '写一条状态记录（底层，只追加）：一句话、来源、属于承载读数还是解释候选、适用时间范围、指回哪个会话的哪几行。自述须引学习者的行。',
+        input: {
+          text: z.string().describe('一句话；只写可观察行为与学习者的话，不写人格、能力或医学结论'),
+          source: z.enum(['自述', '观察', '推断']),
+          output_type: z.enum(['承载读数', '解释候选']),
+          time_range: z.string().describe('本次会话 / 近期（几号到几号）/ 较稳定的现实约束'),
+          refs: z.array(z.object({ session: z.string(), lines: z.array(z.number().int()) })),
+        },
+        run: async (a) => {
+          const refs = a.refs as { session: string; lines: number[] }[];
+          const source = a.source as '自述' | '观察' | '推断';
+          let learnerRef = false;
+          for (const ref of refs) {
+            const opened = await this.hub.opened(ref.session).catch((e: unknown) => {
+              if (e instanceof NotFoundError) return undefined;
+              throw e;
+            });
+            if (!opened || !['main', 'talk', 'loop'].includes(opened.kind)) {
+              return err(`没有这个对话：${ref.session}`);
+            }
+            const recs = await this.hub.records(ref.session);
+            const talkLines = new Set(
+              recs
+                .filter(
+                  (r) => r.record.type === 'user_message' || r.record.type === 'assistant_message',
+                )
+                .map((r) => r.line),
+            );
+            const bad = ref.lines.filter((l) => !talkLines.has(l));
+            if (bad.length > 0) {
+              return err(`${ref.session} 第 ${bad.join('、')} 行不是对话行，不能当依据`);
+            }
+            const learner = learnerLines(recs);
+            if (ref.lines.some((l) => learner.has(l))) learnerRef = true;
+          }
+          if (source === '自述' && !learnerRef) return err('自述须引至少一行学习者自己的话');
+          await this.o.m15.addRecord({
+            id: this.newId('st'),
+            at: this.iso(),
+            text: a.text as string,
+            source,
+            output: a.output_type as '承载读数' | '解释候选',
+            timeRange: a.time_range as string,
+            refs: refs.map((r) => ({ sessionId: r.session, lines: r.lines })),
+            m15SessionId: m15Id,
+            model: this.hub.modelName,
+          });
+          return ok('已记');
+        },
+      },
+      {
+        name: 'write_current_state',
+        description:
+          '重写“当前状态”页（上层，可随时从底层重算）：现在仍有效的几条（带记录 id，过期的拿掉、自述与观察对不上的两条都留并标冲突）+ 阶段判断及依据的时间跨度。',
+        input: {
+          text: z.string(),
+          stage: z.enum(STAGES),
+          basis_span: z.string().describe('阶段判断依据的时间跨度'),
+        },
+        run: async (a) => {
+          await this.o.m15.setCurrent({
+            at: this.iso(),
+            text: a.text as string,
+            stage: a.stage as (typeof STAGES)[number],
+            basisSpan: a.basis_span as string,
+            m15SessionId: m15Id,
+            model: this.hub.modelName,
+          });
+          return ok('当前状态页已更新');
+        },
+      },
+    ];
+  }
+
+  // ───────────── M10 教法效果（后台记录）─────────────
+
+  private readonly strategyTargets = new Map<
+    string,
+    { loopId: string; lines: Set<number>; toolsUsed: string[] }
+  >();
+
+  /** 闭环结束后记“这次教法管不管用”：对话原文 + 诊断记录（M04）+ 守卫判定 + 教学工具使用记录 + 单子。 */
+  private async recordStrategy(loopId: string): Promise<void> {
+    const opened = await this.hub.opened(loopId);
+    const records = await this.hub.records(loopId);
+    const notes = records.flatMap((r) =>
+      r.record.type === 'loop_note' ? [`L${String(r.line)} ${r.record.text}`] : [],
+    );
+    const verdicts = records.flatMap((r) =>
+      r.record.type === 'guard_verdict'
+        ? [
+            `L${String(r.line)} ${r.record.closed ? '合上' : '未合上'}：${r.record.problem ?? r.record.basis}（证据行 ${r.record.lines.join('、') || '无'}）`,
+          ]
+        : [],
+    );
+    const ended = records.find((r) => r.record.type === 'loop_ended');
+    // 教学工具（skill）还没接入：用了哪份由程序从工具调用里记，现在为空（03「教学工具怎么落」）
+    const toolsUsed: string[] = [];
+    const s = await this.hub.createSession('m10', { title: '记教法效果', parent: loopId });
+    this.strategyTargets.set(s.sessionId, {
+      loopId,
+      lines: new Set(records.map((r) => r.line)),
+      toolsUsed,
+    });
+    await this.hub.send(s.sessionId, {
+      role: 'program',
+      text: [
+        `闭环：${loopId}「${opened.title}」`,
+        `单子：${opened.ticket ? this.describeTicket(opened.ticket) : '（缺）'}`,
+        `结束：${ended?.record.type === 'loop_ended' ? (ended.record.closed ? '合上（学习者已确认）' : '没合上就结束') : '（缺）'}`,
+        '',
+        `守卫判定：\n${verdicts.join('\n') || '（没申请过收口）'}`,
+        '',
+        `诊断记录（M04，闭环对话里写的）：\n${notes.join('\n') || '（无）'}`,
+        '',
+        `教学工具使用记录：${toolsUsed.join('、') || '教学工具还没接入，只能从对话原文看用了什么做法'}`,
+        '',
+        '闭环对话原文：',
+        renderTranscript(records),
+      ].join('\n'),
+    });
+    await this.hub.idle(s.sessionId);
+    this.strategyTargets.delete(s.sessionId);
+  }
+
+  private strategyTool(m10Id: string): ToolSpec {
+    return {
+      name: 'write_strategy_record',
+      description:
+        '写一条个人策略过程记录（M10 自己的记录，不进 M09）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这个闭环的行号。单次记录不证明因果。',
+      input: {
+        conditions: z.string(),
+        strategies: z.string(),
+        followed_by: z.string(),
+        evidence_lines: z.array(z.number().int()),
+      },
+      run: async (a) => {
+        const target = this.strategyTargets.get(m10Id);
+        if (!target) return err('找不到要记的闭环');
+        const lines = a.evidence_lines as number[];
+        const bad = lines.filter((l) => !target.lines.has(l));
+        if (bad.length > 0) return err(`第 ${bad.join('、')} 行不在这个闭环的记录里`);
+        await this.o.m10.add({
+          id: this.newId('sr'),
+          at: this.iso(),
+          loopSessionId: target.loopId,
+          conditions: a.conditions as string,
+          strategies: a.strategies as string,
+          followedBy: a.followed_by as string,
+          evidenceLines: lines,
+          toolsUsed: target.toolsUsed,
+          m10SessionId: m10Id,
+          model: this.hub.modelName,
+        });
+        return ok('已记');
+      },
+    };
   }
 
   // ───────────── 共用 ─────────────
@@ -619,13 +1214,13 @@ export class Studium {
 
   private async assertOpenLoop(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
-    if (opened.kind !== 'loop') throw new BadRequestError('这不是闭环对话');
+    if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
     const ended = (await this.hub.records(loopId)).some((r) => r.record.type === 'loop_ended');
-    if (ended) throw new BadRequestError('这个闭环已经结束了');
+    if (ended) throw new BadRequestError('这部分已经结束了。');
   }
 
   /** 只读查询工具：M08、M07、M09（按 03「读写权限」）。 */
-  private readTools(opt: { m09?: boolean } = {}): ToolSpec[] {
+  private readTools(opt: { m07?: boolean; m09?: boolean } = {}): ToolSpec[] {
     const m08 = this.o.m08;
     const tools: ToolSpec[] = [
       {
@@ -660,39 +1255,43 @@ export class Studium {
           return c ? ok(m08.describeClause(c)) : err(`没有这条子句：${a.clause as string}`);
         },
       },
-      {
-        name: 'textbook_index',
-        description: '不给书名：列出书库里的书；给书名：读这本书的 M07 目录。',
-        input: { book: z.string().optional() },
-        run: async (a) => {
-          const book = a.book as string | undefined;
-          if (book === undefined || book === '') {
-            const books = await this.o.m07.books();
-            return ok(books.length > 0 ? books.join('\n') : '书库是空的（缺资料依据）');
-          }
-          return ok(await this.o.m07.index(book));
-        },
-      },
-      {
-        name: 'read_source',
-        description: '读 M07 一个小节文件的原文，每行前印行号；可只读一段。',
-        input: {
-          book: z.string(),
-          file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md'),
-          from_line: z.number().int().optional(),
-          to_line: z.number().int().optional(),
-        },
-        run: async (a) =>
-          ok(
-            await this.o.m07.read(
-              a.book as string,
-              a.file as string,
-              (a.from_line as number | undefined) ?? 1,
-              (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER,
-            ),
-          ),
-      },
     ];
+    if (opt.m07 !== false) {
+      tools.push(
+        {
+          name: 'textbook_index',
+          description: '不给书名：列出书库里的书；给书名：读这本书的 M07 目录。',
+          input: { book: z.string().optional() },
+          run: async (a) => {
+            const book = a.book as string | undefined;
+            if (book === undefined || book === '') {
+              const books = await this.o.m07.books();
+              return ok(books.length > 0 ? books.join('\n') : '书库是空的（缺资料依据）');
+            }
+            return ok(await this.o.m07.index(book));
+          },
+        },
+        {
+          name: 'read_source',
+          description: '读 M07 一个小节文件的原文，每行前印行号；可只读一段。',
+          input: {
+            book: z.string(),
+            file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md'),
+            from_line: z.number().int().optional(),
+            to_line: z.number().int().optional(),
+          },
+          run: async (a) =>
+            ok(
+              await this.o.m07.read(
+                a.book as string,
+                a.file as string,
+                (a.from_line as number | undefined) ?? 1,
+                (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER,
+              ),
+            ),
+        },
+      );
+    }
     if (opt.m09 !== false) {
       tools.push({
         name: 'query_m09',
@@ -711,6 +1310,12 @@ export class Studium {
   }
 }
 
+/** 教学行只取开头一段（M15 用作紧邻前序事件）。 */
+function excerpt(r: NumberedRecord): string {
+  const t = renderTranscript([r]);
+  return t.length > TEACHING_EXCERPT ? `${t.slice(0, TEACHING_EXCERPT)}…` : t;
+}
+
 function verdictFact(v: GuardVerdict): string {
   if (v.problem !== undefined) return `守卫判定：未合上（${v.problem}）。接着教。`;
   return v.closed
@@ -724,6 +1329,12 @@ function ok(text: string): Promise<ToolResult> {
 
 function err(text: string): Promise<ToolResult> {
   return Promise.resolve({ text, isError: true });
+}
+
+/** 模型没给项目名时，从方向目标里取开头一小段。 */
+function shortTitle(goal: string): string {
+  const head = goal.split(/[，,。；;：:]/)[0] ?? goal;
+  return head.length > 12 ? `${head.slice(0, 12)}…` : head;
 }
 
 function formatDuration(ms: number): string {

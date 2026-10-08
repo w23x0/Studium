@@ -36,6 +36,8 @@ interface Live {
   queue: { input: TurnInput; resolve: () => void }[];
   running: boolean;
   idle: (() => void)[];
+  /** 本轮收下的中途插话，在本轮跑完时兑现。 */
+  turnWaiters: (() => void)[];
 }
 
 export class NotFoundError extends Error {}
@@ -61,7 +63,7 @@ export class Hub {
 
   async createSession(
     kind: ConversationKind,
-    meta: { title: string; parent?: string; ticket?: Ticket },
+    meta: { title: string; parent?: string; ticket?: Ticket; anchorLine?: number },
   ): Promise<SessionSummary> {
     const at = this.now();
     const sessionId = `${stamp(at)}-${kind}-${randomBytes(3).toString('hex')}`;
@@ -75,6 +77,7 @@ export class Hub {
       title: meta.title,
       ...(meta.parent !== undefined ? { parent: meta.parent } : {}),
       ...(meta.ticket !== undefined ? { ticket: meta.ticket } : {}),
+      ...(meta.anchorLine !== undefined ? { anchorLine: meta.anchorLine } : {}),
     };
     await this.append(sessionId, opened);
     return summary(opened);
@@ -129,6 +132,12 @@ export class Hub {
     };
     let resolve!: () => void;
     const done = new Promise<void>((r) => (resolve = r));
+    // 中途插话：本轮还在跑就交给正在跑的模型对话，它在下一个停顿处看到；
+    // 适配器不支持或本轮已在收尾时，退回排队成新一轮（04「实现时要守的」流式输入）
+    if (live.running && live.conversation?.interject?.(delivered) === true) {
+      live.turnWaiters.push(resolve);
+      return { line, done };
+    }
     live.queue.push({ input: delivered, resolve });
     if (!live.running) void this.drain(sessionId, live);
     return { line, done };
@@ -147,6 +156,16 @@ export class Hub {
     await new Promise<void>((r) => live.idle.push(r));
   }
 
+  /** 有没有会话还在跑或排着队。 */
+  anyRunning(): boolean {
+    return [...this.live.values()].some((l) => l.running || l.queue.length > 0);
+  }
+
+  /** 等所有已打开的会话都跑空。 */
+  async idleAll(): Promise<void> {
+    await Promise.all([...this.live.keys()].map((id) => this.idle(id)));
+  }
+
   async close(): Promise<void> {
     for (const [id, live] of this.live) {
       await this.idle(id);
@@ -162,6 +181,7 @@ export class Hub {
     for (let item = live.queue.shift(); item; item = live.queue.shift()) {
       await this.runTurn(sessionId, live, item.input);
       item.resolve();
+      for (const r of live.turnWaiters.splice(0)) r();
     }
     live.running = false;
     this.emit({ type: 'running', sessionId, running: false });
@@ -235,6 +255,7 @@ export class Hub {
     return this.opts.model.open({
       systemPrompt: cfg.systemPrompt,
       tools: cfg.tools(sessionId).map((t) => this.logged(sessionId, t)),
+      session: { id: sessionId, kind },
       ...(resume?.type === 'model_session' ? { resumeToken: resume.token } : {}),
     });
   }
@@ -302,7 +323,15 @@ export class Hub {
 }
 
 function newLive(log: SessionLog, kind: ConversationKind): Live {
-  return { log, kind, conversation: undefined, queue: [], running: false, idle: [] };
+  return {
+    log,
+    kind,
+    conversation: undefined,
+    queue: [],
+    running: false,
+    idle: [],
+    turnWaiters: [],
+  };
 }
 
 function summary(o: SessionOpened): SessionSummary {

@@ -1,8 +1,11 @@
 // 会话正本（JSONL）里每一行的形状。正本只追加、永不改写：行号就是引用地址。
 // 加新类型只能加，不改旧类型的字段含义；读到不认识的类型要原样保留。
 
-/** main 主对话 · loop 闭环对话 · guard 闭环守卫 · m09 写形成记录 · m05 出选择卡 */
-export type ConversationKind = 'main' | 'loop' | 'guard' | 'm09' | 'm05';
+/**
+ * main 主对话 · talk 畅谈对话 · loop 闭环对话 · guard 闭环守卫 · m09 写形成记录 · m05 出选择卡
+ * · m15 整理学习者状态 · m10 记教法效果
+ */
+export type ConversationKind = 'main' | 'talk' | 'loop' | 'guard' | 'm09' | 'm05' | 'm15' | 'm10';
 
 /** M05 给一个闭环开的单子。 */
 export interface Ticket {
@@ -25,6 +28,8 @@ export interface SessionOpened {
   /** 从哪个会话开出来的（闭环对话 → 主对话；守卫 → 闭环对话）。 */
   parent?: string;
   ticket?: Ticket;
+  /** 挂在父会话的哪一行下（畅谈对话 → 主对话里那条学习者消息）。 */
+  anchorLine?: number;
 }
 
 export interface UserMessage {
@@ -157,6 +162,41 @@ export interface ChoiceMade {
   loopSessionId: string;
 }
 
+/** 主对话开出一个任务对话（畅谈对话），挂在某条学习者消息下（M01 会话关系）。 */
+export interface TaskOpened {
+  type: 'task_opened';
+  at: string;
+  sessionId: string;
+  kind: ConversationKind;
+  title: string;
+  /** 挂在主对话的哪一行下。 */
+  anchorLine: number;
+}
+
+/** 项目名（随方向目标变）。会话开头的名字不改，界面与列表取最新一条。 */
+export interface ProjectTitle {
+  type: 'project_title';
+  at: string;
+  title: string;
+  /** goal = 谈定方向时一起定的。 */
+  source: 'goal';
+}
+
+/** 畅谈对话交回：谈出的方向目标（已记进项目），本对话结束。 */
+export interface TalkEnded {
+  type: 'talk_ended';
+  at: string;
+  goal: string;
+  title: string;
+}
+
+/** 主对话把学习者指向某个已有对话（跟进某个闭环时）。 */
+export interface ConversationPointer {
+  type: 'conversation_pointer';
+  at: string;
+  sessionId: string;
+}
+
 export type LogRecord =
   | SessionOpened
   | UserMessage
@@ -173,7 +213,11 @@ export type LogRecord =
   | AfterLoopStep
   | ProjectGoal
   | ChoiceCard
-  | ChoiceMade;
+  | ChoiceMade
+  | TaskOpened
+  | ProjectTitle
+  | TalkEnded
+  | ConversationPointer;
 
 /** 带行号的记录；行号从 1 开始，等于 JSONL 文件里的行。 */
 export interface NumberedRecord {

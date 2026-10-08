@@ -2,6 +2,7 @@
 // （依赖方向测试 tests/architecture.test.ts 会查）。
 // 按 04-实现选型：关掉内置工具、不读 CLAUDE.md 与设置、用我们自己的系统提示；
 // 登录走产品负责人本机的 Claude 订阅（先在本机用 `claude` 登录一次）。
+import { randomUUID } from 'node:crypto';
 import {
   createSdkMcpServer,
   query,
@@ -45,6 +46,10 @@ class SdkConversation implements ModelConversation {
   private output: AsyncIterator<SDKMessage> | undefined;
   private close_: (() => void) | undefined;
   private sessionId: string | undefined;
+  /** 本轮在跑时为真；插话只在这时收。 */
+  private turnActive = false;
+  /** 已交给 SDK、还没见它答到的输入（按 uuid）。 */
+  private readonly pending: string[] = [];
 
   constructor(
     private readonly spec: ConversationSpec,
@@ -85,17 +90,51 @@ class SdkConversation implements ModelConversation {
     return q[Symbol.asyncIterator]();
   }
 
-  async *send(input: TurnInput): AsyncGenerator<ModelEvent> {
-    this.output ??= this.start();
-    const text = input.role === 'program' ? formatProgramFact(input.text) : input.text;
+  private push(input: TurnInput, priority?: 'next'): void {
+    const uuid = randomUUID();
+    this.pending.push(uuid);
     this.input.push({
       type: 'user',
-      message: { role: 'user', content: text },
+      message: {
+        role: 'user',
+        content: input.role === 'program' ? formatProgramFact(input.text) : input.text,
+      },
       parent_tool_use_id: null,
+      uuid,
+      ...(priority !== undefined ? { priority } : {}),
     });
+  }
+
+  /**
+   * 中途插话：按流式输入交给 SDK，priority 'next' = 在本轮下一个停顿处并进来（04「实现时要守的」）。
+   * 不确定：priority 各值的确切行为 SDK 类型里没写，待本机真模型确认。
+   */
+  interject(input: TurnInput): boolean {
+    if (!this.turnActive || this.output === undefined) return false;
+    this.push(input, 'next');
+    return true;
+  }
+
+  async *send(input: TurnInput): AsyncGenerator<ModelEvent> {
+    this.output ??= this.start();
+    this.turnActive = true;
+    try {
+      yield* this.read(input);
+    } finally {
+      this.turnActive = false;
+    }
+  }
+
+  private async *read(input: TurnInput): AsyncGenerator<ModelEvent> {
+    if (this.output === undefined) throw new Error('SDK 对话还没开');
+    this.push(input);
+    let stamped = false;
     for (;;) {
       const next = await this.output.next();
       if (next.done === true) {
+        this.turnActive = false;
+        // 对话已断：没答到的不会再答了，清掉免得下一轮一直等它们
+        this.pending.splice(0);
         yield { kind: 'turn_error', reason: 'Agent SDK 提前结束了对话' };
         return;
       }
@@ -116,17 +155,35 @@ class SdkConversation implements ModelConversation {
         yield { kind: 'raw', payload: msg.message };
       }
       if (msg.type === 'assistant') {
+        // SDK 在回复上标出本轮已经并进来的用户消息（含中途插话）
+        const answered =
+          msg.user_message_uuids ??
+          (msg.user_message_uuid !== undefined ? [msg.user_message_uuid] : []);
+        if (answered.length > 0) stamped = true;
+        for (const u of answered) {
+          const i = this.pending.indexOf(u);
+          if (i >= 0) this.pending.splice(i, 1);
+        }
         const text = msg.message.content
           .flatMap((b) => (b.type === 'text' ? [b.text] : []))
           .join('');
         if (text !== '') yield { kind: 'assistant_text', text };
       }
       if (msg.type === 'result') {
-        if (msg.subtype === 'success' && !msg.is_error) {
-          yield { kind: 'turn_end' };
-        } else {
-          yield { kind: 'turn_error', reason: `Agent SDK 本轮失败：${msg.subtype}` };
+        // 老版本不标 uuid：一个结果算答了最早的一条
+        if (!stamped) this.pending.shift();
+        const failed = msg.subtype !== 'success' || msg.is_error;
+        if (this.pending.length > 0) {
+          // 还有插话没并进本轮：SDK 会接着为它另跑一轮，读到它的结果再收尾
+          if (failed) yield { kind: 'turn_error', reason: `Agent SDK 本轮失败：${msg.subtype}` };
+          stamped = false;
+          continue;
         }
+        // 同步收尾：此后的插话由核心按新一轮发
+        this.turnActive = false;
+        yield failed
+          ? { kind: 'turn_error', reason: `Agent SDK 本轮失败：${msg.subtype}` }
+          : { kind: 'turn_end' };
         return;
       }
     }

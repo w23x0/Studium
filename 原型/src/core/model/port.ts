@@ -3,6 +3,7 @@
 // · 钩子（工具的 run 由核心实现，如“申请收口”；程序追加事实 = role 为 program 的输入）
 // · 交回原文（ModelEvent 里的 raw，由核心逐条记进正本）。
 import type { z } from 'zod';
+import type { ConversationKind } from '../../shared/records.ts';
 
 export interface ToolResult {
   text: string;
@@ -25,6 +26,8 @@ export interface ConversationSpec {
   tools: ToolSpec[];
   /** 上次的续接凭据（正本里最近一条 model_session），没有就是新开。 */
   resumeToken?: string;
+  /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
+  session?: { id: string; kind: ConversationKind };
 }
 
 /** 一条输入：学习者的话，或程序追加的事实（守卫结论、离开多久等）。 */
@@ -50,6 +53,12 @@ export type ModelEvent =
 export interface ModelConversation {
   /** 发一条输入，流式拿回本轮事件，直到 turn_end 或 turn_error。一次只跑一轮。 */
   send(input: TurnInput): AsyncIterable<ModelEvent>;
+  /**
+   * 中途插话：本轮还在跑时再交一条输入，模型在本轮下一个停顿处（工具调用之间）看到它，
+   * 对它的回应仍从正在跑的 send() 里出来。返回 false 表示本轮已在收尾，调用方改按新一轮发。
+   * 适配器不支持就不实现，核心退回排队。
+   */
+  interject?(input: TurnInput): boolean;
   close(): Promise<void>;
 }
 

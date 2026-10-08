@@ -17,6 +17,17 @@ export interface ProjectResponse {
   mainSessionId: string;
 }
 
+export interface ProjectSummary {
+  mainSessionId: string;
+  title: string;
+  /** 主对话里最近谈定的方向目标。 */
+  goal?: string;
+}
+
+export interface ListProjectsResponse {
+  projects: ProjectSummary[];
+}
+
 export interface ChooseRequest {
   option: number;
 }
