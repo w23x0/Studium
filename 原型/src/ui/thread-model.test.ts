@@ -27,12 +27,59 @@ describe('toUiMessages', () => {
     ]);
   });
 
-  it('失败的一轮显示原因', () => {
+  it('失败的一轮标成失败，用日常话提示', () => {
     const rs: NumberedRecord[] = [
       { line: 1, record: { type: 'user_message', at, text: '问' } },
       { line: 2, record: { type: 'turn_failed', at, reason: '断网' } },
     ];
-    expect(toUiMessages(rs, '')[1]).toMatchObject({ failed: true, text: '（本轮没有完成：断网）' });
+    expect(toUiMessages(rs, '')[1]).toMatchObject({
+      failed: true,
+      text: '（这次回复没完成，可以再发一次）',
+    });
+  });
+
+  it('还在跑、没有流式文字时放一条空的占位', () => {
+    expect(toUiMessages(records.slice(0, 2), '', { running: true }).at(-1)).toMatchObject({
+      id: 'draft',
+      text: '',
+    });
+  });
+
+  it('程序事实不显示；选定后显示去那个任务的入口', () => {
+    const rs: NumberedRecord[] = [
+      { line: 1, record: { type: 'program_fact', at, text: '本闭环的单子' } },
+      {
+        line: 2,
+        record: {
+          type: 'choice_card',
+          at,
+          cardId: 'c1',
+          m05SessionId: 'm',
+          options: [
+            {
+              title: '位移',
+              reason: '',
+              ticket: { newPoint: 'p', clause: 'c', startPoints: [], routeAction: '' },
+            },
+          ],
+          recommended: 0,
+          trigger: '',
+        },
+      },
+      {
+        line: 3,
+        record: { type: 'choice_made', at, cardId: 'c1', option: 0, loopSessionId: 'L' },
+      },
+    ];
+    expect(toUiMessages(rs, '')).toEqual([
+      {
+        id: 'l3',
+        role: 'system',
+        text: '开始学：位移',
+        line: 3,
+        link: { sessionId: 'L', label: '开始学：位移' },
+      },
+    ]);
   });
 });
 

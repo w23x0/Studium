@@ -154,3 +154,45 @@ describe('闭环主路径（假模型）', () => {
     await expect(app.studium.requestCard('测试')).rejects.toThrow('没有提交选择卡');
   });
 });
+
+describe('M15 / M10 的读写范围与触发', () => {
+  async function boot(): Promise<App> {
+    const app = await createApp({
+      dataRoot: await tempDir(),
+      model: new FakeModel(),
+      token: 'flow-token-0123456789',
+      port: 0,
+    });
+    apps.push(app);
+    return app;
+  }
+
+  it('M15 只拿读对话与写自己两层的工具；M10 不读 M09、M07', async () => {
+    const app = await boot();
+    const m15 = app.studium
+      .kind('m15')
+      .tools('x')
+      .map((t) => t.name);
+    expect(m15.sort()).toEqual(
+      ['read_session', 'read_state_records', 'write_current_state', 'write_state_record'].sort(),
+    );
+    const m10 = app.studium
+      .kind('m10')
+      .tools('x')
+      .map((t) => t.name);
+    expect(m10).not.toContain('query_m09');
+    expect(m10).not.toContain('read_source');
+    expect(m10).toContain('write_strategy_record');
+  });
+
+  it('没有新的学习者的话不整理；M04 请求重新确认时照样整理', async () => {
+    const app = await boot();
+    const count = () => app.hub.listSessions().filter((s) => s.kind === 'm15').length;
+    app.studium.organizeStateLater('测试');
+    await app.studium.settled();
+    expect(count()).toBe(0);
+    app.studium.organizeStateLater('M04 请求重新确认', undefined, true);
+    await app.studium.settled();
+    expect(count()).toBe(1);
+  });
+});
