@@ -1,0 +1,49 @@
+{
+  "name": "studium-prototype",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@playwright/test": "^1.64.0",
+    "@tailwindcss/vite": "^4.3.3",
+    "@types/node": "^26.6.4",
+    "@types/react": "^19.3.0",
+    "@types/react-dom": "^19.3.0",
+    "@vitejs/plugin-react": "^6.1.2",
+    "eslint": "^10.12.0",
+    "globals": "^17.13.0",
+    "prettier": "^3.9.9",
+    "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
+    "typescript": "~6.0",
+    "typescript-eslint": "^8.71.1",
+    "vite": "^8.3.3",
+    "vitest": "^5.0.3"
+  },
+  "dependencies": {
+    "@anthropic-ai/claude-agent-sdk": "^0.3.293",
+    "@anthropic-ai/sdk": "^0.132.0",
+    "@assistant-ui/react": "^0.15.25",
+    "@modelcontextprotocol/sdk": "^1.32.1",
+    "react": "^19.3.0",
+    "react-dom": "^19.3.0",
+    "zod": "^4.6.5"
+  },
+  "description": "Studium 原型：核心（本地服务）+ 浏览器界面",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "check": "node scripts/check.mjs",
+    "typecheck": "tsc -p tsconfig.json --noEmit --pretty false",
+    "lint": "eslint . --max-warnings 0 --format ./scripts/eslint-oneline.cjs",
+    "format": "prettier --write .",
+    "format:check": "prettier --check . --log-level warn",
+    "test": "vitest run",
+    "build:ui": "vite build",
+    "start": "vite build && tsx src/core/main.ts",
+    "dev": "tsx watch src/core/main.ts",
+    "features": "node scripts/features.mjs",
+    "e2e": "playwright test"
+  }
+}
