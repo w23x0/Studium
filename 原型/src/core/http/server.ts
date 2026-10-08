@@ -8,6 +8,7 @@ import type {
   ErrorResponse,
   ListSessionsResponse,
   RecordsResponse,
+  SearchResponse,
   SendMessageRequest,
 } from '../../shared/protocol.ts';
 import { BusyError, NotFoundError, type Hub } from '../hub.ts';
@@ -61,6 +62,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       openSse(res);
       return;
     }
+    if (method === 'GET' && parts[1] === 'search' && parts.length === 2) {
+      const q = url.searchParams.get('q') ?? '';
+      if (q.trim() === '') {
+        send(res, 400, { error: 'q 不能为空' });
+        return;
+      }
+      send(res, 200, { hits: opts.hub.search(q) } satisfies SearchResponse);
+      return;
+    }
     if (parts[1] !== 'sessions') {
       send(res, 404, { error: '没有这个接口' });
       return;
@@ -70,7 +80,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       if (id === undefined) {
         if (method === 'GET') {
           send(res, 200, {
-            sessions: await opts.hub.listSessions(),
+            sessions: opts.hub.listSessions(),
           } satisfies ListSessionsResponse);
           return;
         }

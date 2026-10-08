@@ -14,7 +14,10 @@
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": ["node"]
+    "types": ["node"],
+    "paths": {
+      "@/*": ["./src/ui/*"]
+    }
   },
   "include": ["src", "tests", "e2e", "scripts", "*.ts"]
 }

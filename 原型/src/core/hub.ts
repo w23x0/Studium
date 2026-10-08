@@ -3,12 +3,14 @@
 import { randomBytes } from 'node:crypto';
 import type { SessionSummary, ServerEvent } from '../shared/protocol.ts';
 import type { ConversationKind, LogRecord, NumberedRecord } from '../shared/records.ts';
+import type { DerivedIndex } from './index/derived-index.ts';
 import type { DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
 import type { ModelAdapter, ModelConversation } from './model/port.ts';
 
 export interface HubOptions {
   dataDir: DataDir;
+  index: DerivedIndex;
   model: ModelAdapter;
   systemPrompts: Record<ConversationKind, string>;
   now?: () => Date;
@@ -53,15 +55,12 @@ export class Hub {
     return { sessionId, kind, title, openedAt: at.toISOString() };
   }
 
-  async listSessions(): Promise<SessionSummary[]> {
-    const ids = await this.opts.dataDir.listSessionIds();
-    const out: SessionSummary[] = [];
-    for (const id of ids) {
-      const first = (await readRecords(this.opts.dataDir.sessionPath(id)))[0]?.record;
-      if (first?.type !== 'session_opened') continue;
-      out.push({ sessionId: id, kind: first.kind, title: first.title, openedAt: first.at });
-    }
-    return out.sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+  listSessions(): SessionSummary[] {
+    return this.opts.index.listSessions();
+  }
+
+  search(text: string): ReturnType<DerivedIndex['search']> {
+    return this.opts.index.search(text);
   }
 
   async records(sessionId: string): Promise<NumberedRecord[]> {
@@ -199,6 +198,7 @@ export class Hub {
     const live = this.live.get(sessionId);
     if (!live) throw new Error(`会话未打开：${sessionId}`);
     const line = await live.log.append(record);
+    this.opts.index.add(sessionId, line, record);
     this.emit({ type: 'record', sessionId, line, record });
   }
 

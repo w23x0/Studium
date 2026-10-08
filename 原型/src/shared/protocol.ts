@@ -25,6 +25,10 @@ export interface SendMessageRequest {
   text: string;
 }
 
+export interface SearchResponse {
+  hits: { sessionId: string; line: number; text: string }[];
+}
+
 export interface ErrorResponse {
   error: string;
 }
