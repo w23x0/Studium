@@ -2,8 +2,23 @@
 // （依赖方向测试 tests/architecture.test.ts 会查）。
 // 按 04-实现选型：关掉内置工具、不读 CLAUDE.md 与设置、用我们自己的系统提示；
 // 登录走产品负责人本机的 Claude 订阅（先在本机用 `claude` 登录一次）。
-import { query, type SDKMessage, type SDKUserMessage } from '@anthropic-ai/claude-agent-sdk';
-import type { ConversationSpec, ModelAdapter, ModelConversation, ModelEvent } from './port.ts';
+import {
+  createSdkMcpServer,
+  query,
+  tool,
+  type SDKMessage,
+  type SDKUserMessage,
+} from '@anthropic-ai/claude-agent-sdk';
+import {
+  formatProgramFact,
+  type ConversationSpec,
+  type ModelAdapter,
+  type ModelConversation,
+  type ModelEvent,
+  type TurnInput,
+} from './port.ts';
+
+const SERVER = 'studium';
 
 export interface ClaudeAgentSdkOptions {
   /** 不填用 SDK 默认模型。 */
@@ -39,13 +54,23 @@ class SdkConversation implements ModelConversation {
   }
 
   private start(): AsyncIterator<SDKMessage> {
+    const server = createSdkMcpServer({
+      name: SERVER,
+      tools: this.spec.tools.map((t) =>
+        tool(t.name, t.description, t.input, async (args) => {
+          const r = await t.run(args);
+          return { content: [{ type: 'text', text: r.text }], isError: r.isError === true };
+        }),
+      ),
+    });
     const q = query({
       prompt: this.input,
       options: {
         systemPrompt: this.spec.systemPrompt,
         tools: [],
         settingSources: [],
-        mcpServers: {},
+        mcpServers: { [SERVER]: server },
+        allowedTools: this.spec.tools.map((t) => `mcp__${SERVER}__${t.name}`),
         strictMcpConfig: true,
         includePartialMessages: true,
         ...(this.spec.resumeToken !== undefined ? { resume: this.spec.resumeToken } : {}),
@@ -60,8 +85,9 @@ class SdkConversation implements ModelConversation {
     return q[Symbol.asyncIterator]();
   }
 
-  async *send(text: string): AsyncGenerator<ModelEvent> {
+  async *send(input: TurnInput): AsyncGenerator<ModelEvent> {
     this.output ??= this.start();
+    const text = input.role === 'program' ? formatProgramFact(input.text) : input.text;
     this.input.push({
       type: 'user',
       message: { role: 'user', content: text },

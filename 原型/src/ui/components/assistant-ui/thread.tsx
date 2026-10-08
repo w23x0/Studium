@@ -13,9 +13,13 @@ import {
   useAuiState,
 } from '@assistant-ui/react';
 import { ArrowDownIcon, ArrowUpIcon, CheckIcon, CopyIcon } from 'lucide-react';
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
 
-export const Thread: FC<{ welcome?: string }> = ({ welcome = '今天想学点什么？' }) => {
+export const Thread: FC<{ welcome?: string; footer?: ReactNode; disabled?: boolean }> = ({
+  welcome = '今天想学点什么？',
+  footer,
+  disabled = false,
+}) => {
   const isEmpty = useAuiState((s) => s.thread.messages.length === 0);
   return (
     <ThreadPrimitive.Root
@@ -40,7 +44,15 @@ export const Thread: FC<{ welcome?: string }> = ({ welcome = '今天想学点什
           )}
           <div className="mb-14 flex flex-col gap-y-6 empty:hidden">
             <ThreadPrimitive.Messages>
-              {({ message }) => (message.role === 'user' ? <UserMessage /> : <AssistantMessage />)}
+              {({ message }) =>
+                message.role === 'user' ? (
+                  <UserMessage />
+                ) : message.role === 'system' ? (
+                  <SystemMessage />
+                ) : (
+                  <AssistantMessage />
+                )
+              }
             </ThreadPrimitive.Messages>
           </div>
           <ThreadPrimitive.ViewportFooter
@@ -58,7 +70,8 @@ export const Thread: FC<{ welcome?: string }> = ({ welcome = '今天想学点什
                 <ArrowDownIcon />
               </TooltipIconButton>
             </ThreadPrimitive.ScrollToBottom>
-            <Composer />
+            {footer}
+            {!disabled && <Composer />}
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -149,3 +162,25 @@ const UserMessage: FC = () => (
     </div>
   </MessagePrimitive.Root>
 );
+
+/** 程序事实、守卫判定等：不是学习者也不是教学的话，小字显示，长的折起来。 */
+const SystemMessage: FC = () => {
+  const text = useAuiState((s) =>
+    s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
+  );
+  const [first, ...rest] = text.split('\n');
+  return (
+    <MessagePrimitive.Root data-role="system" className="px-1">
+      <div className="border-border text-muted-foreground border-l-2 py-0.5 ps-3 text-sm">
+        {rest.length === 0 ? (
+          first
+        ) : (
+          <details>
+            <summary className="cursor-pointer">{first}</summary>
+            <div className="mt-1 whitespace-pre-wrap">{rest.join('\n')}</div>
+          </details>
+        )}
+      </div>
+    </MessagePrimitive.Root>
+  );
+};

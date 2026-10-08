@@ -6,10 +6,23 @@ export interface SessionSummary {
   kind: ConversationKind;
   title: string;
   openedAt: string;
+  parent?: string;
 }
 
 export interface CreateSessionResponse {
   session: SessionSummary;
+}
+
+export interface ProjectResponse {
+  mainSessionId: string;
+}
+
+export interface ChooseRequest {
+  option: number;
+}
+
+export interface ChooseResponse {
+  loopSessionId: string;
 }
 
 export interface ListSessionsResponse {

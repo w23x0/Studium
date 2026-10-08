@@ -7,7 +7,7 @@ import type { LogRecord, NumberedRecord } from '../../shared/records.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 1;
+const SCHEMA_VERSION = 2;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -53,9 +53,9 @@ export class DerivedIndex {
     if (record.type === 'session_opened') {
       this.db
         .prepare(
-          'INSERT OR REPLACE INTO sessions (session_id, kind, title, opened_at, last_at) VALUES (?, ?, ?, ?, ?)',
+          'INSERT OR REPLACE INTO sessions (session_id, kind, title, parent, opened_at, last_at) VALUES (?, ?, ?, ?, ?, ?)',
         )
-        .run(sessionId, record.kind, record.title, record.at, record.at);
+        .run(sessionId, record.kind, record.title, record.parent ?? null, record.at, record.at);
     } else {
       this.db
         .prepare('UPDATE sessions SET last_at = ? WHERE session_id = ?')
@@ -128,6 +128,7 @@ function createSchema(db: DatabaseSync): void {
       session_id TEXT PRIMARY KEY,
       kind TEXT NOT NULL,
       title TEXT NOT NULL,
+      parent TEXT,
       opened_at TEXT NOT NULL,
       last_at TEXT NOT NULL
     );
@@ -147,6 +148,9 @@ function searchableText(r: LogRecord): string {
   switch (r.type) {
     case 'user_message':
     case 'assistant_message':
+    case 'program_fact':
+    case 'loop_note':
+    case 'project_goal':
       return r.text;
     case 'session_opened':
       return r.title;
