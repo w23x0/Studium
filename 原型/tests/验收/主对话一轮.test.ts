@@ -3,30 +3,24 @@ import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { ServerEvent } from '../../src/shared/protocol.ts';
-import { Hub } from '../../src/core/hub.ts';
-import { startServer, type RunningServer } from '../../src/core/http/server.ts';
-import { DataDir } from '../../src/core/log/data-dir.ts';
+import { createApp, type App } from '../../src/core/app.ts';
+import type { RunningServer } from '../../src/core/http/server.ts';
 import { FakeModel } from '../../src/core/model/fake.ts';
 import { tempDir } from '../helpers/tmp.ts';
 
 const TOKEN = 'test-token-0123456789';
-const running: { server: RunningServer; hub: Hub; dataDir: DataDir }[] = [];
+const running: App[] = [];
 
 afterEach(async () => {
-  for (const r of running.splice(0)) await stop(r);
+  for (const r of running.splice(0)) await r.close();
 });
 
-async function stop(r: { server: RunningServer; hub: Hub; dataDir: DataDir }) {
-  await r.server.close();
-  await r.hub.close();
-  await r.dataDir.release();
+async function stop(r: App) {
+  await r.close();
 }
 
 async function boot(root: string) {
-  const dataDir = await DataDir.acquire(root);
-  const hub = new Hub({ dataDir, model: new FakeModel(), systemPrompts: { main: '提示' } });
-  const server = await startServer({ hub, token: TOKEN, port: 0 });
-  const r = { server, hub, dataDir };
+  const r = await createApp({ dataRoot: root, model: new FakeModel(), token: TOKEN, port: 0 });
   running.push(r);
   return r;
 }

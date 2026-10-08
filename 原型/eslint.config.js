@@ -14,6 +14,7 @@ export default tseslint.config(
       // 吞异常要写明理由：空 catch 一律不许
       'no-empty': ['error', { allowEmptyCatch: false }],
       '@typescript-eslint/restrict-template-expressions': ['error', { allowNumber: true }],
+      '@typescript-eslint/no-confusing-void-expression': ['error', { ignoreArrowShorthand: true }],
     },
   },
   {

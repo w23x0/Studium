@@ -1,26 +1,43 @@
-// 核心：管所有会话。每个会话一个正本（只追加）+ 一个模型侧对话；一次只跑一轮。
+// 会话管理：每个会话一个正本（只追加）+ 一个模型侧对话；一个会话一次只跑一轮，后到的输入排队。
+// 不认识具体会话的职责：系统提示与工具由 kinds 按会话种类给出（studium.ts 组装）。
 // 事件（新记录、流式增量、进行中状态）推给订阅者（SSE）。
 import { randomBytes } from 'node:crypto';
 import type { SessionSummary, ServerEvent } from '../shared/protocol.ts';
-import type { ConversationKind, LogRecord, NumberedRecord } from '../shared/records.ts';
+import type {
+  ConversationKind,
+  LogRecord,
+  NumberedRecord,
+  SessionOpened,
+  Ticket,
+} from '../shared/records.ts';
+import type { DerivedIndex } from './index/derived-index.ts';
 import type { DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
-import type { ModelAdapter, ModelConversation } from './model/port.ts';
+import type { ModelAdapter, ModelConversation, ToolSpec, TurnInput } from './model/port.ts';
+
+export interface KindConfig {
+  systemPrompt: string;
+  /** 本会话的工具；sessionId 让工具知道自己属于哪个会话。 */
+  tools(sessionId: string): ToolSpec[];
+}
 
 export interface HubOptions {
   dataDir: DataDir;
+  index: DerivedIndex;
   model: ModelAdapter;
-  systemPrompts: Record<ConversationKind, string>;
+  kinds: (kind: ConversationKind) => KindConfig;
   now?: () => Date;
 }
 
 interface Live {
   log: SessionLog;
+  kind: ConversationKind;
   conversation: ModelConversation | undefined;
-  running: Promise<void> | undefined;
+  queue: { input: TurnInput; resolve: () => void }[];
+  running: boolean;
+  idle: (() => void)[];
 }
 
-export class BusyError extends Error {}
 export class NotFoundError extends Error {}
 
 export class Hub {
@@ -33,35 +50,42 @@ export class Hub {
     this.now = opts.now ?? (() => new Date());
   }
 
+  get modelName(): string {
+    return this.opts.model.name;
+  }
+
   subscribe(fn: (e: ServerEvent) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
   }
 
-  async createSession(kind: ConversationKind, title = '主对话'): Promise<SessionSummary> {
+  async createSession(
+    kind: ConversationKind,
+    meta: { title: string; parent?: string; ticket?: Ticket },
+  ): Promise<SessionSummary> {
     const at = this.now();
-    const sessionId = `${stamp(at)}-${randomBytes(3).toString('hex')}`;
+    const sessionId = `${stamp(at)}-${kind}-${randomBytes(3).toString('hex')}`;
     const log = await SessionLog.open(this.opts.dataDir.sessionPath(sessionId));
-    this.live.set(sessionId, { log, conversation: undefined, running: undefined });
-    await this.append(sessionId, {
+    this.live.set(sessionId, newLive(log, kind));
+    const opened: SessionOpened = {
       type: 'session_opened',
       at: at.toISOString(),
       sessionId,
       kind,
-      title,
-    });
-    return { sessionId, kind, title, openedAt: at.toISOString() };
+      title: meta.title,
+      ...(meta.parent !== undefined ? { parent: meta.parent } : {}),
+      ...(meta.ticket !== undefined ? { ticket: meta.ticket } : {}),
+    };
+    await this.append(sessionId, opened);
+    return summary(opened);
   }
 
-  async listSessions(): Promise<SessionSummary[]> {
-    const ids = await this.opts.dataDir.listSessionIds();
-    const out: SessionSummary[] = [];
-    for (const id of ids) {
-      const first = (await readRecords(this.opts.dataDir.sessionPath(id)))[0]?.record;
-      if (first?.type !== 'session_opened') continue;
-      out.push({ sessionId: id, kind: first.kind, title: first.title, openedAt: first.at });
-    }
-    return out.sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+  listSessions(): SessionSummary[] {
+    return this.opts.index.listSessions();
+  }
+
+  search(text: string): ReturnType<DerivedIndex['search']> {
+    return this.opts.index.search(text);
   }
 
   async records(sessionId: string): Promise<NumberedRecord[]> {
@@ -75,47 +99,80 @@ export class Hub {
     }
   }
 
-  isRunning(sessionId: string): boolean {
-    return this.live.get(sessionId)?.running !== undefined;
+  async opened(sessionId: string): Promise<SessionOpened> {
+    const first = (await this.records(sessionId))[0]?.record;
+    if (first?.type !== 'session_opened') throw new Error(`${sessionId} 正本缺开头记录`);
+    return first;
   }
 
-  /** 记下学习者的话并开始一轮；返回时学习者的话已落盘，模型回复在后台继续。 */
-  async send(sessionId: string, text: string): Promise<{ done: Promise<void> }> {
+  isRunning(sessionId: string): boolean {
+    const l = this.live.get(sessionId);
+    return l !== undefined && (l.running || l.queue.length > 0);
+  }
+
+  /**
+   * 记下一条输入（学习者的话或程序事实），排进这个会话的队列。
+   * 返回时输入已落盘；done 在这条输入那一轮跑完时兑现。
+   */
+  async send(sessionId: string, input: TurnInput): Promise<{ line: number; done: Promise<void> }> {
     const live = await this.ensureLive(sessionId);
-    if (live.running) throw new BusyError('上一轮还没结束');
-    let release!: () => void;
-    live.running = new Promise<void>((r) => (release = r));
-    this.emit({ type: 'running', sessionId, running: true });
-    try {
-      await this.append(sessionId, { type: 'user_message', at: this.iso(), text });
-    } catch (err) {
-      live.running = undefined;
-      release();
-      this.emit({ type: 'running', sessionId, running: false });
-      throw err;
-    }
-    const done = this.runTurn(sessionId, live, text).finally(() => {
-      live.running = undefined;
-      release();
-      this.emit({ type: 'running', sessionId, running: false });
-    });
-    return { done };
+    const line = await this.append(
+      sessionId,
+      input.role === 'learner'
+        ? { type: 'user_message', at: this.iso(), text: input.text }
+        : { type: 'program_fact', at: this.iso(), text: input.text },
+    );
+    // 证据引用照模型最顺手的方式：交给模型的每条消息前印它在正本里的行号（00 原则 8）
+    const delivered: TurnInput = {
+      role: input.role,
+      text: `[第 ${String(line)} 行] ${input.text}`,
+    };
+    let resolve!: () => void;
+    const done = new Promise<void>((r) => (resolve = r));
+    live.queue.push({ input: delivered, resolve });
+    if (!live.running) void this.drain(sessionId, live);
+    return { line, done };
+  }
+
+  /** 追加一条程序记录（不发给模型）。 */
+  async record(sessionId: string, record: LogRecord): Promise<number> {
+    await this.ensureLive(sessionId);
+    return this.append(sessionId, record);
+  }
+
+  /** 等这个会话的队列跑空。 */
+  async idle(sessionId: string): Promise<void> {
+    const live = await this.ensureLive(sessionId);
+    if (!live.running && live.queue.length === 0) return;
+    await new Promise<void>((r) => live.idle.push(r));
   }
 
   async close(): Promise<void> {
-    for (const live of this.live.values()) {
-      await live.running;
+    for (const [id, live] of this.live) {
+      await this.idle(id);
       await live.conversation?.close();
       await live.log.close();
     }
     this.live.clear();
   }
 
-  private async runTurn(sessionId: string, live: Live, text: string): Promise<void> {
+  private async drain(sessionId: string, live: Live): Promise<void> {
+    live.running = true;
+    this.emit({ type: 'running', sessionId, running: true });
+    for (let item = live.queue.shift(); item; item = live.queue.shift()) {
+      await this.runTurn(sessionId, live, item.input);
+      item.resolve();
+    }
+    live.running = false;
+    this.emit({ type: 'running', sessionId, running: false });
+    for (const r of live.idle.splice(0)) r();
+  }
+
+  private async runTurn(sessionId: string, live: Live, input: TurnInput): Promise<void> {
     const adapter = this.opts.model.name;
     try {
-      live.conversation ??= await this.openConversation(sessionId);
-      for await (const ev of live.conversation.send(text)) {
+      live.conversation ??= await this.openConversation(sessionId, live.kind);
+      for await (const ev of live.conversation.send(input)) {
         switch (ev.kind) {
           case 'text_delta':
             this.emit({ type: 'delta', sessionId, text: ev.text });
@@ -156,6 +213,7 @@ export class Hub {
       }
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
+      console.error(`会话 ${sessionId} 本轮失败：`, err);
       await this.append(sessionId, { type: 'turn_failed', at: this.iso(), reason });
       // 模型侧对话可能已坏：丢掉，下一轮按正本里的续接凭据重开
       await live.conversation?.close();
@@ -163,19 +221,49 @@ export class Hub {
     }
   }
 
-  private async openConversation(sessionId: string): Promise<ModelConversation> {
+  private async openConversation(
+    sessionId: string,
+    kind: ConversationKind,
+  ): Promise<ModelConversation> {
     const records = await this.records(sessionId);
-    const first = records[0]?.record;
-    if (first?.type !== 'session_opened') throw new Error(`${sessionId} 正本缺开头记录`);
     const adapter = this.opts.model.name;
-    const resumeToken = records
+    const resume = records
       .map((r) => r.record)
       .filter((r) => r.type === 'model_session' && r.adapter === adapter)
       .at(-1);
+    const cfg = this.opts.kinds(kind);
     return this.opts.model.open({
-      systemPrompt: this.opts.systemPrompts[first.kind],
-      ...(resumeToken?.type === 'model_session' ? { resumeToken: resumeToken.token } : {}),
+      systemPrompt: cfg.systemPrompt,
+      tools: cfg.tools(sessionId).map((t) => this.logged(sessionId, t)),
+      ...(resume?.type === 'model_session' ? { resumeToken: resume.token } : {}),
     });
+  }
+
+  /** 工具调用由程序记进正本（用了哪份资料、查了什么），不靠模型自报。 */
+  private logged(sessionId: string, t: ToolSpec): ToolSpec {
+    return {
+      ...t,
+      run: async (args) => {
+        let r: Awaited<ReturnType<ToolSpec['run']>>;
+        try {
+          r = await t.run(args);
+        } catch (err) {
+          r = {
+            text: `工具出错：${err instanceof Error ? err.message : String(err)}`,
+            isError: true,
+          };
+        }
+        await this.append(sessionId, {
+          type: 'tool_call',
+          at: this.iso(),
+          name: t.name,
+          args,
+          result: r.text,
+          isError: r.isError === true,
+        });
+        return r;
+      },
+    };
   }
 
   private ensureLive(sessionId: string): Promise<Live> {
@@ -184,9 +272,9 @@ export class Hub {
     let loading = this.loading.get(sessionId);
     if (!loading) {
       loading = (async () => {
-        await this.records(sessionId); // 不存在就报 NotFound
+        const opened = await this.opened(sessionId); // 不存在就报 NotFound
         const log = await SessionLog.open(this.opts.dataDir.sessionPath(sessionId));
-        const live: Live = { log, conversation: undefined, running: undefined };
+        const live = newLive(log, opened.kind);
         this.live.set(sessionId, live);
         return live;
       })().finally(() => this.loading.delete(sessionId));
@@ -195,11 +283,13 @@ export class Hub {
     return loading;
   }
 
-  private async append(sessionId: string, record: LogRecord): Promise<void> {
+  private async append(sessionId: string, record: LogRecord): Promise<number> {
     const live = this.live.get(sessionId);
     if (!live) throw new Error(`会话未打开：${sessionId}`);
     const line = await live.log.append(record);
+    this.opts.index.add(sessionId, line, record);
     this.emit({ type: 'record', sessionId, line, record });
+    return line;
   }
 
   private emit(e: ServerEvent): void {
@@ -209,6 +299,20 @@ export class Hub {
   private iso(): string {
     return this.now().toISOString();
   }
+}
+
+function newLive(log: SessionLog, kind: ConversationKind): Live {
+  return { log, kind, conversation: undefined, queue: [], running: false, idle: [] };
+}
+
+function summary(o: SessionOpened): SessionSummary {
+  return {
+    sessionId: o.sessionId,
+    kind: o.kind,
+    title: o.title,
+    openedAt: o.at,
+    ...(o.parent !== undefined ? { parent: o.parent } : {}),
+  };
 }
 
 function stamp(d: Date): string {

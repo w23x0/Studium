@@ -1,7 +1,8 @@
 // 与核心通话：口令从地址栏 ?token= 取一次，存进 sessionStorage。
 import type {
-  CreateSessionResponse,
+  ChooseResponse,
   ListSessionsResponse,
+  ProjectResponse,
   RecordsResponse,
   ServerEvent,
 } from '../shared/protocol.ts';
@@ -30,7 +31,25 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 
 export const api = {
   listSessions: () => call<ListSessionsResponse>('/sessions'),
-  createSession: () => call<CreateSessionResponse>('/sessions', { method: 'POST', body: '{}' }),
+  project: () => call<ProjectResponse>('/project'),
+  requestCard: () => call<object>('/cards/request', { method: 'POST', body: '{}' }),
+  choose: (cardId: string, option: number) =>
+    call<ChooseResponse>(`/cards/${cardId}/choose`, {
+      method: 'POST',
+      body: JSON.stringify({ option }),
+    }),
+  requestClose: (id: string) =>
+    call<object>(`/sessions/${id}/close-request`, { method: 'POST', body: '{}' }),
+  confirmClose: (id: string) =>
+    call<object>(`/sessions/${id}/confirm-close`, {
+      method: 'POST',
+      body: JSON.stringify({ note: '学习者在界面上确认结束' }),
+    }),
+  endUnclosed: (id: string) =>
+    call<object>(`/sessions/${id}/end`, {
+      method: 'POST',
+      body: JSON.stringify({ note: '学习者在界面上点了“结束（没合上）”' }),
+    }),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
   send: (id: string, text: string) =>
     call<object>(`/sessions/${id}/messages`, { method: 'POST', body: JSON.stringify({ text }) }),
