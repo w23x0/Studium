@@ -35,8 +35,12 @@ describe('验收：派生层删掉能重建', () => {
       body: '{}',
     });
     const { session } = (await res.json()) as { session: { sessionId: string } };
-    const { done } = await a.hub.send(session.sessionId, '动量守恒');
-    await done;
+    await fetch(`${a.server.url}/api/sessions/${session.sessionId}/messages`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}` },
+      body: JSON.stringify({ text: '动量守恒' }),
+    });
+    await a.hub.idle(session.sessionId);
     const listBefore = await get(a, '/sessions');
     const searchBefore = await get(a, `/search?q=${encodeURIComponent('动量')}`);
     await a.close();
