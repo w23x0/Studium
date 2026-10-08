@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../tests/helpers/tmp.ts';
 import { BusyError, Hub, NotFoundError } from './hub.ts';
+import { join } from 'node:path';
+import { DerivedIndex } from './index/derived-index.ts';
 import { DataDir } from './log/data-dir.ts';
 import { FakeModel, type FakeOptions } from './model/fake.ts';
 
@@ -12,7 +14,8 @@ afterEach(async () => {
 async function setup(fake: FakeOptions = {}, root?: string) {
   const dataDir = await DataDir.acquire(root ?? (await tempDir()));
   const model = new FakeModel(fake);
-  const hub = new Hub({ dataDir, model, systemPrompts: { main: '测试提示' } });
+  const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
+  const hub = new Hub({ dataDir, index, model, systemPrompts: { main: '测试提示' } });
   open.push(hub);
   return { dataDir, model, hub };
 }
