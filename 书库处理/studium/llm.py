@@ -76,7 +76,7 @@ def _call_oc(model: str, system: str, user: str, timeout: int) -> Result:
     )
 
 
-def call(model: str, system: str, user: str, timeout: int = 600) -> Result:
+def call(model: str, system: str, user: str, timeout: int = 600, effort: str | None = None) -> Result:
     if model.startswith("oc:"):
         return _call_oc(model[3:], system, user, timeout)
     cmd = [
@@ -88,7 +88,7 @@ def call(model: str, system: str, user: str, timeout: int = 600) -> Result:
         # 不加载任何 MCP 服务：否则连接器说明会异步混进上下文——既破坏隔离，也让前缀不稳定、读不到缓存
         "--strict-mcp-config", "--mcp-config", '{"mcpServers":{}}',
         "--output-format", "json",
-    ]
+    ] + (["--effort", effort] if effort else [])
     proc = subprocess.run(
         cmd, input=user, capture_output=True, text=True,
         cwd=_ISOLATED_CWD, timeout=timeout, env=os.environ.copy(),

@@ -20,6 +20,7 @@
 
 import argparse
 import datetime as dt
+import difflib
 import glob
 import hashlib
 import json
@@ -93,10 +94,13 @@ _TEX_CMD = re.compile(r"\\[A-Za-z]+")
 
 def norm(t: str) -> str:
     """比对用：去 LaTeX 命令名、$ {} ^ _ \\ 引号与空白，忽略大小写，ff→f（转换常丢连字）。只容写法差，不容改字。"""
+    t = re.sub(r"<[^>]+>", "", t)  # MinerU 夹的 <sub> <sup> 等标签
+    t = re.sub(r"\\(begin|end)\{[^}]*\}", "", t)
     t = _TEX_CMD.sub("", t)
     t = re.sub(r"&lt;", "<", t)
     t = re.sub(r"&gt;", ">", t)
-    return re.sub(r"[\s${}^_\\“”\"‘’'`*·]", "", t).casefold().replace("ff", "f")
+    t = re.sub(r"[\s${}^_\\“”\"‘’'`*·~]", "", t).casefold()
+    return t.replace("ff", "f").replace("ll", "l").rstrip(".,;:")  # 转换常丢 ff / ll 连字
 
 
 def _pieces(q: str) -> list[str]:
@@ -123,6 +127,11 @@ def locate_quote(lines: list[str], q: dict) -> tuple[int | None, str]:
     for i in range(len(lines)):
         if pcs[0] in norm(lines[i]) and hit(i, i + 3):
             return i + 1, "别处"
+    if 0 < want <= len(lines):  # 转录夹了杂字（如“step 2~~~I”）：所标行附近按字符序列近似比对，九成以上对上才算
+        q, seg = norm(text), norm("\n".join(lines[max(want - 2, 0):want + 1]))
+        sm = difflib.SequenceMatcher(None, q, seg, autojunk=False)
+        if q and sum(b.size for b in sm.get_matching_blocks()) >= 0.9 * len(q):
+            return want, "近似"
     return None, "找不到"
 
 
@@ -165,17 +174,20 @@ def _json(text: str) -> dict:
     return json.loads(t[a:z + 1])
 
 
+EFFORT = "high"  # 审核与回扫要逐段对照、判同一条路线：默认强度下 Sonnet 几乎不思考，回扫漏得多（10-08 第 3 章试跑）
+
+
 def _call(work: Path, label: str, model: str, system: str, user: str) -> dict:
     os.environ.setdefault("CLAUDE_CODE_MAX_OUTPUT_TOKENS", "64000")  # 一章的清单输出可能超过默认上限
-    res = llm.call(model, system, user, timeout=3600)
+    res = llm.call(model, system, user, timeout=3600, effort=EFFORT)
     stamp = dt.datetime.now().isoformat(timespec="seconds")
     with (work / "calls.log").open("a", encoding="utf-8") as f:
         f.write(f"{stamp}\t{label}\tmodel={res.model}\tin={res.input_tokens}\tcache_read={res.cache_read}\t"
-                f"out={res.output_tokens}\treq={res.requests}\t{res.seconds:.0f}s\n")
+                f"out={res.output_tokens}\treq={res.requests}\t{res.seconds:.0f}s\teffort={EFFORT}\n")
     (work / f"{label}.raw.txt").write_text(res.text, encoding="utf-8")
     print(f"  {label}: {res.model} in={res.input_tokens} out={res.output_tokens} {res.seconds:.0f}s", file=sys.stderr, flush=True)
     data = _json(res.text)
-    data["_meta"] = {"model": res.model, "at": stamp}
+    data["_meta"] = {"model": f"{res.model}（effort {EFFORT}）", "at": stamp}
     return data
 
 
@@ -201,7 +213,7 @@ class State:
         for p in gen["points"]:
             self.points[p["id"]] = {"id": p["id"], "name": p["name"], "sentence": p["sentence"], "keys": p.get("keys", []),
                                     "scope": "前置" if p.get("scope") == "前置" else "范围内", "origin": "生成",
-                                    "split_of": None, "audits": [], "cautions": [],
+                                    "split_of": p.get("same_object") or None, "audits": [], "cautions": [],
                                     "gen": {"prompt": meta["prompt"], "model": meta["model"]}}
         for c in gen["clauses"]:
             self.clauses[c["id"]] = {"id": c["id"], "from": c["from"], "to": c["to"], "text": c["text"], "origin": "生成",
@@ -226,6 +238,8 @@ class State:
         return f"回扫自 {x['origin']}"
 
     def merge(self, file: str, audit: dict, meta: dict) -> None:
+        if "book_points" in audit or "book_routes" in audit:
+            audit = _from_book_view(audit)
         tag = {"prompt": meta["prompt"], "model": meta["model"], "file": file}
         tmp = {}
         for n in audit.get("new_points", []):
@@ -258,6 +272,9 @@ class State:
             if bad:
                 self.problems.append(f"{file}：回扫子句 {b.get('tmp')} 用到不存在的点 {bad}，未并入")
                 continue
+            if to in frm:
+                self.problems.append(f"{file}：回扫子句 {b.get('tmp')} 的出发点含新点自己（{to}），未并入")
+                continue
             cid = f"C{self.nc}"; self.nc += 1
             rep = b.get("replaces") if b.get("replaces") in self.clauses else None
             self.clauses[cid] = {"id": cid, "from": frm, "to": to, "text": b["text"], "origin": file, "replaces": rep,
@@ -269,6 +286,37 @@ class State:
                 self.points[pid]["cautions"].append({"file": file, "text": k["text"], "quotes": k.get("quotes", [])})
         for t in audit.get("transcription_issues", []):
             self.transcription.append({"file": file, **t})
+
+
+def _from_book_view(a: dict) -> dict:
+    """审核提示词按“从书出发”输出（book_points / book_routes / parts）→ 并入用的形状（points / new_points / clauses / book_clauses）。"""
+    out = {"points": [], "new_points": [], "clauses": [], "book_clauses": [],
+           "cautions": a.get("cautions", []), "transcription_issues": a.get("transcription_issues", [])}
+    n = 0
+    for p in a.get("book_points", []):
+        if p.get("id"):
+            out["points"].append({"id": p["id"], "match": p.get("match", "一致"), "quotes": p.get("quotes", []),
+                                  "note": p.get("note", "")})
+            continue
+        n += 1
+        out["new_points"].append({"tmp": p.get("tmp") or f"_N{n}", "name": p.get("name", ""), "sentence": p.get("sentence", ""),
+                                  "keys": p.get("keys", []), "quotes": p.get("quotes", []),
+                                  "split_of": p.get("split_of") if p.get("match") == "书的定义不同" else None,
+                                  "note": p.get("note", "")})
+        if p.get("split_of") and p.get("match") == "书的定义不同":
+            out["points"].append({"id": p["split_of"], "match": "书的定义不同", "quotes": [],
+                                  "note": f"书按另一种定义讲：{p.get('name', '')}"})
+    for k, r in enumerate(a.get("book_routes", []), 1):
+        if r.get("same_as"):
+            out["clauses"].append({"id": r["same_as"], "verdict": "书给的", "quotes": r.get("quotes", []),
+                                   "note": r.get("note", "")})
+        else:
+            out["book_clauses"].append({"tmp": f"B{k}", "from": r.get("from", []), "to": r.get("to", ""),
+                                        "text": r.get("text", ""), "replaces": None, "quotes": r.get("quotes", []),
+                                        "note": r.get("note", "")})
+    for c in a.get("parts", []):
+        out["clauses"].append({"id": c.get("id"), "verdict": "零件", "quotes": c.get("quotes", []), "note": c.get("note", "")})
+    return out
 
 
 def audit_all(book: Path, work: Path, st: State, secs: list[dict], model: str, redo: bool) -> None:
@@ -441,13 +489,26 @@ def check(out: Path, seed: int = 7) -> str:
           f"- 书给的子句没有锚点：{book_no_anchor or '无'}",
           f"- 句子偏长：点 > 90 字 {len(long_p)}，子句 > 140 字 {len(long_c)}；"
           f"子句字数中位数 {sorted(len(c['text']) for c in cls)[len(cls) // 2] if cls else 0}", ""]
-    splits = [p for p in pts.values() if p.get("split_of") or p.get("book_differs")]
-    L += ["## 同一对象多定义", ""]
-    for p in splits:
-        tail = f"（拆自 {p['split_of']}「{pts[p['split_of']]['name']}」）" if p.get("split_of") in pts else ""
-        if p.get("book_differs"):
-            tail += "（书的定义不同：" + "；".join(d["note"][:80] for d in p["book_differs"]) + "）"
-        L.append(f"- {p['id']}「{p['name']}」{tail}")
+    groups = defaultdict(set)  # 同一对象：split_of 链 + 名字括号前相同（生成时按定义拆的点没有显式标记，按名字归组，只作检查线索）
+    for p in pts.values():
+        if p.get("split_of") in pts:
+            groups[p["split_of"]].update({p["split_of"], p["id"]})
+    by_name = defaultdict(list)
+    for p in pts.values():
+        by_name[re.split(r"[（(]", p["name"])[0].strip()].append(p["id"])
+    for ids in by_name.values():
+        if len(ids) > 1:
+            groups[ids[0]].update(ids)
+    L += ["## 同一对象多定义（拆成的点 · 彼此之间的子句）", ""]
+    for g in groups.values():
+        g = sorted(g, key=lambda x: int(x[1:]) if x[1:].isdigit() else 0)
+        links = [c["id"] for c in cls if c["to"] in g and set(c["from"]) & set(g)]
+        L.append("- " + "、".join(f"{x}「{pts[x]['name']}」（{pts[x]['source']}）" for x in g)
+                 + f"；互推子句 {links or '无'}")
+    differ = [p for p in pts.values() if p.get("book_differs")]
+    if differ:
+        L += ["", "书的定义与生成的不同（生成的那个点改判模型补的，书的点另列）："]
+        L += [f"- {p['id']}「{p['name']}」：" + "；".join(d["note"][:80] for d in p["book_differs"]) for p in differ]
     L += ["", "## 抽样核对锚点（随机 12 条，程序已核在所标行，人工 / 审查代理再看意思对不对）", ""]
     allanc = [(x["id"], a) for x in list(pts.values()) + cls for a in x["anchors"]]
     for xid, a in random.Random(seed).sample(allanc, min(12, len(allanc))):
@@ -474,9 +535,11 @@ def main(argv=None):
     ap.add_argument("--chapter", help="章号（按 m07/index.md）")
     ap.add_argument("--subject", default="线性代数")
     ap.add_argument("--out", type=Path, required=True)
-    ap.add_argument("--model", default="opus")
+    ap.add_argument("--model", default="sonnet")
+    ap.add_argument("--effort", default=EFFORT, help="claude -p 的思考强度（low / medium / high / xhigh / max）")
     ap.add_argument("--redo", choices=["gen", "audit"], action="append", default=[])
     a = ap.parse_args(argv)
+    globals()["EFFORT"] = a.effort
     work = a.out / "work"
     work.mkdir(parents=True, exist_ok=True)
     if a.cmd in ("run", "build"):
