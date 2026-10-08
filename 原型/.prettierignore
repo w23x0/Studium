@@ -3,3 +3,5 @@ dist
 var
 package-lock.json
 样例
+evals/tapes
+evals/reports
