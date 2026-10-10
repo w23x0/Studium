@@ -26,6 +26,7 @@ export const ACTIONS = [
   'endUnclosed',
   'objectToVerdict',
   'objectToRecord',
+  'confirmRecord',
 ] as const;
 export type ActionName = (typeof ACTIONS)[number];
 

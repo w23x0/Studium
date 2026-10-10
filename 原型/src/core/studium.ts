@@ -34,7 +34,17 @@ import {
 } from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { Objections } from './knowledge/objections.ts';
-import { STAGES, type M15 } from './knowledge/m15.ts';
+import { STAGES, type M15, type StateConfirmation } from './knowledge/m15.ts';
+import {
+  changesOf,
+  describeTrend,
+  intensityInput,
+  notesOf,
+  parseIntensity,
+  trendOf,
+  type IntensityChange,
+} from './intensity.ts';
+import { teachingToolSpecs, toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { isNotFound } from './log/session-log.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
@@ -59,6 +69,8 @@ export interface StudiumOptions {
   objections: Objections;
   /** 原文与出处（M07 检索、教材出处核对）。 */
   sources: Sources;
+  /** 教学工具（官方 + 学习者自己的）。 */
+  teaching: TeachingTools;
   now?: () => Date;
 }
 
@@ -566,6 +578,36 @@ export class Studium {
     };
     await this.o.objections.add(objection);
     return objection;
+  }
+
+  /** 学习者对一条 M15 状态记录确认 / 否认（界面上点的）：只追加一条，不改原记录；下次整理时被读到。 */
+  async confirmRecord(
+    recordId: string,
+    verdict: 'confirm' | 'deny',
+    note?: string,
+  ): Promise<StateConfirmation> {
+    if (this.o.m15.record(recordId) === undefined) {
+      throw new BadRequestError(`找不到这条状态记录：${recordId}。`);
+    }
+    const text = note?.trim();
+    const c: StateConfirmation = {
+      id: this.newId('cf'),
+      at: this.iso(),
+      recordId,
+      verdict: verdict === 'confirm' ? '确认' : '否认',
+      ...(text ? { note: text } : {}),
+    };
+    await this.o.m15.addConfirmation(c);
+    return c;
+  }
+
+  /** 所有闭环里教法强度的明显变化（程序算）。 */
+  private async allIntensityChanges(): Promise<IntensityChange[]> {
+    const out: IntensityChange[] = [];
+    for (const x of this.hub.listSessions().filter((y) => y.kind === 'loop')) {
+      out.push(...changesOf(x.sessionId, notesOf(await this.hub.records(x.sessionId))));
+    }
+    return out;
   }
 
   /** 附在一条 M09 / M10 / M15 记录描述后面的学习者异议（交给模型读；没有就是空串）。 */
@@ -1188,15 +1230,23 @@ export class Studium {
     return [
       {
         name: 'write_diagnosis',
-        description: '记这一轮的诊断（不给学习者看，守卫不读）。每轮先记诊断、再写给学习者的话。',
-        input: { text: z.string().describe('观察、指回的行号、怀疑、还缺什么') },
+        description:
+          '记这一轮的诊断（不给学习者看，守卫不读）。每轮先记诊断、再写给学习者的话；同时标这一轮打算用的教法强度（信息量 / 提示强度 / 挑战程度 / 节奏，各取一档，和偏输入还是偏练习），五项一起填。',
+        input: { text: z.string().describe('观察、指回的行号、怀疑、还缺什么'), ...intensityInput },
         run: async (a) => {
+          const parsed = parseIntensity(a);
+          if (!parsed.ok) return err(`诊断没记：${parsed.error}`);
           await this.hub.record(loopId, {
             type: 'loop_note',
             at: this.iso(),
             text: a.text as string,
+            ...(parsed.intensity ? { intensity: parsed.intensity } : {}),
           });
-          return ok('已记');
+          return ok(
+            parsed.intensity
+              ? '已记'
+              : '已记；这一轮没标教法强度（信息量 / 提示强度 / 挑战程度 / 节奏 / 偏向），下一轮请标上',
+          );
         },
       },
       {
@@ -1215,6 +1265,7 @@ export class Studium {
         },
       },
       this.stateQueryTool(),
+      ...teachingToolSpecs(this.o.teaching),
       {
         name: 'query_strategy_records',
         description:
@@ -1289,6 +1340,12 @@ export class Studium {
             `外部导入记录（学习者在系统之外学到的：自述 / 笔记；未验证，可信度低于闭环记录，教学中可以怀疑它）：\n${external.join('\n')}`,
           ]
         : []),
+      ...(p?.threshold === true
+        ? [
+            '新点是阈值概念：学习者在这一点上卡住是质变前的预期状态。卡住时在本闭环里调教法强度（分解粒度、节奏、信息量、提示强度、挑战程度），不换点、不改道（路线归 M05，闭环里不动）；合上标准不变，仍由守卫判。',
+            '',
+          ]
+        : []),
       '学习者状态（M15）与以前的教法记录（M10）：要用时查。',
       '',
       '现在开始这个闭环：先简短说明这次学什么、从哪出发，然后开始。',
@@ -1313,8 +1370,19 @@ export class Studium {
     const fresh = this.o.objections
       .all()
       .filter((o) => o.target.kind === 'm15' && (lastRun === undefined || o.at > lastRun));
+    // 学习者在界面上对状态记录的确认 / 否认，也算上次整理之后的新记录
+    const freshConfirmations = this.o.m15
+      .allConfirmations()
+      .filter((c) => lastRun === undefined || c.at > lastRun);
     // 没有新记录不整理（03「M15」）
-    if (facts.newLearnerLines === 0 && fresh.length === 0 && !force) return;
+    if (
+      facts.newLearnerLines === 0 &&
+      fresh.length === 0 &&
+      freshConfirmations.length === 0 &&
+      !force
+    ) {
+      return;
+    }
     const objections = this.o.objections.all().filter((o) => o.target.kind === 'm15');
     const s = await this.hub.createSession('m15', {
       title: '整理学习者状态',
@@ -1330,6 +1398,12 @@ export class Studium {
         ...(objections.length > 0
           ? [
               `学习者对状态记录的异议（自述；不覆盖可观察事实，对不上的两条都留、标冲突）：\n${objections.map((o) => `- ${this.o.objections.describe(o)}`).join('\n')}`,
+              '',
+            ]
+          : []),
+        ...(freshConfirmations.length > 0
+          ? [
+              `学习者在界面上对状态记录的确认 / 否认（确认的来源档升为“已确认”，由程序记；否认的与原记录对不上，两边都留、标冲突）：\n${freshConfirmations.map((c) => `- ${c.recordId} ${c.verdict}${c.note ? `：${c.note}` : ''}`).join('\n')}`,
               '',
             ]
           : []),
@@ -1363,6 +1437,7 @@ export class Studium {
     const out: string[] = [];
     const starts: string[] = [];
     const nextCovered: Record<string, number> = {};
+    const changes: IntensityChange[] = [];
     let newLearnerLines = 0;
     for (const x of sessions) {
       const recs = await this.hub.records(x.sessionId);
@@ -1381,6 +1456,7 @@ export class Studium {
       const freshLearner = fresh.filter((r) => r.record.type === 'user_message');
       newLearnerLines += freshLearner.length;
       if (freshLearner.length === 0) continue;
+      if (x.kind === 'loop') changes.push(...changesOf(x.sessionId, notesOf(recs)));
       const kindLabel = label[x.kind as keyof typeof label];
       const lines: string[] = [];
       let prev: NumberedRecord | undefined;
@@ -1422,6 +1498,13 @@ export class Studium {
       '',
       '上次整理之后的新记录（L 后是该会话正本的行号；教学行只放开头一段，全文用 read_session 查）：',
       out.join('\n\n') || '（没有新的学习者的话）',
+      ...(changes.length > 0
+        ? [
+            '',
+            '教法强度明显变化（程序从教学侧每轮的强度标注算出，只给位置和哪一项怎么变，不含诊断内容）。某条状态出现在这之后时，写状态记录用 after_change 填变化编号，不确定就不填：',
+            ...changes.map((c) => `- 变化编号：${c.id} · 一段学习 ${c.loopSessionId}：${c.text}`),
+          ]
+        : []),
     ].join('\n');
     return { text, covered: nextCovered, newLearnerLines };
   }
@@ -1506,8 +1589,22 @@ export class Studium {
           output_type: z.enum(['承载读数', '解释候选']),
           time_range: z.string().describe('本次会话 / 近期（几号到几号）/ 较稳定的现实约束'),
           refs: z.array(z.object({ session: z.string(), lines: z.array(z.number().int()) })),
+          after_change: z
+            .string()
+            .optional()
+            .describe(
+              '这条状态出现在某次教法强度明显变化之后时，填开场列出的变化编号；不确定就不填',
+            ),
         },
         run: async (a) => {
+          const afterId = typeof a.after_change === 'string' ? a.after_change.trim() : '';
+          const change =
+            afterId === ''
+              ? undefined
+              : (await this.allIntensityChanges()).find((c) => c.id === afterId);
+          if (afterId !== '' && change === undefined) {
+            return err(`没有这个教法强度变化编号：${afterId}；只能填开场列出的变化编号`);
+          }
           const refs = a.refs as { session: string; lines: number[] }[];
           const source = a.source as '自述' | '观察' | '推断';
           let learnerRef = false;
@@ -1543,6 +1640,16 @@ export class Studium {
             output: a.output_type as '承载读数' | '解释候选',
             timeRange: a.time_range as string,
             refs: refs.map((r) => ({ sessionId: r.session, lines: r.lines })),
+            ...(change
+              ? {
+                  afterTeaching: {
+                    changeId: change.id,
+                    loopSessionId: change.loopSessionId,
+                    line: change.line,
+                    text: change.text,
+                  },
+                }
+              : {}),
             m15SessionId: m15Id,
             model: await this.hub.executedModel(m15Id),
           });
@@ -1577,7 +1684,15 @@ export class Studium {
 
   private readonly strategyTargets = new Map<
     string,
-    { loopId: string; lines: Set<number>; toolsUsed: string[] }
+    {
+      loopId: string;
+      lines: Set<number>;
+      toolsUsed: string[];
+      toolUses: { name: string; line: number }[];
+      trend: ReturnType<typeof trendOf>;
+      /** 开场列出的“带标注”状态记录；有就必须写自查。 */
+      annotatedStateIds: string[];
+    }
   >();
 
   /** 闭环结束后记“这次教法管不管用”：对话原文 + 诊断记录（M04）+ 守卫判定 + 教学工具使用记录 + 单子。 */
@@ -1595,13 +1710,23 @@ export class Studium {
         : [],
     );
     const ended = records.find((r) => r.record.type === 'loop_ended');
-    // 教学工具（skill）还没接入：用了哪份由程序从工具调用里记，现在为空（03「教学工具怎么落」）
-    const toolsUsed: string[] = [];
+    // 用了哪份教学工具由程序从工具调用里读（03「教学工具怎么落」），不靠模型自报
+    const toolUses = toolUsesOf(records);
+    const toolsUsed = [...new Set(toolUses.map((u) => u.name))];
+    const trend = trendOf(notesOf(records));
+    // M10 对状态成因的自查：状态记录里有“出现在某次教法强度变化之后”标注的，先查自己的教法是不是成因
+    const annotated = this.o.m15
+      .allRecords()
+      .filter((r) => r.afterTeaching !== undefined)
+      .slice(-5);
     const s = await this.hub.createSession('m10', { title: '记教法效果', parent: loopId });
     this.strategyTargets.set(s.sessionId, {
       loopId,
       lines: new Set(records.map((r) => r.line)),
       toolsUsed,
+      toolUses,
+      trend,
+      annotatedStateIds: annotated.map((r) => r.id),
     });
     await this.hub.send(s.sessionId, {
       role: 'program',
@@ -1614,8 +1739,16 @@ export class Studium {
         '',
         `诊断记录（M04，闭环对话里写的）：\n${notes.join('\n') || '（无）'}`,
         '',
-        `教学工具使用记录：${toolsUsed.join('、') || '教学工具还没接入，只能从对话原文看用了什么做法'}`,
+        `教学工具使用记录（程序从工具调用里记的）：${toolUses.map((u) => `L${String(u.line)} ${u.name}`).join('、') || '这个闭环没取用教学工具，只能从对话原文看用了什么做法'}`,
         '',
+        `教法强度走向（程序汇总闭环里每轮诊断标的四项 + 偏向）：\n${trend ? describeTrend(trend) : '（诊断里没标强度）'}`,
+        '',
+        ...(annotated.length > 0
+          ? [
+              `状态记录里带“出现在 X 之后”标注的（先自查：自己的教法是不是这些状态的成因，不要直接当作学习者固有的状态；提交时 self_check 里写自查）：\n${annotated.map((r) => this.o.m15.describeRecord(r)).join('\n')}`,
+              '',
+            ]
+          : []),
         '闭环对话原文：',
         renderTranscript(records),
       ].join('\n'),
@@ -1634,10 +1767,20 @@ export class Studium {
         strategies: z.string(),
         followed_by: z.string(),
         evidence_lines: z.array(z.number().int()),
+        self_check: z
+          .string()
+          .optional()
+          .describe('开场列了带“出现在 X 之后”标注的状态记录时必填：自查自己的教法是不是成因'),
       },
       run: async (a) => {
         const target = this.strategyTargets.get(m10Id);
         if (!target) return err('找不到要记的闭环');
+        const selfCheck = typeof a.self_check === 'string' ? a.self_check.trim() : '';
+        if (target.annotatedStateIds.length > 0 && selfCheck === '') {
+          return err(
+            '开场列了带“出现在 X 之后”标注的状态记录：先自查自己的教法是不是成因，写进 self_check 再提交',
+          );
+        }
         const lines = a.evidence_lines as number[];
         const bad = lines.filter((l) => !target.lines.has(l));
         if (bad.length > 0) return err(`第 ${bad.join('、')} 行不在这个闭环的记录里`);
@@ -1650,6 +1793,11 @@ export class Studium {
           followedBy: a.followed_by as string,
           evidenceLines: lines,
           toolsUsed: target.toolsUsed,
+          ...(target.toolUses.length > 0 ? { toolUses: target.toolUses } : {}),
+          ...(target.trend ? { intensityTrend: target.trend } : {}),
+          ...(selfCheck !== ''
+            ? { selfCheck: { stateIds: target.annotatedStateIds, note: selfCheck } }
+            : {}),
           m10SessionId: m10Id,
           model: await this.hub.executedModel(m10Id),
         });

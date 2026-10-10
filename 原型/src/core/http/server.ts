@@ -25,8 +25,12 @@ import type {
   DisclosureResponse,
   FormationsResponse,
   LoopEvidenceResponse,
+  ConfirmationResponse,
   ObjectionResponse,
   ObjectionsResponse,
+  RecordConfirmationRequest,
+  TeachingToolResponse,
+  TeachingToolsResponse,
   Points08Response,
   ProjectOverviewResponse,
   RecordObjectionRequest,
@@ -173,6 +177,24 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       }
       const o = await studium.objectToRecord(body.kind, body.recordId, body.text);
       send(res, 201, { objection: { ...o, inLoop: false } } satisfies ObjectionResponse);
+      return;
+    }
+    if (
+      method === 'POST' &&
+      parts[1] === 'm15' &&
+      parts[2] === 'confirmations' &&
+      parts.length === 3
+    ) {
+      const body = (await readJson(req)) as Partial<RecordConfirmationRequest>;
+      if (typeof body.recordId !== 'string') throw new BadRequest('recordId 要是字符串');
+      if (body.verdict !== 'confirm' && body.verdict !== 'deny') {
+        throw new BadRequest('verdict 要是 confirm 或 deny');
+      }
+      if (body.note !== undefined && typeof body.note !== 'string') {
+        throw new BadRequest('note 要是字符串');
+      }
+      const c = await studium.confirmRecord(body.recordId, body.verdict, body.note);
+      send(res, 201, { confirmation: c } satisfies ConfirmationResponse);
       return;
     }
     if (method === 'GET' && parts[1] === 'project' && parts.length === 2) {
@@ -550,6 +572,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     } else if (a === 'objections' && n === 2) {
       const objections = ev.objections(q.get('kind') ?? undefined, q.get('record') ?? undefined);
       send(res, 200, { objections } satisfies ObjectionsResponse);
+    } else if (a === 'teaching-tools' && n === 2) {
+      send(res, 200, (await ev.teachingTools()) satisfies TeachingToolsResponse);
+    } else if (a === 'teaching-tools' && n === 3 && b !== undefined) {
+      send(res, 200, (await ev.teachingTool(decodeURIComponent(b))) satisfies TeachingToolResponse);
     } else if (a === 'disclosure' && n === 2) {
       send(res, 200, ev.disclosure() satisfies DisclosureResponse);
     } else {
