@@ -27,6 +27,11 @@ const RELOAD_ON = new Set([
   'loop_shelved',
   'loop_resumed',
   'parking_note',
+  // 跨段学习的长期功能（批 6）：提醒加上 / 办掉；复盘交回、开出复盘
+  'reminder_added',
+  'reminder_closed',
+  'talk_ended',
+  'task_opened',
 ]);
 
 function relevant(e: ServerEvent): boolean {

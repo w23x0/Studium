@@ -7,6 +7,7 @@ import {
   ChevronLeftIcon,
   ClipboardListIcon,
   GaugeIcon,
+  HistoryIcon,
   LayoutGridIcon,
   LibraryIcon,
   ListTreeIcon,
@@ -27,10 +28,16 @@ import {
 import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import type { NumberedRecord } from '../shared/records.ts';
 import { api } from './api.ts';
-import { ChoiceCardBox } from './components/choice-card.tsx';
+import { ChoiceCardBox, revisitOf } from './components/choice-card.tsx';
 import { OutputTaskBar } from './components/outputs/outputs-section.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
 import { ProjectHome } from './components/project-home.tsx';
+import {
+  LongtermBanner,
+  ReviewBanner,
+  UnclosedEndBar,
+} from './components/longterm/loop-extras.tsx';
+import { useReviewIds } from './components/longterm/reviews.tsx';
 import { OpenSessionContext, useOpenSession } from './open-session.ts';
 import {
   CurrentSessionContext,
@@ -46,6 +53,7 @@ import {
   loopSide,
   loopState,
   pendingCard,
+  reviewWindow,
   talkEnded,
   toUiMessages,
   type LoopSide,
@@ -97,6 +105,8 @@ export function App() {
   }, [refresh, fail]);
 
   const project = projects.find((p) => p.mainSessionId === projectId);
+  const reviewIds = useReviewIds(projectId);
+  const isReview = useCallback((id: string) => reviewIds.has(id), [reviewIds]);
   const tasks = sessions
     .filter(
       (s) =>
@@ -255,6 +265,11 @@ export function App() {
                               >
                                 {s.kind === 'output' ? (
                                   <PenLineIcon className="text-muted-foreground size-3.5 shrink-0" />
+                                ) : reviewIds.has(s.sessionId) ? (
+                                  <HistoryIcon
+                                    className="text-muted-foreground size-3.5 shrink-0"
+                                    aria-label={W.reviewBadge}
+                                  />
                                 ) : (
                                   <span className="text-muted-foreground w-3.5 text-center text-xs">
                                     ·
@@ -352,6 +367,7 @@ export function App() {
                   projectId={projectId}
                   projectTitle={project?.title ?? ''}
                   titleOf={titleOf}
+                  isReview={isReview}
                   focus={focus?.sessionId === current ? focus : undefined}
                   headerExtra={panelButton}
                   onOverview={() => setPage('overview')}
@@ -415,13 +431,14 @@ function Conversation(props: {
   projectId: string;
   projectTitle: string;
   titleOf: (id: string) => string | undefined;
+  isReview: (id: string) => boolean;
   focus: Focus | undefined;
   headerExtra: ReactNode;
   onOverview: () => void;
   onError: (e: unknown) => void;
   onBack: () => void;
 }) {
-  const { sessionId, kind, onError, titleOf, focus } = props;
+  const { sessionId, kind, onError, titleOf, isReview, focus } = props;
   const isMain = kind === 'main';
   const [records, setRecords] = useState<NumberedRecord[]>([]);
   const [draft, setDraft] = useState('');
@@ -463,8 +480,8 @@ function Conversation(props: {
   }, [sessionId, onError]);
 
   const messages = useMemo(
-    () => toUiMessages(records, draft, { running, titleOf }),
-    [records, draft, running, titleOf],
+    () => toUiMessages(records, draft, { running, titleOf, isReview }),
+    [records, draft, running, titleOf, isReview],
   );
 
   // 从依据面板跳过来：滚到被引用的那句（记录还没读回来时等读回来再滚）
@@ -516,6 +533,7 @@ function Conversation(props: {
   });
 
   const side = useMemo(() => (kind === 'loop' ? loopSide(records) : undefined), [kind, records]);
+  const review = kind === 'talk' ? reviewWindow(records) : undefined;
   const ended =
     kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
   const footer =
@@ -525,7 +543,11 @@ function Conversation(props: {
       <OutputTaskBar sessionId={sessionId} projectId={props.projectId} />
     ) : kind === 'talk' ? (
       ended ? (
-        <EndedBar text="方向谈好了。" onBack={props.onBack} backLabel={props.projectTitle} />
+        <EndedBar
+          text={review !== undefined ? W.reviewEnded : '方向谈好了。'}
+          onBack={props.onBack}
+          backLabel={props.projectTitle}
+        />
       ) : undefined
     ) : (
       <LoopBar
@@ -536,6 +558,7 @@ function Conversation(props: {
         running={running}
         onError={onError}
         onBack={props.onBack}
+        projectId={props.projectId}
         projectTitle={props.projectTitle}
       />
     );
@@ -569,7 +592,10 @@ function Conversation(props: {
         )}
         {props.headerExtra}
       </header>
-      {side !== undefined && <LoopBanner side={side} titleOf={titleOf} />}
+      {side !== undefined && (
+        <LoopBanner side={side} titleOf={titleOf} loopId={sessionId} projectId={props.projectId} />
+      )}
+      {review !== undefined && <ReviewBanner window={review} />}
     </div>
   );
 
@@ -583,7 +609,9 @@ function Conversation(props: {
               isMain
                 ? '想学什么？说说你的打算，或点“下一步学什么”。'
                 : kind === 'talk'
-                  ? '我们聊聊你想学什么。'
+                  ? review !== undefined
+                    ? W.reviewWelcome
+                    : '我们聊聊你想学什么。'
                   : kind === 'output'
                     ? W.outputChatWelcome
                     : '马上开始…'
@@ -613,12 +641,22 @@ const NO_SIDE: LoopSide = { openDetour: false };
 /**
  * 学习对话顶部的一行：这段是从哪段岔出来补什么的（可点回去）；或这段正在等岔出去的那段学完回来（可跳过去）。
  */
-function LoopBanner(props: { side: LoopSide; titleOf: (id: string) => string | undefined }) {
+function LoopBanner(props: {
+  side: LoopSide;
+  titleOf: (id: string) => string | undefined;
+  loopId: string;
+  projectId: string;
+}) {
   const { side, titleOf } = props;
   const open = useOpenSession();
-  if (side.fork === undefined && side.waiting === undefined) return null;
   return (
-    <div className="flex flex-col gap-1 px-4 pb-2 text-sm">
+    <div className="flex flex-col gap-1 px-4 pb-2 text-sm empty:hidden">
+      <LongtermBanner
+        side={side}
+        loopId={props.loopId}
+        projectId={props.projectId}
+        titleOf={titleOf}
+      />
       {side.fork !== undefined && (
         <div
           data-testid="fork-origin"
@@ -683,7 +721,11 @@ function MainBar(props: {
       <ChoiceCardBox
         cardId={card.cardId}
         recommended={card.recommended}
-        options={card.options}
+        options={card.options.map((o) => ({
+          title: o.title,
+          reason: o.reason,
+          revisit: revisitOf(o),
+        }))}
         onError={props.onError}
       />
     );
@@ -715,6 +757,7 @@ function LoopBar(props: {
   running: boolean;
   onError: (e: unknown) => void;
   onBack: () => void;
+  projectId: string;
   projectTitle: string;
 }) {
   const { side } = props;
@@ -736,9 +779,20 @@ function LoopBar(props: {
         />
       );
     }
+    if (!state.closed) {
+      return (
+        <UnclosedEndBar
+          loopId={props.sessionId}
+          projectId={props.projectId}
+          projectTitle={props.projectTitle}
+          onBack={props.onBack}
+          onError={props.onError}
+        />
+      );
+    }
     return (
       <EndedBar
-        text={state.closed ? '这部分学完了，下一步在项目里。' : '先学到这里，下一步在项目里。'}
+        text="这部分学完了，下一步在项目里。"
         backLabel={props.projectTitle}
         onBack={props.onBack}
       />

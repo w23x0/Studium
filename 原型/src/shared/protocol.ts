@@ -172,6 +172,8 @@ export interface TicketView {
   clauseId: string;
   startPoints: { point: PointRef; source: 'M09' | '自述' | '假定' }[];
   routeAction: string;
+  /** 复习 / 复检的单子（批 6）：回头看以前合上过的点；学新点时没有。 */
+  revisit?: { kind: '复习' | '复检'; formationIds: string[] };
 }
 
 /** 选项出处里的一条，已尽量回查。resolved 为假 = 查不到（原样给出 raw）。 */

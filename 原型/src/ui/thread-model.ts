@@ -5,6 +5,8 @@ import type {
   DetourOption,
   ForkOrigin,
   NumberedRecord,
+  ReviewWindow,
+  RevisitKind,
   RouteSignal,
 } from '../shared/records.ts';
 import { judgementLine, W } from './wording.ts';
@@ -43,6 +45,8 @@ export interface UiContext {
   running?: boolean;
   /** 会话名（回到某个对话的入口用）。 */
   titleOf?: (sessionId: string) => string | undefined;
+  /** 这个对话是阶段复盘吗（主对话里开出复盘的那句用）。 */
+  isReview?: (sessionId: string) => boolean;
 }
 
 export function toUiMessages(
@@ -105,12 +109,22 @@ export function toUiMessages(
         push({ id, role: 'system', text: `记下了你的方向：${r.text}`, line });
         break;
       case 'talk_ended':
-        push({ id, role: 'system', text: '方向谈好了，回到项目里接着往下。', line });
+        push({
+          id,
+          role: 'system',
+          text:
+            r.review !== undefined ? W.reviewEndedLine(r.goal) : '方向谈好了，回到项目里接着往下。',
+          line,
+        });
         break;
       case 'task_opened': {
-        // 写产出的对话（批 8b）标题是“写：某某”；别的是谈方向的对话
+        // 写产出的对话（批 8b）标题是“写：某某”；阶段复盘（批 6）；别的是谈方向的对话
         const label =
-          r.kind === 'output' ? `一起写：${r.title.replace(/^写：/, '')}` : '单独谈谈你想学什么';
+          r.kind === 'output'
+            ? `一起写：${r.title.replace(/^写：/, '')}`
+            : ctx.isReview?.(r.sessionId) === true
+              ? W.reviewTask
+              : '单独谈谈你想学什么';
         push({ id, role: 'system', text: label, line, link: { sessionId: r.sessionId, label } });
         break;
       }
@@ -244,6 +258,12 @@ export function loopState(records: NumberedRecord[]): LoopState {
   return state;
 }
 
+/** 阶段复盘的对话：回看的时间窗口（开头那行记的）；谈方向的对话没有。 */
+export function reviewWindow(records: NumberedRecord[]): ReviewWindow | undefined {
+  const first = records[0]?.record;
+  return first?.type === 'session_opened' ? first.review : undefined;
+}
+
 /** 畅谈对话交回了没有。 */
 export function talkEnded(records: NumberedRecord[]): boolean {
   return records.some((r) => r.record.type === 'talk_ended');
@@ -292,11 +312,17 @@ export interface LoopSide {
   waiting?: { forkLoopSessionId: string; kind: ForkOrigin['kind']; what: string };
   /** 有小卡还没选。 */
   openDetour: boolean;
+  /** 这段是接着另一段没学完的学的（批 6）。 */
+  resumeOf?: string;
+  /** 这段是复习 / 复检（批 6）。 */
+  revisit?: RevisitKind;
 }
 
 export function loopSide(records: NumberedRecord[]): LoopSide {
   let fork: LoopSide['fork'];
   let shelved: LoopSide['shelved'];
+  let resumeOf: string | undefined;
+  let revisit: RevisitKind | undefined;
   let ended = false;
   const signals = new Map<number, RouteSignal>();
   const cardSignal = new Map<string, number>();
@@ -308,6 +334,8 @@ export function loopSide(records: NumberedRecord[]): LoopSide {
         if (r.fork !== undefined) {
           fork = { fromLoop: r.fork.fromLoop, kind: r.fork.kind, what: forkWhat(r.fork.reason) };
         }
+        if (r.resumeOf !== undefined) resumeOf = r.resumeOf.fromLoop;
+        if (r.ticket?.revisit !== undefined) revisit = r.ticket.revisit.kind;
         break;
       case 'loop_ended':
         ended = true;
@@ -359,5 +387,7 @@ export function loopSide(records: NumberedRecord[]): LoopSide {
         }
       : {}),
     openDetour: !ended && openDetour,
+    ...(resumeOf !== undefined ? { resumeOf } : {}),
+    ...(revisit !== undefined ? { revisit } : {}),
   };
 }

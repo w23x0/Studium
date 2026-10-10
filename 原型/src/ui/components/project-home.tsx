@@ -1,7 +1,8 @@
 // 项目概览（照 Claude 项目的 Overview：按状态分组）：想学的方向与期限；学习按 等你选 · 进行中 · 等补完回来的 ·
 // 先放一放的 · 学完了 · 先放下的（没学完）分组，没学完的带“缺在哪、打算何时从哪接上”；同时开着太多时顶部提醒；
 // 岔开过的话列出学习之间的来龙去脉；“我的产出”列出自己写的东西（批 8b）。旁边一栏是项目资料（照 Claude 项目的“项目知识”）。
-import type { ReactNode } from 'react';
+// 批 6：顶部“今天该做的”；没学完的可“接着学”，续上的与原来那段互相指；复习 / 复检标出；旁栏加提醒与阶段复盘。
+import { useState, type ReactNode } from 'react';
 import {
   BookCheckIcon,
   CircleCheckIcon,
@@ -35,10 +36,13 @@ import { usePanel } from '../panel.ts';
 import { hasForks, relationRows } from '../relations-model.ts';
 import { learnerShelveNote } from '../thread-model.ts';
 import { W } from '../wording.ts';
-import { ChoiceCardBox } from './choice-card.tsx';
+import { ChoiceCardBox, revisitOf } from './choice-card.tsx';
 import { DeadlineLine, ProjectMaterials } from './project-materials.tsx';
 import { OutputsSection } from './outputs/outputs-section.tsx';
 import { Badge, Loading } from './evidence/parts.tsx';
+import { RemindersSection } from './longterm/reminders.tsx';
+import { ReviewsSection } from './longterm/reviews.tsx';
+import { TodaySection, useGoOnWith } from './longterm/today.tsx';
 
 export function ProjectHome(props: {
   projectId: string;
@@ -63,6 +67,13 @@ export function ProjectHome(props: {
                 onOpenChat={props.onOpenChat}
                 onError={props.onError}
               />
+              <TodaySection
+                key={o.today?.date ?? ''}
+                overview={o}
+                projectId={props.projectId}
+                onOpenChat={props.onOpenChat}
+                onError={props.onError}
+              />
               {/* 宽时两栏：左边学习分组，右边项目资料；窄时资料排在分组下面 */}
               <div className="grid grid-cols-1 gap-8 @4xl:grid-cols-[minmax(0,1fr)_18rem]">
                 <div className="flex min-w-0 flex-col gap-8">
@@ -74,6 +85,12 @@ export function ProjectHome(props: {
                 </div>
                 <aside className="flex min-w-0 flex-col gap-6">
                   <ProjectMaterials projectId={props.projectId} onError={props.onError} />
+                  <RemindersSection
+                    projectId={props.projectId}
+                    overview={o}
+                    onError={props.onError}
+                  />
+                  <ReviewsSection projectId={props.projectId} onError={props.onError} />
                 </aside>
               </div>
             </>
@@ -154,7 +171,11 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
             key={c.cardId}
             cardId={c.cardId}
             recommended={c.recommended}
-            options={c.options}
+            options={c.options.map((o) => ({
+              title: o.title,
+              reason: o.reason,
+              revisit: revisitOf(o),
+            }))}
             onError={props.onError}
           />
         ))}
@@ -165,6 +186,8 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
         hint={W.groupHints.inProgress}
         loops={g.inProgress}
         titles={titles}
+        overview={props.overview}
+        onError={props.onError}
         testId="group-in-progress"
       />
       {g.waitingFork !== undefined && g.waitingFork.length > 0 && (
@@ -174,6 +197,8 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
           hint={W.groupHints.waitingFork}
           loops={g.waitingFork}
           titles={titles}
+          overview={props.overview}
+          onError={props.onError}
           testId="group-waiting-fork"
         />
       )}
@@ -184,6 +209,8 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
           hint={W.groupHints.shelved}
           loops={g.shelved}
           titles={titles}
+          overview={props.overview}
+          onError={props.onError}
           testId="group-shelved"
         />
       )}
@@ -193,6 +220,8 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
         hint={W.groupHints.closed}
         loops={g.closed}
         titles={titles}
+        overview={props.overview}
+        onError={props.onError}
         testId="group-closed"
       />
       <LoopGroup
@@ -201,6 +230,8 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
         hint={W.groupHints.unclosed}
         loops={g.unclosed}
         titles={titles}
+        overview={props.overview}
+        onError={props.onError}
         testId="group-unclosed"
       />
     </div>
@@ -238,6 +269,8 @@ function LoopGroup(props: {
   hint: string;
   loops: LoopBrief[];
   titles: Map<string, string>;
+  overview: ProjectOverview;
+  onError: (e: unknown) => void;
   testId: string;
 }) {
   const loops = [...props.loops].sort((a, b) => b.openedAt.localeCompare(a.openedAt));
@@ -250,16 +283,32 @@ function LoopGroup(props: {
       testId={props.testId}
     >
       {loops.map((l) => (
-        <LoopRow key={l.sessionId} loop={l} titles={props.titles} />
+        <LoopRow
+          key={l.sessionId}
+          loop={l}
+          titles={props.titles}
+          overview={props.overview}
+          onError={props.onError}
+        />
       ))}
     </Group>
   );
 }
 
-function LoopRow(props: { loop: LoopBrief; titles: Map<string, string> }) {
+function LoopRow(props: {
+  loop: LoopBrief;
+  titles: Map<string, string>;
+  overview: ProjectOverview;
+  onError: (e: unknown) => void;
+}) {
   const open = useOpenSession();
   const panel = usePanel();
+  const goOn = useGoOnWith(props.onError);
+  const [continuing, setContinuing] = useState(false);
   const l = props.loop;
+  const resumedBy = l.resumedBy ?? [];
+  // 没学完就停下、还没接着学的：可以接着学（开一段新的）
+  const canContinue = l.status === 'unclosed' && resumedBy.length === 0;
   const shelvedNote = l.shelved !== undefined ? learnerShelveNote(l.shelved.note) : undefined;
   // 停车记录：没学完就停下的都显示；先放一放的显示它放下时记的
   const parking =
@@ -273,7 +322,22 @@ function LoopRow(props: { loop: LoopBrief; titles: Map<string, string> }) {
         className="flex flex-1 flex-col gap-0.5 px-4 py-2.5 text-left"
         onClick={() => open(l.sessionId)}
       >
-        <span className="font-medium">{l.title}</span>
+        <span className="flex flex-wrap items-center gap-1.5">
+          <span className="font-medium">{l.title}</span>
+          {l.revisit !== undefined && (
+            <Badge tone="accent" title={W.revisitHint[l.revisit]}>
+              {W.revisitKind[l.revisit]}
+            </Badge>
+          )}
+        </span>
+        {l.resumeOf !== undefined && (
+          <span className="text-muted-foreground flex items-center gap-1 text-xs">
+            <CornerDownRightIcon className="size-3" />
+            {W.resumeOfLine(
+              l.resumeOf.title ?? props.titles.get(l.resumeOf.loopSessionId) ?? W.thatPart,
+            )}
+          </span>
+        )}
         {l.forkOf !== undefined && (
           <span className="text-muted-foreground flex items-center gap-1 text-xs">
             <CornerDownRightIcon className="size-3" />
@@ -291,6 +355,11 @@ function LoopRow(props: { loop: LoopBrief; titles: Map<string, string> }) {
           </span>
         )}
         {parking !== undefined && <ParkingLines parking={parking} />}
+        {resumedBy.map((x) => (
+          <span key={x.loopSessionId} className="text-primary text-xs">
+            {W.resumedByLine(x.title ?? props.titles.get(x.loopSessionId) ?? W.thatPart)}
+          </span>
+        ))}
         <span className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
           {l.newPoint !== undefined && l.newPoint.name !== l.title && (
             <span>
@@ -304,6 +373,22 @@ function LoopRow(props: { loop: LoopBrief; titles: Map<string, string> }) {
           {l.lastVerdict !== undefined && <span>{W.lastJudgement(l.lastVerdict.closed)}</span>}
         </span>
       </button>
+      {canContinue && (
+        <div className="flex items-center border-s px-2">
+          <Button
+            variant="outline"
+            size="xs"
+            data-testid="continue-loop"
+            disabled={continuing}
+            onClick={() => {
+              setContinuing(true);
+              void goOn(props.overview, l.sessionId).finally(() => setContinuing(false));
+            }}
+          >
+            {continuing ? W.continuing : W.continueLoop}
+          </Button>
+        </div>
+      )}
       <button
         type="button"
         title={W.loopBasis}
@@ -394,6 +479,15 @@ function Relations(props: { projectId: string }) {
                   : back.returned.closed
                     ? W.forkBackDone
                     : W.forkBackNot}
+              </span>
+            )}
+            {rel.origin.kind === 'resume' && (
+              <span className="text-muted-foreground hidden text-xs @lg:inline">
+                {W.resumeOfLine(
+                  relations.find(
+                    (x) => rel.origin.kind === 'resume' && x.loopSessionId === rel.origin.fromLoop,
+                  )?.title ?? W.thatPart,
+                )}
               </span>
             )}
             {rel.origin.kind === 'card' && depth === 0 && (

@@ -13,7 +13,9 @@ import type {
 } from '../../../shared/protocol.ts';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
-import { usePanel } from '../../panel.ts';
+import { usePanel, useProject } from '../../panel.ts';
+import { levelText } from '../../longterm-model.ts';
+import { DeviationsSection, PointHistoryView, PointViewList } from '../longterm/learned.tsx';
 import { splitExternals } from '../../scope-model.ts';
 import { afterTeachingText, toolCounts, trendLines, verdictText } from '../../teaching-model.ts';
 import { W } from '../../wording.ts';
@@ -87,43 +89,43 @@ function OpenLoop(props: { sessionId: string }) {
 // ───────────── 我学会的 ─────────────
 
 /**
- * 分档：学完验证过的（学习里形成的记录）在上；还没核实的（自己说会的、笔记里看到的）单独一组在下，
- * 只作参考，不和验证过的混在一起。
+ * 以现在的样子为主（批 6）：每个知识点一行，点开看经过与每段学习的分析；
+ * 还没核实的（自己说会的、笔记里看到的）单独一组在下，只作参考；最后是“没按推荐走的时候”。
+ * 给了 recordId（别处点进来的一条记录）就直接看那条记录所在知识点的经过。
  */
-export function LearnedView(props: { recordId?: string | undefined }) {
+export function LearnedView(props: { recordId?: string | undefined; point?: string | undefined }) {
   const r = useLoad('m09', () => api.formations());
   const ext = useLoad('m09:external', () => api.externals());
-  const ready = r.data !== undefined;
+  const project = useProject();
+  const { recordId } = props;
+  const record = r.data?.records.find((f) => f.id === recordId);
+  const point = props.point ?? record?.newPoint.id;
+  const external = ext.data?.records.some((x) => x.id === recordId) === true;
   useEffect(() => {
-    if (!ready || props.recordId === undefined) return;
+    if (!external || recordId === undefined) return;
     document
-      .getElementById(`m09-${props.recordId}`)
+      .getElementById(`m09-${recordId}`)
       ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [ready, props.recordId]);
-  if (!r.data) return <Loading error={r.error} />;
-  const records = [...r.data.records].reverse();
+  }, [external, recordId]);
+  if (point !== undefined) {
+    return (
+      <PointHistoryView
+        point={point}
+        focusRecord={recordId}
+        renderFormation={(f, active, onObjected) => (
+          <Formation record={f} active={active} onObjected={onObjected} />
+        )}
+      />
+    );
+  }
+  // 点进来的是一条形成记录，还没读回来
+  if (recordId !== undefined && !r.data && !external) return <Loading error={r.error} />;
   const { self, notes } = splitExternals(ext.data?.records ?? []);
   const unverified = self.length + notes.length;
   return (
     <div className="flex flex-col gap-5" data-testid="learned-view">
       <h2 className="font-serif text-lg">{W.learned}</h2>
-      {records.length === 0 && unverified === 0 ? (
-        <div className="text-muted-foreground text-sm">{W.learnedEmpty}</div>
-      ) : (
-        <Section title={W.learnedVerified} hint={W.learnedVerifiedHint}>
-          {records.length === 0 && (
-            <div className="text-muted-foreground text-sm">{W.learnedVerifiedNone}</div>
-          )}
-          {records.map((f) => (
-            <Formation
-              key={f.id}
-              record={f}
-              active={f.id === props.recordId}
-              onObjected={r.reload}
-            />
-          ))}
-        </Section>
-      )}
+      <PointViewList />
       {ext.error !== undefined && <Loading error={ext.error} />}
       {unverified > 0 && (
         <Section title={W.learnedUnverified} hint={W.learnedUnverifiedHint}>
@@ -133,6 +135,7 @@ export function LearnedView(props: { recordId?: string | undefined }) {
           </div>
         </Section>
       )}
+      <DeviationsSection projectId={project} />
     </div>
   );
 }
@@ -156,7 +159,7 @@ function External(props: { record: ExternalRecordView }) {
   const x = props.record;
   const note = x.note;
   return (
-    <Card className="flex flex-col gap-3 border-dashed">
+    <Card id={`m09-${x.id}`} className="flex flex-col gap-3 border-dashed">
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge tone="warn">{W.unverified}</Badge>
         <Badge>{x.source === '自述' ? W.learnedSelf : W.learnedFromNotes}</Badge>
@@ -205,14 +208,31 @@ function External(props: { record: ExternalRecordView }) {
   );
 }
 
-function Formation(props: { record: FormationView; active: boolean; onObjected: () => void }) {
+export function Formation(props: {
+  record: FormationView;
+  active: boolean;
+  onObjected: () => void;
+}) {
   const f = props.record;
   return (
     <Card id={`m09-${f.id}`} active={props.active} className="flex flex-col gap-3">
-      <div className="flex items-center justify-between gap-2">
+      <div className="flex flex-wrap items-center gap-1.5">
         <PointLink point={f.newPoint} />
-        <Time at={f.at} />
+        {f.revisit !== undefined && (
+          <Badge tone="accent" title={W.revisitHint[f.revisit.kind]}>
+            {W.revisitKind[f.revisit.kind]}
+          </Badge>
+        )}
+        <span className="text-muted-foreground text-xs">
+          {W.versionN(f.version)}
+          {f.latest ? ` · ${W.latestBadge}` : ''}
+        </span>
+        <span className="ms-auto">
+          <Time at={f.at} />
+        </span>
       </div>
+      {f.summary !== undefined && f.summary !== '' && <div className="font-serif">{f.summary}</div>}
+      {levelText(f.level) !== undefined && <Field label={W.levelLabel}>{levelText(f.level)}</Field>}
       <Field label={W.understanding}>{f.understanding}</Field>
       {f.process !== '' && <Field label={W.process}>{f.process}</Field>}
       {f.unmet !== '' && <Field label={W.unmet}>{f.unmet}</Field>}

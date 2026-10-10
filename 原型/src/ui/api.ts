@@ -44,6 +44,17 @@ import type {
   TeachingToolsResponse,
   TeachingToolResponse,
   ConfirmationResponse,
+  AddReminderRequest,
+  ContinueLoopResponse,
+  DeviationsResponse,
+  PointViewDetailResponse,
+  PointViewResponse,
+  ReminderView,
+  RemindersResponse,
+  ReviewResponse,
+  ReviewsResponse,
+  TimelineResponse,
+  TodayView,
 } from '../shared/protocol.ts';
 import type {
   AddLiteratureRequest,
@@ -284,6 +295,41 @@ export const api = {
         brief !== undefined && brief.trim() !== '' ? { brief: brief.trim() } : {},
       ),
     }),
+  // ── 跨段学习的长期功能（批 6） ──
+  /** 我学会的：每个知识点现在的样子（派生，不存盘）。 */
+  pointView: () => call<PointViewResponse>('/m09/view'),
+  pointDetail: (point: string) =>
+    call<PointViewDetailResponse>(`/m09/view/${encodeURIComponent(point)}`),
+  timeline: (point?: string) => call<TimelineResponse>(`/m09/timeline?${qs({ point })}`),
+  /** 用现在的模型把一段学完的学习重新分析一遍（后台做，新的一版和旧的并存）。 */
+  reanalyze: (loop: string) =>
+    call<object>('/m09/reanalyze', { method: 'POST', body: JSON.stringify({ loop }) }),
+  /** 接着没学完的那段学：开一段新的学习。 */
+  continueLoop: (loopId: string) =>
+    call<ContinueLoopResponse>(`/sessions/${loopId}/continue`, { method: 'POST', body: '{}' }),
+  today: (projectId: string) => call<TodayView>(`/projects/${projectId}/today`),
+  reminders: (projectId: string, open?: boolean) =>
+    call<RemindersResponse>(
+      `/projects/${projectId}/reminders?${qs({ open: open === true ? 1 : undefined })}`,
+    ),
+  addReminder: (projectId: string, req: AddReminderRequest) =>
+    call<{ reminder: ReminderView }>(`/projects/${projectId}/reminders`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  closeReminder: (projectId: string, id: string, outcome: 'done' | 'dismissed') =>
+    call<{ reminder: ReminderView }>(`/projects/${projectId}/reminders/${id}`, {
+      method: 'POST',
+      body: JSON.stringify({ outcome }),
+    }),
+  deviations: (project?: string) => call<DeviationsResponse>(`/m05/deviations?${qs({ project })}`),
+  /** 开一段阶段复盘；since（YYYY-MM-DD）不给 = 从上次复盘起。 */
+  startReview: (projectId: string, since?: string) =>
+    call<ReviewResponse>(`/projects/${projectId}/review`, {
+      method: 'POST',
+      body: JSON.stringify(since !== undefined && since !== '' ? { since } : {}),
+    }),
+  reviews: (projectId: string) => call<ReviewsResponse>(`/projects/${projectId}/reviews`),
   /** 订阅事件：整页共用一条事件连接（浏览器对同一地址的长连接数有限），最后一个退订时关掉。 */
   events(onEvent: (e: ServerEvent) => void): () => void {
     listeners.add(onEvent);

@@ -8,10 +8,18 @@ import { useOpenSession } from '../open-session.ts';
 import { usePanel } from '../panel.ts';
 import { W } from '../wording.ts';
 
+/** 选项上的复习 / 复检标记（单子里带的）。 */
+export function revisitOf(o: {
+  ticket: { revisit?: { kind: '复习' | '复检' } | undefined };
+}): '复习' | '复检' | undefined {
+  return o.ticket.revisit?.kind;
+}
+
 export function ChoiceCardBox(props: {
   cardId: string;
   recommended: number;
-  options: { title: string; reason: string }[];
+  /** revisit：这一项是复习 / 复检以前学会的（批 6）。 */
+  options: { title: string; reason: string; revisit?: '复习' | '复检' | undefined }[];
   onError: (e: unknown) => void;
   className?: string;
 }) {
@@ -48,6 +56,15 @@ export function ChoiceCardBox(props: {
             >
               <div className="font-medium">
                 {o.title}
+                {o.revisit !== undefined && (
+                  <span
+                    data-testid="revisit-badge"
+                    title={W.revisitHint[o.revisit]}
+                    className="bg-primary/10 text-primary ms-2 rounded-full px-1.5 py-0.5 text-[0.7rem] font-medium"
+                  >
+                    {W.revisitKind[o.revisit]}
+                  </span>
+                )}
                 {i === props.recommended && (
                   <span className="text-primary ms-2 text-xs">{W.recommended}</span>
                 )}
@@ -55,7 +72,10 @@ export function ChoiceCardBox(props: {
                   <span className="text-muted-foreground ms-2 text-xs">{W.opening}</span>
                 )}
               </div>
-              <div className="text-muted-foreground text-sm">{o.reason}</div>
+              <div className="text-muted-foreground text-sm">
+                {o.revisit !== undefined && `${W.revisitHint[o.revisit]}。`}
+                {o.reason}
+              </div>
             </button>
             <button
               type="button"

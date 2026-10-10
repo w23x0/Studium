@@ -361,6 +361,9 @@ export class Evidence {
       clauseId: t.clause,
       startPoints: t.startPoints.map((s) => ({ point: this.pointRef(s.point), source: s.source })),
       routeAction: t.routeAction,
+      ...(t.revisit !== undefined
+        ? { revisit: { kind: t.revisit.kind, formationIds: [...t.revisit.formationIds] } }
+        : {}),
     };
   }
 

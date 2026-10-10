@@ -10,7 +10,8 @@ export type PanelTarget =
   | { kind: 'card'; cardId: string; option?: number }
   | { kind: 'point'; id: string }
   | { kind: 'clause'; id: string }
-  | { kind: 'learned'; recordId?: string }
+  /** 我学会的：不给 = 每个知识点现在的样子；point = 这个知识点的经过；recordId = 那条记录所在知识点的经过。 */
+  | { kind: 'learned'; recordId?: string; point?: string }
   | { kind: 'state' }
   | { kind: 'teaching' }
   /** 教法（教学工具）：不给名字 = 列表；给名字 = 这一份的全文。 */

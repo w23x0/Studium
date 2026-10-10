@@ -246,6 +246,12 @@ export function TicketBlock(props: { ticket: TicketView }) {
         </Field>
       )}
       {ticket.routeAction !== '' && <Field label={W.routeAction}>{ticket.routeAction}</Field>}
+      {ticket.revisit !== undefined && (
+        <div className="flex items-center gap-2 text-xs">
+          <Badge tone="accent">{W.revisitKind[ticket.revisit.kind]}</Badge>
+          <span className="text-muted-foreground">{W.revisitHint[ticket.revisit.kind]}</span>
+        </div>
+      )}
     </div>
   );
 }

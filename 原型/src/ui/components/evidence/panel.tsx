@@ -82,7 +82,13 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
     case 'clause':
       return <ClausePanel key={t.id} id={t.id} />;
     case 'learned':
-      return <LearnedView recordId={t.recordId} />;
+      return (
+        <LearnedView
+          key={`${t.point ?? ''}:${t.recordId ?? ''}`}
+          recordId={t.recordId}
+          point={t.point}
+        />
+      );
     case 'state':
       return <StateView />;
     case 'teaching':
