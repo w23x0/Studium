@@ -27,9 +27,22 @@ import type {
   ListSessionsResponse,
   RecordsResponse,
   SearchResponse,
+  BBox,
+  BooksResponse,
+  LibrarySearchResponse,
+  LocateResponse,
+  PageResponse,
+  ResolveCitationsResponse,
+  SectionResponse,
+  SourceReportRequest,
+  SourceReportResponse,
+  SourceReportsResponse,
+  TocResponse,
 } from '../../shared/protocol.ts';
 import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
+import { NoOriginalError, NoRendererError } from '../knowledge/m07-originals.ts';
+import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 
 export interface ServerOptions {
@@ -37,6 +50,8 @@ export interface ServerOptions {
   studium: Studium;
   /** 依据可见的只读视图（批 1a）。 */
   evidence: Evidence;
+  /** 原文与出处（批 2a）：资料浏览、检索、原件页面、教材出处、资料报错。 */
+  sources: Sources;
   token: string;
   host?: string;
   port: number;
@@ -96,7 +111,9 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     try {
       await route(req, res, parts, method);
     } catch (err) {
-      if (err instanceof NotFoundError) send(res, 404, { error: err.message });
+      if (err instanceof NotFoundError || err instanceof NoOriginalError)
+        send(res, 404, { error: err.message });
+      else if (err instanceof NoRendererError) send(res, 501, { error: err.message });
       else if (err instanceof BadRequest || err instanceof BadRequestError)
         send(res, 400, { error: err.message });
       else throw err;
@@ -109,7 +126,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     parts: string[],
     method: string,
   ): Promise<void> {
-    const { hub, studium, evidence } = opts;
+    const { hub, studium, evidence, sources } = opts;
+    if (parts[1] === 'library' && (await libraryRoute(req, res, parts, method, sources))) return;
     if (
       method === 'GET' &&
       (await readRoute(res, new URL(req.url ?? '/', 'http://localhost'), parts, evidence))
@@ -239,6 +257,118 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     send(res, 404, { error: '没有这个接口' });
   }
 
+  /** 原文与出处的接口（/api/library/…）；认出路径就回答并返回真。 */
+  async function libraryRoute(
+    req: IncomingMessage,
+    res: ServerResponse,
+    parts: string[],
+    method: string,
+    src: Sources,
+  ): Promise<boolean> {
+    const url = new URL(req.url ?? '/', 'http://localhost');
+    const q = url.searchParams;
+    const what = parts.slice(2).join('/');
+    const str = (name: string): string => {
+      const v = q.get(name);
+      if (v === null || v === '') throw new BadRequest(`缺少参数 ${name}`);
+      return v;
+    };
+    const int = (name: string): number | undefined => {
+      const v = q.get(name);
+      if (v === null || v === '') return undefined;
+      const n = Number(v);
+      if (!Number.isInteger(n)) throw new BadRequest(`${name} 要是整数`);
+      return n;
+    };
+    const need = (name: string): number => {
+      const n = int(name);
+      if (n === undefined) throw new BadRequest(`缺少参数 ${name}`);
+      return n;
+    };
+    if (method === 'GET') {
+      switch (what) {
+        case 'books':
+          send(res, 200, (await src.books()) satisfies BooksResponse);
+          return true;
+        case 'toc':
+          send(res, 200, (await src.toc(str('book'))) satisfies TocResponse);
+          return true;
+        case 'section':
+          send(
+            res,
+            200,
+            (await src.section(
+              str('book'),
+              str('file'),
+              int('from'),
+              int('to'),
+            )) satisfies SectionResponse,
+          );
+          return true;
+        case 'search':
+          send(
+            res,
+            200,
+            (await src.search(
+              str('q'),
+              q.get('book') ?? undefined,
+              int('limit'),
+            )) satisfies LibrarySearchResponse,
+          );
+          return true;
+        case 'page':
+          send(res, 200, (await src.page(str('book'), need('page'))) satisfies PageResponse);
+          return true;
+        case 'page/image': {
+          const png = await src.image(str('book'), need('page'), parseBBox(q.get('bbox')));
+          res.writeHead(200, {
+            'content-type': 'image/png',
+            'cache-control': 'private, max-age=3600',
+          });
+          res.end(png);
+          return true;
+        }
+        case 'locate': {
+          const from = need('from');
+          send(
+            res,
+            200,
+            (await src.locate(
+              str('book'),
+              str('file'),
+              from,
+              int('to') ?? from,
+            )) satisfies LocateResponse,
+          );
+          return true;
+        }
+        case 'reports': {
+          const reports = src.reports({
+            ...(q.get('book') ? { book: str('book') } : {}),
+            ...(q.get('file') ? { file: str('file') } : {}),
+          });
+          send(res, 200, { reports } satisfies SourceReportsResponse);
+          return true;
+        }
+      }
+      return false;
+    }
+    if (method === 'POST' && what === 'citations') {
+      const body = (await readJson(req)) as { text?: unknown };
+      if (typeof body.text !== 'string') throw new BadRequest('text 要是字符串');
+      send(res, 200, {
+        citations: await src.citations(body.text),
+      } satisfies ResolveCitationsResponse);
+      return true;
+    }
+    if (method === 'POST' && what === 'reports') {
+      const body = (await readJson(req)) as Partial<SourceReportRequest>;
+      send(res, 201, { report: await src.report(body) } satisfies SourceReportResponse);
+      return true;
+    }
+    return false;
+  }
+
   /** 依据可见的只读接口（GET）；认出路径就回答并返回真。 */
   async function readRoute(
     res: ServerResponse,
@@ -351,6 +481,26 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 }
 
 class BadRequest extends Error {}
+
+/** ?bbox=x0,y0,x1,y1（千分比，0–1000）；没给返回空。 */
+function parseBBox(v: string | null): BBox | undefined {
+  if (v === null || v === '') return undefined;
+  const n = v.split(',').map(Number);
+  const [a, b, c, d] = n;
+  if (
+    n.length !== 4 ||
+    n.some((x) => !Number.isFinite(x)) ||
+    a === undefined ||
+    b === undefined ||
+    c === undefined ||
+    d === undefined ||
+    c <= a ||
+    d <= b
+  ) {
+    throw new BadRequest('bbox 要是 x0,y0,x1,y1 四个数（0–1000），且右下大于左上');
+  }
+  return [a, b, c, d];
+}
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',
