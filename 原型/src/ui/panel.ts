@@ -5,13 +5,16 @@ import type { BBox } from '../shared/protocol.ts';
 /** 面板里能看的东西。 */
 export type PanelTarget =
   | { kind: 'home' }
-  | { kind: 'loop'; loopId: string; verdictLine?: number }
+  /** verdictLine：滚到这次判断；noteLine：滚到这一轮老师的观察（从“出现在教法变化之后”点进来）。 */
+  | { kind: 'loop'; loopId: string; verdictLine?: number; noteLine?: number }
   | { kind: 'card'; cardId: string; option?: number }
   | { kind: 'point'; id: string }
   | { kind: 'clause'; id: string }
   | { kind: 'learned'; recordId?: string }
   | { kind: 'state' }
   | { kind: 'teaching' }
+  /** 教法（教学工具）：不给名字 = 列表；给名字 = 这一份的全文。 */
+  | { kind: 'tools'; name?: string }
   | { kind: 'disclosure' }
   /** 资料：不给书 = 书列表；给书 = 这本书的目录。 */
   | { kind: 'library'; book?: string }

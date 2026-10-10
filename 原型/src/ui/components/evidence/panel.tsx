@@ -9,6 +9,7 @@ import {
   ListTreeIcon,
   SendIcon,
   ShieldCheckIcon,
+  SparklesIcon,
   XIcon,
 } from 'lucide-react';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
@@ -20,6 +21,7 @@ import { DisclosureView } from './disclosure-view.tsx';
 import { LoopView } from './loop-view.tsx';
 import { ClausePanel, PointPanel } from './m08-view.tsx';
 import { LearnedView, StateView, TeachingView } from './records-view.tsx';
+import { ToolsView } from './tools-view.tsx';
 import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
 import { PointsBrowse } from '../sources/points-browse.tsx';
 import { SourceView } from '../sources/source-view.tsx';
@@ -62,7 +64,14 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
     case 'home':
       return <Home loopId={props.loopId} />;
     case 'loop':
-      return <LoopView key={t.loopId} loopId={t.loopId} verdictLine={t.verdictLine} />;
+      return (
+        <LoopView
+          key={t.loopId}
+          loopId={t.loopId}
+          verdictLine={t.verdictLine}
+          noteLine={t.noteLine}
+        />
+      );
     case 'card':
       return <CardEvidence key={t.cardId} cardId={t.cardId} option={t.option} />;
     case 'point':
@@ -75,6 +84,8 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
       return <StateView />;
     case 'teaching':
       return <TeachingView />;
+    case 'tools':
+      return <ToolsView key={t.name ?? ''} name={t.name} />;
     case 'disclosure':
       return <DisclosureView />;
     case 'library':
@@ -162,6 +173,11 @@ function Home(props: { loopId?: string | undefined }) {
         icon={<ClipboardListIcon />}
         label={W.teaching}
         onClick={() => panel.show({ kind: 'teaching' })}
+      />
+      <HomeItem
+        icon={<SparklesIcon />}
+        label={W.tools}
+        onClick={() => panel.show({ kind: 'tools' })}
       />
       <HomeItem
         icon={<SendIcon />}

@@ -14,6 +14,7 @@ import {
   PanelRightCloseIcon,
   PanelRightOpenIcon,
   SendIcon,
+  SparklesIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -284,6 +285,14 @@ export function App() {
                 <SideItem active={false} onClick={() => panelApi.show({ kind: 'teaching' })}>
                   <ClipboardListIcon className="text-muted-foreground size-3.5" />
                   {W.teaching}
+                </SideItem>
+                <SideItem
+                  active={false}
+                  onClick={() => panelApi.show({ kind: 'tools' })}
+                  testId="nav-tools"
+                >
+                  <SparklesIcon className="text-muted-foreground size-3.5" />
+                  {W.tools}
                 </SideItem>
                 <button
                   type="button"

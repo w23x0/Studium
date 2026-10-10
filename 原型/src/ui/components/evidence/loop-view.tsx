@@ -1,12 +1,15 @@
 // 一段学习的依据：开场安排、从哪来与中途经过（岔开、先停一下、没学完的地方）、老师的观察记录、
-// 每次是否学会的判断（理由、原话、不同看法）。
+// 每次是否学会的判断（理由、原话、不同看法）；每轮的教法强度与走势、用到的教法（批 7）。
 import { useEffect, useRef } from 'react';
 import type { GuardVerdictView, LoopEvidence } from '../../../shared/protocol.ts';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
 import { W } from '../../wording.ts';
+import { loopTrend, toolCounts } from '../../teaching-model.ts';
+import { IntensityLine, TrendChart } from './intensity-view.tsx';
 import { LoopDetours } from './loop-detour-view.tsx';
+import { ToolChip } from './tools-view.tsx';
 import {
   Badge,
   Card,
@@ -22,8 +25,12 @@ import {
   Time,
 } from './parts.tsx';
 
-export function LoopView(props: { loopId: string; verdictLine?: number | undefined }) {
-  const { loopId, verdictLine } = props;
+export function LoopView(props: {
+  loopId: string;
+  verdictLine?: number | undefined;
+  noteLine?: number | undefined;
+}) {
+  const { loopId, verdictLine, noteLine } = props;
   const r = useLoad(`loop:${loopId}`, () => api.loopEvidence(loopId));
   const panel = usePanel();
   const loop = r.data?.loop;
@@ -45,7 +52,16 @@ export function LoopView(props: { loopId: string; verdictLine?: number | undefin
       ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [loopId, verdictLine, focusLines, jump]);
 
+  // 从“出现在教法变化之后”点进来：滚到那一轮的观察
+  const ready = loop !== undefined;
+  useEffect(() => {
+    if (!ready || noteLine === undefined) return;
+    scrollToNote(noteLine);
+  }, [ready, noteLine]);
+
   if (!loop) return <Loading error={r.error} />;
+  const trend = loopTrend(loop.diagnoses);
+  const tools = toolCounts(loop.teachingToolsUsed);
   return (
     <div className="flex flex-col gap-6">
       <div className="flex flex-col gap-1">
@@ -104,11 +120,39 @@ export function LoopView(props: { loopId: string; verdictLine?: number | undefin
           <div className="text-muted-foreground text-sm">{W.noNotes}</div>
         )}
         {loop.diagnoses.map((d) => (
-          <Card key={d.line}>
+          <Card
+            key={d.line}
+            id={`note-${String(d.line)}`}
+            active={d.line === noteLine}
+            className="flex flex-col gap-2"
+          >
             <div className="whitespace-pre-wrap">{d.text}</div>
+            {d.intensity !== undefined && (
+              <IntensityLine intensity={d.intensity} sessionId={loop.sessionId} />
+            )}
             <Time at={d.at} />
           </Card>
         ))}
+      </Section>
+
+      {trend !== undefined && (
+        <Section title={W.intensityTrend} hint={W.intensityTrendHint}>
+          <Card>
+            <TrendChart trend={trend} onTurn={scrollToNote} />
+          </Card>
+        </Section>
+      )}
+
+      <Section title={W.toolsUsedHere} {...(tools.length > 0 ? { hint: W.toolsUsedHint } : {})}>
+        {tools.length === 0 ? (
+          <div className="text-muted-foreground text-sm">{W.toolsUsedNone}</div>
+        ) : (
+          <div className="flex flex-wrap gap-1.5">
+            {tools.map((t) => (
+              <ToolChip key={t.name} name={t.name} count={t.count} />
+            ))}
+          </div>
+        )}
       </Section>
 
       {loop.endNote !== undefined && (
@@ -118,6 +162,12 @@ export function LoopView(props: { loopId: string; verdictLine?: number | undefin
       )}
     </div>
   );
+}
+
+function scrollToNote(line: number) {
+  document
+    .getElementById(`note-${String(line)}`)
+    ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 function Verdict(props: {
