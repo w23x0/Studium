@@ -13,6 +13,7 @@ import {
   MessageCircleIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
+  PenLineIcon,
   SendIcon,
   SparklesIcon,
 } from 'lucide-react';
@@ -27,6 +28,7 @@ import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import type { NumberedRecord } from '../shared/records.ts';
 import { api } from './api.ts';
 import { ChoiceCardBox } from './components/choice-card.tsx';
+import { OutputTaskBar } from './components/outputs/outputs-section.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
 import { ProjectHome } from './components/project-home.tsx';
 import { OpenSessionContext, useOpenSession } from './open-session.ts';
@@ -96,7 +98,10 @@ export function App() {
 
   const project = projects.find((p) => p.mainSessionId === projectId);
   const tasks = sessions
-    .filter((s) => (s.kind === 'loop' || s.kind === 'talk') && s.parent === projectId)
+    .filter(
+      (s) =>
+        (s.kind === 'loop' || s.kind === 'talk' || s.kind === 'output') && s.parent === projectId,
+    )
     .sort((a, b) => a.openedAt.localeCompare(b.openedAt));
   const currentSession = sessions.find((s) => s.sessionId === current);
   const titleOf = useCallback(
@@ -248,9 +253,13 @@ export function App() {
                                   setPage('chat');
                                 }}
                               >
-                                <span className="text-muted-foreground w-3.5 text-center text-xs">
-                                  ·
-                                </span>
+                                {s.kind === 'output' ? (
+                                  <PenLineIcon className="text-muted-foreground size-3.5 shrink-0" />
+                                ) : (
+                                  <span className="text-muted-foreground w-3.5 text-center text-xs">
+                                    ·
+                                  </span>
+                                )}
                                 {s.title}
                               </SideItem>
                             </li>
@@ -355,10 +364,12 @@ export function App() {
               <aside
                 className={cn(
                   'bg-sidebar/60 flex shrink-0 flex-col border-s',
-                  // 看书（原文、原件页面）时面板放宽，像 Claude 的 artifact 面板
-                  isWideTarget(panel.stack.at(-1) ?? { kind: 'home' })
-                    ? 'w-[min(44rem,50vw)]'
-                    : 'w-[min(28rem,40vw)]',
+                  // 看书（原文、原件页面）时面板放宽，看与改产出物时更宽，像 Claude 的 artifact 面板
+                  panel.stack.at(-1)?.kind === 'output'
+                    ? 'w-[min(56rem,56vw)]'
+                    : isWideTarget(panel.stack.at(-1) ?? { kind: 'home' })
+                      ? 'w-[min(44rem,50vw)]'
+                      : 'w-[min(28rem,40vw)]',
                 )}
               >
                 <EvidencePanel
@@ -510,6 +521,8 @@ function Conversation(props: {
   const footer =
     kind === 'main' ? (
       <MainBar projectId={props.projectId} records={records} running={running} onError={onError} />
+    ) : kind === 'output' ? (
+      <OutputTaskBar sessionId={sessionId} projectId={props.projectId} />
     ) : kind === 'talk' ? (
       ended ? (
         <EndedBar text="方向谈好了。" onBack={props.onBack} backLabel={props.projectTitle} />
@@ -571,7 +584,9 @@ function Conversation(props: {
                 ? '想学什么？说说你的打算，或点“下一步学什么”。'
                 : kind === 'talk'
                   ? '我们聊聊你想学什么。'
-                  : '马上开始…'
+                  : kind === 'output'
+                    ? W.outputChatWelcome
+                    : '马上开始…'
             }
             footer={footer}
             disabled={ended}

@@ -33,6 +33,13 @@ function relevant(e: ServerEvent): boolean {
   return e.type === 'record' && RELOAD_ON.has(e.record.type);
 }
 
+const localBumps = new Set<() => void>();
+
+/** 界面自己写了不进正本记录的东西（如存产出物、登记文献）：让读着的视图都重读一次。 */
+export function bumpLive(): void {
+  for (const f of [...localBumps]) f();
+}
+
 /** 相关记录到来时变一次的计数（攒半秒，避免一串记录连着重读）。 */
 export function useLiveTick(): number {
   const [tick, setTick] = useState(0);
@@ -43,8 +50,11 @@ export function useLiveTick(): number {
       if (timer !== undefined) clearTimeout(timer);
       timer = setTimeout(() => setTick((t) => t + 1), 500);
     });
+    const bump = () => setTick((t) => t + 1);
+    localBumps.add(bump);
     return () => {
       if (timer !== undefined) clearTimeout(timer);
+      localBumps.delete(bump);
       stop();
     };
   }, []);

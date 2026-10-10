@@ -1,6 +1,6 @@
 // 项目概览（照 Claude 项目的 Overview：按状态分组）：想学的方向与期限；学习按 等你选 · 进行中 · 等补完回来的 ·
 // 先放一放的 · 学完了 · 先放下的（没学完）分组，没学完的带“缺在哪、打算何时从哪接上”；同时开着太多时顶部提醒；
-// 岔开过的话列出学习之间的来龙去脉。旁边一栏是项目资料（照 Claude 项目的“项目知识”）。
+// 岔开过的话列出学习之间的来龙去脉；“我的产出”列出自己写的东西（批 8b）。旁边一栏是项目资料（照 Claude 项目的“项目知识”）。
 import type { ReactNode } from 'react';
 import {
   BookCheckIcon,
@@ -37,6 +37,7 @@ import { learnerShelveNote } from '../thread-model.ts';
 import { W } from '../wording.ts';
 import { ChoiceCardBox } from './choice-card.tsx';
 import { DeadlineLine, ProjectMaterials } from './project-materials.tsx';
+import { OutputsSection } from './outputs/outputs-section.tsx';
 import { Badge, Loading } from './evidence/parts.tsx';
 
 export function ProjectHome(props: {
@@ -67,6 +68,7 @@ export function ProjectHome(props: {
                 <div className="flex min-w-0 flex-col gap-8">
                   <LoadNotice load={o.load} />
                   <Groups overview={o} onError={props.onError} />
+                  <OutputsSection projectId={props.projectId} />
                   <Relations projectId={props.projectId} />
                   <AboutMe />
                 </div>

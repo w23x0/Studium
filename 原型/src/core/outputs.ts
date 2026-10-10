@@ -97,6 +97,8 @@ export class Outputs {
       latest: last?.n ?? 0,
       updatedAt: last?.at ?? o.at,
       versions: vs.length,
+      ...(last !== undefined ? { latestBy: last.by } : {}),
+      taskSessions: this.d.store.tasksOf(id).map((t) => t.sessionId),
     };
   }
 
@@ -444,34 +446,18 @@ export class Outputs {
           outputId = (await this.create(mainId, { title, kind: a.kind as OutputKind }, '模型协助'))
             .id;
         }
-        const s = this.summary(outputId);
-        const title = `写：${s.title}`;
-        const task = await this.hub.createSession('output', {
-          title,
-          parent: mainId,
-          anchorLine: asked.line,
-        });
-        await this.d.store.bindTask({
-          sessionId: task.sessionId,
-          output: outputId,
-          at: this.iso(),
-        });
-        await this.hub.send(task.sessionId, {
-          role: 'program',
-          text: [
-            `学习者在主对话里说（主对话第 ${String(asked.line)} 行）：${asked.record.text}`,
-            ...(typeof a.brief === 'string' && a.brief.trim() !== ''
-              ? [`想写的：${a.brief.trim()}`]
-              : []),
-            `产出物：${outputId}「${s.title}」（${s.kind}），${s.latest === 0 ? '还没有版本' : `已有 ${String(s.latest)} 版，先用 read_output 看最新版`}。`,
-            '',
-            '接着学习者这句话，和他一起写。',
-          ].join('\n'),
-        });
+        const { sessionId, title } = await this.startTask(
+          outputId,
+          mainId,
+          [`学习者在主对话里说（主对话第 ${String(asked.line)} 行）：${asked.record.text}`],
+          typeof a.brief === 'string' ? a.brief : undefined,
+          '接着学习者这句话，和他一起写。',
+          asked.line,
+        );
         await this.hub.record(mainId, {
           type: 'task_opened',
           at: this.iso(),
-          sessionId: task.sessionId,
+          sessionId,
           kind: 'output',
           title,
           anchorLine: asked.line,
@@ -479,6 +465,55 @@ export class Outputs {
         return ok('已在学习者这条消息下开了“写产出”对话，学习者点进去和你一起写。');
       },
     };
+  }
+
+  /**
+   * 开一个“写产出”对话并绑定产出物，开场交给模型：来由几行 + 想写的 + 产出物现状 + 最后一句怎么接。
+   * 主对话的工具与学习者从产出物页直接开都走这里。
+   */
+  private async startTask(
+    outputId: string,
+    project: string,
+    origin: string[],
+    brief: string | undefined,
+    closing: string,
+    anchorLine?: number,
+  ): Promise<{ sessionId: string; title: string }> {
+    const s = this.summary(outputId);
+    const title = `写：${s.title}`;
+    const task = await this.hub.createSession('output', {
+      title,
+      parent: project,
+      ...(anchorLine !== undefined ? { anchorLine } : {}),
+    });
+    await this.d.store.bindTask({ sessionId: task.sessionId, output: outputId, at: this.iso() });
+    await this.hub.send(task.sessionId, {
+      role: 'program',
+      text: [
+        ...origin,
+        ...(brief !== undefined && brief.trim() !== '' ? [`想写的：${brief.trim()}`] : []),
+        `产出物：${outputId}「${s.title}」（${s.kind}），${s.latest === 0 ? '还没有版本' : `已有 ${String(s.latest)} 版，先用 read_output 看最新版`}。`,
+        '',
+        closing,
+      ].join('\n'),
+    });
+    return { sessionId: task.sessionId, title };
+  }
+
+  /** 学习者在产出物页上点“和老师一起写”：在产出物所在项目下开一个“写产出”对话（不挂在主对话的哪句话下）。 */
+  async openTask(output: string, brief?: unknown): Promise<string> {
+    const o = this.require(output);
+    if (brief !== undefined && typeof brief !== 'string') {
+      throw new BadRequestError('brief 要是字符串');
+    }
+    const { sessionId } = await this.startTask(
+      output,
+      o.project,
+      ['学习者在产出物页上开了这个对话，想和你一起写这份产出物。'],
+      brief,
+      '先问学习者这次想写或改哪里，再一起写。',
+    );
+    return sessionId;
   }
 
   /** “写产出”对话里的工具（只读 M07 / M08 的工具由 Studium 另给）。写入时程序记“模型协助”和本对话。 */

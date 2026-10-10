@@ -134,6 +134,10 @@ export interface OutputSummary {
   latest: number;
   updatedAt: string;
   versions: number;
+  /** 最新版是谁写的（还没有版本时没有）。 */
+  latestBy?: OutputAuthor;
+  /** 在这个产出物上开过的“写产出”对话（会话 id，按开的先后）。 */
+  taskSessions: string[];
 }
 
 export interface VersionSummary {
@@ -259,6 +263,16 @@ export interface MarkCandidateRequest {
 
 export interface CandidateResponse {
   candidate: GeneralCandidate;
+}
+
+/** 学习者从产出物页直接开一个“写产出”对话。 */
+export interface OpenOutputTaskRequest {
+  /** 想写 / 想改什么，一两句（可不填）。 */
+  brief?: string;
+}
+
+export interface OpenOutputTaskResponse {
+  sessionId: string;
 }
 
 export interface CandidatesResponse {

@@ -1,4 +1,4 @@
-// 右侧依据面板（照 Claude 的 artifact 面板）：可开可关，面板里点开的东西可返回。
+// 右侧依据面板（照 Claude 的 artifact 面板）：可开可关，面板里点开的东西可返回；我的产出也在这里看与改。
 import type { ReactNode } from 'react';
 import {
   BookCheckIcon,
@@ -25,6 +25,7 @@ import { ToolsView } from './tools-view.tsx';
 import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
 import { PointsBrowse } from '../sources/points-browse.tsx';
 import { SourceView } from '../sources/source-view.tsx';
+import { OutputPage } from '../outputs/output-page.tsx';
 
 export function EvidencePanel(props: {
   target: PanelTarget;
@@ -42,7 +43,9 @@ export function EvidencePanel(props: {
             <ChevronLeftIcon />
           </TooltipIconButton>
         )}
-        <span className="ms-1 font-medium">{W.panel}</span>
+        <span className="ms-1 font-medium">
+          {props.target.kind === 'output' ? W.outputs : W.panel}
+        </span>
         <TooltipIconButton
           tooltip={W.panelClose}
           className="ms-auto size-7"
@@ -121,6 +124,8 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
           problem={t.problem}
         />
       );
+    case 'output':
+      return <OutputPage key={t.id} target={t} />;
     case 'page':
       return (
         <PageView

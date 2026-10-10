@@ -108,7 +108,9 @@ export function toUiMessages(
         push({ id, role: 'system', text: '方向谈好了，回到项目里接着往下。', line });
         break;
       case 'task_opened': {
-        const label = '单独谈谈你想学什么';
+        // 写产出的对话（批 8b）标题是“写：某某”；别的是谈方向的对话
+        const label =
+          r.kind === 'output' ? `一起写：${r.title.replace(/^写：/, '')}` : '单独谈谈你想学什么';
         push({ id, role: 'system', text: label, line, link: { sessionId: r.sessionId, label } });
         break;
       }

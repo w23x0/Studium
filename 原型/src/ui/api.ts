@@ -45,6 +45,19 @@ import type {
   TeachingToolResponse,
   ConfirmationResponse,
 } from '../shared/protocol.ts';
+import type {
+  AddLiteratureRequest,
+  CandidateResponse,
+  CompareResponse,
+  CreateOutputRequest,
+  ListOutputsResponse,
+  LiteratureResponse,
+  MarkCandidateRequest,
+  OpenOutputTaskResponse,
+  OutputResponse,
+  SaveVersionRequest,
+  VersionResponse,
+} from '../shared/m14.ts';
 import { SHELVE_NO_NOTE } from './thread-model.ts';
 
 function token(): string {
@@ -237,6 +250,40 @@ export const api = {
     ),
   pointsIn: (book: string, chapter: string) =>
     call<Points08Response>(`/m08/points?${qs({ book, chapter })}`),
+  // ── 我的产出（批 8b） ──
+  outputs: (projectId: string) => call<ListOutputsResponse>(`/projects/${projectId}/outputs`),
+  output: (id: string) => call<OutputResponse>(`/outputs/${encodeURIComponent(id)}`),
+  createOutput: (projectId: string, req: CreateOutputRequest) =>
+    call<OutputResponse>(`/projects/${projectId}/outputs`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  saveVersion: (id: string, req: SaveVersionRequest) =>
+    call<VersionResponse>(`/outputs/${encodeURIComponent(id)}/versions`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  version: (id: string, n: number) =>
+    call<VersionResponse>(`/outputs/${encodeURIComponent(id)}/versions/${String(n)}`),
+  compareVersions: (id: string, from: number, to: number) =>
+    call<CompareResponse>(`/outputs/${encodeURIComponent(id)}/compare?${qs({ from, to })}`),
+  addLiterature: (id: string, req: AddLiteratureRequest) =>
+    call<LiteratureResponse>(`/outputs/${encodeURIComponent(id)}/literature`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  markCandidate: (id: string, req: MarkCandidateRequest) =>
+    call<CandidateResponse>(`/outputs/${encodeURIComponent(id)}/candidates`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  openOutputTask: (id: string, brief?: string) =>
+    call<OpenOutputTaskResponse>(`/outputs/${encodeURIComponent(id)}/tasks`, {
+      method: 'POST',
+      body: JSON.stringify(
+        brief !== undefined && brief.trim() !== '' ? { brief: brief.trim() } : {},
+      ),
+    }),
   /** 订阅事件：整页共用一条事件连接（浏览器对同一地址的长连接数有限），最后一个退订时关掉。 */
   events(onEvent: (e: ServerEvent) => void): () => void {
     listeners.add(onEvent);

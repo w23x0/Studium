@@ -1,5 +1,6 @@
 // M14 产出物的接口（批 8）：项目下的产出物、版本链与比较、相关文献、“可作通用知识候选”。
 // 写入的都是学习者自己写的（作者记“学习者”）；模型协助写入走“写产出”对话里的工具。
+// POST /api/outputs/:id/tasks：学习者从产出物页直接开一个“写产出”对话（批 8b）。
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type {
   CandidateResponse,
@@ -8,6 +9,7 @@ import type {
   ListOutputsResponse,
   LiteratureListResponse,
   LiteratureResponse,
+  OpenOutputTaskResponse,
   OutputResponse,
   VersionResponse,
   VersionsResponse,
@@ -91,6 +93,13 @@ export async function outputsRoute(
       return true;
     }
     return false;
+  }
+  if (c === 'tasks' && n === 4 && method === 'POST') {
+    const body = (await readJson(req)) as { brief?: unknown };
+    json(res, 201, {
+      sessionId: await outputs.openTask(b, body.brief),
+    } satisfies OpenOutputTaskResponse);
+    return true;
   }
   if (c === 'candidates' && n === 4) {
     if (method === 'GET') {

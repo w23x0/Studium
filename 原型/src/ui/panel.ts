@@ -36,6 +36,18 @@ export type PanelTarget =
       bbox?: BBox;
       problem?: string;
     }
+  /**
+   * 我的产出里的一份（照 Claude 的 artifact：在面板里看与改）。tab 不给 = 正文；version 不给 = 最新版；
+   * compare = 正在对比的两版；edit = 正在改（稿子另存在界面里，翻到别处再回来还在）。
+   */
+  | {
+      kind: 'output';
+      id: string;
+      tab?: OutputTab;
+      version?: number;
+      compare?: [number, number];
+      edit?: boolean;
+    }
   /** 原件的一页；bbox 标出位置，quote 是书里的原句，file / line 能回到转录的原文。 */
   | {
       kind: 'page';
@@ -47,9 +59,17 @@ export type PanelTarget =
       line?: number;
     };
 
-/** 面板里看书的几类东西：面板放宽一些。 */
+export type OutputTab = 'text' | 'versions' | 'literature' | 'general';
+
+/** 面板里看书的几类东西与产出物：面板放宽一些。 */
 export function isWideTarget(t: PanelTarget): boolean {
-  return t.kind === 'library' || t.kind === 'search' || t.kind === 'source' || t.kind === 'page';
+  return (
+    t.kind === 'library' ||
+    t.kind === 'search' ||
+    t.kind === 'source' ||
+    t.kind === 'page' ||
+    t.kind === 'output'
+  );
 }
 
 /** 对话里要高亮的几句；seq 每次跳转都变，好让同一处能再跳一次。 */
