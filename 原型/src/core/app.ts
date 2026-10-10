@@ -9,6 +9,8 @@ import { Hub } from './hub.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { Library } from './knowledge/m07.ts';
+import { Originals } from './knowledge/m07-originals.ts';
+import { SourceReports } from './knowledge/m07-reports.ts';
 import { M08 } from './knowledge/m08.ts';
 import { M09 } from './knowledge/m09.ts';
 import { M10 } from './knowledge/m10.ts';
@@ -17,6 +19,7 @@ import { Objections } from './knowledge/objections.ts';
 import { DataDir } from './log/data-dir.ts';
 import { isNotFound } from './log/session-log.ts';
 import type { ModelAdapter } from './model/port.ts';
+import { Sources } from './sources.ts';
 import { Studium } from './studium.ts';
 import { Recorder } from './tape/recorder.ts';
 
@@ -79,9 +82,18 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const m10 = await M10.load(join(dataDir.root, 'knowledge', 'm10'));
   const m15 = await M15.load(join(dataDir.root, 'knowledge', 'm15'));
   const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
+  const library = new Library(opts.library ?? join(SAMPLE_DIR, '书库'));
+  const sources = new Sources({
+    library,
+    originals: new Originals(library, join(dataDir.root, 'cache', 'pages')),
+    m08,
+    reports: await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports')),
+    ...(opts.now !== undefined ? { now: opts.now } : {}),
+  });
   const studium = new Studium({
     prompts: await loadPrompts(),
-    m07: new Library(opts.library ?? join(SAMPLE_DIR, '书库')),
+    m07: library,
+    sources,
     m08,
     m09,
     m10,
@@ -112,7 +124,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
   await studium.ensureMain();
   const server = await startServer({
     hub,
-    evidence: new Evidence({ hub, m08, m09, m10, m15, objections }),
+    sources,
+    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources }),
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,
     port: opts.port,

@@ -39,6 +39,7 @@ import type { M09 } from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { M15 } from './knowledge/m15.ts';
 import type { Objections } from './knowledge/objections.ts';
+import type { Sources } from './sources.ts';
 import { BadRequestError } from './studium.ts';
 
 export interface EvidenceDeps {
@@ -48,6 +49,8 @@ export interface EvidenceDeps {
   m10: M10;
   m15: M15;
   objections: Objections;
+  /** 回查书里的出处（批 2a）。 */
+  sources: Sources;
 }
 
 export class Evidence {
@@ -255,7 +258,9 @@ export class Evidence {
           line,
         };
       }
-      // 书里“文件:行号”：读原文要等 M07 检索 / 原文面板（批 2），这里只给定位
+      // 书里的出处：“书名/文件:行号”回查成那几行原文；没有书名的“文件:行号”认不出是哪一本，只给定位
+      const cited = await this.bookSource(raw);
+      if (cited !== undefined) return cited;
       return {
         raw,
         kind: 'book_line',
@@ -265,7 +270,43 @@ export class Evidence {
         line,
       };
     }
+    // 整条就是一个教材出处标记
+    const marked = await this.bookSource(raw);
+    if (marked !== undefined) return marked;
     return { raw, kind: 'unknown', resolved: false, label: raw };
+  }
+
+  /** 书里的一条出处（“书名/文件:行号”或教材出处标记）；认不出是书里的出处返回空。 */
+  private async bookSource(raw: string): Promise<SourceView | undefined> {
+    const cited = await this.d.sources.bookLine(raw);
+    if (cited === undefined) return undefined;
+    if (!cited.resolved || cited.lines === undefined) {
+      return {
+        raw,
+        kind: 'book_line',
+        resolved: false,
+        label: `书里 ${cited.book}/${cited.file} 第 ${lineSpan(cited.from, cited.to)} 行${cited.problem !== undefined ? `（${cited.problem}）` : ''}`,
+        file: cited.file,
+        line: cited.from,
+        book: cited.book,
+        from: cited.from,
+        to: cited.to,
+      };
+    }
+    const where = [cited.section, cited.pages].filter((x) => x !== undefined).join(' ');
+    return {
+      raw,
+      kind: 'book_line',
+      resolved: true,
+      label: `书里《${cited.bookTitle ?? cited.book}》${where !== '' ? ` ${where}` : ''} 第 ${lineSpan(cited.from, cited.to)} 行`,
+      detail: cited.lines.map((l) => l.text).join('\n'),
+      file: cited.file,
+      line: cited.from,
+      book: cited.book,
+      from: cited.from,
+      to: cited.to,
+      lines: cited.lines,
+    };
   }
 
   // ───────────── 项目页 ─────────────
@@ -570,4 +611,8 @@ function anchorView(a: Anchor): AnchorView {
     ...(a.bbox !== undefined ? { bbox: a.bbox } : {}),
     ...(a.line !== undefined ? { line: a.line } : {}),
   };
+}
+
+function lineSpan(from: number, to: number): string {
+  return from === to ? String(from) : `${String(from)}–${String(to)}`;
 }

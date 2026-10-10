@@ -2,6 +2,7 @@
 // 每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（03「读写权限」）。
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
+import { formatCitation } from '../shared/citation.ts';
 import type {
   ChoiceCard,
   ChoiceOption,
@@ -14,6 +15,7 @@ import type {
 } from '../shared/records.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import type { Library } from './knowledge/m07.ts';
+import type { Sources } from './sources.ts';
 import type { M08 } from './knowledge/m08.ts';
 import {
   EVIDENCE_INDEPENDENCE,
@@ -47,6 +49,8 @@ export interface StudiumOptions {
   m15: M15;
   /** 学习者异议存放处。 */
   objections: Objections;
+  /** 原文与出处（M07 检索、教材出处核对）。 */
+  sources: Sources;
   now?: () => Date;
 }
 
@@ -684,7 +688,7 @@ export class Studium {
         .array(z.string().min(1))
         .min(1)
         .describe(
-          '这个选项从哪来，每条可回查：M08 点 / 子句 id、M09 记录 id、闭环原文“会话 id:行号”、书里“文件:行号”',
+          '这个选项从哪来，每条可回查：M08 点 / 子句 id、M09 记录 id、闭环原文“会话 id:行号”、书里“书名/文件:行号”（书名、文件照教材查询工具给的写）',
         ),
     });
     return {
@@ -1435,22 +1439,55 @@ export class Studium {
         },
         {
           name: 'read_source',
-          description: '读 M07 一个小节文件的原文，每行前印行号；可只读一段。',
+          description:
+            '读 M07 一个小节文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
           input: {
             book: z.string(),
             file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md'),
             from_line: z.number().int().optional(),
             to_line: z.number().int().optional(),
           },
-          run: async (a) =>
-            ok(
-              await this.o.m07.read(
-                a.book as string,
-                a.file as string,
-                (a.from_line as number | undefined) ?? 1,
-                (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER,
-              ),
-            ),
+          run: async (a) => {
+            const book = a.book as string;
+            const file = a.file as string;
+            const r = await this.o.m07.lines(
+              book,
+              file,
+              (a.from_line as number | undefined) ?? 1,
+              (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER,
+            );
+            const body = r.lines.map((l) => `${String(l.n)}\t${l.text}`).join('\n');
+            return ok(
+              r.lines.length === 0
+                ? `（这个文件共 ${String(r.total)} 行，没有第 ${String((a.from_line as number | undefined) ?? 1)} 行起的内容）`
+                : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ book, file, from: r.from, to: r.to })}，行段按你实际引用的缩小）`,
+            );
+          },
+        },
+        {
+          name: 'search_textbook',
+          description:
+            '在书库所有教材的原文里全文检索（词用空白隔开，要同时出现在同一段里）。返回书、小节、行号、片段和可直接用的出处标记。想引用教材原文、核对教材怎么说时用。',
+          input: {
+            query: z.string(),
+            book: z.string().optional().describe('只搜这一本；不给就搜全部'),
+            limit: z.number().int().optional().describe('最多几条，默认 10'),
+          },
+          run: async (a) => {
+            const r = await this.o.sources.search(
+              a.query as string,
+              (a.book as string | undefined) || undefined,
+              (a.limit as number | undefined) ?? 10,
+            );
+            if (r.hits.length === 0) return ok('没找到（原文里没有同时含这些词的一段）');
+            const rows = r.hits.map(
+              (h) =>
+                `《${h.bookTitle || h.book}》${h.num} ${h.title}｜${h.file} 第 ${String(h.line)} 行\n  ${h.snippet}\n  出处标记：${formatCitation({ book: h.book, file: h.file, from: h.line })}`,
+            );
+            return ok(
+              `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}`,
+            );
+          },
         },
       );
     }

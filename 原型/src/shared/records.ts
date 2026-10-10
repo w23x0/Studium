@@ -149,7 +149,7 @@ export interface ChoiceOption {
   /** 给学习者看的一句话。 */
   title: string;
   reason: string;
-  /** 这个选项从哪来：M08 点 / 子句 id、M09 记录 id、闭环原文（会话 id:行号）、书里 文件:行号；须可回查。旧卡没有。 */
+  /** 这个选项从哪来：M08 点 / 子句 id、M09 记录 id、闭环原文（会话 id:行号）、书里 书名/文件:行号（旧卡可能只有文件:行号，认不出是哪一本）；须可回查。旧卡没有。 */
   sources?: string[];
 }
 
@@ -246,6 +246,28 @@ export interface LearnerObjection {
   at: string;
   text: string;
   target: ObjectionTarget;
+}
+
+export const SOURCE_REPORT_KINDS = ['转录错', '公式错', '定位错', '其他'] as const;
+export type SourceReportKind = (typeof SOURCE_REPORT_KINDS)[number];
+
+/**
+ * 学习者对某段教材原文的报错（转录错、公式错、定位错……）。只追加；先只记录，回 M06 修正是后续的事（M07:20）。
+ * quote 是报错当时那几行原文的快照，之后原文被重新转录也还能对上。
+ */
+export interface SourceReport {
+  id: string;
+  at: string;
+  book: string;
+  file: string;
+  from: number;
+  to: number;
+  kind: SourceReportKind;
+  text: string;
+  quote: string;
+  /** 报错时看的 PDF 页（有就记）。 */
+  page?: number;
+  status: 'open';
 }
 
 /** 带行号的记录；行号从 1 开始，等于 JSONL 文件里的行。 */

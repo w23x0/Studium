@@ -4,6 +4,8 @@ import type {
   LearnerObjection,
   NumberedRecord,
   ObjectionTarget,
+  SourceReport,
+  SourceReportKind,
 } from './records.ts';
 
 export interface SessionSummary {
@@ -169,6 +171,11 @@ export interface SourceView {
   sessionId?: string;
   line?: number;
   file?: string;
+  /** book_line 查到原文时：书、行段、那几行（带行号）、小节标题；在资料浏览里打开用同一组值。 */
+  book?: string;
+  from?: number;
+  to?: number;
+  lines?: NumberedLine[];
 }
 
 export interface CardOptionView {
@@ -423,6 +430,198 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
 };
 
 export type { ObjectionTarget };
+
+// ───────────── 原文与出处（批 2a）：资料浏览、全文检索、原件页面、教材出处、资料报错 ─────────────
+
+export type { SourceReport, SourceReportKind };
+
+/** PDF 页范围，1 起、含两端。 */
+export interface PageSpan {
+  from: number;
+  to: number;
+}
+
+/**
+ * 页面上的位置框：[x0, y0, x1, y1]，各取 0–1000，是占整页宽（x）、高（y）的千分比，原点在页面左上角
+ * （MinerU content_list 的坐标，M08 锚点的 bbox 同此）。界面按渲染出的图的实际宽高乘 / 1000 就是像素位置，
+ * 与渲染分辨率无关。
+ */
+export type BBox = [number, number, number, number];
+
+export interface NumberedLine {
+  /** 行号：小节文件里的行，从 1 数；与 read_source 印的行号一致。 */
+  n: number;
+  text: string;
+}
+
+/** 书库里的一本书。hasOriginal = 找得到 PDF 原件（页面能调出来）。 */
+export interface BookSummary {
+  id: string;
+  title: string;
+  /** 有正文文件的条目数。 */
+  sections: number;
+  hasOriginal: boolean;
+}
+
+export interface BooksResponse {
+  books: BookSummary[];
+}
+
+/** 目录里的一条。file 为空 = 这一条没有独立正文（如只有标题的章，见下级条目）。 */
+export interface TocEntry {
+  /** 编号（1、1.2、…）；习题 / 附注等按书里的写法。 */
+  num: string;
+  /** part 篇 · ch 章 · sec 节 · prob 习题 · app 附录 · front 正文前 · back 正文后 · note 附注 · ans 书末答案 · x 其他。 */
+  kind: string;
+  title: string;
+  /** 书上印的页码（“p.2–10”）。 */
+  pages?: string;
+  /** 小节文件，相对于这本书的 m07/ 目录。 */
+  file?: string;
+  /** 所在章（章目录名，如 ch03；没有文件的条目按编号推）。 */
+  chapter: string;
+  level?: number;
+  /** 原 PDF 页范围；旧格式的目录没有。 */
+  pdfPages?: PageSpan;
+  note?: string;
+  examples?: string[];
+}
+
+export interface TocResponse {
+  book: string;
+  title: string;
+  entries: TocEntry[];
+}
+
+export interface SectionResponse {
+  book: string;
+  bookTitle: string;
+  file: string;
+  /** 目录里的这一条；文件不在目录里时为空。 */
+  entry?: TocEntry;
+  /** 文件总行数。 */
+  totalLines: number;
+  /** 实际返回的行段（含两端）。 */
+  from: number;
+  to: number;
+  lines: NumberedLine[];
+  /** 目录顺序里前一个 / 后一个有正文的小节。 */
+  prev?: TocEntry;
+  next?: TocEntry;
+}
+
+export interface SearchHit {
+  book: string;
+  bookTitle: string;
+  file: string;
+  num: string;
+  title: string;
+  /** 命中段里第一个出现检索词的行。 */
+  line: number;
+  snippet: string;
+  /** 小节起页（原 PDF 页）；旧格式目录没有。 */
+  pdfPage?: number;
+}
+
+export interface LibrarySearchResponse {
+  query: string;
+  hits: SearchHit[];
+  /** 命中的段落总数（hits 是排序后截断的前若干条）。 */
+  total: number;
+}
+
+/** 内容块在页面上的位置（MinerU content_list）；text 是块里的字（截短）。 */
+export interface PageBlock {
+  type: string;
+  bbox: BBox;
+  text?: string;
+}
+
+/** M08 的点挂在这一页上的原文锚点。 */
+export interface PageAnchor {
+  pointId: string;
+  pointName: string;
+  quote: string;
+  bbox?: BBox;
+}
+
+export interface PageResponse {
+  book: string;
+  page: number;
+  /** 找得到这一页的 PDF 原件。 */
+  available: boolean;
+  /** 本机能把这一页渲染成图（需要 pdftoppm）。 */
+  canRender: boolean;
+  /** 原件页面的图（PNG）；加 ?bbox=x0,y0,x1,y1（同上千分比）可只取这一块。带口令访问。 */
+  imageUrl?: string;
+  blocks: PageBlock[];
+  anchors: PageAnchor[];
+  /** 没有原件时说明原因。 */
+  note?: string;
+}
+
+/** 一行原文在原件上的位置（按文字比对 content_list 块，比不出来的行不返回）。 */
+export interface LineLocation {
+  line: number;
+  page: number;
+  bbox: BBox;
+}
+
+export interface LocateResponse {
+  book: string;
+  file: string;
+  locations: LineLocation[];
+}
+
+/** 回复里的一个教材出处，核对过：resolved 为假 = 书 / 文件 / 行号对不上（原样给出，不编）。 */
+export interface CitationView {
+  raw: string;
+  /** 在被解析文本里的起止位置。 */
+  start: number;
+  end: number;
+  book: string;
+  file: string;
+  from: number;
+  to: number;
+  resolved: boolean;
+  /** 对不上的原因。 */
+  problem?: string;
+  bookTitle?: string;
+  /** 小节编号与标题，如 “3.1 Spaces of Vectors”。 */
+  section?: string;
+  pages?: string;
+  pdfPages?: PageSpan;
+  /** 引到的那几行原文（超出文件末尾的截到末尾）。 */
+  lines?: NumberedLine[];
+  /** 引文第一行在原件上的位置（比得出才有）。 */
+  location?: LineLocation;
+}
+
+export interface ResolveCitationsRequest {
+  text: string;
+}
+
+export interface ResolveCitationsResponse {
+  citations: CitationView[];
+}
+
+export interface SourceReportRequest {
+  book: string;
+  file: string;
+  from: number;
+  to?: number;
+  kind: SourceReportKind;
+  text: string;
+  page?: number;
+}
+
+export interface SourceReportResponse {
+  report: SourceReport;
+}
+
+export interface SourceReportsResponse {
+  reports: SourceReport[];
+}
 
 export interface ErrorResponse {
   error: string;
