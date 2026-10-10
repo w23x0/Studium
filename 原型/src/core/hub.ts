@@ -38,6 +38,8 @@ interface Live {
   idle: (() => void)[];
   /** 本轮收下的中途插话，在本轮跑完时兑现。 */
   turnWaiters: (() => void)[];
+  /** 模型侧最近报告的实际执行模型。 */
+  model?: string;
 }
 
 export class NotFoundError extends Error {}
@@ -54,6 +56,18 @@ export class Hub {
 
   get modelName(): string {
     return this.opts.model.name;
+  }
+
+  /**
+   * 这个会话实际执行的模型名（模型侧自报）。拿不到时退回适配器名并写明是兜底，不编。
+   */
+  async executedModel(sessionId: string): Promise<string> {
+    const used = (await this.records(sessionId))
+      .map((r) => r.record)
+      .filter((r) => r.type === 'model_used')
+      .at(-1);
+    if (used?.type === 'model_used') return used.model;
+    return `${this.modelName}（适配器名；未取到实际执行模型）`;
   }
 
   subscribe(fn: (e: ServerEvent) => void): () => void {
@@ -219,6 +233,17 @@ export class Hub {
               adapter,
               token: ev.token,
             });
+            break;
+          case 'model':
+            if (live.model !== ev.name) {
+              live.model = ev.name;
+              await this.append(sessionId, {
+                type: 'model_used',
+                at: this.iso(),
+                adapter,
+                model: ev.name,
+              });
+            }
             break;
           case 'turn_error':
             await this.append(sessionId, {

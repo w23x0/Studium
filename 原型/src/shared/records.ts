@@ -77,6 +77,14 @@ export interface ModelSession {
   token: string;
 }
 
+/** 模型侧报告的实际执行模型名（不是别名、不是适配器名）；名字变了才追加一条。 */
+export interface ModelUsed {
+  type: 'model_used';
+  at: string;
+  adapter: string;
+  model: string;
+}
+
 export interface TurnFailed {
   type: 'turn_failed';
   at: string;
@@ -139,6 +147,8 @@ export interface ChoiceOption {
   /** 给学习者看的一句话。 */
   title: string;
   reason: string;
+  /** 这个选项从哪来：M08 点 / 子句 id、M09 记录 id、闭环原文（会话 id:行号）、书里 文件:行号；须可回查。旧卡没有。 */
+  sources?: string[];
 }
 
 /** M05 出的选择卡，贴在主对话里。 */
@@ -205,6 +215,7 @@ export type LogRecord =
   | ToolCall
   | ModelRaw
   | ModelSession
+  | ModelUsed
   | TurnFailed
   | LoopNote
   | CloseRequested

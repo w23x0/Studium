@@ -45,6 +45,8 @@ export type ModelEvent =
   | { kind: 'raw'; payload: unknown }
   /** 续接凭据（第一次拿到或变化时报一次）。 */
   | { kind: 'session'; token: string }
+  /** 本轮实际执行的模型名（不是可变别名）；拿到就报，名字变了再报。 */
+  | { kind: 'model'; name: string }
   /** 本轮结束。 */
   | { kind: 'turn_end' }
   /** 本轮失败；对话仍可继续。 */

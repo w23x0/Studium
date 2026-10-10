@@ -44,6 +44,8 @@ interface FakeTurnState {
 
 export class FakeModel implements ModelAdapter {
   readonly name = 'fake';
+  /** 假模型自报的“实际执行模型”，测试用来核对记录里存的是它而不是适配器名。 */
+  static readonly MODEL_NAME = 'fake-model-1';
   readonly opened: ConversationSpec[] = [];
   /** 每轮收到的输入（模型实际看到的文字），测试用来核对程序追加的事实与行号。 */
   readonly inputs: { spec: ConversationSpec; text: string }[] = [];
@@ -84,6 +86,7 @@ export class FakeModel implements ModelAdapter {
     try {
       const token = newToken();
       if (token !== undefined) yield { kind: 'session', token };
+      yield { kind: 'model', name: FakeModel.MODEL_NAME };
       if (this.turn === this.options.failOnTurn) {
         this.turn++;
         this.inputs.push({ spec, text: seenText(input) });

@@ -3,6 +3,31 @@
 import { join } from 'node:path';
 import { appendJsonl, readJsonl } from './jsonl.ts';
 
+/** 一处证据的强度：时间维度 × 独立性维度。 */
+export const EVIDENCE_TIMES = ['仅当场', '含变式', '含延迟'] as const;
+export const EVIDENCE_INDEPENDENCE = ['独立', '提示后'] as const;
+export interface EvidenceStrength {
+  time: (typeof EVIDENCE_TIMES)[number];
+  independence: (typeof EVIDENCE_INDEPENDENCE)[number];
+}
+
+/** 按新点和所用出发点分别标的证据强度。 */
+export interface FormationEvidence {
+  newPoint: EvidenceStrength;
+  startPoints: (EvidenceStrength & { point: string })[];
+}
+
+export function describeStrength(s: EvidenceStrength): string {
+  return `${s.time}、${s.independence}`;
+}
+
+export function describeEvidence(e: FormationEvidence): string {
+  return [
+    `新点：${describeStrength(e.newPoint)}`,
+    ...e.startPoints.map((s) => `出发点 ${s.point}：${describeStrength(s)}`),
+  ].join('；');
+}
+
 export interface FormationRecord {
   id: string;
   at: string;
@@ -17,8 +42,10 @@ export interface FormationRecord {
   process: string;
   /** 未满足项。 */
   unmet: string;
-  /** 证据强度：仅当场 / 含变式；独立 / 提示后。 */
+  /** 证据强度的文字形态：旧记录是模型写的一句话，新记录由 evidence 生成。 */
   evidenceStrength: string;
+  /** 结构化的证据强度（新点与每个出发点各一项）；旧记录没有。 */
+  evidence?: FormationEvidence;
   evidenceLines: number[];
   /** 写这条分析的实际模型。 */
   model: string;
@@ -60,7 +87,7 @@ export class M09 {
       `  学出的理解：${r.understanding}`,
       `  过程：${r.process}`,
       `  未满足：${r.unmet || '无'}`,
-      `  证据强度：${r.evidenceStrength}；证据行 ${r.evidenceLines.join('、')}`,
+      `  证据强度：${r.evidence ? describeEvidence(r.evidence) : r.evidenceStrength}；证据行 ${r.evidenceLines.join('、')}`,
     ].join('\n');
   }
 }

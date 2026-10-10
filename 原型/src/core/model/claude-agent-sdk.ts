@@ -51,6 +51,7 @@ class SdkConversation implements ModelConversation {
   private output: AsyncIterator<SDKMessage> | undefined;
   private close_: (() => void) | undefined;
   private sessionId: string | undefined;
+  private reportedModel: string | undefined;
   /** 本轮在跑时为真；插话只在这时收。 */
   private turnActive = false;
   /** 已交给 SDK、还没见它答到的输入（按 uuid）。 */
@@ -152,6 +153,16 @@ class SdkConversation implements ModelConversation {
       if (sid !== undefined && sid !== this.sessionId) {
         this.sessionId = sid;
         yield { kind: 'session', token: sid };
+      }
+      const reported =
+        msg.type === 'system' && msg.subtype === 'init'
+          ? msg.model
+          : msg.type === 'assistant'
+            ? msg.message.model
+            : undefined;
+      if (reported !== undefined && reported !== '' && reported !== this.reportedModel) {
+        this.reportedModel = reported;
+        yield { kind: 'model', name: reported };
       }
       if (msg.type === 'stream_event') {
         const ev = msg.event;

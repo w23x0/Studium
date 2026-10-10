@@ -14,7 +14,14 @@ import type {
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import type { Library } from './knowledge/m07.ts';
 import type { M08 } from './knowledge/m08.ts';
-import type { M09 } from './knowledge/m09.ts';
+import {
+  EVIDENCE_INDEPENDENCE,
+  EVIDENCE_TIMES,
+  describeEvidence,
+  type EvidenceStrength,
+  type FormationEvidence,
+  type M09,
+} from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
 import { STAGES, type M15 } from './knowledge/m15.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
@@ -117,7 +124,7 @@ export class Studium {
         case 'guard':
           return [...this.readTools({ m09: false }), this.verdictTool(sessionId)];
         case 'm09':
-          return [...this.readTools({ m09: false }), this.formationTool(sessionId)];
+          return [...this.readTools({ m07: false, m09: false }), this.formationTool(sessionId)];
         case 'm05':
           return [
             ...this.readTools(),
@@ -479,6 +486,10 @@ export class Studium {
   private readonly m09Target = new Map<string, { loopId: string; records: NumberedRecord[] }>();
 
   private formationTool(sessionId: string): ToolSpec {
+    const strengthShape = z.object({
+      time: z.enum(EVIDENCE_TIMES),
+      independence: z.enum(EVIDENCE_INDEPENDENCE),
+    });
     return {
       name: 'write_formation_record',
       description: '把这个闭环的个人形成记录写进 M09。只提交一次。',
@@ -489,13 +500,34 @@ export class Studium {
         understanding: z.string(),
         process: z.string(),
         unmet: z.string(),
-        evidence_strength: z.string().describe('仅当场 / 含变式；独立 / 提示后'),
+        new_point_evidence: strengthShape.optional(),
+        start_point_evidence: z.array(strengthShape.extend({ point: z.string() })).optional(),
+        evidence_strength: z.string().optional().describe('旧形态，不再使用；请填上面两项'),
         evidence_lines: z.array(z.number().int()),
       },
       run: async (a) => {
         if (this.formations.has(sessionId)) return err('已经写过了');
         const target = this.m09Target.get(sessionId);
         if (!target) return err('找不到要写的闭环');
+        const startPoints = a.start_points as string[];
+        const newEv = a.new_point_evidence as EvidenceStrength | undefined;
+        const startEv = a.start_point_evidence as
+          (EvidenceStrength & { point: string })[] | undefined;
+        let evidence: FormationEvidence | undefined;
+        if (newEv !== undefined || startEv !== undefined) {
+          if (newEv === undefined || startEv === undefined)
+            return err('证据强度要同时给新点一项、每个出发点各一项');
+          const got = startEv.map((s) => s.point);
+          const missing = startPoints.filter((p) => !got.includes(p));
+          const extra = got.filter((p) => !startPoints.includes(p));
+          if (missing.length > 0 || extra.length > 0 || new Set(got).size !== got.length)
+            return err(
+              `出发点的证据强度要与 start_points 一一对应（缺 ${missing.join('、') || '无'}；多 ${extra.join('、') || '无'}）`,
+            );
+          evidence = { newPoint: newEv, startPoints: startEv };
+        } else if (a.evidence_strength === undefined) {
+          return err('缺证据强度：给 new_point_evidence 与 start_point_evidence');
+        }
         const learner = learnerLines(target.records);
         const lines = a.evidence_lines as number[];
         const bad = lines.filter((l) => !learner.has(l));
@@ -507,13 +539,14 @@ export class Studium {
           loopSessionId: target.loopId,
           newPoint: a.new_point as string,
           clause: a.clause as string,
-          startPoints: a.start_points as string[],
+          startPoints,
           understanding: a.understanding as string,
           process: a.process as string,
           unmet: a.unmet as string,
-          evidenceStrength: a.evidence_strength as string,
+          evidenceStrength: evidence ? describeEvidence(evidence) : (a.evidence_strength as string),
+          ...(evidence ? { evidence } : {}),
           evidenceLines: lines,
-          model: this.hub.modelName,
+          model: await this.hub.executedModel(sessionId),
         });
         this.formations.add(sessionId);
         return ok('已写入 M09');
@@ -563,17 +596,27 @@ export class Studium {
       route_action: z.string(),
       title: z.string().describe('给学习者看的一句话'),
       reason: z.string(),
+      sources: z
+        .array(z.string().min(1))
+        .min(1)
+        .describe(
+          '这个选项从哪来，每条可回查：M08 点 / 子句 id、M09 记录 id、闭环原文“会话 id:行号”、书里“文件:行号”',
+        ),
     });
     return {
       name: 'submit_choice_card',
       description: '交回 2–4 个候选单子，推荐其中一个（从 0 数）。只提交一次。',
-      input: { options: z.array(ticketShape).min(1).max(4), recommended: z.number().int().min(0) },
+      input: { options: z.array(ticketShape).min(2).max(4), recommended: z.number().int().min(0) },
       run: (a) => {
         if (this.cards.has(sessionId)) return err('已经提交过选择卡');
-        const raw = a.options as z.infer<typeof ticketShape>[];
+        // 出处在模型参数里是必填（上面的校验）；这里对旧调用形态（没有 sources）宽容，不编
+        const raw = a.options as (Omit<z.infer<typeof ticketShape>, 'sources'> & {
+          sources?: string[];
+        })[];
         const options: ChoiceOption[] = raw.map((o) => ({
           title: o.title,
           reason: o.reason,
+          ...(o.sources !== undefined ? { sources: o.sources } : {}),
           ticket: {
             newPoint: o.new_point,
             clause: o.clause,
@@ -581,6 +624,12 @@ export class Studium {
             routeAction: o.route_action,
           },
         }));
+        const blank = raw.flatMap((o, i) =>
+          o.sources?.some((s) => s.trim() === '') === true
+            ? [`第 ${String(i)} 项的出处有空白条目`]
+            : [],
+        );
+        if (blank.length > 0) return err(`${blank.join('；')}。改好后重新提交`);
         const problems = options
           .map((o, i) => [i, this.ticketProblem(o.ticket)] as const)
           .filter(([, p]) => p !== undefined)
@@ -750,6 +799,7 @@ export class Studium {
           role: 'program',
           text: `谈方向的对话（${talkId}）交回了：方向目标是“${goal}”，项目名改为“${title}”。`,
         });
+        this.organizeStateLater(`畅谈对话（${talkId}）结束了`, talkId);
         return ok('方向已交回项目，本对话结束。和学习者简短说一句就好。');
       },
     };
@@ -1081,7 +1131,7 @@ export class Studium {
             timeRange: a.time_range as string,
             refs: refs.map((r) => ({ sessionId: r.session, lines: r.lines })),
             m15SessionId: m15Id,
-            model: this.hub.modelName,
+            model: await this.hub.executedModel(m15Id),
           });
           return ok('已记');
         },
@@ -1102,7 +1152,7 @@ export class Studium {
             stage: a.stage as (typeof STAGES)[number],
             basisSpan: a.basis_span as string,
             m15SessionId: m15Id,
-            model: this.hub.modelName,
+            model: await this.hub.executedModel(m15Id),
           });
           return ok('当前状态页已更新');
         },
@@ -1188,7 +1238,7 @@ export class Studium {
           evidenceLines: lines,
           toolsUsed: target.toolsUsed,
           m10SessionId: m10Id,
-          model: this.hub.modelName,
+          model: await this.hub.executedModel(m10Id),
         });
         return ok('已记');
       },
