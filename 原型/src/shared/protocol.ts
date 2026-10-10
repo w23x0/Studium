@@ -264,6 +264,85 @@ export interface TeachingToolUseView {
 
 export type LoopStatus = 'in_progress' | 'closed' | 'unclosed';
 
+/** 分叉闭环的来历（M01:18 来源、分叉、返回）。 */
+export interface ForkOriginView {
+  fromLoop: string;
+  fromTitle?: string;
+  kind: 'gap' | 'branch';
+  /** 分叉原因：缺哪个出发点 / 学习者想去学什么。 */
+  reason: string;
+  missingPoint?: PointRef;
+  /** 父闭环里指回的学习者原话行。 */
+  basisLines: number[];
+  /** 父闭环里通知 M05 的那条 route_signal 所在行。 */
+  signalLine: number;
+  /** 返回条件：分叉的新点合上就回父闭环。 */
+  returnCondition: string;
+  scope?: string;
+}
+
+/** 停车记录：缺在哪个出发点 + 恢复计划（何时、从哪接上）。 */
+export interface ParkingView {
+  line: number;
+  at: string;
+  reason: 'ended_unclosed' | 'shelved';
+  missing: { point?: PointRef; text: string }[];
+  when: string;
+  resumeFrom: string;
+  basisLines: number[];
+  m05SessionId: string;
+}
+
+export interface RouteSignalView {
+  line: number;
+  at: string;
+  kind: 'gap' | 'branch';
+  missingPoint?: PointRef;
+  missingText: string;
+  basisLines: number[];
+  /** 指回的学习者原话。 */
+  quotes: QuoteView[];
+  note?: string;
+}
+
+export interface DetourOptionView {
+  kind: 'fork' | 'continue' | 'shelve';
+  title: string;
+  reason: string;
+  /** 只有 fork 有。 */
+  ticket?: TicketView;
+  scope?: string;
+}
+
+/** 闭环中途的小卡（贴在该闭环里）。 */
+export interface DetourCardView {
+  cardId: string;
+  /** 小卡在闭环正本里的行。 */
+  line: number;
+  at: string;
+  signalLine: number;
+  options: DetourOptionView[];
+  recommended: number;
+  m05SessionId: string;
+  model: ModelInfo;
+  /** 学习者选了没有；没选 = 还在等。 */
+  chosen?: {
+    option: number;
+    choice: 'fork' | 'continue' | 'shelve';
+    at: string;
+    forkLoopSessionId?: string;
+  };
+}
+
+/** 一个闭环开出去的分叉及其回来的情况。 */
+export interface ForkLinkView {
+  forkLoopSessionId: string;
+  title: string;
+  openedAt: string;
+  /** 分叉回来了（结束后记进父闭环）；没有 = 还在外面。 */
+  returned?: { at: string; closed: boolean; delivered: boolean };
+}
+
 export interface LoopEvidence {
   sessionId: string;
   title: string;
@@ -282,6 +361,20 @@ export interface LoopEvidence {
   teachingToolsUsed: TeachingToolUseView[];
   /** 这个闭环里的全部异议（含已结束闭环上记在异议存放处的）。 */
   objections: ObjectionView[];
+  /** 搁置着（可恢复）；与 status 无关：搁置的闭环 status 仍是 in_progress。 */
+  shelved?: { at: string; note: string };
+  /** 在等哪个分叉闭环回来。 */
+  waitingFork?: string;
+  /** 是分叉出来的：来源、原因、返回条件。 */
+  fork?: ForkOriginView;
+  /** 开出去的分叉及回来的情况。 */
+  forks: ForkLinkView[];
+  /** 教学侧中途通知 M05 的记录（前置缺口 / 想分叉）。 */
+  signals: RouteSignalView[];
+  /** 闭环中途的小卡（含已选的）。 */
+  detours: DetourCardView[];
+  /** 最近一条停车记录（没合上就结束 / 搁置时 M05 记的）。 */
+  parking?: ParkingView;
 }
 
 export interface LoopBrief {
@@ -293,6 +386,30 @@ export interface LoopBrief {
   newPoint?: PointRef;
   /** 最近一次守卫判定。 */
   lastVerdict?: { closed: boolean; line: number };
+  /** 搁置着（status 仍是 in_progress）。 */
+  shelved?: { at: string; note: string };
+  /** 在等哪个分叉闭环回来（status 仍是 in_progress）。 */
+  waitingFork?: { forkLoopSessionId: string; title?: string };
+  /** 是分叉出来的。 */
+  forkOf?: { loopSessionId: string; reason: string };
+  /** 最近一条停车记录。 */
+  parking?: ParkingView;
+}
+
+/** 同时没收尾的闭环数（M05:28 负荷预算与任务限流；只提示、不硬拦）。 */
+export interface LoopLoad {
+  /** 进行中（不含搁置、不含等分叉回来）。 */
+  inProgress: number;
+  shelved: number;
+  waitingFork: number;
+  /** 停车场里还没补上的（没合上就结束、新点还没合上过）。 */
+  parked: number;
+  /** 进行中 + 搁置 + 等分叉回来。 */
+  unfinished: number;
+  /** 没收尾的闭环不少了，该提示别再开新的。 */
+  heavy: boolean;
+  /** 停车场堆积了，该降载、优先收尾。 */
+  parkingPile: boolean;
 }
 
 /** 项目页：本项目下的闭环按状态分组。 */
@@ -312,9 +429,48 @@ export interface ProjectOverview {
     awaitingChoice: CardView[];
     /** 合上。 */
     closed: LoopBrief[];
-    /** 没合上（停车场）。 */
+    /** 没合上（停车场）；每个带最近一条停车记录。 */
     unclosed: LoopBrief[];
+    /** 搁置着的闭环（可恢复）。没有就没有这一项。 */
+    shelved?: LoopBrief[];
+    /** 等分叉回来的闭环。没有就没有这一项。 */
+    waitingFork?: LoopBrief[];
   };
+  load: LoopLoad;
+}
+
+/** 闭环之间的关系（M01:18 来源、分叉、返回）。 */
+export interface LoopRelationView {
+  loopSessionId: string;
+  title: string;
+  /** 从哪来：选择卡 / 另一个闭环的分叉。 */
+  origin:
+    { kind: 'card'; cardId: string } | { kind: 'fork'; fork: ForkOriginView } | { kind: 'unknown' };
+  status: LoopStatus;
+  shelved?: boolean;
+  waitingFork?: string;
+  /** 它开出去的分叉。 */
+  forks: ForkLinkView[];
+}
+
+export interface LoopRelationsResponse {
+  mainSessionId: string;
+  relations: LoopRelationView[];
+}
+
+export interface DetourChooseRequest {
+  cardId: string;
+  option: number;
+}
+
+export interface DetourChooseResponse {
+  choice: 'fork' | 'continue' | 'shelve';
+  /** choice = fork 时开出的分叉闭环。 */
+  forkLoopSessionId?: string;
+}
+
+export interface ShelveRequest {
+  note?: string;
 }
 
 export interface FormationView {

@@ -9,7 +9,14 @@ import {
   type CardView,
   type ClauseView,
   type CurrentStateView,
+  type DetourCardView,
   type DisclosureResponse,
+  type ForkLinkView,
+  type ForkOriginView,
+  type LoopLoad,
+  type LoopRelationView,
+  type ParkingView,
+  type RouteSignalView,
   type ExternalRecordView,
   type M08OverviewResponse,
   type FormationView,
@@ -33,11 +40,14 @@ import {
 import type {
   ChoiceCard,
   ChoiceMade,
+  ForkOrigin,
   LearnerObjection,
   NumberedRecord,
+  ParkingNote,
   Ticket,
 } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
+import { foldLoop, LOAD_HEAVY, PARKING_PILE, type LoopFlags } from './loop-state.ts';
 import type { M08, Anchor, Clause, Point } from './knowledge/m08.ts';
 import type { M09 } from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
@@ -72,6 +82,7 @@ export class Evidence {
     const opened = await this.d.hub.opened(loopId);
     if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
     const recs = await this.d.hub.records(loopId);
+    const flags = foldLoop(recs);
     const ended = recs.find((r) => r.record.type === 'loop_ended');
     const objections = this.loopObjections(loopId, recs);
     const verdicts: GuardVerdictView[] = [];
@@ -131,7 +142,168 @@ export class Evidence {
       ),
       teachingToolsUsed: toolUsesOf(recs),
       objections,
+      ...(flags.shelved !== undefined
+        ? { shelved: { at: flags.shelved.at, note: flags.shelved.note } }
+        : {}),
+      ...(flags.waitingFork !== undefined ? { waitingFork: flags.waitingFork } : {}),
+      ...(opened.fork !== undefined ? { fork: await this.forkView(opened.fork) } : {}),
+      forks: await this.forkLinks(flags),
+      signals: recs.flatMap((r) =>
+        r.record.type === 'route_signal'
+          ? [
+              {
+                line: r.line,
+                at: r.record.at,
+                kind: r.record.kind,
+                ...(r.record.missingPoint !== undefined
+                  ? { missingPoint: this.pointRef(r.record.missingPoint) }
+                  : {}),
+                missingText: r.record.missingText,
+                basisLines: r.record.basisLines,
+                quotes: quotesOf(recs, r.record.basisLines),
+                ...(r.record.note !== undefined ? { note: r.record.note } : {}),
+              } satisfies RouteSignalView,
+            ]
+          : [],
+      ),
+      detours: await this.detourViews(recs),
+      ...(flags.parking !== undefined ? { parking: this.parkingView(flags.parking) } : {}),
     };
+  }
+
+  private async titleOf(sessionId: string): Promise<string | undefined> {
+    try {
+      return (await this.d.hub.opened(sessionId)).title;
+    } catch (e) {
+      if (e instanceof NotFoundError) return undefined;
+      throw e;
+    }
+  }
+
+  private async forkView(f: ForkOrigin): Promise<ForkOriginView> {
+    const title = await this.titleOf(f.fromLoop);
+    return {
+      fromLoop: f.fromLoop,
+      ...(title !== undefined ? { fromTitle: title } : {}),
+      kind: f.kind,
+      reason: f.reason,
+      ...(f.missingPoint !== undefined ? { missingPoint: this.pointRef(f.missingPoint) } : {}),
+      basisLines: f.basisLines,
+      signalLine: f.signalLine,
+      returnCondition: f.returnCondition,
+      ...(f.scope !== undefined ? { scope: f.scope } : {}),
+    };
+  }
+
+  private async forkLinks(flags: LoopFlags): Promise<ForkLinkView[]> {
+    const out: ForkLinkView[] = [];
+    for (const f of flags.forks) {
+      const o = await this.d.hub.opened(f.forkLoopSessionId);
+      out.push({
+        forkLoopSessionId: f.forkLoopSessionId,
+        title: o.title,
+        openedAt: o.at,
+        ...(f.returned !== undefined
+          ? {
+              returned: {
+                at: f.returned.at,
+                closed: f.returned.closed,
+                delivered: f.returned.delivered,
+              },
+            }
+          : {}),
+      });
+    }
+    return out;
+  }
+
+  private parkingView(p: ParkingNote & { line: number }): ParkingView {
+    return {
+      line: p.line,
+      at: p.at,
+      reason: p.reason,
+      missing: p.missing.map((m) => ({
+        ...(m.point !== undefined ? { point: this.pointRef(m.point) } : {}),
+        text: m.text,
+      })),
+      when: p.when,
+      resumeFrom: p.resumeFrom,
+      basisLines: p.basisLines,
+      m05SessionId: p.m05SessionId,
+    };
+  }
+
+  private async detourViews(recs: NumberedRecord[]): Promise<DetourCardView[]> {
+    const out: DetourCardView[] = [];
+    for (const r of recs) {
+      if (r.record.type !== 'detour_card') continue;
+      const c = r.record;
+      const made = recs.find(
+        (x) => x.record.type === 'detour_made' && x.record.cardId === c.cardId,
+      )?.record;
+      out.push({
+        cardId: c.cardId,
+        line: r.line,
+        at: c.at,
+        signalLine: c.signalLine,
+        options: c.options.map((o) => ({
+          kind: o.kind,
+          title: o.title,
+          reason: o.reason,
+          ...(o.ticket !== undefined ? { ticket: this.ticket(o.ticket) } : {}),
+          ...(o.scope !== undefined ? { scope: o.scope } : {}),
+        })),
+        recommended: c.recommended,
+        m05SessionId: c.m05SessionId,
+        model: await this.d.hub.modelInfo(c.m05SessionId),
+        ...(made?.type === 'detour_made'
+          ? {
+              chosen: {
+                option: made.option,
+                choice: made.choice,
+                at: made.at,
+                ...(made.forkLoopSessionId !== undefined
+                  ? { forkLoopSessionId: made.forkLoopSessionId }
+                  : {}),
+              },
+            }
+          : {}),
+      });
+    }
+    return out;
+  }
+
+  /** 项目下闭环之间的关系：每个闭环从哪来（选择卡 / 分叉）、开出去哪些分叉、回来没有。 */
+  async loopRelations(mainId: string): Promise<LoopRelationView[]> {
+    const main = await this.d.hub.opened(mainId);
+    if (main.kind !== 'main') throw new BadRequestError('这不是一个项目。');
+    const mainRecs = await this.d.hub.records(mainId);
+    const out: LoopRelationView[] = [];
+    for (const l of this.d.hub
+      .listSessions()
+      .filter((s) => s.kind === 'loop' && s.parent === mainId)) {
+      const opened = await this.d.hub.opened(l.sessionId);
+      const recs = await this.d.hub.records(l.sessionId);
+      const flags = foldLoop(recs);
+      const made = mainRecs.find(
+        (r) => r.record.type === 'choice_made' && r.record.loopSessionId === l.sessionId,
+      )?.record;
+      out.push({
+        loopSessionId: l.sessionId,
+        title: opened.title,
+        origin:
+          opened.fork !== undefined
+            ? { kind: 'fork', fork: await this.forkView(opened.fork) }
+            : made?.type === 'choice_made'
+              ? { kind: 'card', cardId: made.cardId }
+              : { kind: 'unknown' },
+        status: statusOf(recs),
+        ...(flags.shelved !== undefined ? { shelved: true } : {}),
+        ...(flags.waitingFork !== undefined ? { waitingFork: flags.waitingFork } : {}),
+        forks: await this.forkLinks(flags),
+      });
+    }
+    return out;
   }
 
   private loopObjections(loopId: string, recs: NumberedRecord[]): ObjectionView[] {
@@ -353,10 +525,31 @@ export class Evidence {
       .listSessions()
       .filter((s) => s.kind === 'loop' && s.parent === mainId)) {
       const brief = await this.brief(l.sessionId);
-      if (brief.status === 'in_progress') groups.inProgress.push(brief);
-      else if (brief.status === 'closed') groups.closed.push(brief);
+      if (brief.status === 'in_progress') {
+        // 搁置、等分叉回来各自成组，不混在“进行中”里；没有就不出现这一项
+        if (brief.shelved !== undefined) (groups.shelved ??= []).push(brief);
+        else if (brief.waitingFork !== undefined) (groups.waitingFork ??= []).push(brief);
+        else groups.inProgress.push(brief);
+      } else if (brief.status === 'closed') groups.closed.push(brief);
       else groups.unclosed.push(brief);
     }
+    const knownPoints = new Set(this.d.m09.knownPoints());
+    const parked = groups.unclosed.filter(
+      (b) => b.newPoint === undefined || !knownPoints.has(b.newPoint.id),
+    ).length;
+    const counts = {
+      inProgress: groups.inProgress.length,
+      shelved: groups.shelved?.length ?? 0,
+      waitingFork: groups.waitingFork?.length ?? 0,
+    };
+    const unfinished = counts.inProgress + counts.shelved + counts.waitingFork;
+    const load: LoopLoad = {
+      ...counts,
+      parked,
+      unfinished,
+      heavy: unfinished >= LOAD_HEAVY,
+      parkingPile: parked >= PARKING_PILE,
+    };
     const chosen = new Set(
       mainRecs.flatMap((r) => (r.record.type === 'choice_made' ? [r.record.cardId] : [])),
     );
@@ -373,6 +566,7 @@ export class Evidence {
       ...(dl.note !== undefined ? { deadlineNote: dl.note } : {}),
       materialCount: foldMaterials(mainLog).length,
       groups,
+      load,
     };
   }
 
@@ -381,10 +575,28 @@ export class Evidence {
     const recs = await this.d.hub.records(loopId);
     const ended = recs.find((r) => r.record.type === 'loop_ended');
     const verdict = recs.filter((r) => r.record.type === 'guard_verdict').at(-1);
+    const flags = foldLoop(recs);
+    const waitTitle =
+      flags.waitingFork !== undefined ? await this.titleOf(flags.waitingFork) : undefined;
     return {
       sessionId: loopId,
       title: opened.title,
       openedAt: opened.at,
+      ...(flags.shelved !== undefined
+        ? { shelved: { at: flags.shelved.at, note: flags.shelved.note } }
+        : {}),
+      ...(flags.waitingFork !== undefined
+        ? {
+            waitingFork: {
+              forkLoopSessionId: flags.waitingFork,
+              ...(waitTitle !== undefined ? { title: waitTitle } : {}),
+            },
+          }
+        : {}),
+      ...(opened.fork !== undefined
+        ? { forkOf: { loopSessionId: opened.fork.fromLoop, reason: opened.fork.reason } }
+        : {}),
+      ...(flags.parking !== undefined ? { parking: this.parkingView(flags.parking) } : {}),
       ...(ended !== undefined ? { endedAt: ended.record.at } : {}),
       status: statusOf(recs),
       ...(opened.ticket !== undefined ? { newPoint: this.pointRef(opened.ticket.newPoint) } : {}),
