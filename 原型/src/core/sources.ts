@@ -89,11 +89,17 @@ export class Sources {
     };
   }
 
-  async search(q: string, book?: string, limit?: number): Promise<LibrarySearchResponse> {
+  /** books = 只在这几本里搜（项目资料）；给了 book 时以 book 为准。 */
+  async search(
+    q: string,
+    book?: string,
+    limit?: number,
+    books?: string[],
+  ): Promise<LibrarySearchResponse> {
     if (q.trim() === '') throw new BadRequestError('q 不能为空');
     const id = book !== undefined && book !== '' ? await this.book(book) : undefined;
     const r = await this.d.library.search(q, {
-      ...(id !== undefined ? { book: id } : {}),
+      ...(id !== undefined ? { book: id } : books !== undefined ? { books } : {}),
       ...(limit !== undefined ? { limit } : {}),
     });
     return { query: q, hits: r.hits, total: r.total };

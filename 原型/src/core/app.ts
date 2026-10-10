@@ -9,6 +9,7 @@ import { Hub } from './hub.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { Library } from './knowledge/m07.ts';
+import { Notes } from './knowledge/m07-notes.ts';
 import { Originals } from './knowledge/m07-originals.ts';
 import { SourceReports } from './knowledge/m07-reports.ts';
 import { M08 } from './knowledge/m08.ts';
@@ -34,8 +35,11 @@ export interface AppOptions {
   uiDir?: string;
   /** M07 书库根目录（每本书 <书>/m07/index.md）；默认用样例教材。 */
   library?: string;
-  /** M08 目录（points.jsonl / clauses.jsonl）；默认 <数据>/knowledge/m08，空时拷入样例。 */
-  m08Dir?: string;
+  /**
+   * M08 目录（points.jsonl / clauses.jsonl）；默认 <数据>/knowledge/m08，空时拷入样例。
+   * 可以给多个目录，或一个目录下按 <书>/<章>/ 摆的多套产出，合并读取（点 id 重复时加前缀，见 M08.loadAll）。
+   */
+  m08Dir?: string | string[];
   /** 时钟（测试与回放用）；记录时间、离开多久都按它算。 */
   now?: () => Date;
   /** 录带文件：给了就把这次运行的模型侧与学习者动作记进去，供离线回放（tape/）。 */
@@ -73,16 +77,26 @@ async function isEmptyDir(dir: string): Promise<boolean> {
 export async function createApp(opts: AppOptions): Promise<App> {
   const dataDir = await DataDir.acquire(opts.dataRoot);
   const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
-  const m08Dir = opts.m08Dir ?? join(dataDir.root, 'knowledge', 'm08');
-  if (opts.m08Dir === undefined && (await isEmptyDir(m08Dir))) {
-    await cp(join(SAMPLE_DIR, 'm08'), m08Dir, { recursive: true });
+  const ownM08 = join(dataDir.root, 'knowledge', 'm08');
+  if (opts.m08Dir === undefined && (await isEmptyDir(ownM08))) {
+    await cp(join(SAMPLE_DIR, 'm08'), ownM08, { recursive: true });
   }
-  const m08 = await M08.load(m08Dir);
+  const m08 = await M08.loadAll(
+    opts.m08Dir === undefined ? [ownM08] : Array.isArray(opts.m08Dir) ? opts.m08Dir : [opts.m08Dir],
+  );
   const m09 = await M09.load(join(dataDir.root, 'knowledge', 'm09'));
   const m10 = await M10.load(join(dataDir.root, 'knowledge', 'm10'));
   const m15 = await M15.load(join(dataDir.root, 'knowledge', 'm15'));
   const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
-  const library = new Library(opts.library ?? join(SAMPLE_DIR, '书库'));
+  const library = new Library(
+    opts.library ?? join(SAMPLE_DIR, '书库'),
+    join(dataDir.root, 'knowledge', 'm07-notes'),
+  );
+  const notes = new Notes(
+    join(dataDir.root, 'knowledge', 'm07-notes'),
+    library,
+    opts.now ?? (() => new Date()),
+  );
   const sources = new Sources({
     library,
     originals: new Originals(library, join(dataDir.root, 'cache', 'pages')),
@@ -125,6 +139,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const server = await startServer({
     hub,
     sources,
+    notes,
     evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources }),
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,

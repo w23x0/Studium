@@ -209,6 +209,26 @@ export interface ConversationPointer {
   sessionId: string;
 }
 
+/**
+ * 项目选用 / 去掉一份资料（书或个人笔记，book = 书库里的书 id）。只追加：当前选了哪些 = 按顺序折叠这些记录。
+ * 一份都没选 = 不限定范围（资料工具查全库）。
+ */
+export interface ProjectMaterial {
+  type: 'project_material';
+  at: string;
+  op: 'add' | 'remove';
+  book: string;
+}
+
+/** 项目期限（可不填）。deadline 为 null = 清掉期限；取最新一条。 */
+export interface ProjectDeadline {
+  type: 'project_deadline';
+  at: string;
+  /** YYYY-MM-DD。 */
+  deadline: string | null;
+  note?: string;
+}
+
 export type LogRecord =
   | SessionOpened
   | UserMessage
@@ -230,7 +250,9 @@ export type LogRecord =
   | TaskOpened
   | ProjectTitle
   | TalkEnded
-  | ConversationPointer;
+  | ConversationPointer
+  | ProjectMaterial
+  | ProjectDeadline;
 
 /** 学习者异议指向什么：守卫的一次判定（闭环 + 判定所在行），或 M09 / M10 / M15 的一条记录（记录 id）。 */
 export type ObjectionTarget =

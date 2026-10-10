@@ -14,6 +14,8 @@ import { isNotFound } from '../log/session-log.ts';
 export interface SearchOptions {
   /** 只搜这一本。 */
   book?: string;
+  /** 只在这几本里搜（项目资料）；给了 book 时以 book 为准。 */
+  books?: string[];
   /** 最多返回几条（默认 20，上限 100）。 */
   limit?: number;
   /** 同一小节最多返回几条（默认 3）。 */
@@ -38,46 +40,177 @@ interface BookCache {
   files?: IndexedFile[];
 }
 
+/** 个人笔记导入时写在笔记目录里的 meta.json（M07 区，不在书库里）。 */
+export interface NoteMeta {
+  id: string;
+  title: string;
+  author: string;
+  source: string;
+  originalPath: string;
+  importedAt: string;
+  files: { chapter: string; title: string; originalFile: string; sections: number }[];
+  assets: { ref: string; path: string; found: boolean; file: string; line: number }[];
+  previous?: string;
+  skipped?: string[];
+}
+
+/** 书库里认出来的一本书（或一份个人笔记）。 */
+export interface BookInfo {
+  id: string;
+  /** 书目录（其下 m07/index.md）。 */
+  dir: string;
+  /** 学科目录（相对书库根，/ 隔开）；平铺的书为空。 */
+  subject: string;
+  kind: 'book' | 'note';
+  meta?: NoteMeta;
+}
+
+/** 书库根下最多往下找几层学科目录（学科/子学科/书）。 */
+const MAX_SUBJECT_DEPTH = 4;
+/** 扫描结果缓存多久（毫秒）；导入笔记会主动清掉。 */
+const SCAN_TTL_MS = 2000;
+/** 不往里找的目录：处理产物与页段。 */
+const SKIP_DIR = /^(\.|node_modules$|m07$|m08$|p\d+-\d+$)/;
+
 export class Library {
   private readonly cache = new Map<string, BookCache>();
+  private scanned: { at: number; map: Map<string, BookInfo> } | undefined;
 
-  constructor(readonly root: string) {}
+  /**
+   * root = 书库根：下面可以有学科目录再到书，“书”= 有 m07/index.md 的那一层。
+   * notesRoot = 个人笔记的 M07 区（<id>/m07/index.md + meta.json），在数据目录里，和书库分开。
+   */
+  constructor(
+    readonly root: string,
+    readonly notesRoot?: string,
+  ) {}
 
-  async books(): Promise<string[]> {
-    try {
-      const out: string[] = [];
-      for (const e of await readdir(this.root, { withFileTypes: true })) {
-        if (!e.isDirectory()) continue;
-        try {
-          await readFile(join(this.root, e.name, 'm07', 'index.md'));
-          out.push(e.name);
-        } catch (err) {
-          if (!isNotFound(err)) throw err;
-        }
+  /** 书库有变（导入了笔记、放进了新书）后调用，下次重新扫。 */
+  invalidate(): void {
+    this.scanned = undefined;
+  }
+
+  private async scan(fresh = false): Promise<Map<string, BookInfo>> {
+    const now = Date.now();
+    if (!fresh && this.scanned && now - this.scanned.at < SCAN_TTL_MS) return this.scanned.map;
+    const raw: (Omit<BookInfo, 'id'> & { leaf: string })[] = [];
+    await this.walk(this.root, '', 0, raw);
+    if (this.notesRoot !== undefined) await this.walkNotes(this.notesRoot, raw);
+    const byLeaf = new Map<string, number>();
+    for (const r of raw) byLeaf.set(r.leaf, (byLeaf.get(r.leaf) ?? 0) + 1);
+    const map = new Map<string, BookInfo>();
+    for (const r of raw.sort(
+      (a, b) => a.leaf.localeCompare(b.leaf) || a.dir.localeCompare(b.dir),
+    )) {
+      // 不同学科下同名的书：用“名（学科）”区分；书名里不能有 /
+      let id = r.leaf;
+      if ((byLeaf.get(r.leaf) ?? 0) > 1 && r.subject !== '') {
+        id = `${r.leaf}（${r.subject.replaceAll('/', '·')}）`;
       }
-      return out.sort();
+      for (let n = 2; map.has(id); n++) id = `${r.leaf}（${String(n)}）`;
+      map.set(id, {
+        id,
+        dir: r.dir,
+        subject: r.subject,
+        kind: r.kind,
+        ...(r.meta !== undefined ? { meta: r.meta } : {}),
+      });
+    }
+    this.scanned = { at: now, map };
+    return map;
+  }
+
+  private async walk(
+    dir: string,
+    subject: string,
+    depth: number,
+    out: (Omit<BookInfo, 'id'> & { leaf: string })[],
+  ): Promise<void> {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
     } catch (err) {
-      if (isNotFound(err)) return [];
+      if (isNotFound(err)) return;
       throw err;
     }
+    for (const e of entries) {
+      if (!e.isDirectory() || SKIP_DIR.test(e.name)) continue;
+      const child = join(dir, e.name);
+      if (await hasIndex(child)) {
+        out.push({ leaf: e.name, dir: child, subject, kind: 'book' });
+      } else if (depth < MAX_SUBJECT_DEPTH) {
+        await this.walk(child, subject === '' ? e.name : `${subject}/${e.name}`, depth + 1, out);
+      }
+    }
+  }
+
+  private async walkNotes(
+    dir: string,
+    out: (Omit<BookInfo, 'id'> & { leaf: string })[],
+  ): Promise<void> {
+    let entries;
+    try {
+      entries = await readdir(dir, { withFileTypes: true });
+    } catch (err) {
+      if (isNotFound(err)) return;
+      throw err;
+    }
+    for (const e of entries) {
+      if (!e.isDirectory()) continue;
+      const child = join(dir, e.name);
+      if (!(await hasIndex(child))) continue;
+      let meta: NoteMeta | undefined;
+      try {
+        meta = JSON.parse(await readFile(join(child, 'meta.json'), 'utf8')) as NoteMeta;
+      } catch (err) {
+        if (!isNotFound(err)) throw err;
+      }
+      out.push({
+        leaf: e.name,
+        dir: child,
+        subject: '个人笔记',
+        kind: 'note',
+        ...(meta !== undefined ? { meta } : {}),
+      });
+    }
+  }
+
+  async books(): Promise<string[]> {
+    return [...(await this.scan()).keys()].sort();
+  }
+
+  /** 一本书的位置与来源；找不到（新放进去的？）先重扫一次，还找不到返回空。 */
+  async info(book: string): Promise<BookInfo | undefined> {
+    const hit = (await this.scan()).get(book);
+    if (hit) return hit;
+    return (await this.scan(true)).get(book);
   }
 
   /** 每本书一行概况（hasOriginal 由调用方补）。 */
   async summaries(): Promise<Omit<BookSummary, 'hasOriginal'>[]> {
     const out: Omit<BookSummary, 'hasOriginal'>[] = [];
-    for (const id of await this.books()) {
+    for (const [id, info] of await this.scan()) {
       const b = await this.load(id);
       out.push({
         id,
         title: b.title,
         sections: b.entries.filter((e) => e.file !== undefined).length,
+        kind: info.kind,
+        ...(info.subject !== '' ? { subject: info.subject } : {}),
+        ...(info.meta !== undefined
+          ? {
+              author: info.meta.author,
+              source: info.meta.source,
+              originalPath: info.meta.originalPath,
+            }
+          : {}),
       });
     }
-    return out;
+    return out.sort((a, b) => a.id.localeCompare(b.id));
   }
 
   async index(book: string): Promise<string> {
-    return readFile(this.path(book, 'index.md'), 'utf8');
+    return readFile(await this.path(book, 'index.md'), 'utf8');
   }
 
   /** 读一个小节文件，每行前印行号；from / to 从 1 数、含两端。 */
@@ -94,7 +227,7 @@ export class Library {
     from = 1,
     to = Number.MAX_SAFE_INTEGER,
   ): Promise<{ total: number; from: number; to: number; lines: NumberedLine[] }> {
-    const all = splitLines(await readFile(this.path(book, file), 'utf8'));
+    const all = splitLines(await readFile(await this.path(book, file), 'utf8'));
     const lo = Math.max(1, from);
     const hi = Math.min(to, all.length);
     const lines: NumberedLine[] = [];
@@ -140,7 +273,7 @@ export class Library {
     const limit = Math.min(Math.max(opt.limit ?? 20, 1), 100);
     const perSection = Math.max(opt.perSection ?? 3, 1);
     const phrase = terms.join(' ');
-    const books = opt.book !== undefined ? [opt.book] : await this.books();
+    const books = opt.book !== undefined ? [opt.book] : (opt.books ?? (await this.books()));
     const scored: { hit: SearchHit; score: number; order: number }[] = [];
     let order = 0;
     for (const book of books) {
@@ -214,7 +347,7 @@ export class Library {
       if (entry.file === undefined) continue;
       let text: string;
       try {
-        text = await readFile(this.path(book, entry.file), 'utf8');
+        text = await readFile(await this.path(book, entry.file), 'utf8');
       } catch (err) {
         // 目录里列了、磁盘上没有的文件（处理报告里已标出）：检索跳过它，不当错误
         if (isNotFound(err)) continue;
@@ -235,7 +368,7 @@ export class Library {
     return parsed;
   }
 
-  private path(book: string, file: string): string {
+  private async path(book: string, file: string): Promise<string> {
     const rel = normalize(file);
     if (
       rel.startsWith('..') ||
@@ -246,21 +379,31 @@ export class Library {
     ) {
       throw new Error(`路径越界：${book} / ${file}`);
     }
-    return join(this.root, book, 'm07', rel);
+    return join(await this.bookDir(book), 'm07', rel);
   }
 
-  /** 书目录（<书>/）的绝对路径；原件页面从这里找。 */
-  bookDir(book: string): string {
+  /** 书目录（<书>/）的绝对路径；原件页面从这里找。认不出的书按书库根下的直接子目录算（读不到就是“没有这本书”）。 */
+  async bookDir(book: string): Promise<string> {
     if (book === '' || book.includes('/') || book.includes('..')) {
       throw new Error(`路径越界：${book}`);
     }
-    return join(this.root, book);
+    return (await this.info(book))?.dir ?? join(this.root, book);
   }
 
   /** 小节文件所在的章目录名（如 ch03）。 */
   static chapterOf(file: string): string {
     const d = dirname(file);
     return d === '.' ? '' : d;
+  }
+}
+
+async function hasIndex(dir: string): Promise<boolean> {
+  try {
+    await readFile(join(dir, 'm07', 'index.md'));
+    return true;
+  } catch (err) {
+    if (isNotFound(err) || (err as NodeJS.ErrnoException).code === 'ENOTDIR') return false;
+    throw err;
   }
 }
 

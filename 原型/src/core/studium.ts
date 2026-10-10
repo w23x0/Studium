@@ -4,6 +4,11 @@ import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
 import type {
+  ProjectDeadlineResponse,
+  ProjectMaterialsResponse,
+  ProjectMaterialView,
+} from '../shared/protocol.ts';
+import type {
   ChoiceCard,
   ChoiceOption,
   ConversationKind,
@@ -20,6 +25,7 @@ import type { M08 } from './knowledge/m08.ts';
 import {
   EVIDENCE_INDEPENDENCE,
   EVIDENCE_TIMES,
+  NOTE_GRADES,
   describeEvidence,
   type EvidenceStrength,
   type FormationEvidence,
@@ -28,6 +34,7 @@ import {
 import type { M10 } from './knowledge/m10.ts';
 import type { Objections } from './knowledge/objections.ts';
 import { STAGES, type M15 } from './knowledge/m15.ts';
+import { isNotFound } from './log/session-log.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
 
@@ -126,16 +133,22 @@ export class Studium {
         case 'main':
           return this.mainTools(sessionId);
         case 'talk':
-          return [...this.readTools(), this.settleGoalTool(sessionId)];
+          return [...this.readTools(sessionId), this.settleGoalTool(sessionId)];
         case 'loop':
-          return [...this.readTools(), ...this.loopTools(sessionId)];
+          return [...this.readTools(sessionId), ...this.loopTools(sessionId)];
         case 'guard':
-          return [...this.readTools({ m09: false }), this.verdictTool(sessionId)];
+          return [...this.readTools(sessionId, { m09: false }), this.verdictTool(sessionId)];
         case 'm09':
-          return [...this.readTools({ m07: false, m09: false }), this.formationTool(sessionId)];
+          // 同一类会话两种活：闭环合上后写形成记录；从学习者的笔记里提点（外部导入，未验证）
+          return this.noteTargets.has(sessionId)
+            ? [...this.readTools(sessionId, { m09: false }), this.notePointsTool(sessionId)]
+            : [
+                ...this.readTools(sessionId, { m07: false, m09: false }),
+                this.formationTool(sessionId),
+              ];
         case 'm05':
           return [
-            ...this.readTools(),
+            ...this.readTools(sessionId),
             this.loopTranscriptTool(),
             this.stateQueryTool(),
             this.cardTool(sessionId),
@@ -144,7 +157,7 @@ export class Studium {
           return this.stateTools(sessionId);
         case 'm10':
           return [
-            ...this.readTools({ m07: false, m09: false }),
+            ...this.readTools(sessionId, { m07: false, m09: false }),
             this.stateQueryTool(),
             this.strategyTool(sessionId),
           ];
@@ -169,8 +182,10 @@ export class Studium {
   }
 
   /** 所有项目：主对话 + 最近谈定的方向目标；项目名取最新一条 project_title（没有就用开项目时的名字）。 */
-  async listProjects(): Promise<{ mainSessionId: string; title: string; goal?: string }[]> {
-    const out: { mainSessionId: string; title: string; goal?: string }[] = [];
+  async listProjects(): Promise<
+    { mainSessionId: string; title: string; goal?: string; deadline?: string }[]
+  > {
+    const out: { mainSessionId: string; title: string; goal?: string; deadline?: string }[] = [];
     for (const m of this.hub.listSessions().filter((s) => s.kind === 'main')) {
       const recs = (await this.hub.records(m.sessionId)).map((r) => r.record);
       const goal = recs.filter((r) => r.type === 'project_goal').at(-1);
@@ -185,9 +200,150 @@ export class Studium {
               ? opened.title
               : m.title,
         ...(goal?.type === 'project_goal' ? { goal: goal.text } : {}),
+        ...(foldDeadline(recs).deadline !== undefined
+          ? { deadline: foldDeadline(recs).deadline }
+          : {}),
       });
     }
     return out;
+  }
+
+  // ───────────── 项目资料与期限（M01:15,36 · M07:13）─────────────
+
+  /** 会话所属的项目（主对话 id）：沿 parent 往上找到 main；不属于任何项目返回空。 */
+  async projectOf(sessionId: string): Promise<string | undefined> {
+    let cur = sessionId;
+    for (let i = 0; i < 8; i++) {
+      let opened;
+      try {
+        opened = await this.hub.opened(cur);
+      } catch (e) {
+        if (e instanceof NotFoundError) return undefined;
+        throw e;
+      }
+      if (opened.kind === 'main') return opened.sessionId;
+      if (opened.parent === undefined) return undefined;
+      cur = opened.parent;
+    }
+    return undefined;
+  }
+
+  private async requireProject(mainId: string): Promise<LogRecord[]> {
+    const opened = await this.hub.opened(mainId);
+    if (opened.kind !== 'main') throw new BadRequestError('这不是一个项目。');
+    return (await this.hub.records(mainId)).map((r) => r.record);
+  }
+
+  /** 项目当前选用的资料（按选用顺序）：把 project_material 记录从头折叠。 */
+  async selectedBooks(mainId: string): Promise<{ book: string; addedAt: string }[]> {
+    return foldMaterials(await this.requireProject(mainId));
+  }
+
+  /** 项目资料的视图：每份带书名 / 类型 / 学科；书库里现在找不到的标 missing。 */
+  async materials(mainId: string): Promise<ProjectMaterialsResponse> {
+    const recs = await this.requireProject(mainId);
+    const chosen = foldMaterials(recs);
+    const views: ProjectMaterialView[] = [];
+    for (const c of chosen) {
+      const info = await this.o.m07.info(c.book);
+      views.push({
+        book: c.book,
+        title: info !== undefined ? await this.o.m07.title(c.book) : c.book,
+        kind: info?.kind ?? 'book',
+        ...(info !== undefined && info.subject !== '' ? { subject: info.subject } : {}),
+        addedAt: c.addedAt,
+        ...(info === undefined ? { missing: true } : {}),
+      });
+    }
+    const d = foldDeadline(recs);
+    return {
+      mainSessionId: mainId,
+      materials: views,
+      restricted: views.some((v) => v.missing !== true),
+      ...(d.deadline !== undefined ? { deadline: d.deadline } : {}),
+      ...(d.note !== undefined ? { deadlineNote: d.note } : {}),
+    };
+  }
+
+  /** 加 / 去项目资料：只追加记录；已选的再加、没选的去，当作没发生。书库里没有的书整批拒绝。 */
+  async changeMaterials(
+    mainId: string,
+    change: { add?: string[]; remove?: string[] },
+  ): Promise<ProjectMaterialsResponse> {
+    const recs = await this.requireProject(mainId);
+    const have = new Set(foldMaterials(recs).map((m) => m.book));
+    const lib = await this.o.m07.books();
+    const resolve = (name: string): string | undefined =>
+      lib.includes(name) ? name : lib.find((b) => b.trim() === name.trim());
+    const adds: string[] = [];
+    for (const name of change.add ?? []) {
+      const id = resolve(name);
+      if (id === undefined) throw new BadRequestError(`书库里没有这份资料：${name}`);
+      if (!have.has(id) && !adds.includes(id)) adds.push(id);
+    }
+    const removes: string[] = [];
+    for (const name of change.remove ?? []) {
+      // 去掉的可以是已经从书库里消失的（missing），所以不查书库
+      const id = [...have].find((b) => b === name || b.trim() === name.trim());
+      if (id !== undefined && !removes.includes(id)) removes.push(id);
+    }
+    const at = this.iso();
+    for (const book of removes) {
+      await this.hub.record(mainId, { type: 'project_material', at, op: 'remove', book });
+    }
+    for (const book of adds) {
+      await this.hub.record(mainId, { type: 'project_material', at, op: 'add', book });
+    }
+    return this.materials(mainId);
+  }
+
+  /**
+   * 资料工具默认查哪些书：项目选用的（书库里还在的）；没选 / 选的都不在了 / 会话不属于任何项目 = 不限（全库）。
+   * all = true 是学习者或模型明确要全库。
+   */
+  async scopeOf(sessionId: string, all = false): Promise<string[] | undefined> {
+    if (all) return undefined;
+    const main = await this.projectOf(sessionId);
+    if (main === undefined) return undefined;
+    const chosen = await this.selectedBooks(main);
+    if (chosen.length === 0) return undefined;
+    const lib = new Set(await this.o.m07.books());
+    const still = chosen.map((c) => c.book).filter((b) => lib.has(b));
+    return still.length > 0 ? still : undefined;
+  }
+
+  /** 记 / 清项目期限（可不填）。 */
+  async setDeadline(
+    mainId: string,
+    deadline: string | null,
+    note?: string,
+  ): Promise<ProjectDeadlineResponse> {
+    await this.requireProject(mainId);
+    if (deadline !== null && !validDate(deadline)) {
+      throw new BadRequestError('期限要写成 YYYY-MM-DD 的真实日期，或传 null 清掉。');
+    }
+    await this.hub.record(mainId, {
+      type: 'project_deadline',
+      at: this.iso(),
+      deadline,
+      ...(note !== undefined && note.trim() !== '' ? { note: note.trim() } : {}),
+    });
+    return this.deadlineView(mainId);
+  }
+
+  async deadlineView(mainId: string): Promise<ProjectDeadlineResponse> {
+    const d = foldDeadline(await this.requireProject(mainId));
+    return {
+      mainSessionId: mainId,
+      ...(d.deadline !== undefined ? { deadline: d.deadline } : {}),
+      ...(d.note !== undefined ? { deadlineNote: d.note } : {}),
+      ...(d.deadline !== undefined ? { daysLeft: this.daysUntil(d.deadline) } : {}),
+    };
+  }
+
+  private daysUntil(date: string): number {
+    const today = this.now().toISOString().slice(0, 10);
+    return Math.round((Date.parse(date) - Date.parse(today)) / 86_400_000);
   }
 
   /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（03「闭环外」暂停）。 */
@@ -653,13 +809,26 @@ export class Studium {
     }
     const known = this.o.m09.knownPoints();
     const objections = this.o.objections.all().slice(-20);
+    const scope = await this.scopeOf(mainId);
+    const external = this.o.m09.externals().slice(-30);
+    const deadline = foldDeadline(main).deadline;
     return [
       `触发原因：${trigger}`,
       '',
       `方向目标：${goal?.type === 'project_goal' ? goal.text : '（还没有；按默认先验——高中以上、脱离应试——出临时选项，标“临时”）'}`,
       '',
+      `期限：${deadline !== undefined ? this.deadlineText(foldDeadline(main)) : '没有记'}`,
+      '',
+      `资料范围：${scope !== undefined ? `项目选用了 ${String(scope.length)} 份资料：${scope.join('、')}。教材查询工具和 M08 工具默认只在这些里查；学习者或你明确要时，传 all=true 查全库。` : '项目没选资料：查全库。'}`,
+      '',
       `已合上过的新点（M09）：${known.length > 0 ? known.map((p) => `${p}「${this.o.m08.name(p)}」`).join('、') : '（空：冷启动，第一个闭环选小的）'}`,
       '',
+      ...(external.length > 0
+        ? [
+            `外部导入（学习者在系统之外学到的：自述 / 笔记里写过；未验证，可信度低于闭环记录，闭环证据永远优先，可以怀疑，不算“已合上过”）：\n${external.map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id))).join('\n')}`,
+            '',
+          ]
+        : []),
       `闭环（路线事实）：\n${loopStates.length > 0 ? loopStates.join('\n') : '（还没有）'}`,
       '',
       ...(objections.length > 0
@@ -668,10 +837,68 @@ export class Studium {
             '',
           ]
         : []),
-      this.o.m08.empty ? 'M08：空（缺通用知识依据）' : `M08 提纲：\n${this.o.m08.outline()}`,
+      this.m08Summary(scope, await this.recentSpot(loops)),
       '',
       '学习者状态（M15）：要用时用 query_state 查；没有记录按无状态约束。',
     ].join('\n');
+  }
+
+  private deadlineText(d: { deadline?: string; note?: string }): string {
+    if (d.deadline === undefined) return '没有记';
+    const days = this.daysUntil(d.deadline);
+    const left = days >= 0 ? `还有 ${String(days)} 天` : `已过 ${String(-days)} 天`;
+    return `${d.deadline}（${left}）${d.note !== undefined ? `；${d.note}` : ''}`;
+  }
+
+  /** M08 概要（给 M05 开场用）：各书各章有多少点 / 子句；全部点按需用工具查（m08_overview / list_chapter_points / search_points）。 */
+  private m08Summary(scope: string[] | undefined, recent: string): string {
+    const m08 = this.o.m08;
+    if (m08.empty) return 'M08：空（缺通用知识依据）';
+    const set = scope !== undefined ? new Set(scope) : undefined;
+    const counts = m08.counts(set);
+    const shown = counts.slice(0, 20);
+    const lines = shown.map(
+      (b) =>
+        `- 《${b.book}》${String(b.points)} 点 / ${String(b.clauses)} 子句：${b.chapters
+          .slice(0, 40)
+          .map((c) => `${c.chapter} ${String(c.points)}/${String(c.clauses)}`)
+          .join('，')}${b.chapters.length > 40 ? '……' : ''}`,
+    );
+    const total = [...m08.points.values()].filter(
+      (p) => set === undefined || m08.pointInBooks(p, set),
+    ).length;
+    const hidden = m08.points.size - total;
+    return [
+      `M08 概要（共 ${String(total)} 个点${m08.origins.length > 1 ? `，合并自 ${String(m08.origins.length)} 套产出` : ''}；章后是 点数/子句数）：`,
+      lines.join('\n') || '（项目选的资料里还没有 M08 点）',
+      ...(counts.length > shown.length
+        ? [`……另有 ${String(counts.length - shown.length)} 本`]
+        : []),
+      ...(hidden > 0
+        ? [`（另有 ${String(hidden)} 个点属于没选进项目的资料，要看用 all=true）`]
+        : []),
+      recent,
+      '要看某一章的点：list_chapter_points（书名、章名）；按关键词找：search_points；一个点的细节与前后子句：get_point。点只在需要时再查，开场不列。',
+    ].join('\n');
+  }
+
+  /** 学习者最近在哪一章：本项目最近开的带单子的闭环，它的新点所在的书与章。 */
+  private async recentSpot(
+    loops: { sessionId: string; title: string; openedAt: string }[],
+  ): Promise<string> {
+    const sorted = [...loops].sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+    for (const l of sorted) {
+      const opened = await this.hub.opened(l.sessionId);
+      const p = opened.ticket ? this.o.m08.points.get(opened.ticket.newPoint) : undefined;
+      if (p === undefined) continue;
+      const recs = (await this.hub.records(l.sessionId)).map((r) => r.record);
+      const ended = recs.filter((r) => r.type === 'loop_ended').at(-1);
+      const state =
+        ended?.type === 'loop_ended' ? (ended.closed ? '合上' : '没合上就结束') : '进行中';
+      const book = this.o.m08.bookOf(p);
+      return `学习者最近在：${book !== undefined ? `《${book.trim()}》 ` : ''}${this.o.m08.chapterOf(p)}（闭环 ${l.sessionId}「${l.title}」，新点 ${p.id}「${p.name}」，${state}）`;
+    }
+    return '学习者最近在：还没有开过闭环';
   }
 
   private cardTool(sessionId: string): ToolSpec {
@@ -829,8 +1056,11 @@ export class Studium {
               `- ${l.sessionId}「${l.title}」：${ended?.type === 'loop_ended' ? (ended.closed ? '合上' : '没合上就结束') : '进行中'}`,
             );
           }
+          const ext = this.o.m09
+            .externals()
+            .map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id)));
           return ok(
-            `闭环：\n${loops.join('\n') || '（还没有）'}\n\nM09 形成记录：\n${rows.join('\n') || '（还没有）'}`,
+            `闭环：\n${loops.join('\n') || '（还没有）'}\n\nM09 形成记录（闭环证据）：\n${rows.join('\n') || '（还没有）'}${ext.length > 0 ? `\n\n外部导入（学习者自述 / 笔记，未验证，不算学会）：\n${ext.join('\n')}` : ''}`,
           );
         },
       },
@@ -869,6 +1099,18 @@ export class Studium {
       input: {
         goal: z.string().describe('一两句：学什么、学到什么程度、为什么学'),
         project_name: z.string().describe('项目名：几个字，学习者一眼认得出'),
+        known: z
+          .array(
+            z.object({
+              claim: z.string().describe('学习者自己说他已经会 / 学过的是什么，一句话'),
+              point: z.string().optional().describe('对得上 M08 的点就填点 id，对不上不填'),
+              basis: z.string().optional().describe('判读依据：他怎么说的、说到什么程度'),
+              lines: z.array(z.number().int()).min(1).describe('学习者说这话的行号（本对话里）'),
+            }),
+          )
+          .optional()
+          .describe('学习者在畅谈里亲口说自己已经会的东西（自述，未验证）；没说就不填，不要猜'),
+        deadline: z.string().optional().describe('学习者说了期限才填，YYYY-MM-DD；没说不填'),
       },
       run: async (a) => {
         const recs = await this.hub.records(talkId);
@@ -879,9 +1121,54 @@ export class Studium {
         const goal = (a.goal as string).trim();
         if (goal === '') return err('方向目标不能是空的');
         const title = (a.project_name as string).trim() || shortTitle(goal);
+        const deadline = (a.deadline as string | undefined)?.trim();
+        if (deadline !== undefined && deadline !== '' && !validDate(deadline)) {
+          return err('deadline 要写成 YYYY-MM-DD 的真实日期；学习者没说期限就不填');
+        }
+        // 自述要引学习者自己的话（和 M15 的自述同一条规矩）；先全部核对，不过就什么都不写
+        const known =
+          (a.known as
+            { claim: string; point?: string; basis?: string; lines: number[] }[] | undefined) ?? [];
+        const learner = learnerLines(recs);
+        for (const k of known) {
+          if (k.claim.trim() === '') return err('known 里有空的 claim');
+          const bad = k.lines.filter((l) => !learner.has(l));
+          if (bad.length > 0) {
+            return err(`known 里引的第 ${bad.join('、')} 行不是学习者说的话；自述只引学习者的行`);
+          }
+          if (k.point !== undefined && k.point !== '' && !this.o.m08.points.has(k.point)) {
+            return err(`known 里的点 ${k.point} 在 M08 里查不到；对不上就不填 point`);
+          }
+        }
         const at = this.iso();
         await this.hub.record(mainId, { type: 'project_goal', at, text: goal });
         await this.hub.record(mainId, { type: 'project_title', at, title, source: 'goal' });
+        if (deadline !== undefined && deadline !== '') {
+          await this.hub.record(mainId, { type: 'project_deadline', at, deadline });
+        }
+        if (known.length > 0) {
+          const model = await this.hub.executedModel(talkId);
+          for (const k of known) {
+            await this.o.m09.addExternal({
+              id: this.newId('x'),
+              at,
+              source: '自述',
+              status: '未验证',
+              claim: k.claim.trim(),
+              ...(k.point !== undefined && k.point !== '' ? { point: k.point } : {}),
+              basis: k.basis?.trim() || '学习者在畅谈里自己说会，没有验证',
+              talk: {
+                sessionId: talkId,
+                lines: k.lines,
+                quotes: k.lines.map((l) => {
+                  const r = recs.find((x) => x.line === l)?.record;
+                  return r?.type === 'user_message' ? r.text.slice(0, 200) : '';
+                }),
+              },
+              model,
+            });
+          }
+        }
         await this.hub.record(talkId, { type: 'talk_ended', at, goal, title });
         await this.hub.send(mainId, {
           role: 'program',
@@ -978,6 +1265,9 @@ export class Studium {
     const history = t.startPoints
       .flatMap((s) => this.o.m09.forPoint(s.point))
       .map((r) => this.o.m09.describe(r));
+    const external = t.startPoints
+      .flatMap((s) => this.o.m09.externalsForPoint(s.point))
+      .map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id)));
     return [
       '本闭环的单子（M05）：',
       this.describeTicket(t),
@@ -992,6 +1282,11 @@ export class Studium {
       starts || '（无）',
       '',
       `M09 相关记录：${history.length > 0 ? '\n' + history.join('\n') : '缺历史背景（这些出发点还没有闭环记录）'}`,
+      ...(external.length > 0
+        ? [
+            `外部导入记录（学习者在系统之外学到的：自述 / 笔记；未验证，可信度低于闭环记录，教学中可以怀疑它）：\n${external.join('\n')}`,
+          ]
+        : []),
       '学习者状态（M15）与以前的教法记录（M10）：要用时查。',
       '',
       '现在开始这个闭环：先简短说明这次学什么、从哪出发，然后开始。',
@@ -1385,17 +1680,212 @@ export class Studium {
     if (ended) throw new BadRequestError('这部分已经结束了。');
   }
 
-  /** 只读查询工具：M08、M07、M09（按 03「读写权限」）。 */
-  private readTools(opt: { m07?: boolean; m09?: boolean } = {}): ToolSpec[] {
+  /** 笔记提取的会话 → 要提的笔记（书库 id）。 */
+  private readonly noteTargets = new Map<string, { book: string; done: boolean }>();
+
+  /**
+   * 笔记导入后可选：让模型从学习者的笔记里提“他写过的点”，作为“笔记、未验证”档写进 M09（M09:26,47）。
+   * 开一个 M09 会话（和写形成记录同一类，另一种活），后台跑；结果在 GET /api/m09/external。
+   */
+  async extractNotePoints(book: string, projectId?: string): Promise<string> {
+    const info = await this.o.m07.info(book);
+    if (info?.kind !== 'note')
+      throw new BadRequestError('只能从个人笔记里提：这不是一份导入的笔记。');
+    if (projectId !== undefined) await this.requireProject(projectId);
+    const toc = await this.o.m07.toc(book);
+    const parts: string[] = [];
+    let budget = NOTE_EXTRACT_CHARS;
+    for (const e of toc) {
+      if (e.file === undefined) {
+        parts.push(`## ${e.num} ${e.title}`);
+        continue;
+      }
+      const r = await this.o.m07.lines(book, e.file);
+      let body = r.lines.map((l) => `${String(l.n)}\t${l.text}`).join('\n');
+      if (body.length > budget)
+        body = `${body.slice(0, Math.max(budget, 0))}\n（后面截断了，用 read_source 读全）`;
+      budget -= body.length;
+      parts.push(`## ${e.num} ${e.title}（文件 ${e.file}，共 ${String(r.total)} 行）\n${body}`);
+    }
+    const s = await this.hub.createSession('m09', {
+      title: '提取笔记里的点',
+      ...(projectId !== undefined ? { parent: projectId } : {}),
+    });
+    this.noteTargets.set(s.sessionId, { book, done: false });
+    await this.hub.send(s.sessionId, {
+      role: 'program',
+      text: [
+        '这一次不是写闭环形成记录，而是从学习者的个人笔记里提“他写过的点”（外部导入，未验证）。',
+        `笔记：《${book}》（作者：学习者；来源：个人笔记；原路径：${info.meta?.originalPath ?? '未知'}）。每个小节前是文件名，行前是行号。`,
+        '',
+        parts.join('\n\n'),
+      ].join('\n'),
+    });
+    await this.hub.idle(s.sessionId);
+    return s.sessionId;
+  }
+
+  private notePointsTool(sessionId: string): ToolSpec {
+    return {
+      name: 'write_note_points',
+      description:
+        '把从学习者笔记里提到的点写进 M09 的“笔记、未验证”档。每个点：学习者写过的是什么、对得上 M08 就填点 id、笔记里写到什么程度、依据的笔记行段。只提交一次；笔记里没有的不要编。',
+      input: {
+        points: z
+          .array(
+            z.object({
+              claim: z.string().describe('学习者在笔记里写过的是什么，一句话'),
+              point: z.string().optional().describe('对得上 M08 的点就填点 id，对不上不填'),
+              grade: z.enum(NOTE_GRADES).describe('笔记里写到什么程度'),
+              basis: z.string().describe('判读依据：笔记里看到了什么才这样分'),
+              file: z.string().describe('笔记小节文件，如 ch01/sec-1.1.md'),
+              from_line: z.number().int(),
+              to_line: z.number().int(),
+            }),
+          )
+          .min(1),
+      },
+      run: async (a) => {
+        const target = this.noteTargets.get(sessionId);
+        if (!target) return err('找不到要提的笔记');
+        if (target.done) return err('已经提交过了');
+        const points = a.points as {
+          claim: string;
+          point?: string;
+          grade: (typeof NOTE_GRADES)[number];
+          basis: string;
+          file: string;
+          from_line: number;
+          to_line: number;
+        }[];
+        for (const p of points) {
+          if (p.claim.trim() === '' || p.basis.trim() === '') return err('claim 和 basis 都不能空');
+          if (p.point !== undefined && p.point !== '' && !this.o.m08.points.has(p.point)) {
+            return err(`点 ${p.point} 在 M08 里查不到；对不上就不填 point`);
+          }
+          let r;
+          try {
+            r = await this.o.m07.lines(target.book, p.file, p.from_line, p.to_line);
+          } catch (e) {
+            if (isNotFound(e)) return err(`笔记里没有这个文件：${p.file}`);
+            throw e;
+          }
+          if (p.from_line < 1 || p.to_line < p.from_line || r.lines.length === 0) {
+            return err(
+              `${p.file} 第 ${String(p.from_line)}–${String(p.to_line)} 行不在笔记里（共 ${String(r.total)} 行）`,
+            );
+          }
+        }
+        const at = this.iso();
+        const model = await this.hub.executedModel(sessionId);
+        for (const p of points) {
+          await this.o.m09.addExternal({
+            id: this.newId('x'),
+            at,
+            source: '笔记',
+            status: '未验证',
+            claim: p.claim.trim(),
+            ...(p.point !== undefined && p.point !== '' ? { point: p.point } : {}),
+            basis: p.basis.trim(),
+            grade: p.grade,
+            note: { book: target.book, file: p.file, from: p.from_line, to: p.to_line },
+            model,
+          });
+        }
+        target.done = true;
+        return ok(`已写入 ${String(points.length)} 条（笔记、未验证）`);
+      },
+    };
+  }
+
+  /** 资料范围的说明，接在工具结果后面：只搜了项目选用的，要全库传 all。 */
+  private scopeHint(scope: string[] | undefined): string {
+    return scope !== undefined
+      ? `\n（只在项目选用的 ${String(scope.length)} 份资料里查；要查全库传 all=true）`
+      : '';
+  }
+
+  /** 只读查询工具：M08、M07、M09（按 03「读写权限」）；资料类工具默认只查项目选的资料（没选 = 全库）。 */
+  private readTools(sessionId: string, opt: { m07?: boolean; m09?: boolean } = {}): ToolSpec[] {
     const m08 = this.o.m08;
+    const allParam = z
+      .boolean()
+      .optional()
+      .describe('true = 查整个书库，不限项目选用的资料（学习者或你明确要时才用）');
     const tools: ToolSpec[] = [
       {
         name: 'search_points',
-        description: '在 M08 里按关键词找点（名字或一句话里含这个词）。',
-        input: { keyword: z.string() },
+        description:
+          '在 M08 里按关键词找点（名字或一句话里含这个词）。默认只找项目选用的资料里的点。',
+        input: { keyword: z.string(), all: allParam },
+        run: async (a) => {
+          const scope = await this.scopeOf(sessionId, a.all === true);
+          const hits = m08.search(a.keyword as string, scope ? new Set(scope) : undefined);
+          return ok(
+            hits.length > 0
+              ? hits.map((p) => m08.describePoint(p)).join('\n')
+              : `没找到${this.scopeHint(scope)}`,
+          );
+        },
+      },
+      {
+        name: 'm08_overview',
+        description:
+          '看 M08 的概要：每本书每一章有多少点、多少子句（章名可用于 list_chapter_points）。默认只算项目选用的资料。',
+        input: { all: allParam },
+        run: async (a) => {
+          const scope = await this.scopeOf(sessionId, a.all === true);
+          if (m08.empty) return ok('M08 是空的（缺通用知识依据）');
+          const counts = m08.counts(scope ? new Set(scope) : undefined);
+          return ok(
+            counts.length > 0
+              ? counts
+                  .map(
+                    (b) =>
+                      `《${b.book}》${String(b.points)} 点 / ${String(b.clauses)} 子句\n${b.chapters.map((c) => `  ${c.chapter}：${String(c.points)} 点 / ${String(c.clauses)} 子句`).join('\n')}`,
+                  )
+                  .join('\n') + this.scopeHint(scope)
+              : `项目选用的资料里还没有 M08 点${this.scopeHint(scope)}`,
+          );
+        },
+      },
+      {
+        name: 'list_chapter_points',
+        description:
+          '按章列出 M08 的点（id、名字、一句话）和进入这些点的子句。book 照 m08_overview 的书名写；chapter 如 ch03（不给 = 整本）。',
+        input: { book: z.string(), chapter: z.string().optional() },
         run: (a) => {
-          const hits = m08.search(a.keyword as string);
-          return ok(hits.length > 0 ? hits.map((p) => m08.describePoint(p)).join('\n') : '没找到');
+          const want = (a.book as string).trim();
+          const books = m08.counts().map((b) => b.book);
+          const book =
+            books.find((b) => b === want) ??
+            (() => {
+              const near = books.filter((b) => b.toLowerCase().includes(want.toLowerCase()));
+              return near.length === 1 ? near[0] : undefined;
+            })();
+          if (book === undefined) {
+            return err(`M08 里没有这本书：${want}。有：${books.join('；') || '（无）'}`);
+          }
+          const r = m08.inChapter(book, a.chapter as string | undefined);
+          if (r.points.length === 0) {
+            const chapters = m08.counts().find((b) => b.book === book)?.chapters ?? [];
+            return err(
+              `《${book}》没有这一章的点：${(a.chapter as string | undefined) ?? ''}。有：${chapters.map((c) => c.chapter).join('、')}`,
+            );
+          }
+          const tag = (x: string): string => (x === '书给的' ? '' : `（${x}）`);
+          return ok(
+            [
+              `《${book}》${typeof a.chapter === 'string' ? ` ${a.chapter}` : ''}：${String(r.points.length)} 个点，${String(r.clauses.length)} 条进入这些点的子句`,
+              '点：',
+              ...r.points.map((p) => `- ${p.id}「${p.name}」${tag(p.source)}：${p.sentence}`),
+              '子句（出发点 → 新点）：',
+              ...r.clauses.map(
+                (c) =>
+                  `- ${c.id}：${c.from.map((f) => `${f}「${m08.name(f)}」`).join(' + ')} → ${c.to}「${m08.name(c.to)}」${tag(c.source)}`,
+              ),
+            ].join('\n'),
+          );
         },
       },
       {
@@ -1426,13 +1916,35 @@ export class Studium {
       tools.push(
         {
           name: 'textbook_index',
-          description: '不给书名：列出书库里的书；给书名：读这本书的 M07 目录。',
-          input: { book: z.string().optional() },
+          description:
+            '不给书名：列出项目选用的资料（书和个人笔记，按学科分组；项目没选就是整个书库），all=true 列整个书库；给书名：读这本书的 M07 目录。',
+          input: { book: z.string().optional(), all: allParam },
           run: async (a) => {
             const book = a.book as string | undefined;
             if (book === undefined || book === '') {
-              const books = await this.o.m07.books();
-              return ok(books.length > 0 ? books.join('\n') : '书库是空的（缺资料依据）');
+              const lib = await this.o.m07.books();
+              if (lib.length === 0) return ok('书库是空的（缺资料依据）');
+              const scope = await this.scopeOf(sessionId, a.all === true);
+              const shown = scope ?? lib;
+              const groups = new Map<string, string[]>();
+              for (const id of shown) {
+                const subject = (await this.o.m07.info(id))?.subject ?? '';
+                groups.set(subject, [...(groups.get(subject) ?? []), id]);
+              }
+              const lines: string[] = [];
+              for (const [subject, ids] of [...groups.entries()].sort((x, y) =>
+                x[0].localeCompare(y[0], 'zh-CN'),
+              )) {
+                if (subject !== '') lines.push(`【${subject}】`);
+                lines.push(...ids);
+              }
+              const rest = lib.length - shown.length;
+              return ok(
+                lines.join('\n') +
+                  (scope !== undefined
+                    ? `\n\n（这是项目选用的资料；书库里另有 ${String(rest)} 份没选，要看全库传 all=true）`
+                    : ''),
+              );
             }
             return ok(await this.o.m07.index(book));
           },
@@ -1467,25 +1979,32 @@ export class Studium {
         {
           name: 'search_textbook',
           description:
-            '在书库所有教材的原文里全文检索（词用空白隔开，要同时出现在同一段里）。返回书、小节、行号、片段和可直接用的出处标记。想引用教材原文、核对教材怎么说时用。',
+            '在教材原文里全文检索（词用空白隔开，要同时出现在同一段里），默认只搜项目选用的资料。返回书、小节、行号、片段和可直接用的出处标记。想引用教材原文、核对教材怎么说时用。',
           input: {
             query: z.string(),
-            book: z.string().optional().describe('只搜这一本；不给就搜全部'),
+            book: z.string().optional().describe('只搜这一本（明确指定的书不受项目资料限制）'),
             limit: z.number().int().optional().describe('最多几条，默认 10'),
+            all: allParam,
           },
           run: async (a) => {
+            const book = (a.book as string | undefined) || undefined;
+            const scope =
+              book !== undefined ? undefined : await this.scopeOf(sessionId, a.all === true);
             const r = await this.o.sources.search(
               a.query as string,
-              (a.book as string | undefined) || undefined,
+              book,
               (a.limit as number | undefined) ?? 10,
+              scope,
             );
-            if (r.hits.length === 0) return ok('没找到（原文里没有同时含这些词的一段）');
+            if (r.hits.length === 0) {
+              return ok(`没找到（原文里没有同时含这些词的一段）${this.scopeHint(scope)}`);
+            }
             const rows = r.hits.map(
               (h) =>
                 `《${h.bookTitle || h.book}》${h.num} ${h.title}｜${h.file} 第 ${String(h.line)} 行\n  ${h.snippet}\n  出处标记：${formatCitation({ book: h.book, file: h.file, from: h.line })}`,
             );
             return ok(
-              `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}`,
+              `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}`,
             );
           },
         },
@@ -1494,17 +2013,22 @@ export class Studium {
     if (opt.m09 !== false) {
       tools.push({
         name: 'query_m09',
-        description: '查学习者已结束闭环的形成记录；给点 id 只看与这个点有关的。',
+        description:
+          '查学习者的 M09 记录，分两档：已结束闭环的形成记录（闭环证据，已验证）；外部导入（学习者自述 / 笔记里写过的，未验证，可信度低、闭环证据优先）。给点 id 只看与这个点有关的。',
         input: { point: z.string().optional() },
         run: (a) => {
           const p = a.point as string | undefined;
           const rows = p ? this.o.m09.forPoint(p) : this.o.m09.all();
+          const ext = p ? this.o.m09.externalsForPoint(p) : this.o.m09.externals();
+          const closed = rows
+            .map((r) => this.o.m09.describe(r) + this.objectionNotes('m09', r.id))
+            .join('\n');
+          if (ext.length === 0) return ok(rows.length > 0 ? closed : '没有记录');
+          const outside = ext
+            .map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id)))
+            .join('\n');
           return ok(
-            rows.length > 0
-              ? rows
-                  .map((r) => this.o.m09.describe(r) + this.objectionNotes('m09', r.id))
-                  .join('\n')
-              : '没有记录',
+            `闭环形成记录（已验证）：\n${closed || '没有'}\n\n外部导入（未验证，自述 / 笔记；不算学会，闭环证据优先，可以怀疑）：\n${outside}`,
           );
         },
       });
@@ -1545,4 +2069,34 @@ function formatDuration(ms: number): string {
   if (h < 1) return `${String(Math.round(ms / 60_000))} 分钟`;
   if (h < 48) return `${String(Math.round(h))} 小时`;
   return `${String(Math.round(h / 24))} 天`;
+}
+
+/** 笔记提取：开场里最多放多少字笔记原文，超出的让模型用 read_source 读。 */
+const NOTE_EXTRACT_CHARS = 30_000;
+
+/** 把 project_material 记录折叠成当前选用的资料（按选用顺序）。 */
+export function foldMaterials(recs: LogRecord[]): { book: string; addedAt: string }[] {
+  const out = new Map<string, string>();
+  for (const r of recs) {
+    if (r.type !== 'project_material') continue;
+    if (r.op === 'add') {
+      if (!out.has(r.book)) out.set(r.book, r.at);
+    } else {
+      out.delete(r.book);
+    }
+  }
+  return [...out.entries()].map(([book, addedAt]) => ({ book, addedAt }));
+}
+
+/** 取最新一条 project_deadline；null = 已清掉。 */
+export function foldDeadline(recs: LogRecord[]): { deadline?: string; note?: string } {
+  const last = recs.filter((r) => r.type === 'project_deadline').at(-1);
+  if (last?.type !== 'project_deadline' || last.deadline === null) return {};
+  return { deadline: last.deadline, ...(last.note !== undefined ? { note: last.note } : {}) };
+}
+
+function validDate(s: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
+  const t = Date.parse(`${s}T00:00:00Z`);
+  return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === s;
 }

@@ -10,6 +10,8 @@ import {
   type ClauseView,
   type CurrentStateView,
   type DisclosureResponse,
+  type ExternalRecordView,
+  type M08OverviewResponse,
   type FormationView,
   type GuardVerdictView,
   type LoopBrief,
@@ -40,7 +42,7 @@ import type { M10 } from './knowledge/m10.ts';
 import type { M15 } from './knowledge/m15.ts';
 import type { Objections } from './knowledge/objections.ts';
 import type { Sources } from './sources.ts';
-import { BadRequestError } from './studium.ts';
+import { BadRequestError, foldDeadline, foldMaterials } from './studium.ts';
 
 export interface EvidenceDeps {
   hub: Hub;
@@ -323,6 +325,8 @@ export class Evidence {
       .map((r) => r.record)
       .filter((r) => r.type === 'project_title')
       .at(-1);
+    const mainLog = mainRecs.map((r) => r.record);
+    const dl = foldDeadline(mainLog);
     const groups: ProjectOverview['groups'] = {
       inProgress: [],
       awaitingChoice: [],
@@ -349,6 +353,9 @@ export class Evidence {
       mainSessionId: mainId,
       title: title?.type === 'project_title' ? title.title : main.title,
       ...(goal?.type === 'project_goal' ? { goal: goal.text } : {}),
+      ...(dl.deadline !== undefined ? { deadline: dl.deadline } : {}),
+      ...(dl.note !== undefined ? { deadlineNote: dl.note } : {}),
+      materialCount: foldMaterials(mainLog).length,
       groups,
     };
   }
@@ -483,10 +490,50 @@ export class Evidence {
 
   // ───────────── M08 ─────────────
 
-  points(q?: string): { points: PointView[]; empty: boolean } {
+  /** book / chapter 给了就只列那一本那一章的点（多本书、多套 M08 合并后按章浏览）。 */
+  points(q?: string, book?: string, chapter?: string): { points: PointView[]; empty: boolean } {
     const m08 = this.d.m08;
-    const found = q === undefined || q.trim() === '' ? [...m08.points.values()] : m08.search(q);
+    let found = q === undefined || q.trim() === '' ? [...m08.points.values()] : m08.search(q);
+    if (book !== undefined && book !== '') {
+      const inBook = new Set(m08.inChapter(book, chapter).points.map((p) => p.id));
+      found = found.filter((p) => inBook.has(p.id));
+    }
     return { points: found.map((p) => this.pointView(p)), empty: m08.empty };
+  }
+
+  /** M08 概要：每一套产出、按书按章的点 / 子句数；scope 给了只算这几本书。 */
+  m08Overview(scope?: string[]): M08OverviewResponse {
+    const m08 = this.d.m08;
+    return {
+      sources: m08.origins,
+      books: m08.counts(scope ? new Set(scope) : undefined),
+      restricted: scope !== undefined,
+    };
+  }
+
+  /** 外部导入进 M09 的记录（自述 / 笔记，未验证），新的在后。 */
+  externals(): ExternalRecordView[] {
+    return this.d.m09.externals().map((r) => ({
+      id: r.id,
+      at: r.at,
+      source: r.source,
+      status: r.status,
+      claim: r.claim,
+      ...(r.point !== undefined
+        ? {
+            point: {
+              id: r.point,
+              name: this.d.m08.name(r.point),
+              found: this.d.m08.points.has(r.point),
+            },
+          }
+        : {}),
+      basis: r.basis,
+      ...(r.grade !== undefined ? { grade: r.grade } : {}),
+      ...(r.talk !== undefined ? { talk: r.talk } : {}),
+      ...(r.note !== undefined ? { note: r.note } : {}),
+      model: r.model,
+    }));
   }
 
   point(id: string): Point08Response {
@@ -528,6 +575,8 @@ export class Evidence {
         text: c.text,
         anchors: c.anchors.map(anchorView),
       })),
+      ...(p.origin !== undefined ? { origin: p.origin } : {}),
+      ...(p.originalId !== undefined ? { originalId: p.originalId } : {}),
     };
   }
 
@@ -541,6 +590,8 @@ export class Evidence {
       source: c.source,
       sourceNote: M08_SOURCE_NOTES[c.source],
       notes: c.notes ?? [],
+      ...(c.origin !== undefined ? { origin: c.origin } : {}),
+      ...(c.originalId !== undefined ? { originalId: c.originalId } : {}),
     };
   }
 

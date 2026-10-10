@@ -20,7 +20,7 @@ export interface ReplayOptions {
   dataRoot: string;
   /** 不给就用录带头里记的（录的时候用的书库与 M08）。 */
   library?: string;
-  m08Dir?: string;
+  m08Dir?: string | string[];
   /** 等一个条件的最长毫秒数（插话、会话出现）。 */
   waitMs?: number;
 }
