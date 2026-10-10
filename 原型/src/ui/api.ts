@@ -31,6 +31,14 @@ import type {
   MessageImageInput,
   TranscribeResponse,
   UploadAttachmentResponse,
+  ProjectMaterialsResponse,
+  ProjectMaterialsRequest,
+  ProjectDeadlineResponse,
+  NoteImportResponse,
+  NotesResponse,
+  ExternalRecordsResponse,
+  M08OverviewResponse,
+  Points08Response,
 } from '../shared/protocol.ts';
 
 function token(): string {
@@ -136,12 +144,16 @@ export const api = {
   objectToRecord: (req: RecordObjectionRequest) =>
     call<ObjectionResponse>('/objections', { method: 'POST', body: JSON.stringify(req) }),
   // ── 原文与出处 ──
-  books: () => call<BooksResponse>('/library/books'),
+  /** 书库里的书与笔记；给了项目就标出哪些是项目资料。 */
+  books: (project?: string) => call<BooksResponse>(`/library/books?${qs({ project })}`),
   toc: (book: string) => call<TocResponse>(`/library/toc?${qs({ book })}`),
   section: (book: string, file: string) =>
     call<SectionResponse>(`/library/section?${qs({ book, file })}`),
-  search: (q: string, book?: string, limit?: number) =>
-    call<LibrarySearchResponse>(`/library/search?${qs({ q, book, limit })}`),
+  /** 给了项目：默认只搜项目资料；all = 查全部。 */
+  search: (q: string, book?: string, limit?: number, project?: string, all?: boolean) =>
+    call<LibrarySearchResponse>(
+      `/library/search?${qs({ q, book, limit, project, all: all === true ? 1 : undefined })}`,
+    ),
   page: (book: string, page: number) => call<PageResponse>(`/library/page?${qs({ book, page })}`),
   locate: (book: string, file: string, from: number, to: number) =>
     call<LocateResponse>(`/library/locate?${qs({ book, file, from, to })}`),
@@ -154,6 +166,41 @@ export const api = {
     call<SourceReportsResponse>(`/library/reports?${qs({ book, file })}`),
   report: (req: SourceReportRequest) =>
     call<SourceReportResponse>('/library/reports', { method: 'POST', body: JSON.stringify(req) }),
+  // ── 资料范围：项目资料、期限、个人笔记、外部导入、知识点概要 ──
+  materials: (projectId: string) =>
+    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`),
+  changeMaterials: (projectId: string, req: ProjectMaterialsRequest) =>
+    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  deadline: (projectId: string) => call<ProjectDeadlineResponse>(`/projects/${projectId}/deadline`),
+  setDeadline: (projectId: string, deadline: string | null, note?: string) =>
+    call<ProjectDeadlineResponse>(`/projects/${projectId}/deadline`, {
+      method: 'POST',
+      body: JSON.stringify(note !== undefined ? { deadline, note } : { deadline }),
+    }),
+  notes: () => call<NotesResponse>('/library/notes'),
+  importNote: (path: string, title?: string) =>
+    call<NoteImportResponse>('/library/notes/import', {
+      method: 'POST',
+      body: JSON.stringify(title !== undefined && title !== '' ? { path, title } : { path }),
+    }),
+  extractNote: (book: string, projectId?: string) =>
+    call<object>('/library/notes/extract', {
+      method: 'POST',
+      body: JSON.stringify(projectId !== undefined ? { book, projectId } : { book }),
+    }),
+  /** 笔记里引用的图片（给 <img src>）。 */
+  noteAssetUrl: (book: string, ref: string) =>
+    withToken(`/api/library/note-asset?${qs({ book, ref })}`),
+  externals: () => call<ExternalRecordsResponse>('/m09/external'),
+  m08Overview: (project?: string, all?: boolean) =>
+    call<M08OverviewResponse>(
+      `/m08/overview?${qs({ project, all: all === true ? 1 : undefined })}`,
+    ),
+  pointsIn: (book: string, chapter: string) =>
+    call<Points08Response>(`/m08/points?${qs({ book, chapter })}`),
   /** 订阅事件：整页共用一条事件连接（浏览器对同一地址的长连接数有限），最后一个退订时关掉。 */
   events(onEvent: (e: ServerEvent) => void): () => void {
     listeners.add(onEvent);

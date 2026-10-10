@@ -266,6 +266,84 @@ export const W = {
   send: '发送',
   close: '关上',
 
+  // ── 资料范围（批 3b）：项目资料、期限、个人笔记 ──
+  materials: '项目资料', // 项目选用的书与笔记（Claude 的项目知识）
+  materialsHint: '学习时查资料、排下一步，默认只在这些里查',
+  materialsAll: '还没选资料：现在查全部资料。',
+  materialMissing: '书库里找不到了',
+  materialRemove: '从项目资料里去掉',
+  materialAdd: '从书库加',
+  materialAddDone: '收起',
+  materialPickHint: '挑这个项目要用的书或笔记。选了以后，学习时默认只在项目资料里查。',
+  materialAddOne: '加进来',
+  addToProject: '加进项目资料',
+  inProject: '项目资料', // 资料列表里的标记
+  noteKind: '笔记',
+  noteBy: (author: string) => `作者：${author}`,
+  noSubject: '没分学科的',
+  deadline: '期限',
+  deadlineNone: '没设期限',
+  deadlineSet: '设期限',
+  deadlineChange: '改',
+  deadlineClear: '清掉',
+  deadlineNotePlaceholder: '备注（可不填），比如为什么是这天',
+  deadlineSave: '保存',
+  deadlineCancel: '算了',
+  daysLeft: (n: number) =>
+    n > 0 ? `还剩 ${String(n)} 天` : n === 0 ? '就是今天' : `已过 ${String(-n)} 天`,
+  noteImport: '导入笔记',
+  noteImportHint:
+    '写本机上的路径：一份 Markdown 笔记，或一个装着笔记的文件夹（里面的 .md 按文件名顺序读）。笔记标作你自己写的，不当书用。',
+  notePath: '笔记路径',
+  notePathPlaceholder: '/home/…/笔记文件夹 或 …/某一篇.md',
+  noteTitle: '叫什么（可不填，默认用文件名）',
+  noteImportGo: '导入',
+  noteImporting: '正在导入…',
+  noteImported: (title: string) => `导入好了：${title}`,
+  noteSize: (files: number, sections: number) =>
+    `${String(files)} 个文件，分成 ${String(sections)} 节`,
+  noteImagesFound: (n: number) => `${String(n)} 张图片都找到了`,
+  noteImagesMissing: (n: number) => `${String(n)} 张图片没找到（原文里会标出来）：`,
+  noteSkipped: '没读的文件：',
+  notePrevious: '这个路径以前导入过；这次是新的一份，旧的那份不动。',
+  noteExtract: '让系统从笔记里找出我写过的知识点',
+  noteExtractStarted: '开始找了。找到的会放进“我学会的”，标作还没核实。',
+  noteExtractOpen: '去看“我学会的”',
+  noteMine: '你自己的笔记',
+  noteMineHint: '这是你自己写的笔记，不是书上的原文。',
+  noteImageMissing: (ref: string) => `（图片找不到：${ref}）`,
+
+  // ── 资料检索的范围 ──
+  searchScopeProject: (n: number) => `在项目资料里搜（${String(n)} 份）`,
+  searchScopeAll: '在全部资料里搜',
+  searchAll: '查全部资料',
+
+  // ── 书里的知识点（按书、按章） ──
+  pointsBrowse: '书里的知识点', // M08 浏览
+  pointsBrowseHint: '按书、按章列出整理好的知识点；点开看它怎么连上前后。',
+  pointsCount: (n: number) => `${String(n)} 个知识点`,
+  chapterOf: (n: number) => `第 ${String(n)} 章`,
+  noAnchor: '没标书里位置的',
+  pointsNone: '这一章没有知识点。',
+  pointsScopeProject: '只列项目资料里的书',
+  pointsScopeAll: '列出全部的书',
+  pointsShowAll: '看全部',
+  pointsShowProject: '只看项目资料',
+  bookPoints: '这本书的知识点',
+
+  // ── 我学会的：分档 ──
+  learnedVerified: '学完验证过的',
+  learnedVerifiedHint: '在学习里讲清楚、判断过、你也确认学完了的',
+  learnedVerifiedNone: '还没有。',
+  learnedUnverified: '还没核实的',
+  learnedUnverifiedHint: '没经过学习验证，只作参考；真学过一遍之后，以学过的记录为准。',
+  learnedSelf: '你自己说会的',
+  learnedFromNotes: '笔记里看到的',
+  unverified: '未核实',
+  grade: '到什么程度',
+  whyGraded: '为什么这么看',
+  noteSpot: '看笔记里这一处',
+
   // ── 通用 ──
   loading: '正在读…',
   loadFailed: '没读到：',

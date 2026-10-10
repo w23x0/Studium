@@ -1,6 +1,9 @@
 // 关于学习者的记录：我学会的、我的状态、教法记录。每条带依据原话与模型，可提不同看法。
 import { useEffect } from 'react';
+import { FileTextIcon } from 'lucide-react';
+import { modelInfoOf } from '../../../shared/protocol.ts';
 import type {
+  ExternalRecordView,
   FormationView,
   ObjectionView,
   QuoteView,
@@ -10,6 +13,7 @@ import type {
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
+import { splitExternals } from '../../scope-model.ts';
 import { W } from '../../wording.ts';
 import {
   Badge,
@@ -79,8 +83,13 @@ function OpenLoop(props: { sessionId: string }) {
 
 // ───────────── 我学会的 ─────────────
 
+/**
+ * 分档：学完验证过的（学习里形成的记录）在上；还没核实的（自己说会的、笔记里看到的）单独一组在下，
+ * 只作参考，不和验证过的混在一起。
+ */
 export function LearnedView(props: { recordId?: string | undefined }) {
   const r = useLoad('m09', () => api.formations());
+  const ext = useLoad('m09:external', () => api.externals());
   const ready = r.data !== undefined;
   useEffect(() => {
     if (!ready || props.recordId === undefined) return;
@@ -90,16 +99,106 @@ export function LearnedView(props: { recordId?: string | undefined }) {
   }, [ready, props.recordId]);
   if (!r.data) return <Loading error={r.error} />;
   const records = [...r.data.records].reverse();
+  const { self, notes } = splitExternals(ext.data?.records ?? []);
+  const unverified = self.length + notes.length;
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-5" data-testid="learned-view">
       <h2 className="font-serif text-lg">{W.learned}</h2>
-      {records.length === 0 && (
+      {records.length === 0 && unverified === 0 ? (
         <div className="text-muted-foreground text-sm">{W.learnedEmpty}</div>
+      ) : (
+        <Section title={W.learnedVerified} hint={W.learnedVerifiedHint}>
+          {records.length === 0 && (
+            <div className="text-muted-foreground text-sm">{W.learnedVerifiedNone}</div>
+          )}
+          {records.map((f) => (
+            <Formation
+              key={f.id}
+              record={f}
+              active={f.id === props.recordId}
+              onObjected={r.reload}
+            />
+          ))}
+        </Section>
       )}
-      {records.map((f) => (
-        <Formation key={f.id} record={f} active={f.id === props.recordId} onObjected={r.reload} />
+      {ext.error !== undefined && <Loading error={ext.error} />}
+      {unverified > 0 && (
+        <Section title={W.learnedUnverified} hint={W.learnedUnverifiedHint}>
+          <div data-testid="learned-unverified" className="flex flex-col gap-4">
+            {self.length > 0 && <ExternalGroup title={W.learnedSelf} records={self} />}
+            {notes.length > 0 && <ExternalGroup title={W.learnedFromNotes} records={notes} />}
+          </div>
+        </Section>
+      )}
+    </div>
+  );
+}
+
+function ExternalGroup(props: { title: string; records: ExternalRecordView[] }) {
+  return (
+    <div className="flex flex-col gap-2">
+      <div className="flex items-baseline gap-2 text-sm">
+        <span className="font-medium">{props.title}</span>
+        <span className="text-muted-foreground text-xs">{props.records.length}</span>
+      </div>
+      {props.records.map((x) => (
+        <External key={x.id} record={x} />
       ))}
     </div>
+  );
+}
+
+function External(props: { record: ExternalRecordView }) {
+  const panel = usePanel();
+  const x = props.record;
+  const note = x.note;
+  return (
+    <Card className="flex flex-col gap-3 border-dashed">
+      <div className="flex flex-wrap items-center gap-1.5">
+        <Badge tone="warn">{W.unverified}</Badge>
+        <Badge>{x.source === '自述' ? W.learnedSelf : W.learnedFromNotes}</Badge>
+        <span className="ms-auto">
+          <Time at={x.at} />
+        </span>
+      </div>
+      <div className="font-serif">{x.claim}</div>
+      {x.point !== undefined && (
+        <Field label={W.point}>
+          <PointLink point={x.point} />
+        </Field>
+      )}
+      {x.grade !== undefined && x.grade !== '' && <Field label={W.grade}>{x.grade}</Field>}
+      {x.basis !== '' && <Field label={W.whyGraded}>{x.basis}</Field>}
+      {x.talk !== undefined && (
+        <Quotes
+          quotes={x.talk.lines.map((line, i) => ({
+            line,
+            at: x.at,
+            ...(x.talk?.quotes[i] !== undefined ? { text: x.talk.quotes[i] } : {}),
+          }))}
+          sessionId={x.talk.sessionId}
+        />
+      )}
+      {note !== undefined && (
+        <button
+          type="button"
+          className="text-primary flex items-center gap-1 self-start text-xs hover:underline"
+          onClick={() =>
+            panel.show({
+              kind: 'source',
+              book: note.book,
+              file: note.file,
+              from: note.from,
+              to: note.to,
+            })
+          }
+        >
+          <FileTextIcon className="size-3.5" />
+          {W.noteSpot}
+        </button>
+      )}
+      <ModelLine model={modelInfoOf(x.model)} />
+    </Card>
   );
 }
 

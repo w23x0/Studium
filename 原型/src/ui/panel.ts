@@ -15,7 +15,10 @@ export type PanelTarget =
   | { kind: 'disclosure' }
   /** 资料：不给书 = 书列表；给书 = 这本书的目录。 */
   | { kind: 'library'; book?: string }
-  | { kind: 'search'; q: string; book?: string }
+  /** all = 不限项目资料、查全部。 */
+  | { kind: 'search'; q: string; book?: string; all?: boolean }
+  /** 书里的知识点：不给书 = 按书按章的概要；给书和章 = 那一章的点。all = 不限项目资料。 */
+  | { kind: 'points'; book?: string; chapter?: string; all?: boolean }
   /**
    * 一个小节的原文；from–to 是要高亮的行。page / bbox 是已知的原件位置（回复里出处核对时比出来的）；
    * problem 是出处对不上的原因（对不上也照样打开，写明原因）。
@@ -70,6 +73,13 @@ export const PanelContext = createContext<PanelApi>({
 
 export function usePanel(): PanelApi {
   return useContext(PanelContext);
+}
+
+/** 当前项目（主对话 id）：资料检索、知识点概要默认按它的项目资料限定范围。 */
+export const ProjectContext = createContext<string | undefined>(undefined);
+
+export function useProject(): string | undefined {
+  return useContext(ProjectContext);
 }
 
 /** 当前显示的对话 id（消息组件判断高亮、打开本对话的依据时用）。 */

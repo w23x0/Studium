@@ -15,6 +15,8 @@ const RELOAD_ON = new Set([
   'choice_made',
   'project_goal',
   'project_title',
+  'project_material',
+  'project_deadline',
   'tool_call',
   'user_message',
 ]);

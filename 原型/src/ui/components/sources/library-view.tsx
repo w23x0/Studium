@@ -1,12 +1,15 @@
-// 资料（右侧面板）：书列表 → 目录 → 小节原文；在书里搜；原件的一页（知识点锚点点过来看）。
+// 资料（右侧面板）：书列表（按学科分组、标出项目资料）→ 目录 → 小节原文；在书里搜（默认只搜项目资料，
+// 可切查全部）；原件的一页（知识点锚点点过来看）。
 import { useState } from 'react';
-import { BookIcon, FileTextIcon, SearchIcon } from 'lucide-react';
+import { BookIcon, FileTextIcon, ListTreeIcon, NotebookPenIcon, SearchIcon } from 'lucide-react';
 import type { BBox, TocEntry } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
-import { usePanel } from '../../panel.ts';
+import { useProjectScope } from '../../hooks/use-project-scope.ts';
+import { usePanel, useProject } from '../../panel.ts';
+import { groupBySubject } from '../../scope-model.ts';
 import { markTerms } from '../../source-model.ts';
 import { W } from '../../wording.ts';
 import { Badge, Loading, Section } from '../evidence/parts.tsx';
@@ -21,23 +24,35 @@ export function LibraryView(props: { book?: string | undefined }) {
   );
 }
 
-function SearchBox(props: { book?: string | undefined; q?: string; replace?: boolean }) {
+function SearchBox(props: {
+  book?: string | undefined;
+  q?: string;
+  all?: boolean | undefined;
+  replace?: boolean;
+}) {
   const panel = usePanel();
+  const scope = useProjectScope();
   const [q, setQ] = useState(props.q ?? '');
   const [inBook, setInBook] = useState(props.book !== undefined);
+  const [all, setAll] = useState(props.all === true);
+  const go = (wantAll: boolean) => {
+    if (q.trim() === '') return;
+    const t = {
+      kind: 'search' as const,
+      q: q.trim(),
+      ...(inBook && props.book !== undefined ? { book: props.book } : {}),
+      ...(wantAll && scope !== undefined ? { all: true } : {}),
+    };
+    if (props.replace === true) panel.replace(t);
+    else panel.show(t);
+  };
+  const oneBook = inBook && props.book !== undefined;
   return (
     <form
       className="flex flex-col gap-1.5"
       onSubmit={(e) => {
         e.preventDefault();
-        if (q.trim() === '') return;
-        const t = {
-          kind: 'search' as const,
-          q: q.trim(),
-          ...(inBook && props.book !== undefined ? { book: props.book } : {}),
-        };
-        if (props.replace === true) panel.replace(t);
-        else panel.show(t);
+        go(all);
       }}
     >
       <div className="bg-card focus-within:border-foreground/30 flex items-center gap-2 rounded-lg border px-2.5 py-1.5">
@@ -59,37 +74,75 @@ function SearchBox(props: { book?: string | undefined; q?: string; replace?: boo
           {W.searchInBook}
         </label>
       )}
+      {!oneBook && (
+        <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
+          <span data-testid="search-scope">
+            {scope !== undefined && !all ? W.searchScopeProject(scope) : W.searchScopeAll}
+          </span>
+          {scope !== undefined && (
+            <label className="flex items-center gap-1.5">
+              <input
+                type="checkbox"
+                checked={all}
+                onChange={(e) => {
+                  setAll(e.target.checked);
+                  // 已经搜过（结果页里）：换范围就重搜
+                  if (props.q !== undefined) go(e.target.checked);
+                }}
+              />
+              {W.searchAll}
+            </label>
+          )}
+        </div>
+      )}
     </form>
   );
 }
 
 function Books() {
   const panel = usePanel();
-  const r = useLoad('library:books', () => api.books(), false);
+  const project = useProject();
+  const r = useLoad(`library:books:${project ?? ''}`, () => api.books(project), false);
   if (!r.data) return <Loading error={r.error} />;
   const { books } = r.data;
-  return (
-    <Section title={W.books}>
-      {books.length === 0 ? (
+  if (books.length === 0) {
+    return (
+      <Section title={W.books}>
         <div className="text-muted-foreground text-sm">{W.libraryEmpty}</div>
-      ) : (
-        books.map((b) => (
-          <button
-            key={b.id}
-            type="button"
-            className="bg-card hover:bg-accent/40 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm shadow-xs"
-            onClick={() => panel.show({ kind: 'library', book: b.id })}
-          >
-            <BookIcon className="text-muted-foreground size-4 shrink-0" />
-            <span className="flex min-w-0 flex-1 flex-col">
-              <span className="font-medium">{b.title}</span>
-              <span className="text-muted-foreground text-xs">{W.bookSections(b.sections)}</span>
-            </span>
-            {b.hasOriginal && <Badge>{W.hasOriginal}</Badge>}
-          </button>
-        ))
-      )}
-    </Section>
+      </Section>
+    );
+  }
+  return (
+    <>
+      {groupBySubject(books).map((g) => (
+        <Section key={g.subject} title={g.subject === '' ? W.noSubject : g.subject}>
+          {g.books.map((b) => (
+            <button
+              key={b.id}
+              type="button"
+              className="bg-card hover:bg-accent/40 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm shadow-xs"
+              onClick={() => panel.show({ kind: 'library', book: b.id })}
+            >
+              {b.kind === 'note' ? (
+                <NotebookPenIcon className="text-muted-foreground size-4 shrink-0" />
+              ) : (
+                <BookIcon className="text-muted-foreground size-4 shrink-0" />
+              )}
+              <span className="flex min-w-0 flex-1 flex-col">
+                <span className="font-medium">{b.title}</span>
+                <span className="text-muted-foreground text-xs">
+                  {W.bookSections(b.sections)}
+                  {b.kind === 'note' && b.author !== undefined && ` · ${W.noteBy(b.author)}`}
+                </span>
+              </span>
+              {b.selected === true && <Badge tone="accent">{W.inProject}</Badge>}
+              {b.kind === 'note' && <Badge>{W.noteKind}</Badge>}
+              {b.hasOriginal && <Badge>{W.hasOriginal}</Badge>}
+            </button>
+          ))}
+        </Section>
+      ))}
+    </>
   );
 }
 
@@ -101,6 +154,15 @@ function Toc(props: { book: string }) {
   return (
     <div className="flex flex-col gap-3">
       <h2 className="font-serif text-lg">{title}</h2>
+      <Button
+        variant="outline"
+        size="sm"
+        className="self-start"
+        onClick={() => panel.show({ kind: 'points', book })}
+      >
+        <ListTreeIcon />
+        {W.bookPoints}
+      </Button>
       <Section title={W.toc}>
         <ul className="flex flex-col">
           {entries.map((e, i) => (
@@ -157,16 +219,21 @@ function TocRow(props: { entry: TocEntry; onOpen: (() => void) | undefined }) {
   );
 }
 
-export function SearchView(props: { q: string; book?: string | undefined }) {
+export function SearchView(props: {
+  q: string;
+  book?: string | undefined;
+  all?: boolean | undefined;
+}) {
   const panel = usePanel();
+  const project = useProject();
   const r = useLoad(
-    `library:search:${props.book ?? ''}:${props.q}`,
-    () => api.search(props.q, props.book, 50),
+    `library:search:${props.book ?? ''}:${props.q}:${project ?? ''}:${String(props.all)}`,
+    () => api.search(props.q, props.book, 50, project, props.all),
     false,
   );
   return (
     <div className="flex flex-col gap-4" data-testid="search-view">
-      <SearchBox book={props.book} q={props.q} replace />
+      <SearchBox book={props.book} q={props.q} all={props.all} replace />
       {!r.data ? (
         <Loading error={r.error} />
       ) : r.data.hits.length === 0 ? (

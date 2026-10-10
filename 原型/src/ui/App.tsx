@@ -9,6 +9,7 @@ import {
   GaugeIcon,
   LayoutGridIcon,
   LibraryIcon,
+  ListTreeIcon,
   MessageCircleIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
@@ -33,6 +34,7 @@ import {
   HighlightContext,
   isWideTarget,
   PanelContext,
+  ProjectContext,
   type Focus,
   type PanelApi,
   type PanelTarget,
@@ -170,183 +172,189 @@ export function App() {
   return (
     <OpenSessionContext.Provider value={open}>
       <PanelContext.Provider value={panelApi}>
-        <div className="flex h-screen">
-          <aside className="bg-sidebar flex w-64 shrink-0 flex-col gap-1 border-r p-3 text-sm">
-            <div className="px-2 pt-1 pb-3 font-serif text-xl tracking-tight">Studium</div>
-            <button
-              type="button"
-              className="hover:bg-accent/60 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left"
-              onClick={() => {
-                api
-                  .createProject()
-                  .then(async (r) => {
-                    await refresh();
-                    openProject(r.mainSessionId);
-                  })
-                  .catch(fail);
-              }}
-            >
-              <span className="bg-primary text-primary-foreground flex size-5 items-center justify-center rounded-full text-xs">
-                ＋
-              </span>
-              新项目
-            </button>
-            <div className="text-muted-foreground mt-4 px-2 pb-1 text-xs">项目</div>
-            <ul
-              data-testid="project-list"
-              className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto"
-            >
-              {projects.map((p) => (
-                <li key={p.mainSessionId}>
-                  <SideItem
-                    active={
-                      p.mainSessionId === projectId && current === projectId && page === 'chat'
-                    }
-                    onClick={() => openProject(p.mainSessionId)}
-                  >
-                    {p.title}
-                  </SideItem>
-                  {p.mainSessionId === projectId && (
-                    <div className="border-border ms-3 mt-0.5 mb-2 flex flex-col gap-0.5 border-s ps-2">
-                      <SideItem
-                        active={page === 'overview'}
-                        onClick={() => setPage('overview')}
-                        testId="nav-overview"
-                      >
-                        <LayoutGridIcon className="text-muted-foreground size-3.5" />
-                        {W.projectHome}
-                      </SideItem>
-                      <SideItem
-                        active={page === 'chat' && current === projectId}
-                        onClick={() => {
-                          setCurrent(p.mainSessionId);
-                          setPage('chat');
-                        }}
-                      >
-                        <MessageCircleIcon className="text-muted-foreground size-3.5" />
-                        {W.projectChat}
-                      </SideItem>
-                      <ul data-testid="session-list" className="flex flex-col gap-0.5">
-                        {tasks.map((s) => (
-                          <li key={s.sessionId}>
-                            <SideItem
-                              active={page === 'chat' && s.sessionId === current}
-                              onClick={() => {
-                                setCurrent(s.sessionId);
-                                setPage('chat');
-                              }}
-                            >
-                              <span className="text-muted-foreground w-3.5 text-center text-xs">
-                                ·
-                              </span>
-                              {s.title}
-                            </SideItem>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
-              <SideItem
-                active={false}
-                onClick={() => panelApi.show({ kind: 'library' })}
-                testId="nav-library"
-              >
-                <LibraryIcon className="text-muted-foreground size-3.5" />
-                {W.library}
-              </SideItem>
-              <SideItem active={false} onClick={() => panelApi.show({ kind: 'learned' })}>
-                <BookCheckIcon className="text-muted-foreground size-3.5" />
-                {W.learned}
-              </SideItem>
-              <SideItem active={false} onClick={() => panelApi.show({ kind: 'state' })}>
-                <GaugeIcon className="text-muted-foreground size-3.5" />
-                {W.myState}
-              </SideItem>
-              <SideItem active={false} onClick={() => panelApi.show({ kind: 'teaching' })}>
-                <ClipboardListIcon className="text-muted-foreground size-3.5" />
-                {W.teaching}
-              </SideItem>
+        <ProjectContext.Provider value={projectId}>
+          <div className="flex h-screen">
+            <aside className="bg-sidebar flex w-64 shrink-0 flex-col gap-1 border-r p-3 text-sm">
+              <div className="px-2 pt-1 pb-3 font-serif text-xl tracking-tight">Studium</div>
               <button
                 type="button"
-                data-testid="disclosure-link"
-                className="text-muted-foreground hover:text-foreground mt-1 flex items-center gap-1.5 px-2 py-1 text-left text-xs"
-                onClick={() => panelApi.show({ kind: 'disclosure' })}
-              >
-                <SendIcon className="size-3" />
-                {W.disclosure}
-              </button>
-            </div>
-          </aside>
-          <main className="flex min-w-0 flex-1 flex-col">
-            {error !== undefined && (
-              <div
-                role="alert"
-                className="flex justify-between bg-red-100 px-4 py-2 text-sm text-red-800"
-              >
-                {error}
-                <button onClick={() => setError(undefined)}>关闭</button>
-              </div>
-            )}
-            {projectId !== undefined && page === 'overview' && (
-              <ProjectHome
-                key={projectId}
-                projectId={projectId}
-                header={
-                  <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
-                    <span className="truncate font-medium">{W.projectHome}</span>
-                    {panelButton}
-                  </header>
-                }
-                onOpenChat={() => {
-                  setCurrent(projectId);
-                  setPage('chat');
+                className="hover:bg-accent/60 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left"
+                onClick={() => {
+                  api
+                    .createProject()
+                    .then(async (r) => {
+                      await refresh();
+                      openProject(r.mainSessionId);
+                    })
+                    .catch(fail);
                 }}
-                onError={fail}
-              />
-            )}
-            {current !== undefined && projectId !== undefined && page === 'chat' && (
-              <Conversation
-                key={current}
-                sessionId={current}
-                kind={currentSession?.kind ?? (current === projectId ? 'main' : 'loop')}
-                title={
-                  current === projectId ? (project?.title ?? '') : (currentSession?.title ?? '')
-                }
-                projectId={projectId}
-                projectTitle={project?.title ?? ''}
-                titleOf={titleOf}
-                focus={focus?.sessionId === current ? focus : undefined}
-                headerExtra={panelButton}
-                onOverview={() => setPage('overview')}
-                onError={fail}
-                onBack={() => setCurrent(projectId)}
-              />
-            )}
-          </main>
-          {panel.open && (
-            <aside
-              className={cn(
-                'bg-sidebar/60 flex shrink-0 flex-col border-s',
-                // 看书（原文、原件页面）时面板放宽，像 Claude 的 artifact 面板
-                isWideTarget(panel.stack.at(-1) ?? { kind: 'home' })
-                  ? 'w-[min(44rem,50vw)]'
-                  : 'w-[min(28rem,40vw)]',
-              )}
-            >
-              <EvidencePanel
-                target={panel.stack.at(-1) ?? { kind: 'home' }}
-                canBack={panel.stack.length > 1}
-                onBack={() => setPanel((p) => ({ ...p, stack: p.stack.slice(0, -1) }))}
-                onClose={() => setPanel((p) => ({ ...p, open: false }))}
-                loopId={loopId}
-              />
+              >
+                <span className="bg-primary text-primary-foreground flex size-5 items-center justify-center rounded-full text-xs">
+                  ＋
+                </span>
+                新项目
+              </button>
+              <div className="text-muted-foreground mt-4 px-2 pb-1 text-xs">项目</div>
+              <ul
+                data-testid="project-list"
+                className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto"
+              >
+                {projects.map((p) => (
+                  <li key={p.mainSessionId}>
+                    <SideItem
+                      active={
+                        p.mainSessionId === projectId && current === projectId && page === 'chat'
+                      }
+                      onClick={() => openProject(p.mainSessionId)}
+                    >
+                      {p.title}
+                    </SideItem>
+                    {p.mainSessionId === projectId && (
+                      <div className="border-border ms-3 mt-0.5 mb-2 flex flex-col gap-0.5 border-s ps-2">
+                        <SideItem
+                          active={page === 'overview'}
+                          onClick={() => setPage('overview')}
+                          testId="nav-overview"
+                        >
+                          <LayoutGridIcon className="text-muted-foreground size-3.5" />
+                          {W.projectHome}
+                        </SideItem>
+                        <SideItem
+                          active={page === 'chat' && current === projectId}
+                          onClick={() => {
+                            setCurrent(p.mainSessionId);
+                            setPage('chat');
+                          }}
+                        >
+                          <MessageCircleIcon className="text-muted-foreground size-3.5" />
+                          {W.projectChat}
+                        </SideItem>
+                        <ul data-testid="session-list" className="flex flex-col gap-0.5">
+                          {tasks.map((s) => (
+                            <li key={s.sessionId}>
+                              <SideItem
+                                active={page === 'chat' && s.sessionId === current}
+                                onClick={() => {
+                                  setCurrent(s.sessionId);
+                                  setPage('chat');
+                                }}
+                              >
+                                <span className="text-muted-foreground w-3.5 text-center text-xs">
+                                  ·
+                                </span>
+                                {s.title}
+                              </SideItem>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    )}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
+                <SideItem
+                  active={false}
+                  onClick={() => panelApi.show({ kind: 'library' })}
+                  testId="nav-library"
+                >
+                  <LibraryIcon className="text-muted-foreground size-3.5" />
+                  {W.library}
+                </SideItem>
+                <SideItem active={false} onClick={() => panelApi.show({ kind: 'points' })}>
+                  <ListTreeIcon className="text-muted-foreground size-3.5" />
+                  {W.pointsBrowse}
+                </SideItem>
+                <SideItem active={false} onClick={() => panelApi.show({ kind: 'learned' })}>
+                  <BookCheckIcon className="text-muted-foreground size-3.5" />
+                  {W.learned}
+                </SideItem>
+                <SideItem active={false} onClick={() => panelApi.show({ kind: 'state' })}>
+                  <GaugeIcon className="text-muted-foreground size-3.5" />
+                  {W.myState}
+                </SideItem>
+                <SideItem active={false} onClick={() => panelApi.show({ kind: 'teaching' })}>
+                  <ClipboardListIcon className="text-muted-foreground size-3.5" />
+                  {W.teaching}
+                </SideItem>
+                <button
+                  type="button"
+                  data-testid="disclosure-link"
+                  className="text-muted-foreground hover:text-foreground mt-1 flex items-center gap-1.5 px-2 py-1 text-left text-xs"
+                  onClick={() => panelApi.show({ kind: 'disclosure' })}
+                >
+                  <SendIcon className="size-3" />
+                  {W.disclosure}
+                </button>
+              </div>
             </aside>
-          )}
-        </div>
+            <main className="flex min-w-0 flex-1 flex-col">
+              {error !== undefined && (
+                <div
+                  role="alert"
+                  className="flex justify-between bg-red-100 px-4 py-2 text-sm text-red-800"
+                >
+                  {error}
+                  <button onClick={() => setError(undefined)}>关闭</button>
+                </div>
+              )}
+              {projectId !== undefined && page === 'overview' && (
+                <ProjectHome
+                  key={projectId}
+                  projectId={projectId}
+                  header={
+                    <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
+                      <span className="truncate font-medium">{W.projectHome}</span>
+                      {panelButton}
+                    </header>
+                  }
+                  onOpenChat={() => {
+                    setCurrent(projectId);
+                    setPage('chat');
+                  }}
+                  onError={fail}
+                />
+              )}
+              {current !== undefined && projectId !== undefined && page === 'chat' && (
+                <Conversation
+                  key={current}
+                  sessionId={current}
+                  kind={currentSession?.kind ?? (current === projectId ? 'main' : 'loop')}
+                  title={
+                    current === projectId ? (project?.title ?? '') : (currentSession?.title ?? '')
+                  }
+                  projectId={projectId}
+                  projectTitle={project?.title ?? ''}
+                  titleOf={titleOf}
+                  focus={focus?.sessionId === current ? focus : undefined}
+                  headerExtra={panelButton}
+                  onOverview={() => setPage('overview')}
+                  onError={fail}
+                  onBack={() => setCurrent(projectId)}
+                />
+              )}
+            </main>
+            {panel.open && (
+              <aside
+                className={cn(
+                  'bg-sidebar/60 flex shrink-0 flex-col border-s',
+                  // 看书（原文、原件页面）时面板放宽，像 Claude 的 artifact 面板
+                  isWideTarget(panel.stack.at(-1) ?? { kind: 'home' })
+                    ? 'w-[min(44rem,50vw)]'
+                    : 'w-[min(28rem,40vw)]',
+                )}
+              >
+                <EvidencePanel
+                  target={panel.stack.at(-1) ?? { kind: 'home' }}
+                  canBack={panel.stack.length > 1}
+                  onBack={() => setPanel((p) => ({ ...p, stack: p.stack.slice(0, -1) }))}
+                  onClose={() => setPanel((p) => ({ ...p, open: false }))}
+                  loopId={loopId}
+                />
+              </aside>
+            )}
+          </div>
+        </ProjectContext.Provider>
       </PanelContext.Provider>
     </OpenSessionContext.Provider>
   );

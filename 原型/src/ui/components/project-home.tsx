@@ -1,4 +1,5 @@
-// 项目概览（照 Claude 项目的 Overview：按状态分组）：想学的方向；学习按 进行中 · 等你选 · 学完了 · 先放下的 分组。
+// 项目概览（照 Claude 项目的 Overview：按状态分组）：想学的方向与期限；学习按 进行中 · 等你选 · 学完了 · 先放下的 分组；
+// 旁边一栏是项目资料（照 Claude 项目的“项目知识”）。
 import type { ReactNode } from 'react';
 import {
   BookCheckIcon,
@@ -8,6 +9,7 @@ import {
   ClipboardListIcon,
   GaugeIcon,
   LibraryIcon,
+  ListTreeIcon,
   MessageCircleIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -21,6 +23,7 @@ import { useOpenSession } from '../open-session.ts';
 import { usePanel } from '../panel.ts';
 import { W } from '../wording.ts';
 import { ChoiceCardBox } from './choice-card.tsx';
+import { DeadlineLine, ProjectMaterials } from './project-materials.tsx';
 import { Loading } from './evidence/parts.tsx';
 
 export function ProjectHome(props: {
@@ -35,14 +38,27 @@ export function ProjectHome(props: {
     <div data-testid="project-home" className="@container flex h-full flex-col">
       {props.header}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-3xl flex-col gap-8 px-6 pt-6 pb-16">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 pt-6 pb-16">
           {!o ? (
             <Loading error={r.error} />
           ) : (
             <>
-              <Head overview={o} onOpenChat={props.onOpenChat} />
-              <Groups overview={o} onError={props.onError} />
-              <AboutMe />
+              <Head
+                overview={o}
+                projectId={props.projectId}
+                onOpenChat={props.onOpenChat}
+                onError={props.onError}
+              />
+              {/* 宽时两栏：左边学习分组，右边项目资料；窄时资料排在分组下面 */}
+              <div className="grid grid-cols-1 gap-8 @4xl:grid-cols-[minmax(0,1fr)_18rem]">
+                <div className="flex min-w-0 flex-col gap-8">
+                  <Groups overview={o} onError={props.onError} />
+                  <AboutMe />
+                </div>
+                <aside className="flex min-w-0 flex-col gap-6">
+                  <ProjectMaterials projectId={props.projectId} onError={props.onError} />
+                </aside>
+              </div>
             </>
           )}
         </div>
@@ -51,14 +67,24 @@ export function ProjectHome(props: {
   );
 }
 
-function Head(props: { overview: ProjectOverview; onOpenChat: () => void }) {
+function Head(props: {
+  overview: ProjectOverview;
+  projectId: string;
+  onOpenChat: () => void;
+  onError: (e: unknown) => void;
+}) {
   const o = props.overview;
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-serif text-3xl tracking-tight">{o.title}</h1>
-      <div className="bg-card rounded-2xl border p-4 shadow-xs">
-        <div className="text-muted-foreground mb-1 text-xs">{W.goal}</div>
-        <div className="font-serif text-[1.05rem] leading-relaxed">{o.goal ?? W.goalMissing}</div>
+      <div className="bg-card flex flex-col gap-3 rounded-2xl border p-4 shadow-xs">
+        <div>
+          <div className="text-muted-foreground mb-1 text-xs">{W.goal}</div>
+          <div className="font-serif text-[1.05rem] leading-relaxed">{o.goal ?? W.goalMissing}</div>
+        </div>
+        <div className="border-t pt-3">
+          <DeadlineLine projectId={props.projectId} onError={props.onError} />
+        </div>
       </div>
       <div>
         <Button variant="outline" size="sm" onClick={props.onOpenChat}>
@@ -206,6 +232,11 @@ function AboutMe() {
   const panel = usePanel();
   const items: { icon: ReactNode; label: string; onClick: () => void }[] = [
     { icon: <LibraryIcon />, label: W.library, onClick: () => panel.show({ kind: 'library' }) },
+    {
+      icon: <ListTreeIcon />,
+      label: W.pointsBrowse,
+      onClick: () => panel.show({ kind: 'points' }),
+    },
     { icon: <BookCheckIcon />, label: W.learned, onClick: () => panel.show({ kind: 'learned' }) },
     { icon: <GaugeIcon />, label: W.myState, onClick: () => panel.show({ kind: 'state' }) },
     {
@@ -215,7 +246,7 @@ function AboutMe() {
     },
   ];
   return (
-    <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @2xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @2xl:grid-cols-3">
       {items.map((it) => (
         <button
           key={it.label}

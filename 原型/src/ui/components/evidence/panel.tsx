@@ -6,6 +6,7 @@ import {
   ClipboardListIcon,
   GaugeIcon,
   LibraryIcon,
+  ListTreeIcon,
   SendIcon,
   ShieldCheckIcon,
   XIcon,
@@ -20,6 +21,7 @@ import { LoopView } from './loop-view.tsx';
 import { ClausePanel, PointPanel } from './m08-view.tsx';
 import { LearnedView, StateView, TeachingView } from './records-view.tsx';
 import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
+import { PointsBrowse } from '../sources/points-browse.tsx';
 import { SourceView } from '../sources/source-view.tsx';
 
 export function EvidencePanel(props: {
@@ -78,7 +80,23 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
     case 'library':
       return <LibraryView key={t.book ?? ''} book={t.book} />;
     case 'search':
-      return <SearchView key={`${t.book ?? ''}:${t.q}`} q={t.q} book={t.book} />;
+      return (
+        <SearchView
+          key={`${t.book ?? ''}:${t.q}:${String(t.all)}`}
+          q={t.q}
+          book={t.book}
+          all={t.all}
+        />
+      );
+    case 'points':
+      return (
+        <PointsBrowse
+          key={`${t.book ?? ''}:${t.chapter ?? ''}:${String(t.all)}`}
+          book={t.book}
+          chapter={t.chapter}
+          all={t.all}
+        />
+      );
     case 'source':
       return (
         <SourceView
@@ -124,6 +142,11 @@ function Home(props: { loopId?: string | undefined }) {
         icon={<LibraryIcon />}
         label={W.library}
         onClick={() => panel.show({ kind: 'library' })}
+      />
+      <HomeItem
+        icon={<ListTreeIcon />}
+        label={W.pointsBrowse}
+        onClick={() => panel.show({ kind: 'points' })}
       />
       <HomeItem
         icon={<BookCheckIcon />}
