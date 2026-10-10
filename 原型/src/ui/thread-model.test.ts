@@ -16,7 +16,7 @@ describe('toUiMessages', () => {
   it('只显示对话，不显示原始消息；同一轮的多段回复合并', () => {
     expect(toUiMessages(records, '')).toEqual([
       { id: 'l2', role: 'user', text: '问', line: 2 },
-      { id: 'l4', role: 'assistant', text: '答一\n\n答二', line: 4 },
+      { id: 'l4', role: 'assistant', text: '答一\n\n答二', line: 4, lines: [4, 5] },
     ]);
   });
 
@@ -80,6 +80,28 @@ describe('toUiMessages', () => {
         link: { sessionId: 'L', label: '开始学：位移' },
       },
     ]);
+  });
+});
+
+describe('判断与不同看法', () => {
+  it('判断那句提示带结果，可点开；学习者的不同看法带标记', () => {
+    const rs: NumberedRecord[] = [
+      {
+        line: 3,
+        record: {
+          type: 'guard_verdict',
+          at,
+          guardSessionId: 'g',
+          closed: false,
+          basis: '还没说清',
+          lines: [2],
+        },
+      },
+      { line: 4, record: { type: 'user_message', at, text: '我说清了', objection: { toLine: 3 } } },
+    ];
+    const [v, o] = toUiMessages(rs, '');
+    expect(v).toMatchObject({ role: 'system', line: 3, verdict: { closed: false } });
+    expect(o).toMatchObject({ role: 'user', objection: { toLine: 3 } });
   });
 });
 
