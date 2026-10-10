@@ -49,6 +49,7 @@ import {
 import { teachingToolSpecs, toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { isNotFound } from './log/session-log.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
+import type { Outputs } from './outputs.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
 
 export class BadRequestError extends Error {}
@@ -73,6 +74,8 @@ export interface StudiumOptions {
   sources: Sources;
   /** 教学工具（官方 + 学习者自己的）。 */
   teaching: TeachingTools;
+  /** M14 知识产出物（批 8）。 */
+  outputs: Outputs;
   now?: () => Date;
 }
 
@@ -196,6 +199,12 @@ export class Studium {
             ...this.readTools(sessionId, { m07: false, m09: false }),
             this.stateQueryTool(),
             this.strategyTool(sessionId),
+          ];
+        case 'output':
+          // M14 不直读 M09（审查单），只读 M07 / M08；写产出新版本的工具由 Outputs 给
+          return [
+            ...this.readTools(sessionId, { m09: false }),
+            ...this.o.outputs.sessionTools(sessionId),
           ];
       }
     },
@@ -1253,7 +1262,10 @@ export class Studium {
             if (e instanceof NotFoundError) return undefined;
             throw e;
           });
-          if (opened?.parent !== mainId || (opened.kind !== 'loop' && opened.kind !== 'talk')) {
+          if (
+            opened?.parent !== mainId ||
+            (opened.kind !== 'loop' && opened.kind !== 'talk' && opened.kind !== 'output')
+          ) {
             return err(`本项目里没有这个对话：${id}`);
           }
           await this.hub.record(mainId, {
@@ -1264,6 +1276,7 @@ export class Studium {
           return ok('入口已放好。');
         },
       },
+      this.o.outputs.mainTool(mainId),
     ];
   }
 

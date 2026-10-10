@@ -17,6 +17,7 @@ export const DEFAULT_PROFILES: Profiles = {
   main: { effort: 'low' },
   talk: { effort: 'high' },
   loop: { effort: 'high' },
+  output: { effort: 'high' },
   guard: { effort: 'high' },
   m05: { effort: 'high' },
   m15: { effort: 'high' },
@@ -32,7 +33,9 @@ export function mergeProfiles(overrides: unknown, base: Profiles = DEFAULT_PROFI
   }
   const out: Profiles = { ...base };
   for (const [kind, raw] of Object.entries(overrides)) {
-    if (!(kind in { main: 1, talk: 1, loop: 1, guard: 1, m09: 1, m05: 1, m15: 1, m10: 1 })) {
+    if (
+      !(kind in { main: 1, talk: 1, loop: 1, guard: 1, m09: 1, m05: 1, m15: 1, m10: 1, output: 1 })
+    ) {
       throw new Error(`STUDIUM_PROFILES 里没有这种会话类：${kind}`);
     }
     const p = raw as Profile;

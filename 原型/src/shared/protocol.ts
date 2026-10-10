@@ -659,6 +659,13 @@ export interface DisclosureResponse {
     model: string | null;
     effort: string | null;
   }[];
+  /** 批 8 起新增的会话类（写产出），格式同 sessions。 */
+  laterSessions: {
+    kind: ConversationKind;
+    label: string;
+    model: string | null;
+    effort: string | null;
+  }[];
   note: string;
   /** 输入（图片转写、语音）各送往哪里（批 4）。 */
   inputs: InputDisclosure[];
@@ -674,7 +681,10 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   m05: '出下一步选项',
   m15: '整理“我的状态”',
   m10: '记教法效果',
+  output: '写产出',
 };
+
+export * from './m14.ts';
 
 export type { ObjectionTarget };
 

@@ -27,11 +27,12 @@
 | `src/core/inputs.ts`   | 输入（批 4）：附图原样存进 `<数据>/inputs/`（只追加）、经模型接口转写（`transcriber`，提示词 `prompts/transcribe.md`）；接口 `http/inputs-routes.ts`                                                            |
 | `src/core/hub.ts`      | 会话管理：一次一轮、事件推送、重启后按正本里的续接凭据接上                                                                                                                                                      |
 | `src/core/studium.ts`  | 事件串联：主对话、畅谈、M05 选择卡、闭环对话、守卫、写 M09、下一张卡、M15 / M10 后台；各会话的工具                                                                                                              |
+| `src/core/outputs.ts`  | M14 知识产出物（批 8）：产出物与版本链、引用核对、相关文献、方法比较、通用候选、“写产出”对话的工具；存放处 `knowledge/m14.ts`，类型 `src/shared/m14.ts`                                                         |
 | `src/core/detour.ts`   | 闭环中途（批 5）：教学侧通知 M05 → 小卡 → 分叉 / 接着学 / 搁置，分叉回父闭环，停车记录；状态折叠在 `loop-state.ts`                                                                                              |
 | `src/core/knowledge/`  | 读 M07 原文与目录、全文检索（`m07.ts`）、原件页面渲染与块位置（`m07-originals.ts`）、资料报错存放处（`m07-reports.ts`）、M08 点与子句（`m08.ts`）；M09 形成记录、M10 教法记录、M15 状态（各一个只追加的存放处） |
 | `src/core/tape/`       | 真实运行录带（`recorder.ts`）与离线回放（`replay.ts`、`cli.ts`）；编号换成稳定记号（`ids.ts`）                                                                                                                  |
 | `src/core/http/`       | 本地服务：只绑 127.0.0.1、口令、HTTP 命令 + SSE 事件、托管构建好的界面                                                                                                                                          |
-| `src/core/prompts/`    | 系统提示：`main` `talk` `loop` `guard` `m09` `m05` `m15` `m10`，图片转写 `transcribe`（只写定义、边界、输出格式）                                                                                               |
+| `src/core/prompts/`    | 系统提示：`main` `talk` `loop` `guard` `m09` `m05` `m15` `m10` `output`，图片转写 `transcribe`（只写定义、边界、输出格式）                                                                                      |
 | `教学工具/`            | 官方教学工具（M10 通用策略知识层，agent 起草）：一份一个 Markdown，格式见其 README；核心 `src/core/teaching-tools.ts` 装载（学习者自己的在 `<数据>/teaching-tools/`），强度四项与走向在 `src/core/intensity.ts` |
 | `样例/`                | 没有真书时用的小样例：一本自写力学入门（M07 格式）+ 10 个知识点 / 9 条条款（M08）                                                                                                                               |
 | `src/ui/`              | 浏览器界面：React + Vite + assistant-ui；`thread-model.ts` 是可单测的纯转换                                                                                                                                     |
