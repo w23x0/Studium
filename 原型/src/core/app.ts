@@ -22,6 +22,7 @@ import { DataDir } from './log/data-dir.ts';
 import { isNotFound } from './log/session-log.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
+import { OFFICIAL_TOOLS_DIR, TeachingTools } from './teaching-tools.ts';
 import { Studium } from './studium.ts';
 import { Recorder } from './tape/recorder.ts';
 
@@ -105,6 +106,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     reports: await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports')),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
+  const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
   const studium = new Studium({
     prompts: await loadPrompts(),
     m07: library,
@@ -114,6 +116,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     m10,
     m15,
     objections,
+    teaching,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const inner = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
@@ -147,7 +150,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     hub,
     sources,
     notes,
-    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs }),
+    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs, teaching }),
     inputs,
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,

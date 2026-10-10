@@ -1,6 +1,8 @@
 // 核心与界面之间的 HTTP / SSE 协议。界面只认这里的类型，不碰核心实现。
 import type {
   ConversationKind,
+  Intensity,
+  IntensityTrend,
   LearnerObjection,
   NumberedRecord,
   ObjectionTarget,
@@ -250,6 +252,14 @@ export interface DiagnosisView {
   line: number;
   at: string;
   text: string;
+  /** 这一轮标的教法强度（信息量 / 提示强度 / 挑战程度 / 节奏 + 偏输入还是偏练习）；没标就没有。 */
+  intensity?: Intensity;
+}
+
+/** 闭环里取用的一份教学工具：哪份、在闭环正本的哪一行（程序从工具调用里记的）。 */
+export interface TeachingToolUseView {
+  name: string;
+  line: number;
 }
 
 export type LoopStatus = 'in_progress' | 'closed' | 'unclosed';
@@ -347,6 +357,8 @@ export interface LoopEvidence {
   model: ModelInfo;
   verdicts: GuardVerdictView[];
   diagnoses: DiagnosisView[];
+  /** 这个闭环取用过的教学工具（按取用顺序，含重复取用）。 */
+  teachingToolsUsed: TeachingToolUseView[];
   /** 这个闭环里的全部异议（含已结束闭环上记在异议存放处的）。 */
   objections: ObjectionView[];
   /** 搁置着（可恢复）；与 status 无关：搁置的闭环 status 仍是 in_progress。 */
@@ -493,18 +505,81 @@ export interface StrategyView {
   evidenceLines: number[];
   quotes: QuoteView[];
   toolsUsed: string[];
+  /** 每次取用：哪份、在闭环正本的哪一行；旧记录没有。 */
+  toolUses?: TeachingToolUseView[];
+  /** 程序汇总的这个闭环里四项强度 + 偏向的走向；没标强度的闭环没有。 */
+  intensityTrend?: IntensityTrend;
+  /** 记录时有“出现在 X 之后”标注的状态时，M10 对自己教法是否为成因的自查。 */
+  selfCheck?: { stateIds: string[]; note: string };
   model: ModelInfo;
   objections: ObjectionView[];
+}
+
+export interface ConfirmationView {
+  id: string;
+  at: string;
+  recordId: string;
+  verdict: '确认' | '否认';
+  note?: string;
+}
+
+/** 学习者对一条 M15 状态记录确认（confirm）/ 否认（deny）；只追加。 */
+export interface RecordConfirmationRequest {
+  recordId: string;
+  verdict: 'confirm' | 'deny';
+  note?: string;
+}
+
+export interface ConfirmationResponse {
+  confirmation: ConfirmationView;
+}
+
+/** 状态出现在某次教法强度明显变化之后的标注（变化由程序算出）。 */
+export interface AfterTeachingView {
+  changeId: string;
+  loopSessionId: string;
+  line: number;
+  /** “第 12 行起，提示强度由「高」降为「低」”。 */
+  text: string;
+}
+
+export interface TeachingToolView {
+  name: string;
+  /** 适用条件，一句话。 */
+  applies: string;
+  origin: '官方' | '学习者自己';
+  source: string;
+  /** 如“agent 起草，未经产品负责人审”。 */
+  status: string;
+}
+
+export interface TeachingToolsResponse {
+  tools: TeachingToolView[];
+  /** 装不上的文件与原因。 */
+  problems: string[];
+}
+
+export interface TeachingToolResponse {
+  tool: TeachingToolView & { text: string };
 }
 
 export interface StateRecordView {
   id: string;
   at: string;
   text: string;
+  /** 模型写下时的来源。 */
   source: '自述' | '观察' | '推断';
+  /** 来源档：学习者最近一次表态是确认 = 已确认，否则同 source。 */
+  sourceLevel: '自述' | '观察' | '推断' | '已确认';
   output: '承载读数' | '解释候选';
   timeRange: string;
   refs: { sessionId: string; lines: number[]; quotes: QuoteView[] }[];
+  /** 出现在某次教法强度明显变化之后；没有就没有。 */
+  afterTeaching?: AfterTeachingView;
+  /** 学习者的确认 / 否认记录（按时间，最后一条算数）。 */
+  confirmations: ConfirmationView[];
+  /** 学习者最近一次表态；没表过态为空。 */
+  learnerVerdict?: '确认' | '否认';
   m15SessionId: string;
   model: ModelInfo;
   objections: ObjectionView[];

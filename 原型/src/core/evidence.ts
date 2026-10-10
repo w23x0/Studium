@@ -33,6 +33,8 @@ import {
   type SourceView,
   type StateRecordView,
   type StrategyView,
+  type TeachingToolResponse,
+  type TeachingToolsResponse,
   type TicketView,
 } from '../shared/protocol.ts';
 import type {
@@ -53,6 +55,7 @@ import type { M15 } from './knowledge/m15.ts';
 import type { Objections } from './knowledge/objections.ts';
 import type { Inputs } from './inputs.ts';
 import type { Sources } from './sources.ts';
+import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { BadRequestError, foldDeadline, foldMaterials } from './studium.ts';
 
 export interface EvidenceDeps {
@@ -66,6 +69,8 @@ export interface EvidenceDeps {
   sources: Sources;
   /** 图片转写、语音送往哪里（批 4）；不给就不列。 */
   inputs?: Inputs;
+  /** 教学工具（批 7）。 */
+  teaching: TeachingTools;
 }
 
 export class Evidence {
@@ -125,9 +130,17 @@ export class Evidence {
       verdicts,
       diagnoses: recs.flatMap((r) =>
         r.record.type === 'loop_note'
-          ? [{ line: r.line, at: r.record.at, text: r.record.text }]
+          ? [
+              {
+                line: r.line,
+                at: r.record.at,
+                text: r.record.text,
+                ...(r.record.intensity ? { intensity: r.record.intensity } : {}),
+              },
+            ]
           : [],
       ),
+      teachingToolsUsed: toolUsesOf(recs),
       objections,
       ...(flags.shelved !== undefined
         ? { shelved: { at: flags.shelved.at, note: flags.shelved.note } }
@@ -643,6 +656,9 @@ export class Evidence {
         evidenceLines: r.evidenceLines,
         quotes: await this.quotes(r.loopSessionId, r.evidenceLines),
         toolsUsed: r.toolsUsed,
+        ...(r.toolUses ? { toolUses: r.toolUses } : {}),
+        ...(r.intensityTrend ? { intensityTrend: r.intensityTrend } : {}),
+        ...(r.selfCheck ? { selfCheck: r.selfCheck } : {}),
         model: modelInfoOf(r.model),
         objections: this.d.objections.forRecord('m10', r.id).map(storedView),
       });
@@ -661,14 +677,19 @@ export class Evidence {
           quotes: await this.quotes(x.sessionId, x.lines),
         });
       }
+      const verdict = this.d.m15.verdictOf(r.id);
       records.push({
         id: r.id,
         at: r.at,
         text: r.text,
         source: r.source,
+        sourceLevel: this.d.m15.sourceLevel(r),
         output: r.output,
         timeRange: r.timeRange,
         refs,
+        ...(r.afterTeaching ? { afterTeaching: r.afterTeaching } : {}),
+        confirmations: this.d.m15.confirmationsFor(r.id),
+        ...(verdict ? { learnerVerdict: verdict.verdict } : {}),
         m15SessionId: r.m15SessionId,
         model: modelInfoOf(r.model),
         objections: this.d.objections.forRecord('m15', r.id).map(storedView),
@@ -689,6 +710,37 @@ export class Evidence {
           }
         : {}),
       records,
+    };
+  }
+
+  // ───────────── 教学工具 ─────────────
+
+  async teachingTools(): Promise<TeachingToolsResponse> {
+    const { tools, problems } = await this.d.teaching.list();
+    return {
+      tools: tools.map(({ name, applies, origin, source, status }) => ({
+        name,
+        applies,
+        origin,
+        source,
+        status,
+      })),
+      problems,
+    };
+  }
+
+  async teachingTool(name: string): Promise<TeachingToolResponse> {
+    const t = await this.d.teaching.get(name);
+    if (!t) throw new NotFoundError(`没有叫「${name}」的教学工具`);
+    return {
+      tool: {
+        name: t.name,
+        applies: t.applies,
+        origin: t.origin,
+        source: t.source,
+        status: t.status,
+        text: t.text,
+      },
     };
   }
 
