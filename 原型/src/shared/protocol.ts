@@ -29,6 +29,8 @@ export interface ProjectSummary {
   title: string;
   /** 主对话里最近谈定的方向目标。 */
   goal?: string;
+  /** 期限（YYYY-MM-DD）；没记就没有。 */
+  deadline?: string;
 }
 
 export interface ListProjectsResponse {
@@ -114,6 +116,9 @@ export interface PointView {
   scope?: '范围内' | '前置';
   splitOf?: { id: string; name: string };
   cautions: { text: string; anchors: AnchorView[] }[];
+  /** 多套 M08 合并时：来自哪一套（目录标签）；id 加了前缀时 originalId 是原来的 id。 */
+  origin?: string;
+  originalId?: string;
 }
 
 export interface ClauseView {
@@ -125,6 +130,8 @@ export interface ClauseView {
   source: M08Source;
   sourceNote: string;
   notes: string[];
+  origin?: string;
+  originalId?: string;
 }
 
 export interface Points08Response {
@@ -281,6 +288,11 @@ export interface ProjectOverview {
   mainSessionId: string;
   title: string;
   goal?: string;
+  /** 期限（YYYY-MM-DD）与备注；没记就没有。 */
+  deadline?: string;
+  deadlineNote?: string;
+  /** 项目选了几份资料（0 = 没限定，资料工具查全库）。 */
+  materialCount?: number;
   groups: {
     /** 进行中。 */
     inProgress: LoopBrief[];
@@ -465,6 +477,16 @@ export interface BookSummary {
   /** 有正文文件的条目数。 */
   sections: number;
   hasOriginal: boolean;
+  /** 在书库里的学科目录（相对书库根，如 大学物理/力学）；个人笔记是“个人笔记”；平铺的书没有。 */
+  subject?: string;
+  /** book = 书库里的书 · note = 学习者的个人笔记（导入到 M07 自己的区）。 */
+  kind?: 'book' | 'note';
+  /** 个人笔记：作者（学习者）、来源（个人笔记）、导入时的原路径。 */
+  author?: string;
+  source?: string;
+  originalPath?: string;
+  /** 请求里带了 project 时：这份资料是不是该项目选用的。 */
+  selected?: boolean;
 }
 
 export interface BooksResponse {
@@ -702,4 +724,134 @@ export interface InputDisclosure {
   /** 用的模型；null = 服务默认或不适用。 */
   model: string | null;
   note: string;
+}
+
+// ───────────── 批 3a：资料范围（书库多层、项目资料、个人笔记、多套 M08、外部导入、期限）─────────────
+
+/** 项目选用的一份资料。missing = 书库里现在找不到它了（被移走 / 改名）。 */
+export interface ProjectMaterialView {
+  book: string;
+  title: string;
+  kind: 'book' | 'note';
+  subject?: string;
+  addedAt: string;
+  missing?: boolean;
+}
+
+export interface ProjectMaterialsResponse {
+  mainSessionId: string;
+  materials: ProjectMaterialView[];
+  /** true = 项目选了资料，闭环 / M05 / 学习者检索默认只在这些里查；false = 没选任何资料，查全库。 */
+  restricted: boolean;
+  deadline?: string;
+  deadlineNote?: string;
+}
+
+export interface ProjectMaterialsRequest {
+  /** 要加进来的书 / 笔记 id（书库里 books 的 id）。 */
+  add?: string[];
+  /** 要去掉的。 */
+  remove?: string[];
+}
+
+export interface ProjectDeadlineRequest {
+  /** YYYY-MM-DD；null = 清掉期限。 */
+  deadline: string | null;
+  note?: string;
+}
+
+export interface ProjectDeadlineResponse {
+  mainSessionId: string;
+  deadline?: string;
+  deadlineNote?: string;
+  /** 离期限还有几天（负数 = 已过）。 */
+  daysLeft?: number;
+}
+
+export interface NoteImportRequest {
+  /** 一份 Markdown 笔记文件，或一个目录（里面所有 .md，按文件名顺序）。 */
+  path: string;
+  /** 不给：文件名 / 目录名（目录带上一层名）。 */
+  title?: string;
+}
+
+export interface NoteSummary {
+  /** 在书库里的 id（“笔记-…”），当书用：浏览 / 检索 / 引用都照书的接口。 */
+  id: string;
+  title: string;
+  author: string;
+  source: string;
+  originalPath: string;
+  importedAt: string;
+  /** 原文件数 / 切出的小节数。 */
+  files: number;
+  sections: number;
+  /** 笔记里引用的图片 / 嵌入（路径原样留在文字里）；found = 在原位置找到了文件。 */
+  assets: { ref: string; found: boolean; file: string; line: number }[];
+  /** 导入前同一原路径已有的笔记 id（新导入是新版本，旧的不动）。 */
+  previous?: string;
+  /** 没读的文件（非 .md 的不算）。 */
+  skipped?: string[];
+}
+
+export interface NoteImportResponse {
+  note: NoteSummary;
+}
+
+export interface NotesResponse {
+  notes: NoteSummary[];
+}
+
+export interface NoteExtractRequest {
+  /** 笔记 id。 */
+  book: string;
+  /** 挂在哪个项目下（可不填）。 */
+  projectId?: string;
+}
+
+/** 外部导入进 M09 的一条（学习者在系统之外学到的）：未验证，和闭环形成记录分开。 */
+export interface ExternalRecordView {
+  id: string;
+  at: string;
+  /** 自述 = 畅谈里学习者自己说会 · 笔记 = 从学习者笔记里提的。 */
+  source: '自述' | '笔记';
+  /** 一律“未验证”：闭环证据永远优先。 */
+  status: '未验证';
+  claim: string;
+  point?: { id: string; name: string; found: boolean };
+  /** 判读依据（如“笔记里有完整推导与自己的解释”“只说了会，没展开”）。 */
+  basis: string;
+  grade?: string;
+  /** 自述：畅谈会话与学习者的行；笔记：书 + 小节文件 + 行段。 */
+  talk?: { sessionId: string; lines: number[]; quotes: string[] };
+  note?: { book: string; file: string; from: number; to: number };
+  model: string;
+}
+
+export interface ExternalRecordsResponse {
+  records: ExternalRecordView[];
+}
+
+/** 多套 M08 合并后的每一套。 */
+export interface M08OriginView {
+  label: string;
+  dir: string;
+  points: number;
+  clauses: number;
+  /** 这一套的 id 因与别的套重复而加了“标签.”前缀。 */
+  prefixed: boolean;
+}
+
+export interface M08OverviewResponse {
+  sources: M08OriginView[];
+  /** 按书、按章数点（章 = 点的第一个锚点所在的章目录，如 ch03；没有锚点的归“（无锚点）”）。 */
+  books: {
+    book: string;
+    bookTitle?: string;
+    points: number;
+    clauses: number;
+    chapters: { chapter: string; points: number; clauses: number }[];
+  }[];
+  /** 带了 project 且项目选了资料：只算选用的书；all=1 查全部。 */
+  restricted: boolean;
 }

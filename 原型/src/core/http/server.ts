@@ -12,6 +12,16 @@ import type {
   ProjectResponse,
   CardResponse,
   Clause08Response,
+  ExternalRecordsResponse,
+  M08OverviewResponse,
+  NoteExtractRequest,
+  NoteImportRequest,
+  NoteImportResponse,
+  NotesResponse,
+  ProjectDeadlineRequest,
+  ProjectDeadlineResponse,
+  ProjectMaterialsRequest,
+  ProjectMaterialsResponse,
   DisclosureResponse,
   FormationsResponse,
   LoopEvidenceResponse,
@@ -42,6 +52,7 @@ import type {
 import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
 import { NoOriginalError, NoRendererError } from '../knowledge/m07-originals.ts';
+import type { Notes } from '../knowledge/m07-notes.ts';
 import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 import { InputError, type Inputs } from '../inputs.ts';
@@ -56,6 +67,8 @@ export interface ServerOptions {
   sources: Sources;
   /** 输入（批 4）：图片原样保存与转写。 */
   inputs: Inputs;
+  /** 个人笔记导入 M07。 */
+  notes: Notes;
   token: string;
   host?: string;
   port: number;
@@ -132,7 +145,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     method: string,
   ): Promise<void> {
     const { hub, studium, evidence, sources } = opts;
-    if (parts[1] === 'library' && (await libraryRoute(req, res, parts, method, sources))) return;
+    if (parts[1] === 'library' && (await libraryRoute(req, res, parts, method, sources, studium)))
+      return;
     if (
       await inputsRoute(
         req,
@@ -163,6 +177,65 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     }
     if (method === 'GET' && parts[1] === 'project' && parts.length === 2) {
       send(res, 200, { mainSessionId: await studium.ensureMain() } satisfies ProjectResponse);
+      return;
+    }
+    if (parts[1] === 'projects' && parts.length === 4 && parts[2] !== undefined) {
+      const mainId = parts[2];
+      if (parts[3] === 'materials' && method === 'GET') {
+        send(res, 200, (await studium.materials(mainId)) satisfies ProjectMaterialsResponse);
+        return;
+      }
+      if (parts[3] === 'materials' && method === 'POST') {
+        const body = (await readJson(req)) as Partial<ProjectMaterialsRequest>;
+        for (const k of ['add', 'remove'] as const) {
+          const v = body[k];
+          if (v !== undefined && !(Array.isArray(v) && v.every((x) => typeof x === 'string'))) {
+            throw new BadRequest(`${k} 要是字符串数组`);
+          }
+        }
+        send(
+          res,
+          200,
+          (await studium.changeMaterials(mainId, body)) satisfies ProjectMaterialsResponse,
+        );
+        return;
+      }
+      if (parts[3] === 'deadline' && method === 'GET') {
+        send(res, 200, (await studium.deadlineView(mainId)) satisfies ProjectDeadlineResponse);
+        return;
+      }
+      if (parts[3] === 'deadline' && method === 'POST') {
+        const body = (await readJson(req)) as Partial<ProjectDeadlineRequest>;
+        if (body.deadline !== null && typeof body.deadline !== 'string') {
+          throw new BadRequest('deadline 要是 YYYY-MM-DD 字符串，或 null 清掉');
+        }
+        if (body.note !== undefined && typeof body.note !== 'string') {
+          throw new BadRequest('note 要是字符串');
+        }
+        send(
+          res,
+          200,
+          (await studium.setDeadline(
+            mainId,
+            body.deadline,
+            body.note,
+          )) satisfies ProjectDeadlineResponse,
+        );
+        return;
+      }
+    }
+    if (parts[1] === 'm08' && parts[2] === 'overview' && parts.length === 3 && method === 'GET') {
+      const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
+      const project = q.get('project');
+      const scope =
+        project !== null && project !== ''
+          ? await studium.scopeOf(project, q.get('all') === '1')
+          : undefined;
+      send(res, 200, evidence.m08Overview(scope) satisfies M08OverviewResponse);
+      return;
+    }
+    if (parts[1] === 'm09' && parts[2] === 'external' && parts.length === 3 && method === 'GET') {
+      send(res, 200, { records: evidence.externals() } satisfies ExternalRecordsResponse);
       return;
     }
     if (parts[1] === 'projects' && parts.length === 2) {
@@ -280,6 +353,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     parts: string[],
     method: string,
     src: Sources,
+    studium: Studium,
   ): Promise<boolean> {
     const url = new URL(req.url ?? '/', 'http://localhost');
     const q = url.searchParams;
@@ -303,9 +377,32 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     };
     if (method === 'GET') {
       switch (what) {
-        case 'books':
-          send(res, 200, (await src.books()) satisfies BooksResponse);
+        case 'books': {
+          const books = await src.books();
+          const project = q.get('project');
+          if (project !== null && project !== '') {
+            const chosen = new Set((await studium.selectedBooks(project)).map((m) => m.book));
+            books.books = books.books.map((b) => ({ ...b, selected: chosen.has(b.id) }));
+          }
+          send(res, 200, books satisfies BooksResponse);
           return true;
+        }
+        case 'notes':
+          send(res, 200, { notes: await opts.notes.list() } satisfies NotesResponse);
+          return true;
+        case 'note-asset': {
+          const asset = await opts.notes.asset(str('book'), str('ref'));
+          if (asset === undefined) {
+            send(res, 404, { error: '笔记里没有这个图片（或不是图片）' });
+            return true;
+          }
+          res.writeHead(200, {
+            'content-type': IMAGE_MIME[asset.ext] ?? 'application/octet-stream',
+            'cache-control': 'private, max-age=3600',
+          });
+          res.end(await readFile(asset.path));
+          return true;
+        }
         case 'toc':
           send(res, 200, (await src.toc(str('book'))) satisfies TocResponse);
           return true;
@@ -321,17 +418,21 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             )) satisfies SectionResponse,
           );
           return true;
-        case 'search':
+        case 'search': {
+          // project 给了：默认只搜项目选用的资料；all=1 或明确给 book 时不限
+          const project = q.get('project');
+          const book = q.get('book') ?? undefined;
+          const scope =
+            project !== null && project !== '' && (book === undefined || book === '')
+              ? await studium.scopeOf(project, q.get('all') === '1')
+              : undefined;
           send(
             res,
             200,
-            (await src.search(
-              str('q'),
-              q.get('book') ?? undefined,
-              int('limit'),
-            )) satisfies LibrarySearchResponse,
+            (await src.search(str('q'), book, int('limit'), scope)) satisfies LibrarySearchResponse,
           );
           return true;
+        }
         case 'page':
           send(res, 200, (await src.page(str('book'), need('page'))) satisfies PageResponse);
           return true;
@@ -377,6 +478,29 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       } satisfies ResolveCitationsResponse);
       return true;
     }
+    if (method === 'POST' && what === 'notes/import') {
+      const body = (await readJson(req)) as Partial<NoteImportRequest>;
+      if (typeof body.path !== 'string') throw new BadRequest('path 要是字符串');
+      if (body.title !== undefined && typeof body.title !== 'string') {
+        throw new BadRequest('title 要是字符串');
+      }
+      const note = await opts.notes.import(body.path, body.title);
+      send(res, 201, { note } satisfies NoteImportResponse);
+      return true;
+    }
+    if (method === 'POST' && what === 'notes/extract') {
+      const body = (await readJson(req)) as Partial<NoteExtractRequest>;
+      if (typeof body.book !== 'string') throw new BadRequest('book 要是字符串');
+      const info = await opts.notes.list();
+      if (!info.some((n) => n.id === body.book))
+        throw new NotFoundError(`没有这份笔记：${body.book}`);
+      const book = body.book;
+      const projectId = typeof body.projectId === 'string' ? body.projectId : undefined;
+      if (projectId !== undefined) await opts.hub.opened(projectId);
+      background('从笔记里提点', () => studium.extractNotePoints(book, projectId));
+      send(res, 202, {});
+      return true;
+    }
     if (method === 'POST' && what === 'reports') {
       const body = (await readJson(req)) as Partial<SourceReportRequest>;
       send(res, 201, { report: await src.report(body) } satisfies SourceReportResponse);
@@ -410,7 +534,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     } else if (a === 'm15' && b === 'state' && n === 3) {
       send(res, 200, (await ev.state()) satisfies StateResponse);
     } else if (a === 'm08' && b === 'points' && n === 3) {
-      send(res, 200, ev.points(q.get('q') ?? undefined) satisfies Points08Response);
+      send(
+        res,
+        200,
+        ev.points(
+          q.get('q') ?? undefined,
+          q.get('book') ?? undefined,
+          q.get('chapter') ?? undefined,
+        ) satisfies Points08Response,
+      );
     } else if (a === 'm08' && b === 'points' && n === 4 && c !== undefined) {
       send(res, 200, ev.point(c));
     } else if (a === 'm08' && b === 'clauses' && n === 4 && c !== undefined) {
@@ -517,6 +649,16 @@ function parseBBox(v: string | null): BBox | undefined {
   }
   return [a, b, c, d];
 }
+
+const IMAGE_MIME: Record<string, string> = {
+  '.png': 'image/png',
+  '.jpg': 'image/jpeg',
+  '.jpeg': 'image/jpeg',
+  '.gif': 'image/gif',
+  '.webp': 'image/webp',
+  '.svg': 'image/svg+xml',
+  '.bmp': 'image/bmp',
+};
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

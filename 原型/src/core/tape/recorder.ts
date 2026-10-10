@@ -38,7 +38,7 @@ export type TapeLine =
       /** 开录时数据目录里已有的会话数；不为 0 时回放会有偏差（回放从空目录开始）。 */
       preexisting: number;
       library?: string;
-      m08Dir?: string;
+      m08Dir?: string | string[];
     }
   | { t: 'turn'; s: string; n: number; at: string; input: TurnInput }
   | { t: 'interject'; s: string; n: number; at: string; input: TurnInput }
@@ -75,7 +75,7 @@ export class Recorder {
 
   constructor(
     private readonly path: string,
-    private readonly opts: { library?: string; m08Dir?: string; now: () => Date },
+    private readonly opts: { library?: string; m08Dir?: string | string[]; now: () => Date },
   ) {
     mkdirSync(dirname(path), { recursive: true });
   }

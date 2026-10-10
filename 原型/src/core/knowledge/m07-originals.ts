@@ -203,7 +203,7 @@ export class Originals {
   }
 
   private async findSegments(book: string): Promise<Segment[]> {
-    const dir = this.lib.bookDir(book);
+    const dir = await this.lib.bookDir(book);
     const out: Segment[] = [];
     let source: {
       file?: string;
