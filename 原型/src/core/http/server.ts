@@ -10,16 +10,33 @@ import type {
   ErrorResponse,
   ListProjectsResponse,
   ProjectResponse,
+  CardResponse,
+  Clause08Response,
+  DisclosureResponse,
+  FormationsResponse,
+  LoopEvidenceResponse,
+  ObjectionResponse,
+  ObjectionsResponse,
+  Points08Response,
+  ProjectOverviewResponse,
+  RecordObjectionRequest,
+  SessionModelResponse,
+  StateResponse,
+  StrategiesResponse,
+  VerdictObjectionRequest,
   ListSessionsResponse,
   RecordsResponse,
   SearchResponse,
 } from '../../shared/protocol.ts';
+import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 
 export interface ServerOptions {
   hub: Hub;
   studium: Studium;
+  /** 依据可见的只读视图（批 1a）。 */
+  evidence: Evidence;
   token: string;
   host?: string;
   port: number;
@@ -92,7 +109,24 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     parts: string[],
     method: string,
   ): Promise<void> {
-    const { hub, studium } = opts;
+    const { hub, studium, evidence } = opts;
+    if (
+      method === 'GET' &&
+      (await readRoute(res, new URL(req.url ?? '/', 'http://localhost'), parts, evidence))
+    )
+      return;
+    if (method === 'POST' && parts[1] === 'objections' && parts.length === 2) {
+      const body = (await readJson(req)) as Partial<RecordObjectionRequest>;
+      if (body.kind !== 'm09' && body.kind !== 'm10' && body.kind !== 'm15') {
+        throw new BadRequest('kind 要是 m09、m10 或 m15');
+      }
+      if (typeof body.recordId !== 'string' || typeof body.text !== 'string') {
+        throw new BadRequest('recordId 与 text 要是字符串');
+      }
+      const o = await studium.objectToRecord(body.kind, body.recordId, body.text);
+      send(res, 201, { objection: { ...o, inLoop: false } } satisfies ObjectionResponse);
+      return;
+    }
     if (method === 'GET' && parts[1] === 'project' && parts.length === 2) {
       send(res, 200, { mainSessionId: await studium.ensureMain() } satisfies ProjectResponse);
       return;
@@ -150,6 +184,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return;
     }
     if (id !== undefined && parts.length === 4) {
+      if (action === 'model' && method === 'GET') {
+        send(res, 200, { model: await hub.modelInfo(id) } satisfies SessionModelResponse);
+        return;
+      }
       if (action === 'records' && method === 'GET') {
         const records = await hub.records(id);
         send(res, 200, { records, running: hub.isRunning(id) } satisfies RecordsResponse);
@@ -172,6 +210,21 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             background('申请收口', () => studium.requestClose(id, 'learner', note));
             send(res, 202, {});
             return;
+          case 'objections': {
+            const b = body as Partial<VerdictObjectionRequest>;
+            if (typeof b.line !== 'number' || typeof b.text !== 'string') {
+              throw new BadRequest('line 要是数字、text 要是字符串');
+            }
+            const r = await studium.objectToVerdict(id, b.line, b.text);
+            send(res, 201, {
+              objection: {
+                ...r.objection,
+                inLoop: r.inLoop,
+                ...(r.line !== undefined ? { line: r.line } : {}),
+              },
+            } satisfies ObjectionResponse);
+            return;
+          }
           case 'confirm-close':
             await studium.confirmClose(id, note);
             send(res, 202, {});
@@ -184,6 +237,47 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       }
     }
     send(res, 404, { error: '没有这个接口' });
+  }
+
+  /** 依据可见的只读接口（GET）；认出路径就回答并返回真。 */
+  async function readRoute(
+    res: ServerResponse,
+    url: URL,
+    parts: string[],
+    ev: Evidence,
+  ): Promise<boolean> {
+    const [, a, b, c] = parts;
+    const n = parts.length;
+    const q = url.searchParams;
+    if (a === 'loops' && c === 'evidence' && n === 4 && b !== undefined) {
+      send(res, 200, { loop: await ev.loop(b) } satisfies LoopEvidenceResponse);
+    } else if (a === 'cards' && n === 3 && b !== undefined) {
+      send(res, 200, { card: await ev.card(b) } satisfies CardResponse);
+    } else if (a === 'projects' && c === 'overview' && n === 4 && b !== undefined) {
+      send(res, 200, { overview: await ev.overview(b) } satisfies ProjectOverviewResponse);
+    } else if (a === 'm09' && b === 'records' && n === 3) {
+      const records = await ev.formations(q.get('loop') ?? undefined);
+      send(res, 200, { records } satisfies FormationsResponse);
+    } else if (a === 'm10' && b === 'records' && n === 3) {
+      const records = await ev.strategies(q.get('loop') ?? undefined);
+      send(res, 200, { records } satisfies StrategiesResponse);
+    } else if (a === 'm15' && b === 'state' && n === 3) {
+      send(res, 200, (await ev.state()) satisfies StateResponse);
+    } else if (a === 'm08' && b === 'points' && n === 3) {
+      send(res, 200, ev.points(q.get('q') ?? undefined) satisfies Points08Response);
+    } else if (a === 'm08' && b === 'points' && n === 4 && c !== undefined) {
+      send(res, 200, ev.point(c));
+    } else if (a === 'm08' && b === 'clauses' && n === 4 && c !== undefined) {
+      send(res, 200, { clause: ev.clause(c) } satisfies Clause08Response);
+    } else if (a === 'objections' && n === 2) {
+      const objections = ev.objections(q.get('kind') ?? undefined, q.get('record') ?? undefined);
+      send(res, 200, { objections } satisfies ObjectionsResponse);
+    } else if (a === 'disclosure' && n === 2) {
+      send(res, 200, ev.disclosure() satisfies DisclosureResponse);
+    } else {
+      return false;
+    }
+    return true;
   }
 
   function background(what: string, fn: () => Promise<unknown>): void {

@@ -41,6 +41,10 @@ export class M10 {
     return [...this.rows];
   }
 
+  record(id: string): StrategyRecord | undefined {
+    return this.rows.find((r) => r.id === id);
+  }
+
   describe(r: StrategyRecord): string {
     return [
       `${r.id}（${r.at.slice(0, 10)}，闭环 ${r.loopSessionId}，模型 ${r.model}）`,

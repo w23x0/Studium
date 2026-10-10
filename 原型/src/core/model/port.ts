@@ -4,6 +4,7 @@
 // · 交回原文（ModelEvent 里的 raw，由核心逐条记进正本）。
 import type { z } from 'zod';
 import type { ConversationKind } from '../../shared/records.ts';
+import type { Profiles } from './profiles.ts';
 
 export interface ToolResult {
   text: string;
@@ -64,9 +65,23 @@ export interface ModelConversation {
   close(): Promise<void>;
 }
 
+/** 这个适配器把内容送往哪个服务（外发披露，给界面看）。 */
+export interface ModelDisclosure {
+  /** 内容送往的服务，如“Anthropic 的 Claude”。 */
+  service: string;
+  /** 经什么通道，如“本机的 Claude 订阅”。 */
+  route: string;
+  /** 没按会话类单独配时用的模型；不填 = 服务默认。 */
+  defaultModel?: string;
+  /** 按会话类配的模型与强度（来自 profiles.ts）。 */
+  profiles: Profiles;
+}
+
 export interface ModelAdapter {
   /** 适配器名，记进正本（model_raw / model_session 的 adapter 字段）。 */
   readonly name: string;
+  /** 内容送往哪个服务；没有就是不外发（或还没声明）。 */
+  readonly disclosure?: ModelDisclosure;
   open(spec: ConversationSpec): ModelConversation;
 }
 

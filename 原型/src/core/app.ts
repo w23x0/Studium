@@ -4,6 +4,7 @@ import { cp, readFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ConversationKind } from '../shared/records.ts';
+import { Evidence } from './evidence.ts';
 import { Hub } from './hub.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
@@ -12,6 +13,7 @@ import { M08 } from './knowledge/m08.ts';
 import { M09 } from './knowledge/m09.ts';
 import { M10 } from './knowledge/m10.ts';
 import { M15 } from './knowledge/m15.ts';
+import { Objections } from './knowledge/objections.ts';
 import { DataDir } from './log/data-dir.ts';
 import { isNotFound } from './log/session-log.ts';
 import type { ModelAdapter } from './model/port.ts';
@@ -72,13 +74,19 @@ export async function createApp(opts: AppOptions): Promise<App> {
   if (opts.m08Dir === undefined && (await isEmptyDir(m08Dir))) {
     await cp(join(SAMPLE_DIR, 'm08'), m08Dir, { recursive: true });
   }
+  const m08 = await M08.load(m08Dir);
+  const m09 = await M09.load(join(dataDir.root, 'knowledge', 'm09'));
+  const m10 = await M10.load(join(dataDir.root, 'knowledge', 'm10'));
+  const m15 = await M15.load(join(dataDir.root, 'knowledge', 'm15'));
+  const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
   const studium = new Studium({
     prompts: await loadPrompts(),
     m07: new Library(opts.library ?? join(SAMPLE_DIR, '书库')),
-    m08: await M08.load(m08Dir),
-    m09: await M09.load(join(dataDir.root, 'knowledge', 'm09')),
-    m10: await M10.load(join(dataDir.root, 'knowledge', 'm10')),
-    m15: await M15.load(join(dataDir.root, 'knowledge', 'm15')),
+    m08,
+    m09,
+    m10,
+    m15,
+    objections,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const inner = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
@@ -104,6 +112,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
   await studium.ensureMain();
   const server = await startServer({
     hub,
+    evidence: new Evidence({ hub, m08, m09, m10, m15, objections }),
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,
     port: opts.port,

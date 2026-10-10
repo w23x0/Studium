@@ -7,6 +7,7 @@ import type {
   ChoiceOption,
   ConversationKind,
   GuardVerdict,
+  LearnerObjection,
   LogRecord,
   NumberedRecord,
   Ticket,
@@ -23,6 +24,7 @@ import {
   type M09,
 } from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
+import type { Objections } from './knowledge/objections.ts';
 import { STAGES, type M15 } from './knowledge/m15.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
@@ -43,6 +45,8 @@ export interface StudiumOptions {
   m09: M09;
   m10: M10;
   m15: M15;
+  /** 学习者异议存放处。 */
+  objections: Objections;
   now?: () => Date;
 }
 
@@ -335,6 +339,79 @@ export class Studium {
     this.background('没合上之后的清单', () => this.afterLoop(loopId, false));
   }
 
+  // ───────────── 异议（学习者纠正系统的判断；只追加，不改原记录）─────────────
+
+  /**
+   * 对守卫的一次判定提异议。闭环还开着：作为学习者原话（带标记）追加进该闭环，之后学习者可再申请收口；
+   * 闭环已结束：记进异议存放处，不改闭环正本里的判定。
+   */
+  async objectToVerdict(
+    loopId: string,
+    line: number,
+    text: string,
+  ): Promise<{ objection: LearnerObjection; inLoop: boolean; line?: number }> {
+    const opened = await this.hub.opened(loopId);
+    if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
+    const body = text.trim();
+    if (body === '') throw new BadRequestError('异议不能是空的。');
+    const recs = await this.hub.records(loopId);
+    if (recs.find((r) => r.line === line)?.record.type !== 'guard_verdict') {
+      throw new BadRequestError(`第 ${String(line)} 行不是一次判定，找不到要提异议的地方。`);
+    }
+    const target = { kind: 'guard_verdict', loopSessionId: loopId, line } as const;
+    if (recs.some((r) => r.record.type === 'loop_ended')) {
+      const objection: LearnerObjection = {
+        id: this.newId('obj'),
+        at: this.iso(),
+        text: body,
+        target,
+      };
+      await this.o.objections.add(objection);
+      return { objection, inLoop: false };
+    }
+    const sent = await this.hub.send(
+      loopId,
+      { role: 'learner', text: body },
+      { objection: { toLine: line } },
+    );
+    return {
+      objection: { id: `${loopId}:${String(sent.line)}`, at: this.iso(), text: body, target },
+      inLoop: true,
+      line: sent.line,
+    };
+  }
+
+  /** 对 M09 / M10 / M15 的一条记录提异议：只追加一条异议记录，不改原记录；下次整理 / 出卡时被读到。 */
+  async objectToRecord(
+    kind: 'm09' | 'm10' | 'm15',
+    recordId: string,
+    text: string,
+  ): Promise<LearnerObjection> {
+    const body = text.trim();
+    if (body === '') throw new BadRequestError('异议不能是空的。');
+    const exists =
+      kind === 'm09'
+        ? this.o.m09.record(recordId)
+        : kind === 'm10'
+          ? this.o.m10.record(recordId)
+          : this.o.m15.record(recordId);
+    if (exists === undefined) throw new BadRequestError(`找不到这条记录：${recordId}。`);
+    const objection: LearnerObjection = {
+      id: this.newId('obj'),
+      at: this.iso(),
+      text: body,
+      target: { kind, recordId },
+    };
+    await this.o.objections.add(objection);
+    return objection;
+  }
+
+  /** 附在一条 M09 / M10 / M15 记录描述后面的学习者异议（交给模型读；没有就是空串）。 */
+  private objectionNotes(kind: 'm09' | 'm10' | 'm15', recordId: string): string {
+    const rows = this.o.objections.forRecord(kind, recordId);
+    return rows.map((o) => `\n  学习者异议（自述，原记录没改）：${o.text}`).join('');
+  }
+
   // ───────────── 清单 ─────────────
 
   /**
@@ -571,6 +648,7 @@ export class Studium {
       loopStates.push(`- ${l.sessionId}「${l.title}」：${state}`);
     }
     const known = this.o.m09.knownPoints();
+    const objections = this.o.objections.all().slice(-20);
     return [
       `触发原因：${trigger}`,
       '',
@@ -580,6 +658,12 @@ export class Studium {
       '',
       `闭环（路线事实）：\n${loopStates.length > 0 ? loopStates.join('\n') : '（还没有）'}`,
       '',
+      ...(objections.length > 0
+        ? [
+            `学习者提过的异议（自述；没有改原记录，选单子时参考）：\n${objections.map((o) => `- ${this.o.objections.describe(o)}`).join('\n')}`,
+            '',
+          ]
+        : []),
       this.o.m08.empty ? 'M08：空（缺通用知识依据）' : `M08 提纲：\n${this.o.m08.outline()}`,
       '',
       '学习者状态（M15）：要用时用 query_state 查；没有记录按无状态约束。',
@@ -846,7 +930,11 @@ export class Studium {
         run: () => {
           const rows = this.o.m10.all();
           return ok(
-            rows.length > 0 ? rows.map((r) => this.o.m10.describe(r)).join('\n') : '还没有记录',
+            rows.length > 0
+              ? rows
+                  .map((r) => this.o.m10.describe(r) + this.objectionNotes('m10', r.id))
+                  .join('\n')
+              : '还没有记录',
           );
         },
       },
@@ -919,15 +1007,33 @@ export class Studium {
   private async organizeState(trigger: string, from: string | undefined, force: boolean) {
     const covered = this.o.m15.covered();
     const facts = await this.stateFacts(covered);
+    // 学习者对状态记录提的异议，上次整理之后新来的也算新记录
+    const lastRun = this.o.m15.lastRunAt();
+    const fresh = this.o.objections
+      .all()
+      .filter((o) => o.target.kind === 'm15' && (lastRun === undefined || o.at > lastRun));
     // 没有新记录不整理（03「M15」）
-    if (facts.newLearnerLines === 0 && !force) return;
+    if (facts.newLearnerLines === 0 && fresh.length === 0 && !force) return;
+    const objections = this.o.objections.all().filter((o) => o.target.kind === 'm15');
     const s = await this.hub.createSession('m15', {
       title: '整理学习者状态',
       ...(from !== undefined ? { parent: from } : {}),
     });
     await this.hub.send(s.sessionId, {
       role: 'program',
-      text: [`触发原因：${trigger}`, '', this.o.m15.describeCurrent(), '', facts.text].join('\n'),
+      text: [
+        `触发原因：${trigger}`,
+        '',
+        this.o.m15.describeCurrent(),
+        '',
+        ...(objections.length > 0
+          ? [
+              `学习者对状态记录的异议（自述；不覆盖可观察事实，对不上的两条都留、标冲突）：\n${objections.map((o) => `- ${this.o.objections.describe(o)}`).join('\n')}`,
+              '',
+            ]
+          : []),
+        facts.text,
+      ].join('\n'),
     });
     await this.hub.idle(s.sessionId);
     const failed = (await this.hub.records(s.sessionId)).some(
@@ -1032,7 +1138,11 @@ export class Studium {
         }
         const parts = [this.o.m15.describeCurrent()];
         if (a.detail === true || !this.o.m15.current()) {
-          parts.push('', '状态记录：', ...rows.map((r) => this.o.m15.describeRecord(r)));
+          parts.push(
+            '',
+            '状态记录：',
+            ...rows.map((r) => this.o.m15.describeRecord(r) + this.objectionNotes('m15', r.id)),
+          );
         }
         return ok(parts.join('\n'));
       },
@@ -1079,7 +1189,9 @@ export class Studium {
             [
               this.o.m15.describeCurrent(),
               '',
-              ...this.o.m15.allRecords().map((r) => this.o.m15.describeRecord(r)),
+              ...this.o.m15
+                .allRecords()
+                .map((r) => this.o.m15.describeRecord(r) + this.objectionNotes('m15', r.id)),
             ].join('\n'),
           ),
       },
@@ -1351,7 +1463,11 @@ export class Studium {
           const p = a.point as string | undefined;
           const rows = p ? this.o.m09.forPoint(p) : this.o.m09.all();
           return ok(
-            rows.length > 0 ? rows.map((r) => this.o.m09.describe(r)).join('\n') : '没有记录',
+            rows.length > 0
+              ? rows
+                  .map((r) => this.o.m09.describe(r) + this.objectionNotes('m09', r.id))
+                  .join('\n')
+              : '没有记录',
           );
         },
       });

@@ -17,23 +17,24 @@
 
 ## 目录
 
-| 路径                  | 内容                                                                                                                                                                                |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/shared/`         | 正本记录类型（`records.ts`）与核心↔界面协议（`protocol.ts`）                                                                                                                        |
-| `src/core/log/`       | 正本读写（`session-log.ts`，一个写者、只追加、fsync）与数据目录锁                                                                                                                   |
-| `src/core/model/`     | 模型接口 `port.ts` + 适配器：`claude-agent-sdk.ts`（真模型）、`fake.ts`（假模型）                                                                                                   |
-| `src/core/hub.ts`     | 会话管理：一次一轮、事件推送、重启后按正本里的续接凭据接上                                                                                                                          |
-| `src/core/studium.ts` | 事件串联：主对话、畅谈、M05 选择卡、闭环对话、守卫、写 M09、下一张卡、M15 / M10 后台；各会话的工具                                                                                  |
-| `src/core/knowledge/` | 读 M07 原文（`m07.ts`）、M08 点与子句（`m08.ts`）；M09 形成记录、M10 教法记录、M15 状态（各一个只追加的存放处）                                                                     |
-| `src/core/tape/`      | 真实运行录带（`recorder.ts`）与离线回放（`replay.ts`、`cli.ts`）；编号换成稳定记号（`ids.ts`）                                                                                      |
-| `src/core/http/`      | 本地服务：只绑 127.0.0.1、口令、HTTP 命令 + SSE 事件、托管构建好的界面                                                                                                              |
-| `src/core/prompts/`   | 系统提示：`main` `talk` `loop` `guard` `m09` `m05` `m15` `m10`（只写定义、边界、输出格式）                                                                                          |
-| `样例/`               | 没有真书时用的小样例：一本自写力学入门（M07 格式）+ 10 个知识点 / 9 条条款（M08）                                                                                                   |
-| `src/ui/`             | 浏览器界面：React + Vite + assistant-ui；`thread-model.ts` 是可单测的纯转换                                                                                                         |
-| `tests/`              | 依赖方向测试、`验收/`（只经 HTTP 验功能）、`helpers/`                                                                                                                               |
-| `e2e/`                | Playwright 功能主路径（`npm run e2e`，假模型）                                                                                                                                      |
-| `evals/`              | 行为评测目录：模拟学生多轮、每个失败模式一个判定、k 次全过（不进门禁；学生与判分经模型接口，现只接假模型）；`chain/` 真模型链路评测（录带在 `tapes/`、不进 git，报告在 `reports/`） |
-| `scripts/`            | 检查命令、lint 一行格式、hooks、CI 用的测试改动报告、功能清单                                                                                                                       |
+| 路径                   | 内容                                                                                                                                                                                |
+| ---------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/shared/`          | 正本记录类型（`records.ts`）与核心↔界面协议（`protocol.ts`）                                                                                                                        |
+| `src/core/log/`        | 正本读写（`session-log.ts`，一个写者、只追加、fsync）与数据目录锁                                                                                                                   |
+| `src/core/model/`      | 模型接口 `port.ts` + 适配器：`claude-agent-sdk.ts`（真模型）、`fake.ts`（假模型）                                                                                                   |
+| `src/core/evidence.ts` | 依据可见的只读视图（守卫判定与原文、单子与出处、M09 / M10 / M15 / M08、外发披露），类型在 `src/shared/protocol.ts`                                                                  |
+| `src/core/hub.ts`      | 会话管理：一次一轮、事件推送、重启后按正本里的续接凭据接上                                                                                                                          |
+| `src/core/studium.ts`  | 事件串联：主对话、畅谈、M05 选择卡、闭环对话、守卫、写 M09、下一张卡、M15 / M10 后台；各会话的工具                                                                                  |
+| `src/core/knowledge/`  | 读 M07 原文（`m07.ts`）、M08 点与子句（`m08.ts`）；M09 形成记录、M10 教法记录、M15 状态（各一个只追加的存放处）                                                                     |
+| `src/core/tape/`       | 真实运行录带（`recorder.ts`）与离线回放（`replay.ts`、`cli.ts`）；编号换成稳定记号（`ids.ts`）                                                                                      |
+| `src/core/http/`       | 本地服务：只绑 127.0.0.1、口令、HTTP 命令 + SSE 事件、托管构建好的界面                                                                                                              |
+| `src/core/prompts/`    | 系统提示：`main` `talk` `loop` `guard` `m09` `m05` `m15` `m10`（只写定义、边界、输出格式）                                                                                          |
+| `样例/`                | 没有真书时用的小样例：一本自写力学入门（M07 格式）+ 10 个知识点 / 9 条条款（M08）                                                                                                   |
+| `src/ui/`              | 浏览器界面：React + Vite + assistant-ui；`thread-model.ts` 是可单测的纯转换                                                                                                         |
+| `tests/`               | 依赖方向测试、`验收/`（只经 HTTP 验功能）、`helpers/`                                                                                                                               |
+| `e2e/`                 | Playwright 功能主路径（`npm run e2e`，假模型）                                                                                                                                      |
+| `evals/`               | 行为评测目录：模拟学生多轮、每个失败模式一个判定、k 次全过（不进门禁；学生与判分经模型接口，现只接假模型）；`chain/` 真模型链路评测（录带在 `tapes/`、不进 git，报告在 `reports/`） |
+| `scripts/`             | 检查命令、lint 一行格式、hooks、CI 用的测试改动报告、功能清单                                                                                                                       |
 
 ## 命令
 
@@ -63,7 +64,7 @@
 
 每个会话一个 `var/sessions/<会话 id>.jsonl`，一行一条，行号 = 引用地址。类型见 `src/shared/records.ts`：
 `session_opened` · `user_message` · `assistant_message` · `model_raw`（适配层吐出的原始消息，含思考块）·
-`model_session`（续接凭据）· `turn_failed` · `program_fact` · `tool_call` · 闭环相关（`loop_note` `close_requested` `guard_verdict` `loop_ended` `after_loop_step`）· `project_goal` `project_title`（项目名随方向变，开头那行不改）· `task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `choice_card` `choice_made`。加类型只能加，不改旧字段的意思。
+`model_session`（续接凭据）· `turn_failed` · `program_fact` · `tool_call` · 闭环相关（`loop_note` `close_requested` `guard_verdict` `loop_ended` `after_loop_step`）· `project_goal` `project_title`（项目名随方向变，开头那行不改）· `task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `choice_card` `choice_made`。学习者对守卫判定的异议是带 `objection` 标记的 `user_message`；对 M09 / M10 / M15 记录的异议另存 `knowledge/objections/`（只追加，不改原记录）。加类型只能加，不改旧字段的意思。
 
 ## 本机试用
 

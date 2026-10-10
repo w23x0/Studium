@@ -24,6 +24,8 @@ export const ACTIONS = [
   'requestClose',
   'confirmClose',
   'endUnclosed',
+  'objectToVerdict',
+  'objectToRecord',
 ] as const;
 export type ActionName = (typeof ACTIONS)[number];
 
@@ -112,6 +114,7 @@ export class Recorder {
   wrapModel(inner: ModelAdapter): ModelAdapter {
     return {
       name: inner.name,
+      ...(inner.disclosure !== undefined ? { disclosure: inner.disclosure } : {}),
       open: (spec) => this.wrapConversation(inner, spec),
     };
   }

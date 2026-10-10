@@ -36,6 +36,8 @@ export interface UserMessage {
   type: 'user_message';
   at: string;
   text: string;
+  /** 有这一项 = 这句话是学习者对本闭环里第 toLine 行守卫判定提出的异议（原话照记，带标记）。 */
+  objection?: { toLine: number };
 }
 
 export interface AssistantMessage {
@@ -229,6 +231,22 @@ export type LogRecord =
   | ProjectTitle
   | TalkEnded
   | ConversationPointer;
+
+/** 学习者异议指向什么：守卫的一次判定（闭环 + 判定所在行），或 M09 / M10 / M15 的一条记录（记录 id）。 */
+export type ObjectionTarget =
+  | { kind: 'guard_verdict'; loopSessionId: string; line: number }
+  | { kind: 'm09' | 'm10' | 'm15'; recordId: string };
+
+/**
+ * 学习者异议：只追加的一条独立记录，指向原记录，不改原记录（异议按自述来源记录，不覆盖可观察事实）。
+ * 存在知识层的异议存放处（不在会话正本里）；对还开着的闭环里守卫判定的异议则作为带标记的学习者原话进闭环正本。
+ */
+export interface LearnerObjection {
+  id: string;
+  at: string;
+  text: string;
+  target: ObjectionTarget;
+}
 
 /** 带行号的记录；行号从 1 开始，等于 JSONL 文件里的行。 */
 export interface NumberedRecord {

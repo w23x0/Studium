@@ -95,6 +95,11 @@ export class M15 {
     return this.pages.at(-1);
   }
 
+  /** 最近一次整理的时间（没整理过为空）。 */
+  lastRunAt(): string | undefined {
+    return this.runs.at(-1)?.at;
+  }
+
   /** 各会话已整理到的行号（取历次整理的最大值）。 */
   covered(): Record<string, number> {
     const out: Record<string, number> = {};

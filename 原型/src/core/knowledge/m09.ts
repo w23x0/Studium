@@ -71,6 +71,10 @@ export class M09 {
     return [...this.rows];
   }
 
+  record(id: string): FormationRecord | undefined {
+    return this.rows.find((r) => r.id === id);
+  }
+
   /** 已经合上过的新点（知识边缘由模型据此判断，程序不下判断）。 */
   knownPoints(): string[] {
     return [...new Set(this.rows.map((r) => r.newPoint))];

@@ -44,6 +44,11 @@ interface FakeTurnState {
 
 export class FakeModel implements ModelAdapter {
   readonly name = 'fake';
+  readonly disclosure = {
+    service: '无（假模型，测试用，内容不送往任何服务）',
+    route: '本机进程内',
+    profiles: {},
+  };
   /** 假模型自报的“实际执行模型”，测试用来核对记录里存的是它而不是适配器名。 */
   static readonly MODEL_NAME = 'fake-model-1';
   readonly opened: ConversationSpec[] = [];

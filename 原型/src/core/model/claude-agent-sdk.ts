@@ -15,6 +15,7 @@ import {
   type ConversationSpec,
   type ModelAdapter,
   type ModelConversation,
+  type ModelDisclosure,
   type ModelEvent,
   type TurnInput,
 } from './port.ts';
@@ -38,8 +39,16 @@ const INHERITED_SESSION_VARS = ['CLAUDECODE', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_
 
 export class ClaudeAgentSdkModel implements ModelAdapter {
   readonly name = 'claude-agent-sdk';
+  readonly disclosure: ModelDisclosure;
 
-  constructor(private readonly options: ClaudeAgentSdkOptions = {}) {}
+  constructor(private readonly options: ClaudeAgentSdkOptions = {}) {
+    this.disclosure = {
+      service: 'Anthropic 的 Claude',
+      route: '经本机的 Claude 订阅（Claude Agent SDK）',
+      profiles: options.profiles ?? {},
+      ...(options.model !== undefined ? { defaultModel: options.model } : {}),
+    };
+  }
 
   open(spec: ConversationSpec): ModelConversation {
     return new SdkConversation(spec, this.options);

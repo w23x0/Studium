@@ -2,7 +2,13 @@
 // 不认识具体会话的职责：系统提示与工具由 kinds 按会话种类给出（studium.ts 组装）。
 // 事件（新记录、流式增量、进行中状态）推给订阅者（SSE）。
 import { randomBytes } from 'node:crypto';
-import type { SessionSummary, ServerEvent } from '../shared/protocol.ts';
+import {
+  MODEL_FALLBACK_MARK,
+  modelInfoOf,
+  type ModelInfo,
+  type SessionSummary,
+  type ServerEvent,
+} from '../shared/protocol.ts';
 import type {
   ConversationKind,
   LogRecord,
@@ -13,7 +19,13 @@ import type {
 import type { DerivedIndex } from './index/derived-index.ts';
 import type { DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
-import type { ModelAdapter, ModelConversation, ToolSpec, TurnInput } from './model/port.ts';
+import type {
+  ModelAdapter,
+  ModelConversation,
+  ModelDisclosure,
+  ToolSpec,
+  TurnInput,
+} from './model/port.ts';
 
 export interface KindConfig {
   systemPrompt: string;
@@ -67,7 +79,17 @@ export class Hub {
       .filter((r) => r.type === 'model_used')
       .at(-1);
     if (used?.type === 'model_used') return used.model;
-    return `${this.modelName}（适配器名；未取到实际执行模型）`;
+    return `${this.modelName}（适配器名；${MODEL_FALLBACK_MARK}）`;
+  }
+
+  /** 同上，给界面用：拿不到实际模型时 known 为假并带兜底说明。 */
+  async modelInfo(sessionId: string): Promise<ModelInfo> {
+    return modelInfoOf(await this.executedModel(sessionId));
+  }
+
+  /** 内容送往哪个服务（外发披露）；适配器没声明就是 undefined。 */
+  get disclosure(): ModelDisclosure | undefined {
+    return this.opts.model.disclosure;
   }
 
   subscribe(fn: (e: ServerEvent) => void): () => void {
@@ -131,18 +153,32 @@ export class Hub {
    * 记下一条输入（学习者的话或程序事实），排进这个会话的队列。
    * 返回时输入已落盘；done 在这条输入那一轮跑完时兑现。
    */
-  async send(sessionId: string, input: TurnInput): Promise<{ line: number; done: Promise<void> }> {
+  async send(
+    sessionId: string,
+    input: TurnInput,
+    meta: { objection?: { toLine: number } } = {},
+  ): Promise<{ line: number; done: Promise<void> }> {
     const live = await this.ensureLive(sessionId);
+    const objection = input.role === 'learner' ? meta.objection : undefined;
     const line = await this.append(
       sessionId,
       input.role === 'learner'
-        ? { type: 'user_message', at: this.iso(), text: input.text }
+        ? {
+            type: 'user_message',
+            at: this.iso(),
+            text: input.text,
+            ...(objection !== undefined ? { objection } : {}),
+          }
         : { type: 'program_fact', at: this.iso(), text: input.text },
     );
     // 证据引用照模型最顺手的方式：交给模型的每条消息前印它在正本里的行号（00 原则 8）
     const delivered: TurnInput = {
       role: input.role,
-      text: `[第 ${String(line)} 行] ${input.text}`,
+      text: `[第 ${String(line)} 行] ${
+        objection !== undefined
+          ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
+          : ''
+      }${input.text}`,
     };
     let resolve!: () => void;
     const done = new Promise<void>((r) => (resolve = r));
