@@ -145,3 +145,30 @@ describe('loopState / pendingCard', () => {
     expect(pendingCard(rs)).toBeUndefined();
   });
 });
+
+describe('附图的消息', () => {
+  it('学习者消息带上原图 id，文字照记录（含转写）', () => {
+    const rs: NumberedRecord[] = [
+      {
+        line: 2,
+        record: {
+          type: 'user_message',
+          at,
+          text: '看图\n\n［图片 1 · 自动转写，可能有误］\n$x$',
+          images: [
+            { attachmentId: 'img-1', transcriptionId: 'tr-1', transcript: '$x$', sent: '$x$' },
+          ],
+        },
+      },
+    ];
+    expect(toUiMessages(rs, '')).toEqual([
+      {
+        id: 'l2',
+        role: 'user',
+        text: '看图\n\n［图片 1 · 自动转写，可能有误］\n$x$',
+        line: 2,
+        images: ['img-1'],
+      },
+    ]);
+  });
+});
