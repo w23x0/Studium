@@ -1,6 +1,11 @@
 // 依据面板里反复用到的小块：小节、标签、模型、书里的位置、知识点链接、原话、不同看法。
 import { useState, type ReactNode } from 'react';
-import { BookOpenIcon, CornerDownRightIcon, MessageSquareQuoteIcon } from 'lucide-react';
+import {
+  BookOpenIcon,
+  ChevronRightIcon,
+  CornerDownRightIcon,
+  MessageSquareQuoteIcon,
+} from 'lucide-react';
 import type {
   AnchorView,
   M08Source,
@@ -14,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { segmentLines, shortTime, splitLineRefs } from '../../evidence-model.ts';
 import { usePanel } from '../../panel.ts';
+import { asBBox } from '../../source-model.ts';
 import { W } from '../../wording.ts';
 
 export function Section(props: {
@@ -113,22 +119,67 @@ export function SourceBadge(props: { source: M08Source; note?: string }) {
 }
 
 export function Anchors(props: { anchors: AnchorView[] }) {
+  const panel = usePanel();
   if (props.anchors.length === 0) return null;
+  /** 有页码就看原件那一页（标出位置框），没有就看转录的原文那一行。 */
+  const open = (a: AnchorView): (() => void) | undefined => {
+    const bbox = asBBox(a.bbox);
+    if (a.page !== undefined) {
+      const page = a.page;
+      return () =>
+        panel.show({
+          kind: 'page',
+          book: a.book,
+          page,
+          quote: a.quote,
+          ...(bbox !== undefined ? { bbox } : {}),
+          ...(a.file !== '' ? { file: a.file } : {}),
+          ...(a.line !== undefined ? { line: a.line } : {}),
+        });
+    }
+    if (a.file === '') return undefined;
+    return () =>
+      panel.show({
+        kind: 'source',
+        book: a.book,
+        file: a.file,
+        ...(a.line !== undefined ? { from: a.line, to: a.line } : {}),
+      });
+  };
   return (
     <ul className="flex flex-col gap-2">
-      {props.anchors.map((a, i) => (
-        <li key={i} className="flex flex-col gap-1">
-          <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-            <BookOpenIcon className="size-3.5" />
-            {W.page(a.book, a.page)}
-          </div>
-          {a.quote !== '' && (
-            <blockquote className="border-primary/40 font-serif border-s-2 ps-3 text-[0.9rem]">
-              {a.quote}
-            </blockquote>
-          )}
-        </li>
-      ))}
+      {props.anchors.map((a, i) => {
+        const go = open(a);
+        const body = (
+          <>
+            <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
+              <BookOpenIcon className="size-3.5" />
+              {W.page(a.book, a.page)}
+              {go !== undefined && <ChevronRightIcon className="size-3.5" />}
+            </div>
+            {a.quote !== '' && (
+              <blockquote className="border-primary/40 font-serif border-s-2 ps-3 text-[0.9rem]">
+                {a.quote}
+              </blockquote>
+            )}
+          </>
+        );
+        return (
+          <li key={i}>
+            {go !== undefined ? (
+              <button
+                type="button"
+                className="hover:bg-accent/60 -mx-1 flex w-full flex-col gap-1 rounded-md px-1 py-1 text-left"
+                onClick={go}
+              >
+                {body}
+              </button>
+            ) : (
+              <div className="flex flex-col gap-1">{body}</div>
+            )}
+          </li>
+        );
+      })}
     </ul>
   );
 }

@@ -1,7 +1,12 @@
 // 界面上给学习者看的叫法，统一放这里（以后改叫法只改这一处）。
 // 内部词（闭环、选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里；
 // wording.test.ts 会查。对照：右边注释是内部叫法，只给写代码的人看。
-import type { LoopStatus, M08Source, StateRecordView } from '../shared/protocol.ts';
+import type {
+  LoopStatus,
+  M08Source,
+  SourceReportKind,
+  StateRecordView,
+} from '../shared/protocol.ts';
 
 export const W = {
   // ── 项目页 ──
@@ -165,6 +170,62 @@ export const W = {
   defaultModel: '服务默认',
   defaultEffort: '默认',
   effort: '思考强度',
+
+  // ── 书里的原文与原件（资料） ──
+  library: '资料', // M07 资料浏览
+  libraryHint: '书的目录、原文和原件页面',
+  libraryEmpty: '书库里还没有书。',
+  books: '书',
+  bookSections: (n: number) => `${String(n)} 节`,
+  hasOriginal: '有原件',
+  toc: '目录',
+  noText: '（这一条没有单独的正文）',
+  search: '在书里搜',
+  searchPlaceholder: '搜书里的字句，词之间用空格隔开…',
+  searchInBook: '只搜这本书',
+  searchGo: '搜',
+  searchFound: (n: number) => `找到 ${String(n)} 处`,
+  searchShown: (n: number) => `，先列出前 ${String(n)} 处`,
+  searchNone: '没搜到。换个说法，或少写几个词试试。',
+  bookText: '原文', // 小节转录文字
+  original: '原件页面', // PDF 原件页
+  prevSection: '上一节',
+  nextSection: '下一节',
+  prevPage: '上一页',
+  nextPage: '下一页',
+  pageOf: (n: number) => `第 ${String(n)} 页`,
+  lineSpan: (from: number, to: number) =>
+    to > from ? `第 ${String(from)}–${String(to)} 行` : `第 ${String(from)} 行`,
+  showOnOriginal: '看原件上的位置',
+  thisSpot: '书上的这一处',
+  wholePage: '整页',
+  onThisPage: '这一页上的知识点',
+  noOriginal: '这本书没有原件页面，只能看转录的文字。',
+  notLocated: '这一段在原件上没比对出位置，先显示本节的第一页。',
+  imageFailed: '原件页面没显示出来。',
+  readText: '看转录的原文',
+  backToToc: '这本书的目录',
+  quoteOnPage: '书里的原句',
+
+  // ── 回复里的书里出处 ──
+  citation: '书里的出处',
+  citationPending: '正在核对出处…',
+  citationBad: '这个出处对不上',
+  citationBadHint: '回复里写的出处在书里找不到对应的原文，下面是它写的位置和对不上的原因。',
+  citationWritten: '回复里写的位置',
+  citationCheckFailed: '没能核对这个出处：',
+
+  // ── 资料报错 ──
+  reportIssue: '这里有错',
+  reportKinds: {
+    转录错: '文字转错了',
+    公式错: '公式不对',
+    定位错: '位置对不上',
+    其他: '其他',
+  } satisfies Record<SourceReportKind, string>,
+  reportPlaceholder: '说说哪里不对，正确的应该是什么…',
+  reportSent: '记下了。书本身不会被改，这条会留着等以后修正。',
+  reported: '你报过的错',
 
   // ── 通用 ──
   loading: '正在读…',

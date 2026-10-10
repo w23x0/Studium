@@ -1,5 +1,6 @@
 // 右侧依据面板与对话高亮的共用入口：消息、项目页、面板里的链接经它打开面板、跳到对话某句。
 import { createContext, useContext } from 'react';
+import type { BBox } from '../shared/protocol.ts';
 
 /** 面板里能看的东西。 */
 export type PanelTarget =
@@ -11,7 +12,39 @@ export type PanelTarget =
   | { kind: 'learned'; recordId?: string }
   | { kind: 'state' }
   | { kind: 'teaching' }
-  | { kind: 'disclosure' };
+  | { kind: 'disclosure' }
+  /** 资料：不给书 = 书列表；给书 = 这本书的目录。 */
+  | { kind: 'library'; book?: string }
+  | { kind: 'search'; q: string; book?: string }
+  /**
+   * 一个小节的原文；from–to 是要高亮的行。page / bbox 是已知的原件位置（回复里出处核对时比出来的）；
+   * problem 是出处对不上的原因（对不上也照样打开，写明原因）。
+   */
+  | {
+      kind: 'source';
+      book: string;
+      file: string;
+      from?: number;
+      to?: number;
+      page?: number;
+      bbox?: BBox;
+      problem?: string;
+    }
+  /** 原件的一页；bbox 标出位置，quote 是书里的原句，file / line 能回到转录的原文。 */
+  | {
+      kind: 'page';
+      book: string;
+      page: number;
+      bbox?: BBox;
+      quote?: string;
+      file?: string;
+      line?: number;
+    };
+
+/** 面板里看书的几类东西：面板放宽一些。 */
+export function isWideTarget(t: PanelTarget): boolean {
+  return t.kind === 'library' || t.kind === 'search' || t.kind === 'source' || t.kind === 'page';
+}
 
 /** 对话里要高亮的几句；seq 每次跳转都变，好让同一处能再跳一次。 */
 export interface Focus {
@@ -23,12 +56,15 @@ export interface Focus {
 
 export interface PanelApi {
   show: (t: PanelTarget) => void;
+  /** 换掉面板当前显示的这一项（翻页、翻小节，不多压一层返回）。 */
+  replace: (t: PanelTarget) => void;
   /** 打开那个对话（不在当前时），高亮这几句；scroll 为真时滚过去。 */
   jump: (sessionId: string, lines: number[], scroll?: boolean) => void;
 }
 
 export const PanelContext = createContext<PanelApi>({
   show: () => undefined,
+  replace: () => undefined,
   jump: () => undefined,
 });
 

@@ -53,10 +53,11 @@ export function sourceText(s: SourceView): SourceText {
         ...(s.resolved ? detail : { detail: W.sourceNotResolved }),
       };
     case 'book_line':
+      // 核心给的说法是“书里《书名》 小节 页 第几行”，对不上时括号里写原因；去掉开头的“书里”就是标题
       return {
         kind,
-        title: `${s.file ?? ''}${s.line !== undefined ? ` · 第 ${String(s.line)} 行` : ''}`,
-        detail: '原文要等以后接上才能在这里直接看。',
+        title: s.label.replace(/^书里\s*/, ''),
+        detail: s.resolved && s.detail !== undefined ? s.detail : W.sourceNotResolved,
       };
     case 'unknown':
       return { kind, title: s.raw };

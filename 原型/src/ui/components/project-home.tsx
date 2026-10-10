@@ -7,6 +7,7 @@ import {
   CircleParkingIcon,
   ClipboardListIcon,
   GaugeIcon,
+  LibraryIcon,
   MessageCircleIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -204,6 +205,7 @@ function LoopRow(props: { loop: LoopBrief }) {
 function AboutMe() {
   const panel = usePanel();
   const items: { icon: ReactNode; label: string; onClick: () => void }[] = [
+    { icon: <LibraryIcon />, label: W.library, onClick: () => panel.show({ kind: 'library' }) },
     { icon: <BookCheckIcon />, label: W.learned, onClick: () => panel.show({ kind: 'learned' }) },
     { icon: <GaugeIcon />, label: W.myState, onClick: () => panel.show({ kind: 'state' }) },
     {
@@ -213,7 +215,7 @@ function AboutMe() {
     },
   ];
   return (
-    <div className="grid grid-cols-1 gap-2 @md:grid-cols-3">
+    <div className="grid grid-cols-1 gap-2 @md:grid-cols-2 @2xl:grid-cols-4">
       {items.map((it) => (
         <button
           key={it.label}

@@ -20,6 +20,7 @@ import {
   ChevronRightIcon,
   CopyIcon,
 } from 'lucide-react';
+import { CitationsProvider } from '@/components/sources/citation';
 import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
 import { useCurrentSession, useHighlight, usePanel } from '@/panel';
@@ -151,6 +152,10 @@ const Composer: FC<{ placeholder: string }> = ({ placeholder }) => (
 
 const AssistantMessage: FC = () => {
   const { attr, lit } = useLines();
+  const text = useAuiState((s) =>
+    s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
+  );
+  const done = useAuiState((s) => s.message.status?.type !== 'running');
   return (
     <MessagePrimitive.Root
       data-role="assistant"
@@ -164,9 +169,11 @@ const AssistantMessage: FC = () => {
         data-testid="assistant-message"
         className="font-serif text-foreground px-1 text-[1.05rem] leading-relaxed wrap-break-word"
       >
-        <MessagePrimitive.Parts>
-          {({ part }) => (part.type === 'text' ? <MarkdownText /> : null)}
-        </MessagePrimitive.Parts>
+        <CitationsProvider text={text} done={done}>
+          <MessagePrimitive.Parts>
+            {({ part }) => (part.type === 'text' ? <MarkdownText /> : null)}
+          </MessagePrimitive.Parts>
+        </CitationsProvider>
         <AuiIf
           condition={(s) => s.message.status?.type === 'running' && s.message.parts.length === 0}
         >

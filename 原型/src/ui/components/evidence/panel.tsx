@@ -5,6 +5,7 @@ import {
   ChevronLeftIcon,
   ClipboardListIcon,
   GaugeIcon,
+  LibraryIcon,
   SendIcon,
   ShieldCheckIcon,
   XIcon,
@@ -18,6 +19,8 @@ import { DisclosureView } from './disclosure-view.tsx';
 import { LoopView } from './loop-view.tsx';
 import { ClausePanel, PointPanel } from './m08-view.tsx';
 import { LearnedView, StateView, TeachingView } from './records-view.tsx';
+import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
+import { SourceView } from '../sources/source-view.tsx';
 
 export function EvidencePanel(props: {
   target: PanelTarget;
@@ -72,6 +75,35 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
       return <TeachingView />;
     case 'disclosure':
       return <DisclosureView />;
+    case 'library':
+      return <LibraryView key={t.book ?? ''} book={t.book} />;
+    case 'search':
+      return <SearchView key={`${t.book ?? ''}:${t.q}`} q={t.q} book={t.book} />;
+    case 'source':
+      return (
+        <SourceView
+          key={`${t.book}:${t.file}:${String(t.from)}-${String(t.to)}:${t.problem ?? ''}`}
+          book={t.book}
+          file={t.file}
+          from={t.from}
+          to={t.to}
+          page={t.page}
+          bbox={t.bbox}
+          problem={t.problem}
+        />
+      );
+    case 'page':
+      return (
+        <PageView
+          key={`${t.book}:${String(t.page)}:${t.bbox?.join(',') ?? ''}`}
+          book={t.book}
+          page={t.page}
+          bbox={t.bbox}
+          quote={t.quote}
+          file={t.file}
+          line={t.line}
+        />
+      );
   }
 }
 
@@ -88,6 +120,11 @@ function Home(props: { loopId?: string | undefined }) {
           onClick={() => panel.show({ kind: 'loop', loopId })}
         />
       )}
+      <HomeItem
+        icon={<LibraryIcon />}
+        label={W.library}
+        onClick={() => panel.show({ kind: 'library' })}
+      />
       <HomeItem
         icon={<BookCheckIcon />}
         label={W.learned}

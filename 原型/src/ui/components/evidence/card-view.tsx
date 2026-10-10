@@ -3,6 +3,7 @@ import { useEffect } from 'react';
 import type { CardOptionView, SourceView } from '../../../shared/protocol.ts';
 import { api } from '../../api.ts';
 import { sourceText } from '../../evidence-model.ts';
+import { bookLineTarget } from '../../source-model.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
 import { W } from '../../wording.ts';
@@ -69,19 +70,22 @@ function SourceItem(props: { source: SourceView }) {
   const panel = usePanel();
   const s = props.source;
   const t = sourceText(s);
+  const book = bookLineTarget(s);
   const open: (() => void) | undefined =
-    s.kind === 'm08_point' && s.resolved
-      ? () => panel.show({ kind: 'point', id: s.raw.trim() })
-      : s.kind === 'm08_clause' && s.resolved
-        ? () => panel.show({ kind: 'clause', id: s.raw.trim() })
-        : s.kind === 'm09_record' && s.resolved
-          ? () => panel.show({ kind: 'learned', recordId: s.raw.trim() })
-          : s.kind === 'loop_line' && s.sessionId !== undefined && s.line !== undefined
-            ? () =>
-                s.sessionId !== undefined &&
-                s.line !== undefined &&
-                panel.jump(s.sessionId, [s.line])
-            : undefined;
+    book !== undefined
+      ? () => panel.show(book)
+      : s.kind === 'm08_point' && s.resolved
+        ? () => panel.show({ kind: 'point', id: s.raw.trim() })
+        : s.kind === 'm08_clause' && s.resolved
+          ? () => panel.show({ kind: 'clause', id: s.raw.trim() })
+          : s.kind === 'm09_record' && s.resolved
+            ? () => panel.show({ kind: 'learned', recordId: s.raw.trim() })
+            : s.kind === 'loop_line' && s.sessionId !== undefined && s.line !== undefined
+              ? () =>
+                  s.sessionId !== undefined &&
+                  s.line !== undefined &&
+                  panel.jump(s.sessionId, [s.line])
+              : undefined;
   const body = (
     <>
       <span className="text-muted-foreground flex items-center gap-2 text-xs">

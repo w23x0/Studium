@@ -18,6 +18,16 @@ import type {
   ProjectResponse,
   RecordsResponse,
   ServerEvent,
+  BooksResponse,
+  TocResponse,
+  SectionResponse,
+  LibrarySearchResponse,
+  PageResponse,
+  LocateResponse,
+  ResolveCitationsResponse,
+  SourceReportRequest,
+  SourceReportResponse,
+  SourceReportsResponse,
 } from '../shared/protocol.ts';
 
 function token(): string {
@@ -40,6 +50,18 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const body = (await res.json()) as T & { error?: string };
   if (!res.ok) throw new Error(body.error ?? `请求失败：${String(res.status)}`);
   return body;
+}
+
+/** 查询串：值为空的参数不带。 */
+function qs(params: Record<string, string | number | undefined>): string {
+  const u = new URLSearchParams();
+  for (const [k, v] of Object.entries(params)) if (v !== undefined) u.set(k, String(v));
+  return u.toString();
+}
+
+/** 给 <img src> 用的地址：带上口令（图片请求带不了请求头）。 */
+export function withToken(url: string): string {
+  return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(TOKEN)}`;
 }
 
 const listeners = new Set<(e: ServerEvent) => void>();
@@ -89,6 +111,25 @@ export const api = {
     }),
   objectToRecord: (req: RecordObjectionRequest) =>
     call<ObjectionResponse>('/objections', { method: 'POST', body: JSON.stringify(req) }),
+  // ── 原文与出处 ──
+  books: () => call<BooksResponse>('/library/books'),
+  toc: (book: string) => call<TocResponse>(`/library/toc?${qs({ book })}`),
+  section: (book: string, file: string) =>
+    call<SectionResponse>(`/library/section?${qs({ book, file })}`),
+  search: (q: string, book?: string, limit?: number) =>
+    call<LibrarySearchResponse>(`/library/search?${qs({ q, book, limit })}`),
+  page: (book: string, page: number) => call<PageResponse>(`/library/page?${qs({ book, page })}`),
+  locate: (book: string, file: string, from: number, to: number) =>
+    call<LocateResponse>(`/library/locate?${qs({ book, file, from, to })}`),
+  citations: (text: string) =>
+    call<ResolveCitationsResponse>('/library/citations', {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
+  reports: (book: string, file: string) =>
+    call<SourceReportsResponse>(`/library/reports?${qs({ book, file })}`),
+  report: (req: SourceReportRequest) =>
+    call<SourceReportResponse>('/library/reports', { method: 'POST', body: JSON.stringify(req) }),
   /** 订阅事件：整页共用一条事件连接（浏览器对同一地址的长连接数有限），最后一个退订时关掉。 */
   events(onEvent: (e: ServerEvent) => void): () => void {
     listeners.add(onEvent);

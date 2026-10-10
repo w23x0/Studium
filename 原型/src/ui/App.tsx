@@ -8,6 +8,7 @@ import {
   ClipboardListIcon,
   GaugeIcon,
   LayoutGridIcon,
+  LibraryIcon,
   MessageCircleIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
@@ -30,6 +31,7 @@ import { OpenSessionContext } from './open-session.ts';
 import {
   CurrentSessionContext,
   HighlightContext,
+  isWideTarget,
   PanelContext,
   type Focus,
   type PanelApi,
@@ -125,6 +127,12 @@ export function App() {
           if (JSON.stringify(top) === JSON.stringify(t)) return p;
           return { open: true, stack: [...p.stack.slice(-19), t] };
         }),
+      replace: (t) =>
+        setPanel((p) => ({
+          open: true,
+          stack:
+            p.open && p.stack.length > 1 ? [...p.stack.slice(0, -1), t] : [{ kind: 'home' }, t],
+        })),
       jump: (sessionId, lines, scroll = true) => {
         seq.current += 1;
         setFocus({ sessionId, lines, seq: seq.current, scroll });
@@ -242,6 +250,14 @@ export function App() {
               ))}
             </ul>
             <div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
+              <SideItem
+                active={false}
+                onClick={() => panelApi.show({ kind: 'library' })}
+                testId="nav-library"
+              >
+                <LibraryIcon className="text-muted-foreground size-3.5" />
+                {W.library}
+              </SideItem>
               <SideItem active={false} onClick={() => panelApi.show({ kind: 'learned' })}>
                 <BookCheckIcon className="text-muted-foreground size-3.5" />
                 {W.learned}
@@ -312,7 +328,15 @@ export function App() {
             )}
           </main>
           {panel.open && (
-            <aside className="bg-sidebar/60 flex w-[min(28rem,40vw)] shrink-0 flex-col border-s">
+            <aside
+              className={cn(
+                'bg-sidebar/60 flex shrink-0 flex-col border-s',
+                // 看书（原文、原件页面）时面板放宽，像 Claude 的 artifact 面板
+                isWideTarget(panel.stack.at(-1) ?? { kind: 'home' })
+                  ? 'w-[min(44rem,50vw)]'
+                  : 'w-[min(28rem,40vw)]',
+              )}
+            >
               <EvidencePanel
                 target={panel.stack.at(-1) ?? { kind: 'home' }}
                 canBack={panel.stack.length > 1}

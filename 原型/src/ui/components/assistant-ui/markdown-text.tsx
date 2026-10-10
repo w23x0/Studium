@@ -1,4 +1,5 @@
-// 来自 assistant-ui 模板 0.0.121（MIT）；加了公式（remark-math + KaTeX）与流式公式预处理。
+// 来自 assistant-ui 模板 0.0.121（MIT）；加了公式（remark-math + KaTeX）与流式公式预处理；
+// 书里出处标记换成链接、再由链接组件画成出处小标签。
 
 import '@assistant-ui/react-markdown/styles/dot.css';
 
@@ -15,6 +16,8 @@ import 'katex/dist/katex.min.css';
 import { useAuiState } from '@assistant-ui/react';
 import { type FC, memo, useCallback } from 'react';
 import { prepareMath } from '@/lib/math';
+import { CitationChip } from '@/components/sources/citation';
+import { citationIndex, linkCitations } from '@/source-model';
 import { CheckIcon, CopyIcon } from 'lucide-react';
 
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
@@ -23,7 +26,10 @@ import { cn } from '@/lib/utils';
 
 const MarkdownTextImpl = () => {
   const streaming = useAuiState((s) => s.message.status?.type === 'running');
-  const preprocess = useCallback((t: string) => prepareMath(t, streaming), [streaming]);
+  const preprocess = useCallback(
+    (t: string) => prepareMath(linkCitations(t, streaming), streaming),
+    [streaming],
+  );
   return (
     <MarkdownTextPrimitive
       remarkPlugins={[remarkGfm, remarkMath]}
@@ -110,15 +116,20 @@ const defaultComponents = memoizeMarkdownComponents({
   p: ({ className, ...props }) => (
     <p className={cn('aui-md-p my-3 leading-relaxed first:mt-0 last:mb-0', className)} {...props} />
   ),
-  a: ({ className, ...props }) => (
-    <a
-      className={cn(
-        'aui-md-a text-primary hover:text-primary/80 underline underline-offset-2',
-        className,
-      )}
-      {...props}
-    />
-  ),
+  a: ({ className, href, ...props }) => {
+    const cite = citationIndex(href);
+    if (cite !== undefined) return <CitationChip index={cite} />;
+    return (
+      <a
+        className={cn(
+          'aui-md-a text-primary hover:text-primary/80 underline underline-offset-2',
+          className,
+        )}
+        href={href}
+        {...props}
+      />
+    );
+  },
   blockquote: ({ className, ...props }) => (
     <blockquote
       className={cn(
