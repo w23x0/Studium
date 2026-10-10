@@ -51,13 +51,12 @@ describe('计划与提醒', () => {
     advanceDays(st, 3);
     const today = await getJson<TodayView>(app, `/projects/${mainId}/today`);
     expect(today.date).toBe('2026-10-04');
-    expect(today.items).toEqual([
-      expect.objectContaining({
-        kind: 'reminder',
-        overdueDays: 1,
-        reminder: expect.objectContaining({ id: r.id, text: '复检位移', isDue: true }),
-      }),
-    ]);
+    expect(today.items).toHaveLength(1);
+    const item = today.items[0];
+    expect(item?.kind).toBe('reminder');
+    if (item?.kind !== 'reminder') throw new Error('应当是提醒');
+    expect(item.overdueDays).toBe(1);
+    expect(item.reminder).toMatchObject({ id: r.id, text: '复检位移', isDue: true });
     // 项目概览带着
     const o = (await getJson<ProjectOverviewResponse>(app, `/projects/${mainId}/overview`))
       .overview;

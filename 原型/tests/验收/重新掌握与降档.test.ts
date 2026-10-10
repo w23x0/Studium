@@ -147,7 +147,7 @@ describe('降档', () => {
       ],
     };
     const { app, fake, f1, loopB } = await setup(st, plan);
-    const before = JSON.stringify(await formations(app));
+    const before = JSON.stringify((await formations(app)).filter((r) => r.id === f1.id));
 
     // 诊断里有结构化条目：哪个点、依据行（学习者原话）、怀疑
     const ev = await getJson<LoopEvidenceResponse>(app, `/loops/${loopB}/evidence`);
@@ -184,9 +184,7 @@ describe('降档', () => {
     });
     expect(tl[0]?.stateRuledOut).toContain('没有相关状态记录');
     const after = await formations(app);
-    expect(JSON.stringify(after.filter((r) => r.id === f1.id))).toBe(
-      JSON.stringify(JSON.parse(before).filter((r: { id: string }) => r.id === f1.id)),
-    );
+    expect(JSON.stringify(after.filter((r) => r.id === f1.id))).toBe(before);
 
     // 当前视图按时间折叠：位移降到“复现”，状态降档
     const view = await getJson<PointViewDetailResponse>(app, '/m09/view/p-displacement');

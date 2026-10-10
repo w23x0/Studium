@@ -13,7 +13,7 @@ export interface LongState {
   /** 核心的时钟；测试拨它来模拟“过了几天”。 */
   clock: { now: Date };
   /** 先于默认应答的改写：返回 undefined 就走默认。 */
-  override?: (ctx: FakeContext) => FakeStep | undefined;
+  override?: ((ctx: FakeContext) => FakeStep | undefined) | undefined;
 }
 
 export function newLong(): LongState {
