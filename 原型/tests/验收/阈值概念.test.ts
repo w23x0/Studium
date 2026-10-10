@@ -109,8 +109,8 @@ describe('阈值概念', () => {
     await post(app, `/sessions/${loopId}/messages`, { text: '这个我还是没明白' });
     await settled(app, loopId);
     await post(app, `/sessions/${loopId}/close-request`);
-    await waitFor('判完了', async () =>
-      fake.opened.some((s) => s.tools.some((t) => t.name === 'submit_verdict')),
+    await waitFor('判完了', () =>
+      Promise.resolve(fake.opened.some((s) => s.tools.some((t) => t.name === 'submit_verdict'))),
     );
     await settled(app, loopId);
 
@@ -123,8 +123,9 @@ describe('阈值概念', () => {
     );
     expect(guardInputs.length).toBeGreaterThan(0);
     for (const g of guardInputs) {
-      expect(g.text).not.toContain('提示强度');
-      expect(g.text).not.toContain('放慢');
+      // 守卫读不到教学侧的诊断与强度标注（开场单子里的阈值提醒是对话的一部分，不算）
+      expect(g.text).not.toContain('卡在力与速度的关系上');
+      expect(g.text).not.toContain('降一档、放慢');
     }
 
     // 不是阈值概念的新点：没有这句提醒
