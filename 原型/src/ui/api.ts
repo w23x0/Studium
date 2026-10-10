@@ -39,7 +39,10 @@ import type {
   ExternalRecordsResponse,
   M08OverviewResponse,
   Points08Response,
+  DetourChooseResponse,
+  LoopRelationsResponse,
 } from '../shared/protocol.ts';
+import { SHELVE_NO_NOTE } from './thread-model.ts';
 
 function token(): string {
   const fromUrl = new URLSearchParams(location.search).get('token');
@@ -101,6 +104,23 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ note: '学习者在界面上点了“结束（没合上）”' }),
     }),
+  // ── 学到一半：小卡、先放一放、接着学（批 5） ──
+  detour: (loopId: string, cardId: string, option: number) =>
+    call<DetourChooseResponse>(`/sessions/${loopId}/detour`, {
+      method: 'POST',
+      body: JSON.stringify({ cardId, option }),
+    }),
+  shelve: (loopId: string, note?: string) =>
+    call<object>(`/sessions/${loopId}/shelve`, {
+      method: 'POST',
+      body: JSON.stringify({
+        note: note !== undefined && note.trim() !== '' ? note.trim() : SHELVE_NO_NOTE,
+      }),
+    }),
+  resume: (loopId: string) =>
+    call<object>(`/sessions/${loopId}/resume`, { method: 'POST', body: '{}' }),
+  loopRelations: (mainId: string) =>
+    call<LoopRelationsResponse>(`/projects/${mainId}/loop-relations`),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
   send: (id: string, text: string, images?: MessageImageInput[]) =>
     call<object>(`/sessions/${id}/messages`, {

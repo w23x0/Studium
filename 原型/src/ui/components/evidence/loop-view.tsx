@@ -1,10 +1,12 @@
-// 一段学习的依据：开场安排、老师的观察记录、每次是否学会的判断（理由、原话、不同看法）。
+// 一段学习的依据：开场安排、从哪来与中途经过（岔开、先停一下、没学完的地方）、老师的观察记录、
+// 每次是否学会的判断（理由、原话、不同看法）。
 import { useEffect, useRef } from 'react';
 import type { GuardVerdictView, LoopEvidence } from '../../../shared/protocol.ts';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
 import { W } from '../../wording.ts';
+import { LoopDetours } from './loop-detour-view.tsx';
 import {
   Badge,
   Card,
@@ -56,6 +58,9 @@ export function LoopView(props: { loopId: string; verdictLine?: number | undefin
           >
             {W.status[loop.status]}
           </Badge>
+          {loop.shelved !== undefined && <Badge tone="warn">{W.shelvedBadge}</Badge>}
+          {loop.waitingFork !== undefined && <Badge tone="accent">{W.waitingBadge}</Badge>}
+          {loop.fork !== undefined && <Badge>{W.forkBadge}</Badge>}
         </div>
         <div className="text-muted-foreground text-xs">
           <Time at={loop.openedAt} />
@@ -76,6 +81,8 @@ export function LoopView(props: { loopId: string; verdictLine?: number | undefin
           </Card>
         </Section>
       )}
+
+      <LoopDetours loop={loop} />
 
       <Section title={W.judgements}>
         {loop.verdicts.length === 0 && (

@@ -28,7 +28,7 @@ import { api } from './api.ts';
 import { ChoiceCardBox } from './components/choice-card.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
 import { ProjectHome } from './components/project-home.tsx';
-import { OpenSessionContext } from './open-session.ts';
+import { OpenSessionContext, useOpenSession } from './open-session.ts';
 import {
   CurrentSessionContext,
   HighlightContext,
@@ -39,7 +39,15 @@ import {
   type PanelApi,
   type PanelTarget,
 } from './panel.ts';
-import { loopState, pendingCard, talkEnded, toUiMessages, type UiMessage } from './thread-model.ts';
+import {
+  loopSide,
+  loopState,
+  pendingCard,
+  talkEnded,
+  toUiMessages,
+  type LoopSide,
+  type UiMessage,
+} from './thread-model.ts';
 import { W } from './wording.ts';
 
 /** 右侧面板：开着时显示栈顶，面板里点开的东西压栈、可返回。 */
@@ -467,6 +475,7 @@ function Conversation(props: {
           ...(m.verdict ? { verdict: m.verdict } : {}),
           ...(m.objection ? { objection: m.objection } : {}),
           ...(m.images ? { images: m.images } : {}),
+          ...(m.detour ? { detour: m.detour } : {}),
         },
       },
       ...(m.role === 'assistant'
@@ -486,6 +495,7 @@ function Conversation(props: {
     },
   });
 
+  const side = useMemo(() => (kind === 'loop' ? loopSide(records) : undefined), [kind, records]);
   const ended =
     kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
   const footer =
@@ -499,6 +509,8 @@ function Conversation(props: {
       <LoopBar
         sessionId={sessionId}
         records={records}
+        side={side ?? NO_SIDE}
+        titleOf={titleOf}
         running={running}
         onError={onError}
         onBack={props.onBack}
@@ -506,34 +518,37 @@ function Conversation(props: {
       />
     );
   const header = (
-    <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
-      {!isMain && (
-        <>
-          <button
-            type="button"
-            className="text-muted-foreground hover:text-foreground flex items-center gap-1"
-            onClick={props.onBack}
+    <div className="shrink-0">
+      <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
+        {!isMain && (
+          <>
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground flex items-center gap-1"
+              onClick={props.onBack}
+            >
+              <ChevronLeftIcon className="size-4" />
+              {props.projectTitle}
+            </button>
+            <span className="text-muted-foreground">/</span>
+          </>
+        )}
+        <span className="truncate font-medium">{props.title}</span>
+        {isMain && (
+          <Button
+            variant="ghost"
+            size="xs"
+            className="text-muted-foreground"
+            onClick={props.onOverview}
           >
-            <ChevronLeftIcon className="size-4" />
-            {props.projectTitle}
-          </button>
-          <span className="text-muted-foreground">/</span>
-        </>
-      )}
-      <span className="truncate font-medium">{props.title}</span>
-      {isMain && (
-        <Button
-          variant="ghost"
-          size="xs"
-          className="text-muted-foreground"
-          onClick={props.onOverview}
-        >
-          <LayoutGridIcon />
-          {W.projectHome}
-        </Button>
-      )}
-      {props.headerExtra}
-    </header>
+            <LayoutGridIcon />
+            {W.projectHome}
+          </Button>
+        )}
+        {props.headerExtra}
+      </header>
+      {side !== undefined && <LoopBanner side={side} titleOf={titleOf} />}
+    </div>
   );
 
   return (
@@ -551,7 +566,13 @@ function Conversation(props: {
             }
             footer={footer}
             disabled={ended}
-            placeholder={running ? '可以随时插话…' : '回复…'}
+            placeholder={
+              side?.shelved !== undefined
+                ? W.shelvedPlaceholder
+                : running
+                  ? '可以随时插话…'
+                  : '回复…'
+            }
             onSend={async (text, images) => {
               await api.send(sessionId, text, images);
             }}
@@ -563,6 +584,56 @@ function Conversation(props: {
 }
 
 const NO_LINES: readonly number[] = [];
+const NO_SIDE: LoopSide = { openDetour: false };
+
+/**
+ * 学习对话顶部的一行：这段是从哪段岔出来补什么的（可点回去）；或这段正在等岔出去的那段学完回来（可跳过去）。
+ */
+function LoopBanner(props: { side: LoopSide; titleOf: (id: string) => string | undefined }) {
+  const { side, titleOf } = props;
+  const open = useOpenSession();
+  if (side.fork === undefined && side.waiting === undefined) return null;
+  return (
+    <div className="flex flex-col gap-1 px-4 pb-2 text-sm">
+      {side.fork !== undefined && (
+        <div
+          data-testid="fork-origin"
+          className="text-muted-foreground bg-muted/50 flex flex-wrap items-center gap-1 rounded-lg px-3 py-1.5"
+        >
+          {W.forkFrom}
+          <button
+            type="button"
+            className="text-foreground decoration-primary/40 hover:decoration-primary underline underline-offset-4"
+            onClick={() => side.fork && open(side.fork.fromLoop)}
+          >
+            《{titleOf(side.fork.fromLoop) ?? W.thatPart}》
+          </button>
+          {W.forkBanner[side.fork.kind](side.fork.what)}
+        </div>
+      )}
+      {side.waiting !== undefined && (
+        <div
+          data-testid="waiting-fork"
+          className="bg-primary/5 border-primary/30 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-1.5"
+        >
+          {W.waitingBanner[side.waiting.kind](
+            side.waiting.what !== ''
+              ? side.waiting.what
+              : (titleOf(side.waiting.forkLoopSessionId) ?? W.thatPart),
+          )}
+          <Button
+            variant="outline"
+            size="xs"
+            className="ms-auto"
+            onClick={() => side.waiting && open(side.waiting.forkLoopSessionId)}
+          >
+            {W.goThere}
+          </Button>
+        </div>
+      )}
+    </div>
+  );
+}
 
 function EndedBar(props: { text: string; backLabel: string; onBack: () => void }) {
   return (
@@ -615,22 +686,72 @@ function MainBar(props: {
 function LoopBar(props: {
   sessionId: string;
   records: NumberedRecord[];
+  side: LoopSide;
+  titleOf: (id: string) => string | undefined;
   running: boolean;
   onError: (e: unknown) => void;
   onBack: () => void;
   projectTitle: string;
 }) {
+  const { side } = props;
   const state = loopState(props.records);
+  const open = useOpenSession();
+  const [shelving, setShelving] = useState(false);
   const act = (fn: () => Promise<unknown>) => {
     fn().catch(props.onError);
   };
   if (state.kind === 'ended') {
+    // 岔出来的那段学完（或停下）：回到原来那段
+    if (side.fork !== undefined) {
+      const from = side.fork.fromLoop;
+      return (
+        <EndedBar
+          text={W.forkEnded(state.closed)}
+          backLabel={`《${props.titleOf(from) ?? W.thatPart}》`}
+          onBack={() => open(from)}
+        />
+      );
+    }
     return (
       <EndedBar
         text={state.closed ? '这部分学完了，下一步在项目里。' : '先学到这里，下一步在项目里。'}
         backLabel={props.projectTitle}
         onBack={props.onBack}
       />
+    );
+  }
+  if (side.shelved !== undefined) {
+    return (
+      <div
+        data-testid="shelved-bar"
+        className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 text-sm"
+      >
+        <span>
+          {W.shelvedBar}
+          {side.shelved.note !== undefined && (
+            <span className="text-muted-foreground ms-2">
+              {W.shelvedNote}：{side.shelved.note}
+            </span>
+          )}
+        </span>
+        <div className="flex gap-2">
+          <Button
+            variant="ghost"
+            size="sm"
+            disabled={props.running}
+            onClick={() => act(() => api.endUnclosed(props.sessionId))}
+          >
+            {W.endInstead}
+          </Button>
+          <Button
+            size="sm"
+            disabled={props.running}
+            onClick={() => act(() => api.resume(props.sessionId))}
+          >
+            {W.resume}
+          </Button>
+        </div>
+      </div>
     );
   }
   if (state.kind === 'awaiting_confirm') {
@@ -643,6 +764,21 @@ function LoopBar(props: {
           </Button>
         </div>
       </div>
+    );
+  }
+  if (shelving) {
+    return (
+      <ShelveForm
+        onCancel={() => setShelving(false)}
+        onShelve={(note) =>
+          api.shelve(props.sessionId, note).then(
+            () => setShelving(false),
+            (e: unknown) => {
+              props.onError(e);
+            },
+          )
+        }
+      />
     );
   }
   return (
@@ -658,11 +794,54 @@ function LoopBar(props: {
       <Button
         variant="ghost"
         size="sm"
+        data-testid="shelve"
+        disabled={props.running || state.closeRequested}
+        onClick={() => setShelving(true)}
+      >
+        {W.shelve}
+      </Button>
+      <Button
+        variant="ghost"
+        size="sm"
         disabled={props.running}
         onClick={() => act(() => api.endUnclosed(props.sessionId))}
       >
         先到这里
       </Button>
+    </div>
+  );
+}
+
+/** “先放一放”：可写一句为什么，再放下。 */
+function ShelveForm(props: { onCancel: () => void; onShelve: (note: string) => Promise<void> }) {
+  const [note, setNote] = useState('');
+  const [busy, setBusy] = useState(false);
+  return (
+    <div className="bg-card flex flex-col gap-2 rounded-2xl border p-3 text-sm">
+      <div className="text-muted-foreground text-xs">{W.shelveHint}</div>
+      <input
+        className="bg-background focus:border-foreground/30 w-full rounded-lg border px-3 py-1.5 outline-none"
+        placeholder={W.shelvePlaceholder}
+        aria-label={W.shelvePlaceholder}
+        value={note}
+        autoFocus
+        onChange={(e) => setNote(e.target.value)}
+      />
+      <div className="flex justify-end gap-2">
+        <Button variant="ghost" size="sm" onClick={props.onCancel}>
+          {W.shelveCancel}
+        </Button>
+        <Button
+          size="sm"
+          disabled={busy}
+          onClick={() => {
+            setBusy(true);
+            void props.onShelve(note).finally(() => setBusy(false));
+          }}
+        >
+          {W.shelveGo}
+        </Button>
+      </div>
     </div>
   );
 }

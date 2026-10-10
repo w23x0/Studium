@@ -23,13 +23,17 @@ export const W = {
     inProgress: '进行中',
     awaitingChoice: '等你选',
     closed: '学完了', // 合上
-    unclosed: '先放下的', // 没合上（停车场）
+    unclosed: '先放下的（没学完）', // 没合上（停车场）
+    shelved: '先放一放的', // 搁置
+    waitingFork: '等补完回来的', // 等分叉回来
   },
   groupHints: {
     inProgress: '正在学、还没学完的',
     awaitingChoice: '接下来学哪个，挑一个就开始',
     closed: '判断过你已经学会、你也确认了的',
     unclosed: '没学完就先停下的，以后可以再接着学',
+    shelved: '暂时放下的，点“接着学”或在里面说句话就能接上',
+    waitingFork: '中途先去补前面的（或学别的），那边学完就回来接着学',
   },
   openConversation: '打开对话',
   lastJudgement: (closed: boolean) => (closed ? '上次判断：已经掌握' : '上次判断：还差一点'),
@@ -343,6 +347,89 @@ export const W = {
   grade: '到什么程度',
   whyGraded: '为什么这么看',
   noteSpot: '看笔记里这一处',
+
+  // ── 学到一半：先补前面的 / 岔开去学别的 / 先放一放（批 5） ──
+  detourAsk: '学到这里，要不要先停一下？', // 闭环中途的小卡
+  detourKind: {
+    fork: '先去补', // 开分叉
+    continue: '接着学',
+    shelve: '先放一放', // 搁置
+  } as const,
+  detourChosen: '你选了',
+  detourWhy: '为什么问这个',
+  detourScope: '补到什么程度',
+  goThere: '去那边',
+  thatPart: '那一段',
+  backThere: '回到那里',
+  forkFrom: '从', // 分叉对话顶部：从《父》岔出来……
+  forkBanner: {
+    gap: (what: string) => `岔出来补「${what}」，补完会回到那里`,
+    branch: (what: string) => `岔出来去学「${what}」，学完会回到那里`,
+  },
+  waitingBanner: {
+    gap: (what: string) => `在补「${what}」，补完回来`,
+    branch: (what: string) => `在学「${what}」，学完回来`,
+  },
+  forkReturned: {
+    gap: (what: string) => `补完了「${what}」，回到这里接着学。`,
+    branch: (what: string) => `学完了「${what}」，回到这里接着学。`,
+  },
+  forkNotDone: (what: string) => `「${what}」没补好，先回到这里（已记在没学完的里）。`,
+  forkEnded: (closed: boolean) =>
+    closed ? '这一段补完了，回到原来那段接着学。' : '先学到这里，回到原来那段接着学。',
+  shelve: '先放一放', // 搁置
+  shelveHint: '先放下，不算学完也不算半途而废；以后点“接着学”或在这里说句话就能接上。',
+  shelvePlaceholder: '想写一句为什么先放下（可不填）',
+  shelveGo: '放下',
+  shelveCancel: '算了',
+  shelvedBar: '已放下，点“接着学”继续。',
+  shelvedPlaceholder: '说句话也会接着学…',
+  resume: '接着学',
+  endInstead: '不学了，先到这里',
+  shelvedLine: '先放一放了。',
+  shelvedLineNote: (note: string) => `先放一放了：${note}`,
+  resumedLine: '接着学。',
+  parkedLine: (p: { missing: string; when: string; from: string }) =>
+    `记下了没学完的地方：还缺 ${p.missing}；打算${p.when}，从${p.from}接上。`,
+  parkingTitle: '没学完的地方', // 停车记录
+  parkingReason: {
+    ended_unclosed: '没学完就停下时记的',
+    shelved: '先放一放时记的',
+  } as const,
+  parkingMissing: '缺在哪',
+  parkingWhen: '打算什么时候',
+  parkingFrom: '从哪接上',
+  parkingWords: '依据的原话',
+  shelvedNote: '放下时说的',
+  shelvedBadge: '放着',
+  waitingBadge: '等补完',
+  forkBadge: '岔出来的',
+  forkOfLine: (title: string) => `从「${title}」岔出来的`,
+  waitingLine: (title: string) => `在那边：${title}`,
+  loadHeavy: (n: number) =>
+    `同时开着的有点多（${String(n)} 段没学完）。先把手上的学完或放一放，再开新的。`,
+  loadPile: (n: number) => `没学完的攒了 ${String(n)} 段，先收一收：挑一段接着学。`,
+  // 学习之间的关系（来源、岔开、回来）
+  relations: '学习之间的来龙去脉',
+  relationsHint: '每段学习从哪来、中途岔开去补了什么、回来没有',
+  origin: '从哪来',
+  originCard: '从“下一步学什么”里选的',
+  originFork: '从另一段学习里岔出来的',
+  originUnknown: '记不清从哪来',
+  forkWhy: '为什么岔开',
+  forkWhat: '要补的',
+  forkReturn: (title: string) => `这边学完就回到「${title}」`,
+  forkBasis: '在原来那段对话里看原话',
+  forksOut: '中途岔开去补的',
+  forkBackDone: '学完回来了',
+  forkBackNot: '没学完就回来了',
+  forkOut: '还在那边',
+  signals: '中途提过的“先停一下”', // route_signal
+  signalsHint: '学到一半发现前面有地方不牢、或你想先去学别的时，老师提出来的；下面是依据的原话。',
+  signalKind: { gap: '前面有地方不牢', branch: '想先去学别的' } as const,
+  signalNote: '老师的补充',
+  offered: '给你的选择',
+  notChosenYet: '还没选',
 
   // ── 通用 ──
   loading: '正在读…',

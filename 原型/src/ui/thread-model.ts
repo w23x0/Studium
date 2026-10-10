@@ -1,6 +1,12 @@
 // 正本记录 → 界面上的消息列表与对话状态。纯函数，单测覆盖。
 // 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示，守卫判定、结束等只显示一句结果。
-import type { ChoiceCard, NumberedRecord } from '../shared/records.ts';
+import type {
+  ChoiceCard,
+  DetourOption,
+  ForkOrigin,
+  NumberedRecord,
+  RouteSignal,
+} from '../shared/records.ts';
 import { judgementLine, W } from './wording.ts';
 
 export interface UiMessage {
@@ -20,6 +26,16 @@ export interface UiMessage {
   link?: { sessionId: string; label: string };
   /** 学习者随这句话附的图片（原图 id），对话里显示缩略图、可点开。 */
   images?: string[];
+  /** 学到一半出的小卡（先去补 / 接着学 / 先放一放），选过的带 chosen。 */
+  detour?: DetourUi;
+}
+
+/** 对话里的小卡。 */
+export interface DetourUi {
+  cardId: string;
+  recommended: number;
+  options: { kind: DetourOption['kind']; title: string; reason: string; scope?: string }[];
+  chosen?: { option: number; forkLoopSessionId?: string };
 }
 
 export interface UiContext {
@@ -37,6 +53,10 @@ export function toUiMessages(
   const out: UiMessage[] = [];
   const push = (m: UiMessage) => out.push(m);
   const cards = new Map<string, ChoiceCard>();
+  const signals = new Map<number, RouteSignal>();
+  const detours = new Map<string, { msg: UiMessage; signalLine: number }>();
+  /** 开出去的分叉 → 当初提的那条“先停一下”（补的是什么）。 */
+  const forkSignal = new Map<string, RouteSignal>();
   for (const { line, record: r } of records) {
     const id = `l${String(line)}`;
     switch (r.type) {
@@ -112,6 +132,83 @@ export function toUiMessages(
         push({ id, role: 'system', text: label, line, link: { sessionId: r.sessionId, label } });
         break;
       }
+      case 'route_signal':
+        // 通知本身是给安排下一步的那一方看的；学习者看到的是随后的小卡
+        signals.set(line, r);
+        break;
+      case 'detour_card': {
+        const msg: UiMessage = {
+          id,
+          role: 'system',
+          text: W.detourAsk,
+          line,
+          detour: {
+            cardId: r.cardId,
+            recommended: r.recommended,
+            options: r.options.map((o) => ({
+              kind: o.kind,
+              title: o.title,
+              reason: o.reason,
+              ...(o.scope !== undefined ? { scope: o.scope } : {}),
+            })),
+          },
+        };
+        detours.set(r.cardId, { msg, signalLine: r.signalLine });
+        push(msg);
+        break;
+      }
+      case 'detour_made': {
+        const d = detours.get(r.cardId);
+        if (d?.msg.detour) {
+          d.msg.detour.chosen = {
+            option: r.option,
+            ...(r.forkLoopSessionId !== undefined
+              ? { forkLoopSessionId: r.forkLoopSessionId }
+              : {}),
+          };
+        }
+        const sig = d !== undefined ? signals.get(d.signalLine) : undefined;
+        if (r.forkLoopSessionId !== undefined && sig !== undefined) {
+          forkSignal.set(r.forkLoopSessionId, sig);
+        }
+        break;
+      }
+      case 'fork_returned': {
+        const sig = forkSignal.get(r.forkLoopSessionId);
+        const what = sig?.missingText ?? ctx.titleOf?.(r.forkLoopSessionId) ?? W.thatPart;
+        push({
+          id,
+          role: 'system',
+          text: r.closed ? W.forkReturned[sig?.kind ?? 'gap'](what) : W.forkNotDone(what),
+          line,
+        });
+        break;
+      }
+      case 'loop_shelved': {
+        const note = learnerShelveNote(r.note);
+        push({
+          id,
+          role: 'system',
+          text: note !== undefined ? W.shelvedLineNote(note) : W.shelvedLine,
+          line,
+        });
+        break;
+      }
+      case 'loop_resumed':
+        push({ id, role: 'system', text: W.resumedLine, line });
+        break;
+      case 'parking_note':
+        push({
+          id,
+          role: 'system',
+          text: W.parkedLine({
+            missing: r.missing.map((m) => m.text).join('、'),
+            when: r.when,
+            from: r.resumeFrom,
+          }),
+          line,
+        });
+        break;
       default:
         // 程序事实、诊断记录、工具调用、原始消息等是给模型与审计用的，不显示
         break;
@@ -158,4 +255,107 @@ export function pendingCard(records: NumberedRecord[]): ChoiceCard | undefined {
   const cards = records.flatMap((r) => (r.record.type === 'choice_card' ? [r.record] : []));
   const last = cards.at(-1);
   return last && !chosen.has(last.cardId) ? last : undefined;
+}
+
+/** 界面上点“先放一放”没写原因时发的备注（核心照存；显示时不当成学习者的话）。 */
+export const SHELVE_NO_NOTE = '学习者点了“先放一放”，没写为什么';
+
+/**
+ * 搁置备注里学习者自己写的那句；程序代写的（没写原因、在小卡上选的、接口默认）不算，返回空。
+ * 程序代写的几种：界面的 SHELVE_NO_NOTE、接口不带备注时的默认话、小卡上选“先放一放”时核心写的说明。
+ */
+export function learnerShelveNote(note: string): string | undefined {
+  const t = note.trim();
+  if (t === '' || t === SHELVE_NO_NOTE || t === '学习者在界面上点了按钮') return undefined;
+  if (t.startsWith('在小卡上选了')) return undefined;
+  return t;
+}
+
+/**
+ * 分叉来历里“补什么”的日常说法：核心写的原因形如“p-xxx「位移」，你说位移还不太会”，
+ * 取书名号里的名字；对不上格式就用整句。
+ */
+export function forkWhat(reason: string): string {
+  const m = /^[^「\s]*「([^」]+)」/.exec(reason);
+  return m?.[1] ?? reason;
+}
+
+/** 一段学习的中途状态（顶部提示、底部操作用）。 */
+export interface LoopSide {
+  /** 这段是从别的学习里岔出来的。 */
+  fork?: { fromLoop: string; kind: ForkOrigin['kind']; what: string };
+  /** 先放一放着（已结束的不算）。 */
+  shelved?: { at: string; note?: string };
+  /** 在等岔出去的那段学完回来（已结束的不算）。 */
+  waiting?: { forkLoopSessionId: string; kind: ForkOrigin['kind']; what: string };
+  /** 有小卡还没选。 */
+  openDetour: boolean;
+}
+
+export function loopSide(records: NumberedRecord[]): LoopSide {
+  let fork: LoopSide['fork'];
+  let shelved: LoopSide['shelved'];
+  let ended = false;
+  const signals = new Map<number, RouteSignal>();
+  const cardSignal = new Map<string, number>();
+  const made = new Set<string>();
+  const out: { id: string; sig?: RouteSignal; back: boolean }[] = [];
+  for (const { line, record: r } of records) {
+    switch (r.type) {
+      case 'session_opened':
+        if (r.fork !== undefined) {
+          fork = { fromLoop: r.fork.fromLoop, kind: r.fork.kind, what: forkWhat(r.fork.reason) };
+        }
+        break;
+      case 'loop_ended':
+        ended = true;
+        break;
+      case 'loop_shelved': {
+        const note = learnerShelveNote(r.note);
+        shelved = { at: r.at, ...(note !== undefined ? { note } : {}) };
+        break;
+      }
+      case 'loop_resumed':
+        shelved = undefined;
+        break;
+      case 'route_signal':
+        signals.set(line, r);
+        break;
+      case 'detour_card':
+        cardSignal.set(r.cardId, r.signalLine);
+        break;
+      case 'detour_made': {
+        made.add(r.cardId);
+        if (r.forkLoopSessionId !== undefined) {
+          const sl = cardSignal.get(r.cardId);
+          const sig = sl !== undefined ? signals.get(sl) : undefined;
+          out.push({ id: r.forkLoopSessionId, ...(sig ? { sig } : {}), back: false });
+        }
+        break;
+      }
+      case 'fork_returned': {
+        const f = out.find((x) => x.id === r.forkLoopSessionId);
+        if (f) f.back = true;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  const waiting = out.find((f) => !f.back);
+  const openDetour = [...cardSignal.keys()].some((c) => !made.has(c));
+  return {
+    ...(fork !== undefined ? { fork } : {}),
+    ...(!ended && shelved !== undefined ? { shelved } : {}),
+    ...(!ended && waiting !== undefined
+      ? {
+          waiting: {
+            forkLoopSessionId: waiting.id,
+            kind: waiting.sig?.kind ?? 'gap',
+            what: waiting.sig?.missingText ?? '',
+          },
+        }
+      : {}),
+    openDetour: !ended && openDetour,
+  };
 }
