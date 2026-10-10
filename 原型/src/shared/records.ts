@@ -3,9 +3,10 @@
 
 /**
  * main 主对话 · talk 畅谈对话 · loop 闭环对话 · guard 闭环守卫 · m09 写形成记录 · m05 出选择卡
- * · m15 整理学习者状态 · m10 记教法效果
+ * · m15 整理学习者状态 · m10 记教法效果 · output 写产出（M14 任务对话）
  */
-export type ConversationKind = 'main' | 'talk' | 'loop' | 'guard' | 'm09' | 'm05' | 'm15' | 'm10';
+export type ConversationKind =
+  'main' | 'talk' | 'loop' | 'guard' | 'm09' | 'm05' | 'm15' | 'm10' | 'output';
 
 /** M05 给一个闭环开的单子。 */
 export interface Ticket {

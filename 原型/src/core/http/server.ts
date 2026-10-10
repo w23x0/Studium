@@ -65,6 +65,8 @@ import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 import { InputError, type Inputs } from '../inputs.ts';
 import { inputsRoute } from './inputs-routes.ts';
+import { outputsRoute } from './outputs-routes.ts';
+import type { Outputs } from '../outputs.ts';
 
 export interface ServerOptions {
   hub: Hub;
@@ -77,6 +79,8 @@ export interface ServerOptions {
   inputs: Inputs;
   /** 个人笔记导入 M07。 */
   notes: Notes;
+  /** M14 知识产出物（批 8）。 */
+  outputs: Outputs;
   token: string;
   host?: string;
   port: number;
@@ -163,6 +167,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         parts,
         method,
         opts.inputs,
+      )
+    )
+      return;
+    if (
+      await outputsRoute(
+        req,
+        res,
+        new URL(req.url ?? '/', 'http://localhost'),
+        parts,
+        method,
+        opts.outputs,
       )
     )
       return;
