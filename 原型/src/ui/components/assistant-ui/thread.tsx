@@ -1,31 +1,27 @@
 // 由 assistant-ui 模板 0.0.121（MIT）的 thread.aui.tsx 删减而来：
-// 去掉附件、编辑、分支、重新生成、语音、建议；文字改中文；版式往 Claude 桌面版靠。
+// 去掉编辑、分支、重新生成、建议；文字改中文；版式往 Claude 桌面版靠。
+// 输入框换成自己的（components/input/composer.tsx）：图片 / 拍照经转写、语音、公式（批 4）。
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { cn } from '@/lib/utils';
 import {
   ActionBarPrimitive,
   AuiIf,
-  ComposerPrimitive,
   ErrorPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  ArrowUpIcon,
-  CheckIcon,
-  ChevronRightIcon,
-  CopyIcon,
-} from 'lucide-react';
+import { ArrowDownIcon, ArrowRightIcon, CheckIcon, ChevronRightIcon, CopyIcon } from 'lucide-react';
+import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
+import { InputComposer, type SendInput } from '@/components/input/composer';
+import { ImageViewer } from '@/components/input/modal';
 import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
 import { useCurrentSession, useHighlight, usePanel } from '@/panel';
 import { W } from '@/wording';
-import type { FC, ReactNode } from 'react';
+import { useState, type FC, type ReactNode } from 'react';
 
 /** 消息带的附加信息（由 App 的 convertMessage 放进 metadata.custom）。 */
 interface MessageMeta {
@@ -34,6 +30,7 @@ interface MessageMeta {
   link?: UiLink;
   verdict?: { closed: boolean };
   objection?: { toLine: number; label: string };
+  images?: string[];
 }
 
 function useMeta(): MessageMeta {
@@ -54,12 +51,15 @@ export const Thread: FC<{
   footer?: ReactNode;
   disabled?: boolean;
   placeholder?: string;
+  /** 发一条消息（文字 + 附图）。 */
+  onSend: SendInput;
 }> = ({
   welcome = '今天想学点什么？',
   header,
   footer,
   disabled = false,
   placeholder = '回复…',
+  onSend,
 }) => {
   const isEmpty = useAuiState((s) => s.thread.messages.length === 0);
   return (
@@ -113,42 +113,13 @@ export const Thread: FC<{
               </TooltipIconButton>
             </ThreadPrimitive.ScrollToBottom>
             {footer}
-            {!disabled && <Composer placeholder={placeholder} />}
+            {!disabled && <InputComposer placeholder={placeholder} onSend={onSend} />}
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
     </ThreadPrimitive.Root>
   );
 };
-
-const Composer: FC<{ placeholder: string }> = ({ placeholder }) => (
-  <ComposerPrimitive.Root className="relative flex w-full flex-col">
-    <div className="border-foreground/15 focus-within:border-foreground/30 bg-card flex w-full cursor-text flex-col gap-2 rounded-(--composer-radius) border p-3 shadow-[0_2px_12px_-4px_rgba(0,0,0,0.08)] transition-[border-color]">
-      <ComposerPrimitive.Input
-        placeholder={placeholder}
-        className="placeholder:text-muted-foreground/70 max-h-48 min-h-10 w-full resize-none bg-transparent px-1.5 py-1 text-base leading-6 outline-none"
-        rows={1}
-        autoFocus
-        aria-label="输入"
-      />
-      <div className="flex items-center justify-end">
-        <ComposerPrimitive.Send asChild>
-          <TooltipIconButton
-            tooltip="发送"
-            side="bottom"
-            type="button"
-            variant="default"
-            size="icon"
-            className="size-8 rounded-lg"
-            aria-label="发送"
-          >
-            <ArrowUpIcon className="size-4" />
-          </TooltipIconButton>
-        </ComposerPrimitive.Send>
-      </div>
-    </div>
-  </ComposerPrimitive.Root>
-);
 
 const AssistantMessage: FC = () => {
   const { attr, lit } = useLines();
@@ -219,6 +190,7 @@ const UserMessage: FC = () => {
       {meta.objection !== undefined && (
         <span className="text-muted-foreground text-xs">{meta.objection.label}</span>
       )}
+      {meta.images !== undefined && <SentImages ids={meta.images} />}
       <div
         data-testid="user-message"
         className={cn(
@@ -230,6 +202,34 @@ const UserMessage: FC = () => {
         <MessagePrimitive.Parts />
       </div>
     </MessagePrimitive.Root>
+  );
+};
+
+/** 学习者随消息附的图：缩略图，点开看原图。 */
+const SentImages: FC<{ ids: string[] }> = ({ ids }) => {
+  const [open, setOpen] = useState<number | undefined>(undefined);
+  const shown = open !== undefined ? ids[open] : undefined;
+  return (
+    <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5" data-testid="message-images">
+      {ids.map((id, i) => (
+        <button
+          key={id}
+          type="button"
+          aria-label={W.viewImage}
+          className="overflow-hidden rounded-xl border"
+          onClick={() => setOpen(i)}
+        >
+          <img src={api.imageUrl(id)} alt={W.imageAlt(i + 1)} className="size-20 object-cover" />
+        </button>
+      ))}
+      {shown !== undefined && (
+        <ImageViewer
+          src={api.imageUrl(shown)}
+          alt={W.imageAlt((open ?? 0) + 1)}
+          onClose={() => setOpen(undefined)}
+        />
+      )}
+    </div>
   );
 };
 

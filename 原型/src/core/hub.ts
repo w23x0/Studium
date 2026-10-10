@@ -11,6 +11,7 @@ import {
 } from '../shared/protocol.ts';
 import type {
   ConversationKind,
+  ImageInput,
   LogRecord,
   NumberedRecord,
   SessionOpened,
@@ -156,10 +157,11 @@ export class Hub {
   async send(
     sessionId: string,
     input: TurnInput,
-    meta: { objection?: { toLine: number } } = {},
+    meta: { objection?: { toLine: number }; images?: ImageInput[] } = {},
   ): Promise<{ line: number; done: Promise<void> }> {
     const live = await this.ensureLive(sessionId);
     const objection = input.role === 'learner' ? meta.objection : undefined;
+    const images = input.role === 'learner' ? meta.images : undefined;
     const line = await this.append(
       sessionId,
       input.role === 'learner'
@@ -168,6 +170,7 @@ export class Hub {
             at: this.iso(),
             text: input.text,
             ...(objection !== undefined ? { objection } : {}),
+            ...(images !== undefined && images.length > 0 ? { images } : {}),
           }
         : { type: 'program_fact', at: this.iso(), text: input.text },
     );

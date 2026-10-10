@@ -28,6 +28,9 @@ import type {
   SourceReportRequest,
   SourceReportResponse,
   SourceReportsResponse,
+  MessageImageInput,
+  TranscribeResponse,
+  UploadAttachmentResponse,
 } from '../shared/protocol.ts';
 
 function token(): string {
@@ -91,8 +94,29 @@ export const api = {
       body: JSON.stringify({ note: '学习者在界面上点了“结束（没合上）”' }),
     }),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
-  send: (id: string, text: string) =>
-    call<object>(`/sessions/${id}/messages`, { method: 'POST', body: JSON.stringify({ text }) }),
+  send: (id: string, text: string, images?: MessageImageInput[]) =>
+    call<object>(`/sessions/${id}/messages`, {
+      method: 'POST',
+      body: JSON.stringify(images !== undefined && images.length > 0 ? { text, images } : { text }),
+    }),
+  // ── 输入：图片原样上传、转写 ──
+  uploadImage: async (blob: Blob, name?: string, derivedFrom?: string) => {
+    const res = await fetch(`/api/attachments?${qs({ name, derivedFrom })}`, {
+      method: 'POST',
+      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': blob.type },
+      body: blob,
+    });
+    const body = (await res.json()) as UploadAttachmentResponse & { error?: string };
+    if (!res.ok) throw new Error(body.error ?? `上传失败：${String(res.status)}`);
+    return body.attachment;
+  },
+  transcribe: (attachmentId: string) =>
+    call<TranscribeResponse>(`/attachments/${attachmentId}/transcribe`, {
+      method: 'POST',
+      body: '{}',
+    }),
+  /** 原图地址（给 <img src>）。 */
+  imageUrl: (attachmentId: string) => withToken(`/api/attachments/${attachmentId}`),
   // ── 依据可见 ──
   overview: (mainId: string) => call<ProjectOverviewResponse>(`/projects/${mainId}/overview`),
   loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),

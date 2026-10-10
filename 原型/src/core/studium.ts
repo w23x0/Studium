@@ -8,6 +8,7 @@ import type {
   ChoiceOption,
   ConversationKind,
   GuardVerdict,
+  ImageInput,
   LearnerObjection,
   LogRecord,
   NumberedRecord,
@@ -190,8 +191,9 @@ export class Studium {
     return out;
   }
 
-  /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（03「闭环外」暂停）。 */
-  async learnerSays(sessionId: string, text: string): Promise<void> {
+  /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（03「闭环外」暂停）。images = 附图的来历（批 4，文字已并进 text）。 */
+  async learnerSays(sessionId: string, text: string, images?: ImageInput[]): Promise<void> {
+    const meta = images !== undefined && images.length > 0 ? { images } : {};
     const recs = await this.hub.records(sessionId);
     if (recs.some((r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended')) {
       throw new BadRequestError('这段对话已经结束了，回到项目里接着聊。');
@@ -208,13 +210,13 @@ export class Studium {
           text: `学习者离开了约 ${formatDuration(away)}，现在回来了。`,
         });
       }
-      await this.hub.send(sessionId, { role: 'learner', text });
+      await this.hub.send(sessionId, { role: 'learner', text }, meta);
       if (away > LONG_AWAY_MS) {
         this.organizeStateLater(`学习者隔了约 ${formatDuration(away)} 回来`, sessionId);
       }
       return;
     }
-    await this.hub.send(sessionId, { role: 'learner', text });
+    await this.hub.send(sessionId, { role: 'learner', text }, meta);
   }
 
   /** M05 出选择卡，贴进主对话。trigger 写明为什么要卡。 */

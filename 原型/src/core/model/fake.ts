@@ -3,6 +3,8 @@
 import {
   formatProgramFact,
   type ConversationSpec,
+  type ImageData,
+  type ImageTranscriber,
   type ModelAdapter,
   type ModelConversation,
   type ModelEvent,
@@ -51,6 +53,17 @@ export class FakeModel implements ModelAdapter {
   };
   /** 假模型自报的“实际执行模型”，测试用来核对记录里存的是它而不是适配器名。 */
   static readonly MODEL_NAME = 'fake-model-1';
+  /** 假模型对任何图片给的固定转写。 */
+  static readonly TRANSCRIPT = '$v = v_0 + at$';
+  /** 图片转写：不看图，给固定结果；收到的图记在 images 里供测试核对。 */
+  readonly images: ImageData[] = [];
+  readonly transcriber: ImageTranscriber = {
+    model: FakeModel.MODEL_NAME,
+    transcribe: (image) => {
+      this.images.push(image);
+      return Promise.resolve({ text: FakeModel.TRANSCRIPT, model: FakeModel.MODEL_NAME });
+    },
+  };
   readonly opened: ConversationSpec[] = [];
   /** 每轮收到的输入（模型实际看到的文字），测试用来核对程序追加的事实与行号。 */
   readonly inputs: { spec: ConversationSpec; text: string }[] = [];

@@ -46,6 +46,20 @@ export function DisclosureView() {
         </div>
         <p className="text-muted-foreground text-xs leading-relaxed">{d.note}</p>
       </Section>
+      {d.inputs.length > 0 && (
+        <Section title={W.disclosureInputs}>
+          <div className="flex flex-col gap-2">
+            {d.inputs.map((i) => (
+              <Card key={i.what} className="flex flex-col gap-2">
+                <span className="text-sm font-medium">{i.what}</span>
+                <Field label={W.disclosureService}>{i.service}</Field>
+                {i.model !== null && <Field label={W.modelLabel}>{i.model}</Field>}
+                <p className="text-muted-foreground text-xs leading-relaxed">{i.note}</p>
+              </Card>
+            ))}
+          </div>
+        </Section>
+      )}
     </div>
   );
 }

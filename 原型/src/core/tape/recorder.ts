@@ -115,6 +115,8 @@ export class Recorder {
     return {
       name: inner.name,
       ...(inner.disclosure !== undefined ? { disclosure: inner.disclosure } : {}),
+      // 图片转写不进录带：它的结果随学习者消息一起记在正本里（回放按那条消息重放）
+      ...(inner.transcriber !== undefined ? { transcriber: inner.transcriber } : {}),
       open: (spec) => this.wrapConversation(inner, spec),
     };
   }

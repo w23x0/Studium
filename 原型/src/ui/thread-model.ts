@@ -18,6 +18,8 @@ export interface UiMessage {
   objection?: { toLine: number; label: string };
   /** 去另一个对话的入口（谈方向、开始学的任务、回到某个对话）。 */
   link?: { sessionId: string; label: string };
+  /** 学习者随这句话附的图片（原图 id），对话里显示缩略图、可点开。 */
+  images?: string[];
 }
 
 export interface UiContext {
@@ -46,6 +48,9 @@ export function toUiMessages(
           line,
           ...(r.objection !== undefined
             ? { objection: { toLine: r.objection.toLine, label: W.objectionTag } }
+            : {}),
+          ...(r.images !== undefined && r.images.length > 0
+            ? { images: r.images.map((i) => i.attachmentId) }
             : {}),
         });
         break;

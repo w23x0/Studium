@@ -54,6 +54,8 @@ export interface RecordsResponse {
 
 export interface SendMessageRequest {
   text: string;
+  /** 随消息附的图片（批 4），见下方「输入」。 */
+  images?: MessageImageInput[];
 }
 
 export interface SearchResponse {
@@ -415,6 +417,8 @@ export interface DisclosureResponse {
     effort: string | null;
   }[];
   note: string;
+  /** 输入（图片转写、语音）各送往哪里（批 4）。 */
+  inputs: InputDisclosure[];
 }
 
 /** 各类会话的日常叫法（外发披露、记录出处里给学习者看）。 */
@@ -634,3 +638,68 @@ export type ServerEvent =
   | { type: 'running'; sessionId: string; running: boolean };
 
 export const API_PREFIX = '/api';
+
+// ───────────── 输入（批 4）：图片 / 拍照手写、语音、公式 ─────────────
+
+/** 收的图片类型（与模型接口能看的一致）。 */
+export const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const;
+export type ImageMime = (typeof IMAGE_MIME_TYPES)[number];
+
+/** 送去转写的图最大多少字节（模型接口单张图片有上限；超过的界面先缩小一份副本再转写，原图照存）。 */
+export const TRANSCRIBE_MAX_BYTES = 3.5 * 1024 * 1024;
+
+/** 输入存放处里的一张图片（只追加；原图原样保存，不改）。 */
+export interface AttachmentView {
+  id: string;
+  at: string;
+  mime: ImageMime;
+  size: number;
+  sha256: string;
+  /** 学习者那边的文件名（有就记）。 */
+  name?: string;
+  /** 这是界面为转写缩小的副本：出自哪张原图。 */
+  derivedFrom?: string;
+  /** 取图地址（带 ?token= 可直接做 <img src>）。 */
+  url: string;
+}
+
+export interface UploadAttachmentResponse {
+  attachment: AttachmentView;
+}
+
+/** 一次转写：图片经模型接口转成的文字（公式用 LaTeX）。 */
+export interface TranscriptionView {
+  id: string;
+  at: string;
+  /** 转写的是哪张图（可能是缩小副本）。 */
+  attachmentId: string;
+  text: string;
+  /** 转写用的实际执行模型；取不到时 known 为假并写明兜底。 */
+  model: ModelInfo;
+}
+
+export interface TranscribeResponse {
+  transcription: TranscriptionView;
+}
+
+export interface AttachmentInfoResponse {
+  attachment: AttachmentView;
+  /** 这张图（及它的缩小副本）的全部转写，早的在前。 */
+  transcriptions: TranscriptionView[];
+}
+
+/** 发消息时带的一张图：原图 id + 用的哪次转写 + 学习者改过的文字（不给就照转写原文）。 */
+export interface MessageImageInput {
+  attachmentId: string;
+  transcriptionId?: string;
+  text?: string;
+}
+
+/** 一种输入送往哪里（外发披露）。 */
+export interface InputDisclosure {
+  what: string;
+  service: string;
+  /** 用的模型；null = 服务默认或不适用。 */
+  model: string | null;
+  note: string;
+}

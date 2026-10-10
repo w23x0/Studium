@@ -38,6 +38,24 @@ export interface UserMessage {
   text: string;
   /** 有这一项 = 这句话是学习者对本闭环里第 toLine 行守卫判定提出的异议（原话照记，带标记）。 */
   objection?: { toLine: number };
+  /** 随这句话附的图片（拍照 / 手写，批 4）：转写文字已并进 text（教学只读文字，M02:19），这里记原图与转写的来历。 */
+  images?: ImageInput[];
+}
+
+/** 学习者消息里的一张图片：原图在输入存放处（只追加），转写由模型接口做、学习者发送前可改。 */
+export interface ImageInput {
+  /** 原图（学习者选的 / 拍的那张，原样保存）。 */
+  attachmentId: string;
+  /** 用的哪次转写；学习者没转写、自己写说明时没有。 */
+  transcriptionId?: string;
+  /** 转写用的是界面为转写缩小的副本时，副本的 id（副本记着它出自原图）。 */
+  transcribedFrom?: string;
+  /** 模型转写出的原文（学习者改之前）。 */
+  transcript?: string;
+  /** 并进消息里的文字（学习者改过的话与 transcript 不同）。 */
+  sent: string;
+  /** 转写用的实际执行模型；取不到时同 model_used 的兜底写法（含“未取到实际执行模型”）。 */
+  model?: string;
 }
 
 export interface AssistantMessage {

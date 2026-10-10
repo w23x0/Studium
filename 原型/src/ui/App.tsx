@@ -458,6 +458,7 @@ function Conversation(props: {
           ...(m.link ? { link: m.link } : {}),
           ...(m.verdict ? { verdict: m.verdict } : {}),
           ...(m.objection ? { objection: m.objection } : {}),
+          ...(m.images ? { images: m.images } : {}),
         },
       },
       ...(m.role === 'assistant'
@@ -543,6 +544,9 @@ function Conversation(props: {
             footer={footer}
             disabled={ended}
             placeholder={running ? '可以随时插话…' : '回复…'}
+            onSend={async (text, images) => {
+              await api.send(sessionId, text, images);
+            }}
           />
         </AssistantRuntimeProvider>
       </HighlightContext.Provider>

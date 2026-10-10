@@ -44,6 +44,8 @@ import { NotFoundError, type Hub } from '../hub.ts';
 import { NoOriginalError, NoRendererError } from '../knowledge/m07-originals.ts';
 import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
+import { InputError, type Inputs } from '../inputs.ts';
+import { inputsRoute } from './inputs-routes.ts';
 
 export interface ServerOptions {
   hub: Hub;
@@ -52,6 +54,8 @@ export interface ServerOptions {
   evidence: Evidence;
   /** 原文与出处（批 2a）：资料浏览、检索、原件页面、教材出处、资料报错。 */
   sources: Sources;
+  /** 输入（批 4）：图片原样保存与转写。 */
+  inputs: Inputs;
   token: string;
   host?: string;
   port: number;
@@ -116,6 +120,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       else if (err instanceof NoRendererError) send(res, 501, { error: err.message });
       else if (err instanceof BadRequest || err instanceof BadRequestError)
         send(res, 400, { error: err.message });
+      else if (err instanceof InputError) send(res, err.status, { error: err.message });
       else throw err;
     }
   }
@@ -128,6 +133,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   ): Promise<void> {
     const { hub, studium, evidence, sources } = opts;
     if (parts[1] === 'library' && (await libraryRoute(req, res, parts, method, sources))) return;
+    if (
+      await inputsRoute(
+        req,
+        res,
+        new URL(req.url ?? '/', 'http://localhost'),
+        parts,
+        method,
+        opts.inputs,
+      )
+    )
+      return;
     if (
       method === 'GET' &&
       (await readRoute(res, new URL(req.url ?? '/', 'http://localhost'), parts, evidence))
@@ -212,14 +228,14 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         return;
       }
       if (method === 'POST') {
-        const body = (await readJson(req)) as { text?: unknown; note?: unknown };
+        const body = (await readJson(req)) as { text?: unknown; note?: unknown; images?: unknown };
         const note = typeof body.note === 'string' ? body.note : '学习者在界面上点了按钮';
         switch (action) {
           case 'messages': {
-            if (typeof body.text !== 'string' || body.text.trim() === '') {
-              throw new BadRequest('text 不能为空');
-            }
-            await studium.learnerSays(id, body.text);
+            // 附了图：转写文字带来源标注并进消息（inputs.ts）；没附图就是原来的纯文字
+            const m = opts.inputs.compose(body.text, body.images);
+            if (m.images.length > 0) await studium.learnerSays(id, m.text, m.images);
+            else await studium.learnerSays(id, m.text);
             send(res, 202, {});
             return;
           }

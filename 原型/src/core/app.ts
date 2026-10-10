@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 import type { ConversationKind } from '../shared/records.ts';
 import { Evidence } from './evidence.ts';
 import { Hub } from './hub.ts';
+import { Inputs } from './inputs.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { Library } from './knowledge/m07.ts';
@@ -111,6 +112,12 @@ export async function createApp(opts: AppOptions): Promise<App> {
         })
       : undefined;
   const model = recorder ? recorder.wrapModel(inner) : inner;
+  const inputs = await Inputs.load({
+    dir: join(dataDir.root, 'inputs'),
+    model,
+    instructions: await readFile(join(here, 'prompts/transcribe.md'), 'utf8'),
+    ...(opts.now !== undefined ? { now: opts.now } : {}),
+  });
   const hub = new Hub({
     dataDir,
     index,
@@ -125,7 +132,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const server = await startServer({
     hub,
     sources,
-    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources }),
+    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs }),
+    inputs,
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,
     port: opts.port,

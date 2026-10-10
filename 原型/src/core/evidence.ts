@@ -39,6 +39,7 @@ import type { M09 } from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { M15 } from './knowledge/m15.ts';
 import type { Objections } from './knowledge/objections.ts';
+import type { Inputs } from './inputs.ts';
 import type { Sources } from './sources.ts';
 import { BadRequestError } from './studium.ts';
 
@@ -51,6 +52,8 @@ export interface EvidenceDeps {
   objections: Objections;
   /** 回查书里的出处（批 2a）。 */
   sources: Sources;
+  /** 图片转写、语音送往哪里（批 4）；不给就不列。 */
+  inputs?: Inputs;
 }
 
 export class Evidence {
@@ -557,6 +560,7 @@ export class Evidence {
         '对话里用到的教材原文片段（模型读到的小节）',
         '你的学习记录：我会什么、我的状态、教法记录（相关的对话会读到）',
         '你对这些记录提的异议',
+        '你加的图片（只在转写时送去；对话里只送转写出的文字）',
       ],
       sessions: (
         Object.keys(CONVERSATION_KIND_LABELS) as (keyof typeof CONVERSATION_KIND_LABELS)[]
@@ -567,6 +571,7 @@ export class Evidence {
         effort: d?.profiles[kind]?.effort ?? null,
       })),
       note: '没单独指定模型的会话用服务的默认模型；每条记录里的“模型”是实际执行的那个，取不到时会写明只是适配器名。',
+      inputs: this.d.inputs?.disclosure(d) ?? [],
     };
   }
 

@@ -82,7 +82,29 @@ export interface ModelAdapter {
   readonly name: string;
   /** 内容送往哪个服务；没有就是不外发（或还没声明）。 */
   readonly disclosure?: ModelDisclosure;
+  /** 图片转写（学习者拍的手写等，批 4）；适配器做不了就不给，核心如实告诉学习者。 */
+  readonly transcriber?: ImageTranscriber;
   open(spec: ConversationSpec): ModelConversation;
+}
+
+/** 一张图片：原样的字节与类型。 */
+export interface ImageData {
+  mime: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
+  data: Buffer;
+}
+
+export interface TranscribeResult {
+  text: string;
+  /** 实际执行的模型（不是别名）；取不到就不填，核心写明兜底。 */
+  model?: string;
+}
+
+/** 把图片转成文字：一问一答、不留对话、不给工具。 */
+export interface ImageTranscriber {
+  /** 声明要用的模型（外发披露用）；不填 = 服务默认。实际执行的模型看每次结果。 */
+  readonly model?: string;
+  /** instructions 是系统提示（只写定义、边界、输出格式）。 */
+  transcribe(image: ImageData, instructions: string): Promise<TranscribeResult>;
 }
 
 /** 程序事实在各家模型那里都以一条用户消息送达，用固定标记与学习者的话区分。 */

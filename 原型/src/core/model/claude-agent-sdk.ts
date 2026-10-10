@@ -13,6 +13,8 @@ import {
 import {
   formatProgramFact,
   type ConversationSpec,
+  type ImageData,
+  type ImageTranscriber,
   type ModelAdapter,
   type ModelConversation,
   type ModelDisclosure,
@@ -40,8 +42,10 @@ const INHERITED_SESSION_VARS = ['CLAUDECODE', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_
 export class ClaudeAgentSdkModel implements ModelAdapter {
   readonly name = 'claude-agent-sdk';
   readonly disclosure: ModelDisclosure;
+  readonly transcriber: ImageTranscriber;
 
   constructor(private readonly options: ClaudeAgentSdkOptions = {}) {
+    this.transcriber = new SdkTranscriber(options);
     this.disclosure = {
       service: 'Anthropic 的 Claude',
       route: '经本机的 Claude 订阅（Claude Agent SDK）',
@@ -222,6 +226,82 @@ class SdkConversation implements ModelConversation {
     this.input.end();
     this.close_?.();
     return Promise.resolve();
+  }
+}
+
+/**
+ * 图片转写：一问一答（图片 + 一句请求），不给工具、不留会话文件、不续接。
+ * 用全局默认模型（转写不是会话类，不走 profiles）；实际执行的模型从 SDK 报的消息里取。
+ */
+class SdkTranscriber implements ImageTranscriber {
+  readonly model?: string;
+
+  constructor(private readonly options: ClaudeAgentSdkOptions) {
+    if (options.model !== undefined) this.model = options.model;
+  }
+
+  async transcribe(
+    image: ImageData,
+    instructions: string,
+  ): Promise<{ text: string; model?: string }> {
+    const input = new AsyncQueue<SDKUserMessage>();
+    input.push({
+      type: 'user',
+      message: {
+        role: 'user',
+        content: [
+          {
+            type: 'image',
+            source: { type: 'base64', media_type: image.mime, data: image.data.toString('base64') },
+          },
+          { type: 'text', text: '请转写这张图片。' },
+        ],
+      },
+      parent_tool_use_id: null,
+      uuid: randomUUID(),
+    });
+    const q = query({
+      prompt: input,
+      options: {
+        systemPrompt: instructions,
+        tools: [],
+        settingSources: [],
+        strictMcpConfig: true,
+        maxTurns: 1,
+        persistSession: false,
+        ...(this.options.model !== undefined ? { model: this.options.model } : {}),
+        ...(this.options.cwd !== undefined ? { cwd: this.options.cwd } : {}),
+        env: cleanEnv(),
+      },
+    });
+    let model: string | undefined;
+    const texts: string[] = [];
+    try {
+      for await (const msg of q) {
+        const reported =
+          msg.type === 'system' && msg.subtype === 'init'
+            ? msg.model
+            : msg.type === 'assistant'
+              ? msg.message.model
+              : undefined;
+        if (reported !== undefined && reported !== '') model = reported;
+        if (msg.type === 'assistant') {
+          for (const b of msg.message.content) if (b.type === 'text') texts.push(b.text);
+        }
+        if (msg.type === 'result') {
+          if (msg.subtype !== 'success' || msg.is_error) {
+            throw new Error(`Agent SDK 转写失败：${msg.subtype}`);
+          }
+          break;
+        }
+      }
+    } finally {
+      input.end();
+      q.close();
+    }
+    const text = texts.join('').trim();
+    if (text === '') throw new Error('Agent SDK 转写没有给出文字');
+    return { text, ...(model !== undefined ? { model } : {}) };
   }
 }
 
