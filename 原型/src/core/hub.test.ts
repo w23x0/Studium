@@ -39,6 +39,7 @@ describe('Hub', () => {
       'session_opened',
       'user_message',
       'model_session',
+      'model_used',
       'model_raw',
       'model_raw',
       'assistant_message',
