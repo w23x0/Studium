@@ -5,6 +5,8 @@ import { join } from 'node:path';
 import { appendJsonl, readJsonl } from './jsonl.ts';
 
 export type StateSource = '自述' | '观察' | '推断';
+/** 来源档：模型只能写前三档；“已确认”是学习者在界面上确认过的（只由确认记录得出，不写进状态记录本身）。 */
+export type StateSourceLevel = StateSource | '已确认';
 /** 承载读数与知识诊断正交、直接可用；解释候选与“他不会”竞争，须经 M04 裁决（M15 审查单「输出分型」）。 */
 export type StateOutput = '承载读数' | '解释候选';
 /** 状态阶段子模块只出类型与依据跨度（三锁）。 */
@@ -28,8 +30,22 @@ export interface StateRecord {
   timeRange: string;
   /** 指回 M01 正本：哪个会话的哪几行。 */
   refs: { sessionId: string; lines: number[] }[];
+  /**
+   * 这条状态出现在某次教法强度明显变化之后（M15 审查单「策略造成的状态须标注来源」）：
+   * 变化由程序从教学侧每轮的强度标注算出（intensity.ts），M15 只引用变化编号；旧记录没有。
+   */
+  afterTeaching?: { changeId: string; loopSessionId: string; line: number; text: string };
   m15SessionId: string;
   model: string;
+}
+
+/** 学习者对一条状态记录的确认 / 否认（界面上点的）；单独追加，不改状态记录。 */
+export interface StateConfirmation {
+  id: string;
+  at: string;
+  recordId: string;
+  verdict: '确认' | '否认';
+  note?: string;
 }
 
 export interface CurrentStatePage {
@@ -57,6 +73,7 @@ export class M15 {
     private records: StateRecord[],
     private pages: CurrentStatePage[],
     private runs: OrganizeRun[],
+    private confirmations: StateConfirmation[],
   ) {}
 
   static async load(dir: string): Promise<M15> {
@@ -65,6 +82,7 @@ export class M15 {
       await readJsonl<StateRecord>(join(dir, 'records.jsonl')),
       await readJsonl<CurrentStatePage>(join(dir, 'current.jsonl')),
       await readJsonl<OrganizeRun>(join(dir, 'runs.jsonl')),
+      await readJsonl<StateConfirmation>(join(dir, 'confirmations.jsonl')),
     );
   }
 
@@ -81,6 +99,29 @@ export class M15 {
   async addRun(r: OrganizeRun): Promise<void> {
     await appendJsonl(join(this.dir, 'runs.jsonl'), r);
     this.runs.push(r);
+  }
+
+  async addConfirmation(c: StateConfirmation): Promise<void> {
+    await appendJsonl(join(this.dir, 'confirmations.jsonl'), c);
+    this.confirmations.push(c);
+  }
+
+  allConfirmations(): StateConfirmation[] {
+    return [...this.confirmations];
+  }
+
+  confirmationsFor(recordId: string): StateConfirmation[] {
+    return this.confirmations.filter((c) => c.recordId === recordId);
+  }
+
+  /** 学习者对这条记录最近一次表态；没表过态为空。 */
+  verdictOf(recordId: string): StateConfirmation | undefined {
+    return this.confirmationsFor(recordId).at(-1);
+  }
+
+  /** 来源档：最近一次表态是确认 = “已确认”，否则是原来源。 */
+  sourceLevel(r: StateRecord): StateSourceLevel {
+    return this.verdictOf(r.id)?.verdict === '确认' ? '已确认' : r.source;
   }
 
   allRecords(): StateRecord[] {
@@ -111,7 +152,17 @@ export class M15 {
 
   describeRecord(r: StateRecord): string {
     const refs = r.refs.map((x) => `${x.sessionId}:${x.lines.join('、')}`).join('；');
-    return `${r.id}（${r.at.slice(0, 16).replace('T', ' ')}）[${r.output}·${r.source}·${r.timeRange}] ${r.text}（依据 ${refs || '无'}）`;
+    const verdict = this.verdictOf(r.id);
+    const level = this.sourceLevel(r);
+    return [
+      `${r.id}（${r.at.slice(0, 16).replace('T', ' ')}）[${r.output}·${level}${level !== r.source ? `（原为${r.source}）` : ''}·${r.timeRange}] ${r.text}（依据 ${refs || '无'}）`,
+      ...(verdict?.verdict === '否认'
+        ? [`  学习者否认了这条${verdict.note ? `：${verdict.note}` : ''}（对不上的两边都留着）`]
+        : []),
+      ...(r.afterTeaching
+        ? [`  出现在「${r.afterTeaching.text}」之后——先查自己的教法是不是成因，再当作他自己的状态`]
+        : []),
+    ].join('\n');
   }
 
   describeCurrent(): string {

@@ -42,6 +42,7 @@ const KIND_LABEL: Record<ConversationKind, string> = {
   m05: 'M05 出卡',
   m15: 'M15 整理',
   m10: 'M10 记录',
+  output: '写产出',
 };
 
 function cell(s: string): string {

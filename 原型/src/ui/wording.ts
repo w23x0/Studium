@@ -23,13 +23,17 @@ export const W = {
     inProgress: '进行中',
     awaitingChoice: '等你选',
     closed: '学完了', // 合上
-    unclosed: '先放下的', // 没合上（停车场）
+    unclosed: '先放下的（没学完）', // 没合上（停车场）
+    shelved: '先放一放的', // 搁置
+    waitingFork: '等补完回来的', // 等分叉回来
   },
   groupHints: {
     inProgress: '正在学、还没学完的',
     awaitingChoice: '接下来学哪个，挑一个就开始',
     closed: '判断过你已经学会、你也确认了的',
     unclosed: '没学完就先停下的，以后可以再接着学',
+    shelved: '暂时放下的，点“接着学”或在里面说句话就能接上',
+    waitingFork: '中途先去补前面的（或学别的），那边学完就回来接着学',
   },
   openConversation: '打开对话',
   lastJudgement: (closed: boolean) => (closed ? '上次判断：已经掌握' : '上次判断：还差一点'),
@@ -343,6 +347,165 @@ export const W = {
   grade: '到什么程度',
   whyGraded: '为什么这么看',
   noteSpot: '看笔记里这一处',
+
+  // ── 学到一半：先补前面的 / 岔开去学别的 / 先放一放（批 5） ──
+  detourAsk: '学到这里，要不要先停一下？', // 闭环中途的小卡
+  detourKind: {
+    fork: '先去补', // 开分叉
+    continue: '接着学',
+    shelve: '先放一放', // 搁置
+  } as const,
+  detourChosen: '你选了',
+  detourWhy: '为什么问这个',
+  detourScope: '补到什么程度',
+  goThere: '去那边',
+  thatPart: '那一段',
+  backThere: '回到那里',
+  forkFrom: '从', // 分叉对话顶部：从《父》岔出来……
+  forkBanner: {
+    gap: (what: string) => `岔出来补「${what}」，补完会回到那里`,
+    branch: (what: string) => `岔出来去学「${what}」，学完会回到那里`,
+  },
+  waitingBanner: {
+    gap: (what: string) => `在补「${what}」，补完回来`,
+    branch: (what: string) => `在学「${what}」，学完回来`,
+  },
+  forkReturned: {
+    gap: (what: string) => `补完了「${what}」，回到这里接着学。`,
+    branch: (what: string) => `学完了「${what}」，回到这里接着学。`,
+  },
+  forkNotDone: (what: string) => `「${what}」没补好，先回到这里（已记在没学完的里）。`,
+  forkEnded: (closed: boolean) =>
+    closed ? '这一段补完了，回到原来那段接着学。' : '先学到这里，回到原来那段接着学。',
+  shelve: '先放一放', // 搁置
+  shelveHint: '先放下，不算学完也不算半途而废；以后点“接着学”或在这里说句话就能接上。',
+  shelvePlaceholder: '想写一句为什么先放下（可不填）',
+  shelveGo: '放下',
+  shelveCancel: '算了',
+  shelvedBar: '已放下，点“接着学”继续。',
+  shelvedPlaceholder: '说句话也会接着学…',
+  resume: '接着学',
+  endInstead: '不学了，先到这里',
+  shelvedLine: '先放一放了。',
+  shelvedLineNote: (note: string) => `先放一放了：${note}`,
+  resumedLine: '接着学。',
+  parkedLine: (p: { missing: string; when: string; from: string }) =>
+    `记下了没学完的地方：还缺 ${p.missing}；打算${p.when}，从${p.from}接上。`,
+  parkingTitle: '没学完的地方', // 停车记录
+  parkingReason: {
+    ended_unclosed: '没学完就停下时记的',
+    shelved: '先放一放时记的',
+  } as const,
+  parkingMissing: '缺在哪',
+  parkingWhen: '打算什么时候',
+  parkingFrom: '从哪接上',
+  parkingWords: '依据的原话',
+  shelvedNote: '放下时说的',
+  shelvedBadge: '放着',
+  waitingBadge: '等补完',
+  forkBadge: '岔出来的',
+  forkOfLine: (title: string) => `从「${title}」岔出来的`,
+  waitingLine: (title: string) => `在那边：${title}`,
+  loadHeavy: (n: number) =>
+    `同时开着的有点多（${String(n)} 段没学完）。先把手上的学完或放一放，再开新的。`,
+  loadPile: (n: number) => `没学完的攒了 ${String(n)} 段，先收一收：挑一段接着学。`,
+  // 学习之间的关系（来源、岔开、回来）
+  relations: '学习之间的来龙去脉',
+  relationsHint: '每段学习从哪来、中途岔开去补了什么、回来没有',
+  origin: '从哪来',
+  originCard: '从“下一步学什么”里选的',
+  originFork: '从另一段学习里岔出来的',
+  originUnknown: '记不清从哪来',
+  forkWhy: '为什么岔开',
+  forkWhat: '要补的',
+  forkReturn: (title: string) => `这边学完就回到「${title}」`,
+  forkBasis: '在原来那段对话里看原话',
+  forksOut: '中途岔开去补的',
+  forkBackDone: '学完回来了',
+  forkBackNot: '没学完就回来了',
+  forkOut: '还在那边',
+  signals: '中途提过的“先停一下”', // route_signal
+  signalsHint: '学到一半发现前面有地方不牢、或你想先去学别的时，老师提出来的；下面是依据的原话。',
+  signalKind: { gap: '前面有地方不牢', branch: '想先去学别的' } as const,
+  signalNote: '老师的补充',
+  offered: '给你的选择',
+  notChosenYet: '还没选',
+
+  // ── 教法：老师可以取用的教学方法、每轮的教法强度、状态确认（批 7） ──
+  tools: '教法', // 教学工具库（M10 通用策略知识层）
+  toolsHint:
+    '老师教的时候可以取用的做法。每份写了什么时候用、怎么做、怎么看出学会没有、要注意什么。',
+  toolsEmpty: '还没有可用的教法。',
+  toolOrigin: { 官方: '自带的', 学习者自己: '你自己加的' } as const,
+  toolApplies: '什么时候用',
+  toolSource: '依据',
+  toolStatus: '状态',
+  toolDraft: '起草未审',
+  toolMissing: '找不到这份教法了（可能被改名或删掉）。',
+  toolProblems: '没能装上的文件',
+  toolProblemsHint: '这些文件格式不对或和自带的重名，老师用不到它们；改好后会自动装上。',
+  toolsMine: '自己加教法',
+  toolsMineHint:
+    '把写好的 Markdown 文件放进数据目录下的 teaching-tools 文件夹（没设过数据目录时是 原型/var/teaching-tools/），格式照自带的那几份：标题是名字，下面三行写“适用条件”“来源”“状态”，再分“做法”“怎么引出证据”“注意边界”三节。老师下次取用时就能看到；和自带的重名的不会装上。',
+  toolsUsedHere: '这次学习用到的教法',
+  toolsUsedHint: '老师按需取用的；点开看全文。',
+  toolsUsedNone: '这次没取用过。',
+  toolTimes: (n: number) => `${String(n)} 次`,
+  // 每轮的教法强度
+  intensity: '这一轮怎么教的',
+  intensityDims: {
+    info: '信息量',
+    hint: '提示',
+    challenge: '挑战',
+    pace: '节奏',
+    lean: '讲还是练',
+  } as const,
+  intensityDimsLong: {
+    info: '信息量',
+    hint: '提示强度',
+    challenge: '挑战程度',
+    pace: '节奏',
+    lean: '偏讲还是偏练',
+  } as const,
+  leanValue: { 输入: '偏讲', 均衡: '讲练各半', 练习: '偏练' } as Record<string, string>,
+  intensityWhy: '为什么这样调',
+  intensityTrend: '这段学习里教法怎么变的',
+  intensityTrendHint:
+    '每一行是一项，从左到右是一轮一轮；格子越高越多（节奏越高越快，讲还是练越高越偏练）。',
+  intensityTurn: (n: number) => `第 ${String(n)} 轮`,
+  intensityUnmarked: (n: number) => `另有 ${String(n)} 次观察没记这一轮怎么教的。`,
+  intensityNone: '还没记过每一轮怎么教的。',
+  direction: { 升: '往上走', 降: '往下走', 持平: '没变', 起伏: '有起有落' } as const,
+  trendSummary: '教法强度的走向',
+  selfCheck: '老师先查了自己的教法',
+  selfCheckHint: '你的状态里有出现在教法变化之后的，老师先查是不是自己的教法引起的：',
+  selfCheckStates: (n: number) => `对照了你的 ${String(n)} 条状态`,
+  // 我的状态：来源与确认
+  sourceLevel: {
+    自述: '你自己说的',
+    观察: '观察到的',
+    推断: '推测的',
+    已确认: '你确认过的',
+  } satisfies Record<StateRecordView['sourceLevel'], string>,
+  sourceWas: (s: string) => `原本是“${s}”`,
+  stateConfirm: '对，是这样',
+  stateDeny: '不对',
+  stateDenyPlaceholder: '哪里不对（可不填）',
+  stateDenySend: '提交',
+  stateChange: '改一下',
+  stateConfirmed: '你说过：对，是这样',
+  stateDenied: '你说过：不对',
+  stateDeniedSent: '记下了。下次整理你的状态时会把你的话带上。',
+  afterTeaching: (what: string) => `这是在${what}之后出现的`,
+  afterTeachingUnknown: '这是在老师调整教法之后出现的',
+  afterTeachingGo: '看那一轮',
+  teachingChange: {
+    info: { up: '老师讲得更多', down: '老师讲得少了' },
+    hint: { up: '老师把提示给多', down: '老师把提示变少' },
+    challenge: { up: '老师把题目加难', down: '老师把难度放低' },
+    pace: { up: '老师加快节奏', down: '老师放慢节奏' },
+    lean: { up: '老师从多讲转向多让你练', down: '老师从多让你练转向多讲' },
+  } as const,
 
   // ── 通用 ──
   loading: '正在读…',

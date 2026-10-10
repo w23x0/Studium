@@ -17,7 +17,9 @@ import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
 import { ImageViewer } from '@/components/input/modal';
+import { DetourCardBox } from '@/components/detour-card';
 import { coversAny } from '@/evidence-model';
+import type { DetourUi } from '@/thread-model';
 import { useOpenSession } from '@/open-session';
 import { useCurrentSession, useHighlight, usePanel } from '@/panel';
 import { W } from '@/wording';
@@ -31,6 +33,7 @@ interface MessageMeta {
   verdict?: { closed: boolean };
   objection?: { toLine: number; label: string };
   images?: string[];
+  detour?: DetourUi;
 }
 
 function useMeta(): MessageMeta {
@@ -238,13 +241,15 @@ const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, verdict, line } = useMeta();
+  const { link, verdict, line, detour } = useMeta();
   const open = useOpenSession();
   const panel = usePanel();
   const sessionId = useCurrentSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
-      {verdict !== undefined && sessionId !== undefined && line !== undefined ? (
+      {detour !== undefined && sessionId !== undefined ? (
+        <DetourCardBox loopId={sessionId} card={detour} />
+      ) : verdict !== undefined && sessionId !== undefined && line !== undefined ? (
         <button
           type="button"
           data-testid="judgement"

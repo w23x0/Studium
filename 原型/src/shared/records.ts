@@ -13,9 +13,10 @@ export type * from './records-longterm.ts';
 
 /**
  * main 主对话 · talk 畅谈对话 · loop 闭环对话 · guard 闭环守卫 · m09 写形成记录 · m05 出选择卡
- * · m15 整理学习者状态 · m10 记教法效果
+ * · m15 整理学习者状态 · m10 记教法效果 · output 写产出（M14 任务对话）
  */
-export type ConversationKind = 'main' | 'talk' | 'loop' | 'guard' | 'm09' | 'm05' | 'm15' | 'm10';
+export type ConversationKind =
+  'main' | 'talk' | 'loop' | 'guard' | 'm09' | 'm05' | 'm15' | 'm10' | 'output';
 
 /** M05 给一个闭环开的单子。 */
 export interface Ticket {
@@ -156,6 +157,50 @@ export interface LoopNote {
   text: string;
   /** 结构化条目：“以前会的现在答不出”（批 6）；text 是教学侧对这一条的说明。 */
   regression?: RegressionNote;
+  /** 这一轮的教法强度（M10 的四项参数 + 偏向）；模型没填就没有这个字段。 */
+  intensity?: Intensity;
+}
+
+export const LEVELS = ['低', '中', '高'] as const;
+export const PACES = ['慢', '中', '快'] as const;
+export const LEANS = ['输入', '均衡', '练习'] as const;
+
+/** 一轮教学的强度：信息量 / 提示强度 / 挑战程度各三档，节奏三档，以及这一轮偏输入还是偏练习。 */
+export interface Intensity {
+  info: (typeof LEVELS)[number];
+  hint: (typeof LEVELS)[number];
+  challenge: (typeof LEVELS)[number];
+  pace: (typeof PACES)[number];
+  lean: (typeof LEANS)[number];
+  reason?: string;
+}
+
+/** 强度的五项：信息量 / 提示强度 / 挑战程度 / 节奏 / 偏输入还是偏练习。 */
+export type Dimension = 'info' | 'hint' | 'challenge' | 'pace' | 'lean';
+
+export interface IntensityTurn {
+  line: number;
+  info: string;
+  hint: string;
+  challenge: string;
+  pace: string;
+  lean: string;
+}
+
+export interface DimensionTrend {
+  first: string;
+  last: string;
+  /** 相邻重复合并后的走法，如 高 → 中 → 低。 */
+  sequence: string[];
+  direction: '升' | '降' | '持平' | '起伏';
+}
+
+/** 一个闭环里四项（+偏向）的走向，程序算；使教法记录之间可比较。 */
+export interface IntensityTrend {
+  turns: IntensityTurn[];
+  /** 没标强度的诊断条数。 */
+  unannotated: number;
+  summary: Record<Dimension, DimensionTrend>;
 }
 
 export interface CloseRequested {

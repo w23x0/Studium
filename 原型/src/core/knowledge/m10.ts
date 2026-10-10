@@ -1,6 +1,8 @@
 // M10 个人策略过程与效果层（M10 审查单）：这位学习者在什么闭环、诊断与状态条件下用过什么做法，之后 M04 的
 // 诊断怎么变。M10 自己的记录，不写入 M09；单次记录不证明因果。只追加。
 import { join } from 'node:path';
+import { DIMENSIONS, DIMENSION_LABEL } from '../intensity.ts';
+import type { IntensityTrend } from '../../shared/records.ts';
 import { appendJsonl, readJsonl } from './jsonl.ts';
 
 export interface StrategyRecord {
@@ -15,8 +17,14 @@ export interface StrategyRecord {
   /** 之后的诊断变化与证据。 */
   followedBy: string;
   evidenceLines: number[];
-  /** 程序记下的教学工具使用（工具调用记录里读了哪份）；还没接入教学工具时为空。 */
+  /** 程序记下的教学工具使用（工具调用记录里读了哪几份，按首次取用顺序、去重）；没用教学工具时为空。 */
   toolsUsed: string[];
+  /** 每次取用：哪份、在闭环正本的哪一行（旧记录没有）。 */
+  toolUses?: { name: string; line: number }[];
+  /** 程序汇总的这个闭环里四项强度 + 偏向的走向（旧记录、没标强度的闭环没有）。 */
+  intensityTrend?: IntensityTrend;
+  /** 记录当时有“出现在 X 之后”标注的状态时，M10 对自己的教法是否为成因的自查（程序列出状态 id，说明由 M10 写）。 */
+  selfCheck?: { stateIds: string[]; note: string };
   m10SessionId: string;
   model: string;
 }
@@ -51,7 +59,13 @@ export class M10 {
       `  条件：${r.conditions}`,
       `  做法：${r.strategies}`,
       `  之后：${r.followedBy}`,
-      `  教学工具：${r.toolsUsed.join('、') || '（未接入）'}；证据行 ${r.evidenceLines.join('、')}`,
+      `  教学工具：${r.toolsUsed.join('、') || '（没取用）'}；证据行 ${r.evidenceLines.join('、')}`,
+      ...(r.intensityTrend
+        ? [
+            `  强度走向：${DIMENSIONS.map((d) => `${DIMENSION_LABEL[d]} ${r.intensityTrend?.summary[d].sequence.join('→') ?? ''}`).join('；')}`,
+          ]
+        : []),
+      ...(r.selfCheck ? [`  自查（教法是否为状态成因）：${r.selfCheck.note}`] : []),
     ].join('\n');
   }
 }

@@ -19,6 +19,14 @@ const RELOAD_ON = new Set([
   'project_deadline',
   'tool_call',
   'user_message',
+  // 学到一半（批 5）：通知、小卡、选了什么、岔出去的回来、先放一放 / 接着学、没学完的记录
+  'route_signal',
+  'detour_card',
+  'detour_made',
+  'fork_returned',
+  'loop_shelved',
+  'loop_resumed',
+  'parking_note',
 ]);
 
 function relevant(e: ServerEvent): boolean {

@@ -39,7 +39,13 @@ import type {
   ExternalRecordsResponse,
   M08OverviewResponse,
   Points08Response,
+  DetourChooseResponse,
+  LoopRelationsResponse,
+  TeachingToolsResponse,
+  TeachingToolResponse,
+  ConfirmationResponse,
 } from '../shared/protocol.ts';
+import { SHELVE_NO_NOTE } from './thread-model.ts';
 
 function token(): string {
   const fromUrl = new URLSearchParams(location.search).get('token');
@@ -101,6 +107,23 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ note: '学习者在界面上点了“结束（没合上）”' }),
     }),
+  // ── 学到一半：小卡、先放一放、接着学（批 5） ──
+  detour: (loopId: string, cardId: string, option: number) =>
+    call<DetourChooseResponse>(`/sessions/${loopId}/detour`, {
+      method: 'POST',
+      body: JSON.stringify({ cardId, option }),
+    }),
+  shelve: (loopId: string, note?: string) =>
+    call<object>(`/sessions/${loopId}/shelve`, {
+      method: 'POST',
+      body: JSON.stringify({
+        note: note !== undefined && note.trim() !== '' ? note.trim() : SHELVE_NO_NOTE,
+      }),
+    }),
+  resume: (loopId: string) =>
+    call<object>(`/sessions/${loopId}/resume`, { method: 'POST', body: '{}' }),
+  loopRelations: (mainId: string) =>
+    call<LoopRelationsResponse>(`/projects/${mainId}/loop-relations`),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
   send: (id: string, text: string, images?: MessageImageInput[]) =>
     call<object>(`/sessions/${id}/messages`, {
@@ -143,6 +166,19 @@ export const api = {
     }),
   objectToRecord: (req: RecordObjectionRequest) =>
     call<ObjectionResponse>('/objections', { method: 'POST', body: JSON.stringify(req) }),
+  // ── 教法（批 7）：教学工具、对状态的确认 / 否认 ──
+  teachingTools: () => call<TeachingToolsResponse>('/teaching-tools'),
+  teachingTool: (name: string) =>
+    call<TeachingToolResponse>(`/teaching-tools/${encodeURIComponent(name)}`),
+  confirmState: (recordId: string, verdict: 'confirm' | 'deny', note?: string) =>
+    call<ConfirmationResponse>('/m15/confirmations', {
+      method: 'POST',
+      body: JSON.stringify(
+        note !== undefined && note.trim() !== ''
+          ? { recordId, verdict, note: note.trim() }
+          : { recordId, verdict },
+      ),
+    }),
   // ── 原文与出处 ──
   /** 书库里的书与笔记；给了项目就标出哪些是项目资料。 */
   books: (project?: string) => call<BooksResponse>(`/library/books?${qs({ project })}`),

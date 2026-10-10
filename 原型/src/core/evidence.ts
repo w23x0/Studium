@@ -33,11 +33,14 @@ import {
   type SourceView,
   type StateRecordView,
   type StrategyView,
+  type TeachingToolResponse,
+  type TeachingToolsResponse,
   type TicketView,
 } from '../shared/protocol.ts';
 import type {
   ChoiceCard,
   ChoiceMade,
+  ConversationKind,
   ForkOrigin,
   LearnerObjection,
   NumberedRecord,
@@ -45,6 +48,9 @@ import type {
   Ticket,
 } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
+
+/** 批 8 起新增的会话类：外发披露里单列在 laterSessions。 */
+const LATER_KINDS: ConversationKind[] = ['output'];
 import { foldLoop, LOAD_HEAVY, PARKING_PILE, type LoopFlags } from './loop-state.ts';
 import type { M08, Anchor, Clause, Point } from './knowledge/m08.ts';
 import type { M09 } from './knowledge/m09.ts';
@@ -53,6 +59,7 @@ import type { M15 } from './knowledge/m15.ts';
 import type { Objections } from './knowledge/objections.ts';
 import type { Inputs } from './inputs.ts';
 import type { Sources } from './sources.ts';
+import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { BadRequestError, foldDeadline, foldMaterials } from './studium.ts';
 
 export interface EvidenceDeps {
@@ -66,6 +73,8 @@ export interface EvidenceDeps {
   sources: Sources;
   /** 图片转写、语音送往哪里（批 4）；不给就不列。 */
   inputs?: Inputs;
+  /** 教学工具（批 7）。 */
+  teaching: TeachingTools;
 }
 
 export class Evidence {
@@ -146,10 +155,12 @@ export class Evidence {
                       },
                     }
                   : {}),
+                ...(r.record.intensity ? { intensity: r.record.intensity } : {}),
               },
             ]
           : [],
       ),
+      teachingToolsUsed: toolUsesOf(recs),
       objections,
       ...(flags.shelved !== undefined
         ? { shelved: { at: flags.shelved.at, note: flags.shelved.note } }
@@ -686,6 +697,9 @@ export class Evidence {
         evidenceLines: r.evidenceLines,
         quotes: await this.quotes(r.loopSessionId, r.evidenceLines),
         toolsUsed: r.toolsUsed,
+        ...(r.toolUses ? { toolUses: r.toolUses } : {}),
+        ...(r.intensityTrend ? { intensityTrend: r.intensityTrend } : {}),
+        ...(r.selfCheck ? { selfCheck: r.selfCheck } : {}),
         model: modelInfoOf(r.model),
         objections: this.d.objections.forRecord('m10', r.id).map(storedView),
       });
@@ -704,14 +718,19 @@ export class Evidence {
           quotes: await this.quotes(x.sessionId, x.lines),
         });
       }
+      const verdict = this.d.m15.verdictOf(r.id);
       records.push({
         id: r.id,
         at: r.at,
         text: r.text,
         source: r.source,
+        sourceLevel: this.d.m15.sourceLevel(r),
         output: r.output,
         timeRange: r.timeRange,
         refs,
+        ...(r.afterTeaching ? { afterTeaching: r.afterTeaching } : {}),
+        confirmations: this.d.m15.confirmationsFor(r.id),
+        ...(verdict ? { learnerVerdict: verdict.verdict } : {}),
         m15SessionId: r.m15SessionId,
         model: modelInfoOf(r.model),
         objections: this.d.objections.forRecord('m15', r.id).map(storedView),
@@ -732,6 +751,37 @@ export class Evidence {
           }
         : {}),
       records,
+    };
+  }
+
+  // ───────────── 教学工具 ─────────────
+
+  async teachingTools(): Promise<TeachingToolsResponse> {
+    const { tools, problems } = await this.d.teaching.list();
+    return {
+      tools: tools.map(({ name, applies, origin, source, status }) => ({
+        name,
+        applies,
+        origin,
+        source,
+        status,
+      })),
+      problems,
+    };
+  }
+
+  async teachingTool(name: string): Promise<TeachingToolResponse> {
+    const t = await this.d.teaching.get(name);
+    if (!t) throw new NotFoundError(`没有叫「${name}」的教学工具`);
+    return {
+      tool: {
+        name: t.name,
+        applies: t.applies,
+        origin: t.origin,
+        source: t.source,
+        status: t.status,
+        text: t.text,
+      },
     };
   }
 
@@ -857,6 +907,13 @@ export class Evidence {
 
   disclosure(): DisclosureResponse {
     const d = this.d.hub.disclosure;
+    const kinds = Object.keys(CONVERSATION_KIND_LABELS) as ConversationKind[];
+    const sessionRow = (kind: ConversationKind) => ({
+      kind,
+      label: CONVERSATION_KIND_LABELS[kind],
+      model: d?.profiles[kind]?.model ?? d?.defaultModel ?? null,
+      effort: d?.profiles[kind]?.effort ?? null,
+    });
     return {
       service: d?.service ?? '未声明（这个模型适配器没有说明内容送往哪里）',
       route: d?.route ?? '未声明',
@@ -866,16 +923,12 @@ export class Evidence {
         '对话里用到的教材原文片段（模型读到的小节）',
         '你的学习记录：我会什么、我的状态、教法记录（相关的对话会读到）',
         '你对这些记录提的异议',
+        '你的产出物（笔记、推导、论文、方法比较）的当前版本和你的修改（在“写产出”对话里会读到）',
         '你加的图片（只在转写时送去；对话里只送转写出的文字）',
       ],
-      sessions: (
-        Object.keys(CONVERSATION_KIND_LABELS) as (keyof typeof CONVERSATION_KIND_LABELS)[]
-      ).map((kind) => ({
-        kind,
-        label: CONVERSATION_KIND_LABELS[kind],
-        model: d?.profiles[kind]?.model ?? d?.defaultModel ?? null,
-        effort: d?.profiles[kind]?.effort ?? null,
-      })),
+      sessions: kinds.filter((k) => !LATER_KINDS.includes(k)).map(sessionRow),
+      // 批 8 起新增的会话类单列（早先的验收测试规定 sessions 就是原来那八类，不能往里加）
+      laterSessions: kinds.filter((k) => LATER_KINDS.includes(k)).map(sessionRow),
       note: '没单独指定模型的会话用服务的默认模型；每条记录里的“模型”是实际执行的那个，取不到时会写明只是适配器名。',
       inputs: this.d.inputs?.disclosure(d) ?? [],
     };

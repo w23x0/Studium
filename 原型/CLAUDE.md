@@ -27,12 +27,14 @@
 | `src/core/inputs.ts`   | 输入（批 4）：附图原样存进 `<数据>/inputs/`（只追加）、经模型接口转写（`transcriber`，提示词 `prompts/transcribe.md`）；接口 `http/inputs-routes.ts`                                                            |
 | `src/core/hub.ts`      | 会话管理：一次一轮、事件推送、重启后按正本里的续接凭据接上                                                                                                                                                      |
 | `src/core/studium.ts`  | 事件串联：主对话、畅谈、M05 选择卡、闭环对话、守卫、写 M09、下一张卡、M15 / M10 后台；各会话的工具                                                                                                              |
+| `src/core/outputs.ts`  | M14 知识产出物（批 8）：产出物与版本链、引用核对、相关文献、方法比较、通用候选、“写产出”对话的工具；存放处 `knowledge/m14.ts`，类型 `src/shared/m14.ts`                                                         |
 | `src/core/detour.ts`   | 闭环中途（批 5）：教学侧通知 M05 → 小卡 → 分叉 / 接着学 / 搁置，分叉回父闭环，停车记录；状态折叠在 `loop-state.ts`                                                                                              |
 | `src/core/longterm.ts` | 跨闭环长期（批 6）：复习 / 复检、降档与重新掌握、M09 当前视图（`knowledge/m09-view.ts`）、接着学、阶段复盘、提醒与今天该做的、路线偏差（`knowledge/m05-deviations.ts`）；接口 `http/longterm-routes.ts`         |
 | `src/core/knowledge/`  | 读 M07 原文与目录、全文检索（`m07.ts`）、原件页面渲染与块位置（`m07-originals.ts`）、资料报错存放处（`m07-reports.ts`）、M08 点与子句（`m08.ts`）；M09 形成记录、M10 教法记录、M15 状态（各一个只追加的存放处） |
 | `src/core/tape/`       | 真实运行录带（`recorder.ts`）与离线回放（`replay.ts`、`cli.ts`）；编号换成稳定记号（`ids.ts`）                                                                                                                  |
 | `src/core/http/`       | 本地服务：只绑 127.0.0.1、口令、HTTP 命令 + SSE 事件、托管构建好的界面                                                                                                                                          |
-| `src/core/prompts/`    | 系统提示：`main` `talk` `loop` `guard` `m09` `m05` `m15` `m10`，图片转写 `transcribe`（只写定义、边界、输出格式）                                                                                               |
+| `src/core/prompts/`    | 系统提示：`main` `talk` `loop` `guard` `m09` `m05` `m15` `m10` `output`，图片转写 `transcribe`（只写定义、边界、输出格式）                                                                                      |
+| `教学工具/`            | 官方教学工具（M10 通用策略知识层，agent 起草）：一份一个 Markdown，格式见其 README；核心 `src/core/teaching-tools.ts` 装载（学习者自己的在 `<数据>/teaching-tools/`），强度四项与走向在 `src/core/intensity.ts` |
 | `样例/`                | 没有真书时用的小样例：一本自写力学入门（M07 格式）+ 10 个知识点 / 9 条条款（M08）                                                                                                                               |
 | `src/ui/`              | 浏览器界面：React + Vite + assistant-ui；`thread-model.ts` 是可单测的纯转换                                                                                                                                     |
 | `tests/`               | 依赖方向测试、`验收/`（只经 HTTP 验功能）、`helpers/`                                                                                                                                                           |
@@ -68,7 +70,7 @@
 
 每个会话一个 `var/sessions/<会话 id>.jsonl`，一行一条，行号 = 引用地址。类型见 `src/shared/records.ts`：
 `session_opened` · `user_message` · `assistant_message` · `model_raw`（适配层吐出的原始消息，含思考块）·
-`model_session`（续接凭据）· `turn_failed` · `program_fact` · `tool_call` · 闭环相关（`loop_note` `close_requested` `guard_verdict` `loop_ended` `after_loop_step`） · 闭环中途（`route_signal` `detour_card` `detour_made` `fork_returned` `loop_shelved` `loop_resumed` `parking_note`；分叉闭环的 `session_opened.fork`）· `project_goal` `project_title`（项目名随方向变，开头那行不改）· `task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `choice_card` `choice_made` · 长期功能（`reminder_added` `reminder_closed`；`loop_note.regression`、`session_opened.resumeOf` `review`、`Ticket.revisit`）。学习者对守卫判定的异议是带 `objection` 标记的 `user_message`；附图的学习者消息带 `images`（原图 id、转写原文、发出的文字、转写模型；转写文字已并进 `text`）；对 M09 / M10 / M15 记录的异议另存 `knowledge/objections/`（只追加，不改原记录）；学习者对教材原文的报错另存 `knowledge/source-reports/`（只追加，不改书库）。加类型只能加，不改旧字段的意思。
+`model_session`（续接凭据）· `turn_failed` · `program_fact` · `tool_call` · 闭环相关（`loop_note` `close_requested` `guard_verdict` `loop_ended` `after_loop_step`） · 闭环中途（`route_signal` `detour_card` `detour_made` `fork_returned` `loop_shelved` `loop_resumed` `parking_note`；分叉闭环的 `session_opened.fork`）· `project_goal` `project_title`（项目名随方向变，开头那行不改）· `task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `choice_card` `choice_made` · 长期功能（`reminder_added` `reminder_closed`；`loop_note.regression`、`session_opened.resumeOf` `review`、`Ticket.revisit`）。学习者对守卫判定的异议是带 `objection` 标记的 `user_message`；附图的学习者消息带 `images`（原图 id、转写原文、发出的文字、转写模型；转写文字已并进 `text`）；对 M09 / M10 / M15 记录的异议另存 `knowledge/objections/`、学习者对 M15 记录的确认 / 否认另存 `knowledge/m15/confirmations.jsonl`（都只追加，不改原记录）；学习者对教材原文的报错另存 `knowledge/source-reports/`（只追加，不改书库）。加类型只能加，不改旧字段的意思。
 
 ## 本机试用
 

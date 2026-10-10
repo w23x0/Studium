@@ -17,12 +17,15 @@ import { M08 } from './knowledge/m08.ts';
 import { M09 } from './knowledge/m09.ts';
 import { Deviations } from './knowledge/m05-deviations.ts';
 import { M10 } from './knowledge/m10.ts';
+import { M14 } from './knowledge/m14.ts';
 import { M15 } from './knowledge/m15.ts';
 import { Objections } from './knowledge/objections.ts';
+import { Outputs } from './outputs.ts';
 import { DataDir } from './log/data-dir.ts';
 import { isNotFound } from './log/session-log.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
+import { OFFICIAL_TOOLS_DIR, TeachingTools } from './teaching-tools.ts';
 import { Studium } from './studium.ts';
 import { Recorder } from './tape/recorder.ts';
 
@@ -58,7 +61,17 @@ export interface App {
   close(): Promise<void>;
 }
 
-const KINDS: ConversationKind[] = ['main', 'talk', 'loop', 'guard', 'm09', 'm05', 'm15', 'm10'];
+const KINDS: ConversationKind[] = [
+  'main',
+  'talk',
+  'loop',
+  'guard',
+  'm09',
+  'm05',
+  'm15',
+  'm10',
+  'output',
+];
 
 export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
   const entries = await Promise.all(
@@ -107,6 +120,14 @@ export async function createApp(opts: AppOptions): Promise<App> {
     reports: await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports')),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
+  const outputs = new Outputs({
+    store: await M14.load(join(dataDir.root, 'knowledge', 'm14')),
+    sources,
+    library,
+    m08,
+    ...(opts.now !== undefined ? { now: opts.now } : {}),
+  });
+  const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
   const studium = new Studium({
     prompts: await loadPrompts(),
     m07: library,
@@ -117,6 +138,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
     m15,
     objections,
     deviations,
+    teaching,
+    outputs,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const inner = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
@@ -143,6 +166,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   studium.attach(hub);
+  outputs.attach(hub);
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
   await studium.ensureMain();
@@ -150,8 +174,9 @@ export async function createApp(opts: AppOptions): Promise<App> {
     hub,
     sources,
     notes,
-    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs }),
+    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs, teaching }),
     inputs,
+    outputs,
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,
     port: opts.port,
