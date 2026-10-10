@@ -1,14 +1,21 @@
 // 正本记录 → 界面上的消息列表与对话状态。纯函数，单测覆盖。
 // 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示，守卫判定、结束等只显示一句结果。
 import type { ChoiceCard, NumberedRecord } from '../shared/records.ts';
+import { judgementLine, W } from './wording.ts';
 
 export interface UiMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   text: string;
-  /** 这条消息起始的正本行号，以后做引用跳转用。 */
+  /** 这条消息起始的正本行号，引用跳转用。 */
   line: number;
+  /** 同一轮多段回复合成一条时，合进来的全部行号（含 line）。 */
+  lines?: number[];
   failed?: boolean;
+  /** 是否学会的判断那句提示：可点开看理由（line 即判定所在行）。 */
+  verdict?: { closed: boolean };
+  /** 学习者对某次判断提的不同看法（原话照记）。 */
+  objection?: { toLine: number; label: string };
   /** 去另一个对话的入口（谈方向、开始学的任务、回到某个对话）。 */
   link?: { sessionId: string; label: string };
 }
@@ -32,15 +39,25 @@ export function toUiMessages(
     const id = `l${String(line)}`;
     switch (r.type) {
       case 'user_message':
-        push({ id, role: 'user', text: r.text, line });
+        push({
+          id,
+          role: 'user',
+          text: r.text,
+          line,
+          ...(r.objection !== undefined
+            ? { objection: { toLine: r.objection.toLine, label: W.objectionTag } }
+            : {}),
+        });
         break;
       case 'assistant_message':
       case 'turn_failed': {
         const text = r.type === 'assistant_message' ? r.text : '（这次回复没完成，可以再发一次）';
         const prev = out.at(-1);
         // 同一轮里的多段助手文字合成一条显示
-        if (prev?.role === 'assistant' && prev.failed !== true) prev.text += `\n\n${text}`;
-        else push({ id, role: 'assistant', text, line });
+        if (prev?.role === 'assistant' && prev.failed !== true) {
+          prev.text += `\n\n${text}`;
+          prev.lines = [...(prev.lines ?? [prev.line]), line];
+        } else push({ id, role: 'assistant', text, line });
         if (r.type === 'turn_failed') {
           const last = out.at(-1);
           if (last) last.failed = true;
@@ -51,11 +68,9 @@ export function toUiMessages(
         push({
           id,
           role: 'system',
-          text:
-            r.closed && r.problem === undefined
-              ? '看起来这部分你已经掌握了。'
-              : '还差一点，我们接着来。',
+          text: judgementLine(r.closed, r.problem),
           line,
+          verdict: { closed: r.closed && r.problem === undefined },
         });
         break;
       case 'loop_ended':

@@ -12,9 +12,40 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
-import { ArrowDownIcon, ArrowRightIcon, ArrowUpIcon, CheckIcon, CopyIcon } from 'lucide-react';
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  ArrowUpIcon,
+  CheckIcon,
+  ChevronRightIcon,
+  CopyIcon,
+} from 'lucide-react';
+import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
+import { useCurrentSession, useHighlight, usePanel } from '@/panel';
+import { W } from '@/wording';
 import type { FC, ReactNode } from 'react';
+
+/** 消息带的附加信息（由 App 的 convertMessage 放进 metadata.custom）。 */
+interface MessageMeta {
+  line?: number;
+  lines?: number[];
+  link?: UiLink;
+  verdict?: { closed: boolean };
+  objection?: { toLine: number; label: string };
+}
+
+function useMeta(): MessageMeta {
+  return useAuiState((s) => s.message.metadata.custom as MessageMeta);
+}
+
+/** 这条消息覆盖的行号（data-lines 用空格隔开，好用 [data-lines~="12"] 找）与是否高亮。 */
+function useLines(): { attr: string; lit: boolean } {
+  const meta = useMeta();
+  const lines = meta.lines ?? (meta.line !== undefined ? [meta.line] : []);
+  const wanted = useHighlight();
+  return { attr: lines.join(' '), lit: coversAny(lines, wanted) };
+}
 
 export const Thread: FC<{
   welcome?: string;
@@ -118,71 +149,109 @@ const Composer: FC<{ placeholder: string }> = ({ placeholder }) => (
   </ComposerPrimitive.Root>
 );
 
-const AssistantMessage: FC = () => (
-  <MessagePrimitive.Root data-role="assistant" className="fade-in animate-in relative duration-150">
-    <div
-      data-testid="assistant-message"
-      className="font-serif text-foreground px-1 text-[1.05rem] leading-relaxed wrap-break-word"
+const AssistantMessage: FC = () => {
+  const { attr, lit } = useLines();
+  return (
+    <MessagePrimitive.Root
+      data-role="assistant"
+      data-lines={attr}
+      className={cn(
+        'fade-in animate-in relative scroll-mt-16 duration-150',
+        lit && 'bg-primary/5 ring-primary/40 -mx-2 rounded-xl px-2 py-1 ring-2',
+      )}
     >
-      <MessagePrimitive.Parts>
-        {({ part }) => (part.type === 'text' ? <MarkdownText /> : null)}
-      </MessagePrimitive.Parts>
-      <AuiIf
-        condition={(s) => s.message.status?.type === 'running' && s.message.parts.length === 0}
+      <div
+        data-testid="assistant-message"
+        className="font-serif text-foreground px-1 text-[1.05rem] leading-relaxed wrap-break-word"
       >
-        <span className="animate-pulse font-sans" aria-label="正在回答">
-          ●
-        </span>
-      </AuiIf>
-      <MessagePrimitive.Error>
-        <ErrorPrimitive.Root className="border-destructive bg-destructive/10 text-destructive mt-2 rounded-md border p-3 text-sm">
-          <ErrorPrimitive.Message className="line-clamp-2" />
-        </ErrorPrimitive.Root>
-      </MessagePrimitive.Error>
-    </div>
-    <ActionBarPrimitive.Root
-      hideWhenRunning
-      autohide="not-last"
-      className="text-muted-foreground ms-0 mt-1 flex gap-1"
-    >
-      <ActionBarPrimitive.Copy asChild>
-        <TooltipIconButton tooltip="复制">
-          <AuiIf condition={(s) => s.message.isCopied}>
-            <CheckIcon />
-          </AuiIf>
-          <AuiIf condition={(s) => !s.message.isCopied}>
-            <CopyIcon />
-          </AuiIf>
-        </TooltipIconButton>
-      </ActionBarPrimitive.Copy>
-    </ActionBarPrimitive.Root>
-  </MessagePrimitive.Root>
-);
+        <MessagePrimitive.Parts>
+          {({ part }) => (part.type === 'text' ? <MarkdownText /> : null)}
+        </MessagePrimitive.Parts>
+        <AuiIf
+          condition={(s) => s.message.status?.type === 'running' && s.message.parts.length === 0}
+        >
+          <span className="animate-pulse font-sans" aria-label="正在回答">
+            ●
+          </span>
+        </AuiIf>
+        <MessagePrimitive.Error>
+          <ErrorPrimitive.Root className="border-destructive bg-destructive/10 text-destructive mt-2 rounded-md border p-3 text-sm">
+            <ErrorPrimitive.Message className="line-clamp-2" />
+          </ErrorPrimitive.Root>
+        </MessagePrimitive.Error>
+      </div>
+      <ActionBarPrimitive.Root
+        hideWhenRunning
+        autohide="not-last"
+        className="text-muted-foreground ms-0 mt-1 flex gap-1"
+      >
+        <ActionBarPrimitive.Copy asChild>
+          <TooltipIconButton tooltip="复制">
+            <AuiIf condition={(s) => s.message.isCopied}>
+              <CheckIcon />
+            </AuiIf>
+            <AuiIf condition={(s) => !s.message.isCopied}>
+              <CopyIcon />
+            </AuiIf>
+          </TooltipIconButton>
+        </ActionBarPrimitive.Copy>
+      </ActionBarPrimitive.Root>
+    </MessagePrimitive.Root>
+  );
+};
 
-const UserMessage: FC = () => (
-  <MessagePrimitive.Root
-    data-role="user"
-    className="fade-in animate-in flex justify-end px-1 duration-150"
-  >
-    <div
-      data-testid="user-message"
-      className="bg-muted text-foreground max-w-[85%] rounded-(--composer-radius) px-4 py-2.5 whitespace-pre-wrap wrap-break-word"
+const UserMessage: FC = () => {
+  const { attr, lit } = useLines();
+  const meta = useMeta();
+  return (
+    <MessagePrimitive.Root
+      data-role="user"
+      data-lines={attr}
+      className="fade-in animate-in flex scroll-mt-16 flex-col items-end gap-1 px-1 duration-150"
     >
-      <MessagePrimitive.Parts />
-    </div>
-  </MessagePrimitive.Root>
-);
+      {meta.objection !== undefined && (
+        <span className="text-muted-foreground text-xs">{meta.objection.label}</span>
+      )}
+      <div
+        data-testid="user-message"
+        className={cn(
+          'bg-muted text-foreground max-w-[85%] rounded-(--composer-radius) px-4 py-2.5 whitespace-pre-wrap wrap-break-word transition-shadow',
+          meta.objection !== undefined && 'border-primary/40 border',
+          lit && 'bg-primary/10 ring-primary/50 ring-2',
+        )}
+      >
+        <MessagePrimitive.Parts />
+      </div>
+    </MessagePrimitive.Root>
+  );
+};
 
 /** 程序给的一句结果（掌握了、学完了、记下方向）或去别的对话的入口：小字显示，不是谁说的话。 */
 const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const link = useAuiState((s) => s.message.metadata.custom.link as UiLink | undefined);
+  const { link, verdict, line } = useMeta();
   const open = useOpenSession();
+  const panel = usePanel();
+  const sessionId = useCurrentSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
-      {link ? (
+      {verdict !== undefined && sessionId !== undefined && line !== undefined ? (
+        <button
+          type="button"
+          data-testid="judgement"
+          className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm"
+          onClick={() => panel.show({ kind: 'loop', loopId: sessionId, verdictLine: line })}
+        >
+          <span className="bg-border h-px w-4" />
+          {text}
+          <span className="text-primary flex items-center text-xs opacity-80 group-hover:opacity-100">
+            {W.whyJudged}
+            <ChevronRightIcon className="size-3.5" />
+          </span>
+        </button>
+      ) : link ? (
         <button
           type="button"
           data-testid="conversation-link"

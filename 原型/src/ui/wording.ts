@@ -1,0 +1,177 @@
+// 界面上给学习者看的叫法，统一放这里（以后改叫法只改这一处）。
+// 内部词（闭环、选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里；
+// wording.test.ts 会查。对照：右边注释是内部叫法，只给写代码的人看。
+import type { LoopStatus, M08Source, StateRecordView } from '../shared/protocol.ts';
+
+export const W = {
+  // ── 项目页 ──
+  projectHome: '项目概览', // 项目页（Overview）
+  projectChat: '项目对话', // 主对话
+  goal: '想学的方向', // 方向目标
+  goalMissing: '还没谈定。在项目对话里说说你想学什么。',
+  backToChat: '回到项目对话',
+  nextStep: '下一步学什么',
+  learnTasks: '学习', // 闭环对话列表
+  talkTasks: '谈话', // 畅谈对话
+  noneYet: '还没有',
+  groups: {
+    inProgress: '进行中',
+    awaitingChoice: '等你选',
+    closed: '学完了', // 合上
+    unclosed: '先放下的', // 没合上（停车场）
+  },
+  groupHints: {
+    inProgress: '正在学、还没学完的',
+    awaitingChoice: '接下来学哪个，挑一个就开始',
+    closed: '判断过你已经学会、你也确认了的',
+    unclosed: '没学完就先停下的，以后可以再接着学',
+  },
+  openConversation: '打开对话',
+  lastJudgement: (closed: boolean) => (closed ? '上次判断：已经掌握' : '上次判断：还差一点'),
+
+  // ── 选项 ──
+  pickOne: '接下来学哪个？挑一个开始',
+  recommended: '推荐',
+  chosen: '已选',
+  opening: '正在开…',
+  whyThis: '为什么推荐 · 出处',
+  cardTrigger: '为什么现在给这些选项',
+  sources: '出处',
+  noSources: '这一项没有记出处。',
+
+  // ── 依据面板 ──
+  panel: '依据', // 右侧依据面板
+  panelOpen: '打开依据',
+  panelClose: '关上',
+  panelBack: '返回',
+  panelHome: '可以看的东西',
+  loopBasis: '这次学习的依据', // 闭环依据
+  status: {
+    in_progress: '进行中',
+    closed: '学完了',
+    unclosed: '先放下了',
+  } satisfies Record<LoopStatus, string>,
+  plan: '这次学什么', // 开场单子
+  newPoint: '这次要学的', // 新点
+  clause: '这一步怎么连上的', // 子句
+  startPoints: '从你已有的出发', // 出发点
+  routeAction: '这一步的安排', // 路线动作
+  startSource: {
+    M09: '你之前学会的',
+    自述: '你自己说会的',
+    假定: '先假定你会的',
+  } as const,
+  notes: '老师的观察记录', // 诊断记录
+  notesHint: '学的过程中记下的观察，不写进回复，只放在这里供你查看。',
+  noNotes: '还没有记。',
+  judgements: '是否学会的判断', // 守卫判定
+  noJudgements: '还没判断过。',
+  judgedYes: '判断：已经掌握',
+  judgedNo: '判断：还差一点',
+  whyJudged: '为什么这么判断',
+  reason: '理由',
+  problem: '没能采用这次判断的原因',
+  quotedWords: '依据的原话',
+  askedBy: (by: 'model' | 'learner') =>
+    by === 'learner' ? '你说“我觉得懂了”' : '老师提出可以看看',
+  jumpTo: '在对话里看',
+  // 引用的是记录里的行号，和对话里看到的第几句对不上，所以不写数字，点了跳过去看
+  lineRef: '（那句原话）',
+  lineRangeRef: '（那几句原话）',
+  loopLineSource: '对话里的一句',
+  ended: '结束时说明',
+  notAvailable: '（这一行不是对话里的话）',
+
+  // ── 异议 ──
+  objectJudgement: '我觉得判得不对',
+  objectRecord: '我觉得记得不对',
+  objectPlaceholder: '说说哪里不对、你是怎么想的…',
+  objectSubmit: '提交',
+  objectCancel: '算了',
+  objectSent: '收到了，原话已记下。',
+  objectSentInLoop: '收到了，你的话已经放进这段学习对话里，可以接着学，再说“我觉得懂了”。',
+  objections: '你提过的不同看法',
+  objectionTag: '对上面那次判断的不同看法',
+
+  // ── 知识点（书里的） ──
+  point: '知识点',
+  pointFrom: '怎么连到这里的',
+  pointTo: '从这里能接着学',
+  cautions: '要小心',
+  extraNotes: '补充说明',
+  anchors: '书里的位置',
+  threshold: '关键的一步', // 阈值点
+  scope: { 范围内: '在这次要学的范围里', 前置: '要先会的' } as const,
+  splitOf: '从这个大的拆出来：',
+  page: (book: string, page?: number) => (page !== undefined ? `${book} · 第 ${page} 页` : book),
+  emptyLibrary: '书里的知识点还没整理出来。',
+
+  // ── 记录 ──
+  learned: '我学会的', // M09 形成记录
+  learnedEmpty: '还没有学会的记录。学完一部分并确认后会记在这里。',
+  understanding: '你怎么理解的',
+  process: '怎么学会的',
+  unmet: '还没做到的',
+  strength: '证据有多强',
+  myState: '我的状态', // M15
+  myStateEmpty: '还没整理过。',
+  currentState: '现在的状态',
+  stage: '所处阶段',
+  basisSpan: '依据的时间段',
+  stateRecords: '整理时依据的观察',
+  stateSource: { 自述: '你说的', 观察: '看到的', 推断: '推测的' } satisfies Record<
+    StateRecordView['source'],
+    string
+  >,
+  stateOutput: { 承载读数: '当前读数', 解释候选: '一种可能的解释' } satisfies Record<
+    StateRecordView['output'],
+    string
+  >,
+  timeRange: '时间范围',
+  teaching: '教法记录', // M10
+  teachingEmpty: '还没有教法记录。',
+  conditions: '当时的情况',
+  strategies: '用了什么教法',
+  followedBy: '之后怎样',
+  toolsUsed: '用到的教学工具',
+
+  // ── 出处种类 ──
+  sourceKind: {
+    m08_point: '书里的知识点',
+    m08_clause: '书里的一步连接',
+    m09_record: '你之前学会的',
+    loop_line: '之前对话里的话',
+    book_line: '书里的一处',
+    unknown: '查不到的出处',
+  } as const,
+  sourceNotResolved: '查不到原文',
+
+  // ── 书给的 / 模型补的 ──
+  m08Source: {
+    书给的: '书给的',
+    模型补的: '模型补的',
+    未审: '没核对过',
+  } satisfies Record<M08Source, string>,
+
+  // ── 模型与外发 ──
+  modelLabel: '模型',
+  modelFallback: '兜底',
+  disclosure: '内容送往哪里', // 外发披露
+  disclosureService: '送往的服务',
+  disclosureRoute: '经什么通道',
+  disclosureAdapter: '程序里接模型的方式',
+  disclosureSends: '会送出去的内容',
+  disclosureSessions: '各类对话用的模型',
+  defaultModel: '服务默认',
+  defaultEffort: '默认',
+  effort: '思考强度',
+
+  // ── 通用 ──
+  loading: '正在读…',
+  loadFailed: '没读到：',
+} as const;
+
+/** 判断结果的一句话（对话里那句提示用同一说法）。 */
+export function judgementLine(closed: boolean, problem?: string): string {
+  return closed && problem === undefined ? '看起来这部分你已经掌握了。' : '还差一点，我们接着来。';
+}

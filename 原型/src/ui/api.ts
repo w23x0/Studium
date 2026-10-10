@@ -1,6 +1,18 @@
 // 与核心通话：口令从地址栏 ?token= 取一次，存进 sessionStorage。
 import type {
+  CardResponse,
   ChooseResponse,
+  Clause08Response,
+  DisclosureResponse,
+  FormationsResponse,
+  LoopEvidenceResponse,
+  ObjectionResponse,
+  Point08Response,
+  ProjectOverviewResponse,
+  RecordObjectionRequest,
+  SessionModelResponse,
+  StateResponse,
+  StrategiesResponse,
   ListProjectsResponse,
   ListSessionsResponse,
   ProjectResponse,
@@ -30,6 +42,9 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   return body;
 }
 
+const listeners = new Set<(e: ServerEvent) => void>();
+let source: EventSource | undefined;
+
 export const api = {
   listSessions: () => call<ListSessionsResponse>('/sessions'),
   projects: () => call<ListProjectsResponse>('/projects'),
@@ -56,13 +71,40 @@ export const api = {
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
   send: (id: string, text: string) =>
     call<object>(`/sessions/${id}/messages`, { method: 'POST', body: JSON.stringify({ text }) }),
+  // ── 依据可见 ──
+  overview: (mainId: string) => call<ProjectOverviewResponse>(`/projects/${mainId}/overview`),
+  loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),
+  card: (cardId: string) => call<CardResponse>(`/cards/${cardId}`),
+  point: (id: string) => call<Point08Response>(`/m08/points/${encodeURIComponent(id)}`),
+  clause: (id: string) => call<Clause08Response>(`/m08/clauses/${encodeURIComponent(id)}`),
+  formations: () => call<FormationsResponse>('/m09/records'),
+  strategies: () => call<StrategiesResponse>('/m10/records'),
+  state: () => call<StateResponse>('/m15/state'),
+  disclosure: () => call<DisclosureResponse>('/disclosure'),
+  sessionModel: (id: string) => call<SessionModelResponse>(`/sessions/${id}/model`),
+  objectToVerdict: (loopId: string, line: number, text: string) =>
+    call<ObjectionResponse>(`/sessions/${loopId}/objections`, {
+      method: 'POST',
+      body: JSON.stringify({ line, text }),
+    }),
+  objectToRecord: (req: RecordObjectionRequest) =>
+    call<ObjectionResponse>('/objections', { method: 'POST', body: JSON.stringify(req) }),
+  /** 订阅事件：整页共用一条事件连接（浏览器对同一地址的长连接数有限），最后一个退订时关掉。 */
   events(onEvent: (e: ServerEvent) => void): () => void {
-    const es = new EventSource(`/api/events?token=${encodeURIComponent(TOKEN)}`);
-    es.onmessage = (m: MessageEvent<string>) => {
-      onEvent(JSON.parse(m.data) as ServerEvent);
-    };
+    listeners.add(onEvent);
+    if (source === undefined) {
+      source = new EventSource(`/api/events?token=${encodeURIComponent(TOKEN)}`);
+      source.onmessage = (m: MessageEvent<string>) => {
+        const e = JSON.parse(m.data) as ServerEvent;
+        for (const l of [...listeners]) l(e);
+      };
+    }
     return () => {
-      es.close();
+      listeners.delete(onEvent);
+      if (listeners.size === 0) {
+        source?.close();
+        source = undefined;
+      }
     };
   },
 };
