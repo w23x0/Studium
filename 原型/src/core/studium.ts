@@ -20,6 +20,9 @@ import type {
   Ticket,
 } from '../shared/records.ts';
 import { Detours } from './detour.ts';
+import { LongTerm } from './longterm.ts';
+import { REVISIT_KINDS } from '../shared/records-longterm.ts';
+import type { Deviations } from './knowledge/m05-deviations.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { foldLoop, LOAD_HEAVY, PARKING_PILE, stateLabel } from './loop-state.ts';
 import type { Library } from './knowledge/m07.ts';
@@ -28,6 +31,7 @@ import type { M08 } from './knowledge/m08.ts';
 import {
   EVIDENCE_INDEPENDENCE,
   EVIDENCE_TIMES,
+  LEVELS,
   NOTE_GRADES,
   describeEvidence,
   type EvidenceStrength,
@@ -59,6 +63,8 @@ export interface StudiumOptions {
   m15: M15;
   /** 学习者异议存放处。 */
   objections: Objections;
+  /** M05 自有的路线偏差记录（批 6）。 */
+  deviations: Deviations;
   /** 原文与出处（M07 检索、教材出处核对）。 */
   sources: Sources;
   now?: () => Date;
@@ -75,8 +81,24 @@ export class Studium {
   /** 闭环中途：通知 M05 → 小卡 → 分叉 / 搁置 / 停车记录（批 5）。 */
   private readonly detours: Detours;
 
+  /** 跨闭环的长期功能（批 6）：复习 / 复检、降档、当前视图、接着学、复盘、提醒、路线偏差。 */
+  readonly longterm: LongTerm;
+
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
+    this.longterm = new LongTerm({
+      hub: () => this.hub,
+      m08: o.m08,
+      m09: o.m09,
+      m15: o.m15,
+      deviations: o.deviations,
+      now: () => this.now(),
+      iso: () => this.iso(),
+      newId: (prefix) => this.newId(prefix),
+      loopOpening: (t) => this.loopOpening(t),
+      projectOf: (id) => this.projectOf(id),
+      stateQueryTool: () => this.stateQueryTool(),
+    });
     this.detours = new Detours({
       hub: () => this.hub,
       m08: o.m08,
@@ -154,9 +176,19 @@ export class Studium {
         case 'main':
           return this.mainTools(sessionId);
         case 'talk':
-          return [...this.readTools(sessionId), this.settleGoalTool(sessionId)];
+          // 同一类会话两种活：谈方向；阶段复盘（finish_review 只在复盘会话里可用）
+          return [
+            ...this.readTools(sessionId),
+            this.settleGoalTool(sessionId),
+            ...this.longterm.reviewTools(sessionId),
+          ];
         case 'loop':
-          return [...this.readTools(sessionId), ...this.loopTools(sessionId)];
+          return [
+            ...this.readTools(sessionId),
+            this.loopTranscriptTool(),
+            ...this.loopTools(sessionId),
+            ...this.longterm.loopTools(sessionId),
+          ];
         case 'guard':
           return [...this.readTools(sessionId, { m09: false }), this.verdictTool(sessionId)];
         case 'm09':
@@ -166,6 +198,7 @@ export class Studium {
             : [
                 ...this.readTools(sessionId, { m07: false, m09: false }),
                 this.formationTool(sessionId),
+                ...this.longterm.m09Tools(sessionId),
               ];
         case 'm05':
           // 同一类会话三种活：出下一闭环的选择卡；闭环中途的小卡；给没合上 / 搁置的闭环记停车记录
@@ -175,6 +208,7 @@ export class Studium {
               this.loopTranscriptTool(),
               this.stateQueryTool(),
               this.cardTool(sessionId),
+              ...this.longterm.m05Tools(sessionId),
             ]
           );
         case 'm15':
@@ -466,6 +500,7 @@ export class Studium {
       option,
       loopSessionId: loop.sessionId,
     });
+    await this.longterm.onChosen(mainId, card, option, loop.sessionId);
     await this.hub.send(loop.sessionId, {
       role: 'program',
       text: this.loopOpening(picked.ticket),
@@ -523,18 +558,50 @@ export class Studium {
       closed: false,
       note,
     });
+    await this.longterm.onUnclosed(loopId);
     this.background('没合上之后的清单', () => this.afterLoop(loopId, false));
   }
 
   // ───────────── 闭环中途：小卡、分叉、搁置（批 5）─────────────
 
   /** 学习者在闭环里的小卡上选定：先补 / 先去学（开分叉闭环）· 先不管接着学 · 先搁置。 */
-  chooseDetour(
+  async chooseDetour(
     loopId: string,
     cardId: string,
     option: number,
   ): Promise<{ choice: 'fork' | 'continue' | 'shelve'; forkLoopSessionId?: string }> {
-    return this.detours.choose(loopId, cardId, option);
+    const r = await this.detours.choose(loopId, cardId, option);
+    await this.longterm.onDetourChosen(loopId, cardId, option, r.choice);
+    return r;
+  }
+
+  // ───────────── 跨闭环的长期功能（批 6）─────────────
+
+  /** 没合上就结束的闭环，学习者点“接着学”：开新闭环续接它。 */
+  continueLoop(loopId: string): Promise<string> {
+    return this.longterm.continueLoop(loopId);
+  }
+
+  /** 重新分析前的检查：只能是已合上、写过分析的闭环。 */
+  async assertReanalyzable(loopId: string): Promise<void> {
+    const opened = await this.hub.opened(loopId).catch((e: unknown) => {
+      if (e instanceof NotFoundError) return undefined;
+      throw e;
+    });
+    if (opened?.kind !== 'loop') throw new BadRequestError('这不是一个闭环。');
+    const ended = (await this.hub.records(loopId)).find((r) => r.record.type === 'loop_ended');
+    if (ended?.record.type !== 'loop_ended' || !ended.record.closed) {
+      throw new BadRequestError('只有合上的闭环才有分析可重做。');
+    }
+    if (this.o.m09.forLoop(loopId).length === 0) {
+      throw new BadRequestError('这个闭环还没有分析记录（写 M09 没成功），不是重做的情况。');
+    }
+  }
+
+  /** 对已合上的闭环用当前模型重新分析：新版本并存，旧版本不动；由程序触发，不在闭环结束时自动做。 */
+  async reanalyzeLoop(loopId: string): Promise<void> {
+    await this.assertReanalyzable(loopId);
+    await this.writeM09(loopId, true);
   }
 
   /** 学习者把闭环搁置（可恢复）；后台让 M05 记停车记录（恢复计划）。 */
@@ -788,7 +855,7 @@ export class Studium {
 
   private readonly formations = new Set<string>();
 
-  private async writeM09(loopId: string): Promise<void> {
+  private async writeM09(loopId: string, redo = false): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
     const verdict = records
@@ -797,9 +864,11 @@ export class Studium {
       .at(-1);
     const s = await this.hub.createSession('m09', { title: '写形成记录', parent: loopId });
     this.m09Target.set(s.sessionId, { loopId, records });
+    this.longterm.m09Opened(s.sessionId, loopId, records, redo);
     await this.hub.send(s.sessionId, {
       role: 'program',
       text: [
+        ...(await this.longterm.m09Opening(loopId, records, redo)),
         '单子：',
         opened.ticket ? this.describeTicket(opened.ticket) : '（缺单子）',
         '',
@@ -811,6 +880,7 @@ export class Studium {
     });
     await this.hub.idle(s.sessionId);
     this.m09Target.delete(s.sessionId);
+    this.longterm.m09Closed(s.sessionId);
     if (!this.formations.has(s.sessionId)) throw new Error('写 M09 的会话没有提交形成记录');
   }
 
@@ -835,6 +905,12 @@ export class Studium {
         start_point_evidence: z.array(strengthShape.extend({ point: z.string() })).optional(),
         evidence_strength: z.string().optional().describe('旧形态，不再使用；请填上面两项'),
         evidence_lines: z.array(z.number().int()),
+        level: z
+          .enum(LEVELS)
+          .optional()
+          .describe('新点在学习者身上表现到的理解层级（认出 / 复现 / 结构 / 迁移），只作索引'),
+        summary: z.string().optional().describe('一句话摘要（索引）'),
+        keywords: z.array(z.string()).optional().describe('检索关键词（索引）'),
       },
       run: async (a) => {
         if (this.formations.has(sessionId)) return err('已经写过了');
@@ -864,6 +940,8 @@ export class Studium {
         const bad = lines.filter((l) => !learner.has(l));
         if (bad.length > 0)
           return err(`第 ${bad.join('、')} 行不是学习者说的话；证据只引学习者的行`);
+        const revisit = await this.longterm.revisitOfLoop(target.loopId);
+        const version = this.o.m09.forLoop(target.loopId).length + 1;
         await this.o.m09.add({
           id: this.newId('f'),
           at: this.iso(),
@@ -878,6 +956,13 @@ export class Studium {
           ...(evidence ? { evidence } : {}),
           evidenceLines: lines,
           model: await this.hub.executedModel(sessionId),
+          version,
+          ...(a.level !== undefined ? { level: a.level as (typeof LEVELS)[number] } : {}),
+          ...(a.summary !== undefined && (a.summary as string).trim() !== ''
+            ? { summary: (a.summary as string).trim() }
+            : {}),
+          ...(a.keywords !== undefined ? { keywords: a.keywords as string[] } : {}),
+          ...(revisit !== undefined ? { revisit } : {}),
         });
         this.formations.add(sessionId);
         return ok('已写入 M09');
@@ -928,6 +1013,7 @@ export class Studium {
         : []),
       this.m08Summary(scope, await this.recentSpot(loops)),
       '',
+      ...(await this.longterm.m05Opening(mainId)),
       '学习者状态（M15）：要用时用 query_state 查；没有记录按无状态约束。',
     ].join('\n');
   }
@@ -1050,6 +1136,15 @@ export class Studium {
         z.object({ point: z.string(), source: z.enum(['M09', '自述', '假定']) }),
       ),
       route_action: z.string(),
+      revisit: z
+        .object({
+          kind: z.enum(REVISIT_KINDS),
+          formation_ids: z.array(z.string()).min(1),
+        })
+        .optional()
+        .describe(
+          '复习 / 复检以前合上过的点时填：kind，和以前的 M09 形成记录 id（它们的新点必须就是 new_point）；学新点不填',
+        ),
       title: z.string().describe('给学习者看的一句话'),
       reason: z.string(),
       sources: z
@@ -1078,6 +1173,9 @@ export class Studium {
             clause: o.clause,
             startPoints: o.start_points.map((s) => ({ point: s.point, source: s.source })),
             routeAction: o.route_action,
+            ...(o.revisit !== undefined
+              ? { revisit: { kind: o.revisit.kind, formationIds: o.revisit.formation_ids } }
+              : {}),
           },
         }));
         const blank = raw.flatMap((o, i) =>
@@ -1087,7 +1185,10 @@ export class Studium {
         );
         if (blank.length > 0) return err(`${blank.join('；')}。改好后重新提交`);
         const problems = options
-          .map((o, i) => [i, this.ticketProblem(o.ticket)] as const)
+          .map(
+            (o, i) =>
+              [i, this.ticketProblem(o.ticket) ?? this.longterm.revisitProblem(o.ticket)] as const,
+          )
           .filter(([, p]) => p !== undefined)
           .map(([i, p]) => `第 ${String(i)} 项：${p ?? ''}`);
         if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
@@ -1126,6 +1227,7 @@ export class Studium {
 
   private mainTools(mainId: string): ToolSpec[] {
     return [
+      ...this.longterm.mainTools(mainId),
       {
         name: 'open_goal_talk',
         description:
@@ -1184,7 +1286,7 @@ export class Studium {
         description: '按记录列出本项目合上过的、进行中的、没合上的闭环，以及 M09 形成记录。',
         input: {},
         run: async () => {
-          const rows = this.o.m09.all().map((r) => this.o.m09.describe(r));
+          const rows = this.o.m09.current().map((r) => this.o.m09.describe(r));
           const loops: string[] = [];
           for (const l of this.hub
             .listSessions()
@@ -1428,6 +1530,7 @@ export class Studium {
       .flatMap((s) => this.o.m09.externalsForPoint(s.point))
       .map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id)));
     return [
+      ...this.longterm.revisitOpening(t),
       '本闭环的单子（M05）：',
       this.describeTicket(t),
       '',
@@ -2183,6 +2286,7 @@ export class Studium {
       );
     }
     if (opt.m09 !== false) {
+      tools.push(...this.longterm.viewTools());
       tools.push({
         name: 'query_m09',
         description:
@@ -2190,7 +2294,7 @@ export class Studium {
         input: { point: z.string().optional() },
         run: (a) => {
           const p = a.point as string | undefined;
-          const rows = p ? this.o.m09.forPoint(p) : this.o.m09.all();
+          const rows = p ? this.o.m09.forPoint(p) : this.o.m09.current();
           const ext = p ? this.o.m09.externalsForPoint(p) : this.o.m09.externals();
           const closed = rows
             .map((r) => this.o.m09.describe(r) + this.objectionNotes('m09', r.id))

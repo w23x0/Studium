@@ -1,6 +1,7 @@
 // M09：已结束闭环的个人形成记录。只在守卫通过、学习者确认后写入（写 M09 会话的工具）。
 // 底层是闭环对话原文（M01 正本），这里存的是指回原文行号的分析层。只追加。
 import { join } from 'node:path';
+import type { Revisit } from '../../shared/records-longterm.ts';
 import { appendJsonl, readJsonl } from './jsonl.ts';
 
 /** 一处证据的强度：时间维度 × 独立性维度。 */
@@ -49,6 +50,43 @@ export interface FormationRecord {
   evidenceLines: number[];
   /** 写这条分析的实际模型。 */
   model: string;
+  /** 这个闭环的第几版分析（批 6：分析可重做、多版本并存）；旧记录没有 = 第 1 版。 */
+  version?: number;
+  /** 新点在学习者身上表现到的理解层级（认出 / 复现 / 结构 / 迁移）：只作索引，不是掌握真值。 */
+  level?: Level;
+  /** 一句话摘要与检索关键词（索引，可重建；没有时当前视图从“学出的理解”里取）。 */
+  summary?: string;
+  keywords?: string[];
+  /** 这个闭环是复习 / 复检（单子上的 revisit），结果写 M09 时标明。 */
+  revisit?: Revisit;
+}
+
+/** 理解层级（理解理论的四级）：只作诊断与索引维度。 */
+export const LEVELS = ['认出', '复现', '结构', '迁移'] as const;
+export type Level = (typeof LEVELS)[number];
+
+/** 时间版本记录（M09:32）：提取失败 · 降档 · 重新掌握；另起一条指向旧记录，旧记录不改。 */
+export const TIMELINE_KINDS = ['提取失败', '降档', '重新掌握'] as const;
+export type TimelineKind = (typeof TIMELINE_KINDS)[number];
+
+export interface TimelineRecord {
+  id: string;
+  at: string;
+  kind: TimelineKind;
+  /** 哪个点（M08 点 id）。 */
+  point: string;
+  /** 来自哪个闭环的提交（提取失败 / 降档来自后续闭环、重新掌握来自复检闭环）。 */
+  loopSessionId: string;
+  /** 指向的旧记录（形成记录 / 外部导入 / 更早的时间版本记录 id）。 */
+  targets: string[];
+  reason: string;
+  /** 学习者在这个闭环里的原话行。 */
+  evidenceLines: number[];
+  /** 提取失败 / 降档：怎样排除了疲劳等状态侧解释（M04:49）。 */
+  stateRuledOut?: string;
+  /** 降档 / 重新掌握之后的理解层级。 */
+  level?: Level;
+  model: string;
 }
 
 /**
@@ -84,17 +122,53 @@ export class M09 {
     private rows: FormationRecord[],
     private readonly externalPath: string,
     private external: ExternalRecord[],
+    private readonly timelinePath: string,
+    private timeline: TimelineRecord[],
   ) {}
 
   static async load(dir: string): Promise<M09> {
     const path = join(dir, 'records.jsonl');
     const externalPath = join(dir, 'external.jsonl');
+    const timelinePath = join(dir, 'timeline.jsonl');
     return new M09(
       path,
       await readJsonl<FormationRecord>(path),
       externalPath,
       await readJsonl<ExternalRecord>(externalPath),
+      timelinePath,
+      await readJsonl<TimelineRecord>(timelinePath),
     );
+  }
+
+  /** 追加一条时间版本记录（提取失败 / 降档 / 重新掌握）；旧记录不动。 */
+  async addTimeline(r: TimelineRecord): Promise<void> {
+    await appendJsonl(this.timelinePath, r);
+    this.timeline.push(r);
+  }
+
+  timelines(): TimelineRecord[] {
+    return [...this.timeline];
+  }
+
+  timelineRecord(id: string): TimelineRecord | undefined {
+    return this.timeline.find((r) => r.id === id);
+  }
+
+  /** 某个闭环写过的全部分析版本（旧在前）。 */
+  forLoop(loopId: string): FormationRecord[] {
+    return this.rows.filter((r) => r.loopSessionId === loopId);
+  }
+
+  /** 每个闭环只取最新一版分析（当前视图默认用它；旧版本用 all() / forLoop() 查）。 */
+  current(): FormationRecord[] {
+    const latest = new Map<string, FormationRecord>();
+    for (const r of this.rows) {
+      const had = latest.get(r.loopSessionId);
+      if (had === undefined || (r.version ?? 1) >= (had.version ?? 1)) {
+        latest.set(r.loopSessionId, r);
+      }
+    }
+    return this.rows.filter((r) => latest.get(r.loopSessionId) === r);
   }
 
   async addExternal(r: ExternalRecord): Promise<void> {
@@ -146,18 +220,32 @@ export class M09 {
     return [...new Set(this.rows.map((r) => r.newPoint))];
   }
 
+  /** 与某个点有关的形成记录（每个闭环只取最新一版分析）。 */
   forPoint(pointId: string): FormationRecord[] {
-    return this.rows.filter((r) => r.newPoint === pointId || r.startPoints.includes(pointId));
+    return this.current().filter((r) => r.newPoint === pointId || r.startPoints.includes(pointId));
   }
 
   describe(r: FormationRecord): string {
+    const tags = [
+      ...(r.revisit !== undefined ? [`${r.revisit.kind}闭环`] : []),
+      ...((r.version ?? 1) > 1 ? [`第 ${String(r.version)} 版分析`] : []),
+    ];
     return [
-      `${r.id}（${r.at.slice(0, 10)}，闭环 ${r.loopSessionId}，模型 ${r.model}）`,
+      `${r.id}（${r.at.slice(0, 10)}，闭环 ${r.loopSessionId}，模型 ${r.model}${tags.length > 0 ? `，${tags.join('，')}` : ''}）`,
       `  新点 ${r.newPoint}，子句 ${r.clause}，出发点 ${r.startPoints.join('、')}`,
       `  学出的理解：${r.understanding}`,
       `  过程：${r.process}`,
       `  未满足：${r.unmet || '无'}`,
       `  证据强度：${r.evidence ? describeEvidence(r.evidence) : r.evidenceStrength}；证据行 ${r.evidenceLines.join('、')}`,
+      ...(r.level !== undefined ? [`  理解层级（索引）：${r.level}`] : []),
+    ].join('\n');
+  }
+
+  describeTimeline(r: TimelineRecord, pointName?: (id: string) => string): string {
+    return [
+      `${r.id}（${r.at.slice(0, 10)}，${r.kind}，点 ${r.point}「${pointName?.(r.point) ?? r.point}」，来自闭环 ${r.loopSessionId}，模型 ${r.model}）`,
+      `  指向旧记录：${r.targets.join('、') || '（无）'}；原因：${r.reason}${r.level !== undefined ? `；之后层级：${r.level}` : ''}`,
+      ...(r.stateRuledOut !== undefined ? [`  怎样排除状态侧解释：${r.stateRuledOut}`] : []),
     ].join('\n');
   }
 }

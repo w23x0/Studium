@@ -15,6 +15,8 @@ import type {
   ImageInput,
   LogRecord,
   NumberedRecord,
+  ResumeOrigin,
+  ReviewWindow,
   SessionOpened,
   Ticket,
 } from '../shared/records.ts';
@@ -107,6 +109,8 @@ export class Hub {
       ticket?: Ticket;
       anchorLine?: number;
       fork?: ForkOrigin;
+      resumeOf?: ResumeOrigin;
+      review?: ReviewWindow;
     },
   ): Promise<SessionSummary> {
     const at = this.now();
@@ -123,6 +127,8 @@ export class Hub {
       ...(meta.ticket !== undefined ? { ticket: meta.ticket } : {}),
       ...(meta.anchorLine !== undefined ? { anchorLine: meta.anchorLine } : {}),
       ...(meta.fork !== undefined ? { fork: meta.fork } : {}),
+      ...(meta.resumeOf !== undefined ? { resumeOf: meta.resumeOf } : {}),
+      ...(meta.review !== undefined ? { review: meta.review } : {}),
     };
     await this.append(sessionId, opened);
     return summary(opened);

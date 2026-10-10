@@ -15,6 +15,7 @@ import { Originals } from './knowledge/m07-originals.ts';
 import { SourceReports } from './knowledge/m07-reports.ts';
 import { M08 } from './knowledge/m08.ts';
 import { M09 } from './knowledge/m09.ts';
+import { Deviations } from './knowledge/m05-deviations.ts';
 import { M10 } from './knowledge/m10.ts';
 import { M15 } from './knowledge/m15.ts';
 import { Objections } from './knowledge/objections.ts';
@@ -88,6 +89,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const m09 = await M09.load(join(dataDir.root, 'knowledge', 'm09'));
   const m10 = await M10.load(join(dataDir.root, 'knowledge', 'm10'));
   const m15 = await M15.load(join(dataDir.root, 'knowledge', 'm15'));
+  const deviations = await Deviations.load(join(dataDir.root, 'knowledge', 'm05'));
   const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
   const library = new Library(
     opts.library ?? join(SAMPLE_DIR, '书库'),
@@ -114,6 +116,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     m10,
     m15,
     objections,
+    deviations,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const inner = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;

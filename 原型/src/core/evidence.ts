@@ -125,7 +125,29 @@ export class Evidence {
       verdicts,
       diagnoses: recs.flatMap((r) =>
         r.record.type === 'loop_note'
-          ? [{ line: r.line, at: r.record.at, text: r.record.text }]
+          ? [
+              {
+                line: r.line,
+                at: r.record.at,
+                text: r.record.text,
+                ...(r.record.regression !== undefined
+                  ? {
+                      regression: {
+                        line: r.line,
+                        at: r.record.at,
+                        point: {
+                          id: r.record.regression.point,
+                          name: this.d.m08.name(r.record.regression.point),
+                        },
+                        basisLines: r.record.regression.basisLines,
+                        suspicion: r.record.regression.suspicion,
+                        against: r.record.regression.against,
+                        text: r.record.text,
+                      },
+                    }
+                  : {}),
+              },
+            ]
           : [],
       ),
       objections,
@@ -281,9 +303,11 @@ export class Evidence {
         origin:
           opened.fork !== undefined
             ? { kind: 'fork', fork: await this.forkView(opened.fork) }
-            : made?.type === 'choice_made'
-              ? { kind: 'card', cardId: made.cardId }
-              : { kind: 'unknown' },
+            : opened.resumeOf !== undefined
+              ? { kind: 'resume', fromLoop: opened.resumeOf.fromLoop }
+              : made?.type === 'choice_made'
+                ? { kind: 'card', cardId: made.cardId }
+                : { kind: 'unknown' },
         status: statusOf(recs),
         ...(flags.shelved !== undefined ? { shelved: true } : {}),
         ...(flags.waitingFork !== undefined ? { waitingFork: flags.waitingFork } : {}),
@@ -584,6 +608,17 @@ export class Evidence {
         ? { forkOf: { loopSessionId: opened.fork.fromLoop, reason: opened.fork.reason } }
         : {}),
       ...(flags.parking !== undefined ? { parking: this.parkingView(flags.parking) } : {}),
+      ...(opened.resumeOf !== undefined
+        ? {
+            resumeOf: {
+              loopSessionId: opened.resumeOf.fromLoop,
+              ...(await this.titleOf(opened.resumeOf.fromLoop).then((t) =>
+                t !== undefined ? { title: t } : {},
+              )),
+            },
+          }
+        : {}),
+      ...(opened.ticket?.revisit !== undefined ? { revisit: opened.ticket.revisit.kind } : {}),
       ...(ended !== undefined ? { endedAt: ended.record.at } : {}),
       status: statusOf(recs),
       ...(opened.ticket !== undefined ? { newPoint: this.pointRef(opened.ticket.newPoint) } : {}),
@@ -623,6 +658,14 @@ export class Evidence {
         quotes: await this.quotes(r.loopSessionId, r.evidenceLines),
         model: modelInfoOf(r.model),
         objections: this.d.objections.forRecord('m09', r.id).map(storedView),
+        version: r.version ?? 1,
+        latest: this.d.m09.forLoop(r.loopSessionId).at(-1) === r,
+        ...(r.level !== undefined ? { level: r.level } : {}),
+        ...(r.summary !== undefined ? { summary: r.summary } : {}),
+        ...(r.keywords !== undefined ? { keywords: r.keywords } : {}),
+        ...(r.revisit !== undefined
+          ? { revisit: { kind: r.revisit.kind, formationIds: r.revisit.formationIds } }
+          : {}),
       });
     }
     return out;

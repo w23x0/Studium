@@ -1,5 +1,15 @@
 // 会话正本（JSONL）里每一行的形状。正本只追加、永不改写：行号就是引用地址。
 // 加新类型只能加，不改旧类型的字段含义；读到不认识的类型要原样保留。
+import type {
+  RegressionNote,
+  ReminderAdded,
+  ReminderClosed,
+  ResumeOrigin,
+  Revisit,
+  ReviewWindow,
+} from './records-longterm.ts';
+
+export type * from './records-longterm.ts';
 
 /**
  * main 主对话 · talk 畅谈对话 · loop 闭环对话 · guard 闭环守卫 · m09 写形成记录 · m05 出选择卡
@@ -17,6 +27,8 @@ export interface Ticket {
   startPoints: { point: string; source: 'M09' | '自述' | '假定' }[];
   /** 路线动作：继续主线 / 补前置 / 开分叉 / 返回主线 …… */
   routeAction: string;
+  /** 复习 / 复检：回头看以前合上过的点（批 6）；没有 = 学新点。 */
+  revisit?: Revisit;
 }
 
 export interface SessionOpened {
@@ -32,6 +44,10 @@ export interface SessionOpened {
   anchorLine?: number;
   /** 这个闭环是从另一个闭环分叉出来的（批 5）：来源、原因、返回条件。parent 仍是项目主对话。 */
   fork?: ForkOrigin;
+  /** 这个闭环是接着一个没合上的闭环学的（批 6）：记着原闭环，原闭环的正本不改。 */
+  resumeOf?: ResumeOrigin;
+  /** 这是一次阶段复盘（畅谈类会话的另一种活，批 6）：回看的时间窗口。 */
+  review?: ReviewWindow;
 }
 
 /** 分叉闭环的来历（M01:18 会话关系：来源、分叉、返回；M05:19 返回条件）。 */
@@ -138,6 +154,8 @@ export interface LoopNote {
   type: 'loop_note';
   at: string;
   text: string;
+  /** 结构化条目：“以前会的现在答不出”（批 6）；text 是教学侧对这一条的说明。 */
+  regression?: RegressionNote;
 }
 
 export interface CloseRequested {
@@ -240,6 +258,8 @@ export interface TalkEnded {
   at: string;
   goal: string;
   title: string;
+  /** 阶段复盘交回时有：goal 是交回主对话的那一句（批 6）。 */
+  review?: ReviewWindow;
 }
 
 /** 主对话把学习者指向某个已有对话（跟进某个闭环时）。 */
@@ -399,7 +419,9 @@ export type LogRecord =
   | ForkReturned
   | LoopShelved
   | LoopResumed
-  | ParkingNote;
+  | ParkingNote
+  | ReminderAdded
+  | ReminderClosed;
 
 /** 学习者异议指向什么：守卫的一次判定（闭环 + 判定所在行），或 M09 / M10 / M15 的一条记录（记录 id）。 */
 export type ObjectionTarget =

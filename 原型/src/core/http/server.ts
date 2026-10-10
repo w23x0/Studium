@@ -61,6 +61,7 @@ import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 import { InputError, type Inputs } from '../inputs.ts';
 import { inputsRoute } from './inputs-routes.ts';
+import { longtermRoute } from './longterm-routes.ts';
 
 export interface ServerOptions {
   hub: Hub;
@@ -159,6 +160,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         parts,
         method,
         opts.inputs,
+      )
+    )
+      return;
+    if (
+      await longtermRoute(
+        req,
+        res,
+        new URL(req.url ?? '/', 'http://localhost'),
+        parts,
+        method,
+        studium,
       )
     )
       return;
@@ -558,7 +570,20 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         relations: await ev.loopRelations(b),
       } satisfies LoopRelationsResponse);
     } else if (a === 'projects' && c === 'overview' && n === 4 && b !== undefined) {
-      send(res, 200, { overview: await ev.overview(b) } satisfies ProjectOverviewResponse);
+      // 批 6：项目概览带“今天该做的”，没合上的闭环带谁在接着学
+      const overview = await ev.overview(b);
+      overview.today = await opts.studium.longterm.todayView(b);
+      for (const brief of overview.groups.unclosed) {
+        const by = await opts.studium.longterm.resumedBy(b, brief.sessionId);
+        if (by.length > 0) {
+          brief.resumedBy = by.map((x) => ({
+            loopSessionId: x.loopSessionId,
+            title: x.title,
+            status: !x.ended ? 'in_progress' : x.closed === true ? 'closed' : 'unclosed',
+          }));
+        }
+      }
+      send(res, 200, { overview } satisfies ProjectOverviewResponse);
     } else if (a === 'm09' && b === 'records' && n === 3) {
       const records = await ev.formations(q.get('loop') ?? undefined);
       send(res, 200, { records } satisfies FormationsResponse);

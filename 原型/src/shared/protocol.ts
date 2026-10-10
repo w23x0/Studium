@@ -7,6 +7,9 @@ import type {
   SourceReport,
   SourceReportKind,
 } from './records.ts';
+import type { RegressionView, TodayView } from './protocol-longterm.ts';
+
+export type * from './protocol-longterm.ts';
 
 export interface SessionSummary {
   sessionId: string;
@@ -250,6 +253,8 @@ export interface DiagnosisView {
   line: number;
   at: string;
   text: string;
+  /** 这条诊断是“以前会的现在答不出”的结构化条目（批 6）。 */
+  regression?: RegressionView;
 }
 
 export type LoopStatus = 'in_progress' | 'closed' | 'unclosed';
@@ -382,6 +387,12 @@ export interface LoopBrief {
   forkOf?: { loopSessionId: string; reason: string };
   /** 最近一条停车记录。 */
   parking?: ParkingView;
+  /** 是接着一个没合上的闭环学的（批 6）。 */
+  resumeOf?: { loopSessionId: string; title?: string };
+  /** 没合上的闭环：有哪些续接它的新闭环（批 6）。 */
+  resumedBy?: { loopSessionId: string; title?: string; status: LoopStatus }[];
+  /** 这是复习 / 复检闭环（批 6）。 */
+  revisit?: '复习' | '复检';
 }
 
 /** 同时没收尾的闭环数（M05:28 负荷预算与任务限流；只提示、不硬拦）。 */
@@ -410,6 +421,8 @@ export interface ProjectOverview {
   deadlineNote?: string;
   /** 项目选了几份资料（0 = 没限定，资料工具查全库）。 */
   materialCount?: number;
+  /** 今天该做的：到期的提醒、期限临近、该做阶段复盘了（批 6）。 */
+  today?: TodayView;
   groups: {
     /** 进行中。 */
     inProgress: LoopBrief[];
@@ -433,7 +446,10 @@ export interface LoopRelationView {
   title: string;
   /** 从哪来：选择卡 / 另一个闭环的分叉。 */
   origin:
-    { kind: 'card'; cardId: string } | { kind: 'fork'; fork: ForkOriginView } | { kind: 'unknown' };
+    | { kind: 'card'; cardId: string }
+    | { kind: 'fork'; fork: ForkOriginView }
+    | { kind: 'resume'; fromLoop: string }
+    | { kind: 'unknown' };
   status: LoopStatus;
   shelved?: boolean;
   waitingFork?: string;
@@ -481,6 +497,15 @@ export interface FormationView {
   quotes: QuoteView[];
   model: ModelInfo;
   objections: ObjectionView[];
+  /** 这个闭环的第几版分析（分析可重做、多版本并存；旧记录当第 1 版）。 */
+  version: number;
+  /** 是这个闭环的最新一版（当前视图取它；旧版本仍可查）。 */
+  latest: boolean;
+  level?: string;
+  summary?: string;
+  keywords?: string[];
+  /** 复习 / 复检闭环写的记录。 */
+  revisit?: { kind: '复习' | '复检'; formationIds: string[] };
 }
 
 export interface StrategyView {
