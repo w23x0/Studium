@@ -6,6 +6,7 @@
 
 import json
 import os
+import random
 import subprocess
 import sys
 import tempfile
@@ -17,6 +18,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 _ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+_OC_TRIES = 10  # 并发跑书时限流常见（10-09 实测约 5 路起 429），多等几轮
 _OC_SESSION = str(uuid.uuid4())  # OpenCode Go 按会话路由，要求带 x-opencode-session；一次运行一个
 
 # 在空目录里运行，避免 CLAUDE.md / 项目记忆被自动带进上下文
@@ -45,6 +47,10 @@ def _env(name: str) -> str:
     raise RuntimeError(f"缺 {name}：在 书库处理/.env 里配置（见 .env.example）")
 
 
+class _EmptyReply(Exception):
+    pass
+
+
 def _call_oc(model: str, system: str, user: str, timeout: int) -> Result:
     body = json.dumps({"model": model, "messages": [
         {"role": "system", "content": system}, {"role": "user", "content": user}]}).encode()
@@ -53,17 +59,21 @@ def _call_oc(model: str, system: str, user: str, timeout: int) -> Result:
         headers={"Authorization": f"Bearer {_env('STUDIUM_OC_API_KEY')}", "Content-Type": "application/json",
                  "x-opencode-session": _OC_SESSION, "User-Agent": "studium-proto"})
     start = time.monotonic()
-    for attempt in range(1, 5):  # 服务端 5xx / 限流 / 断线是暂时的，等一会儿重发；4xx 其余直接报错
+    for attempt in range(1, _OC_TRIES + 1):  # 服务端 5xx / 限流 / 断线是暂时的，等一会儿重发；4xx 其余直接报错
         try:
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = json.load(resp)
+            choice = (data.get("choices") or [{}])[0]
+            if not (choice.get("message") or {}).get("content"):  # 空回答（10-09 step-5 常见）：当暂时故障重发
+                raise _EmptyReply(f"空回答 finish_reason={choice.get('finish_reason')}")
             break
-        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ConnectionError) as e:
+        except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, ConnectionError, _EmptyReply) as e:
             code = getattr(e, "code", None)
-            if attempt == 4 or (code is not None and code < 500 and code != 429):
+            if attempt == _OC_TRIES or (code is not None and code < 500 and code != 429):
                 raise
-            print(f"[llm] 第 {attempt} 次失败（{code or e}），{30 * attempt}s 后重试", file=sys.stderr)
-            time.sleep(30 * attempt)
+            wait = min(30 * attempt, 300) + random.uniform(0, 20)  # 加抖动：并发时别一起醒来再一起撞限流
+            print(f"[llm] 第 {attempt} 次失败（{code or e}），{wait:.0f}s 后重试", file=sys.stderr)
+            time.sleep(wait)
     usage = data.get("usage") or {}
     return Result(
         text=data["choices"][0]["message"]["content"].strip(),
