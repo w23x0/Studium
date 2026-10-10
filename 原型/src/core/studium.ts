@@ -19,7 +19,9 @@ import type {
   NumberedRecord,
   Ticket,
 } from '../shared/records.ts';
+import { Detours } from './detour.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
+import { foldLoop, LOAD_HEAVY, PARKING_PILE, stateLabel } from './loop-state.ts';
 import type { Library } from './knowledge/m07.ts';
 import type { Sources } from './sources.ts';
 import type { M08 } from './knowledge/m08.ts';
@@ -70,8 +72,26 @@ export class Studium {
   /** M15 整理一次只跑一个，后到的排在后面。 */
   private stateChain: Promise<void> = Promise.resolve();
 
+  /** 闭环中途：通知 M05 → 小卡 → 分叉 / 搁置 / 停车记录（批 5）。 */
+  private readonly detours: Detours;
+
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
+    this.detours = new Detours({
+      hub: () => this.hub,
+      m08: o.m08,
+      iso: () => this.iso(),
+      newId: (prefix) => this.newId(prefix),
+      describeTicket: (t) => this.describeTicket(t),
+      ticketProblem: (t) => this.ticketProblem(t),
+      m05Opening: (trigger, mainId) => this.m05Opening(trigger, mainId),
+      loopOpening: (t) => this.loopOpening(t),
+      m05ReadTools: (id) => [
+        ...this.readTools(id),
+        this.loopTranscriptTool(),
+        this.stateQueryTool(),
+      ],
+    });
   }
 
   private iso(): string {
@@ -148,12 +168,15 @@ export class Studium {
                 this.formationTool(sessionId),
               ];
         case 'm05':
-          return [
-            ...this.readTools(sessionId),
-            this.loopTranscriptTool(),
-            this.stateQueryTool(),
-            this.cardTool(sessionId),
-          ];
+          // 同一类会话三种活：出下一闭环的选择卡；闭环中途的小卡；给没合上 / 搁置的闭环记停车记录
+          return (
+            this.detours.m05Tools(sessionId) ?? [
+              ...this.readTools(sessionId),
+              this.loopTranscriptTool(),
+              this.stateQueryTool(),
+              this.cardTool(sessionId),
+            ]
+          );
         case 'm15':
           return this.stateTools(sessionId);
         case 'm10':
@@ -354,6 +377,8 @@ export class Studium {
     if (recs.some((r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended')) {
       throw new BadRequestError('这段对话已经结束了，回到项目里接着聊。');
     }
+    // 搁置着的闭环里学习者又说话 = 接着学（先恢复，再交这句话）
+    if (foldLoop(recs).shelved !== undefined) await this.detours.resume(sessionId, 'message');
     const last = recs
       .map((r) => r.record)
       .filter((r) => r.type === 'user_message' || r.type === 'assistant_message')
@@ -454,7 +479,7 @@ export class Studium {
     by: 'model' | 'learner',
     reason: string,
   ): Promise<GuardVerdict> {
-    await this.assertOpenLoop(loopId);
+    await this.assertActiveLoop(loopId);
     await this.hub.record(loopId, {
       type: 'close_requested',
       at: this.iso(),
@@ -471,7 +496,7 @@ export class Studium {
 
   /** 守卫判合上后，学习者确认结束 → 合上之后的清单。 */
   async confirmClose(loopId: string, note: string): Promise<void> {
-    await this.assertOpenLoop(loopId);
+    await this.assertActiveLoop(loopId);
     const recs = (await this.hub.records(loopId)).map((r) => r.record);
     const verdict = recs.filter((r) => r.type === 'guard_verdict').at(-1);
     if (verdict?.type !== 'guard_verdict' || !verdict.closed) {
@@ -499,6 +524,28 @@ export class Studium {
       note,
     });
     this.background('没合上之后的清单', () => this.afterLoop(loopId, false));
+  }
+
+  // ───────────── 闭环中途：小卡、分叉、搁置（批 5）─────────────
+
+  /** 学习者在闭环里的小卡上选定：先补 / 先去学（开分叉闭环）· 先不管接着学 · 先搁置。 */
+  chooseDetour(
+    loopId: string,
+    cardId: string,
+    option: number,
+  ): Promise<{ choice: 'fork' | 'continue' | 'shelve'; forkLoopSessionId?: string }> {
+    return this.detours.choose(loopId, cardId, option);
+  }
+
+  /** 学习者把闭环搁置（可恢复）；后台让 M05 记停车记录（恢复计划）。 */
+  async shelveLoop(loopId: string, note: string): Promise<void> {
+    await this.detours.shelve(loopId, note);
+    this.background('搁置的停车记录', () => this.detours.parkShelved(loopId));
+  }
+
+  /** 学习者点“接着学”，恢复搁置的闭环。 */
+  resumeLoop(loopId: string): Promise<void> {
+    return this.detours.resume(loopId, 'button');
   }
 
   // ───────────── 异议（学习者纠正系统的判断；只追加，不改原记录）─────────────
@@ -585,13 +632,17 @@ export class Studium {
     const mainId = opened.parent ?? (await this.ensureMain());
     this.organizeStateLater(`一段学习（${loopId}）结束了`, loopId);
     this.background('M10 记录', () => this.recordStrategy(loopId));
+    const isFork = opened.fork !== undefined;
     try {
-      await this.hub.send(mainId, {
-        role: 'program',
-        text: closed
-          ? `闭环“${opened.title}”合上了（学习者已确认）。下一张选择卡正在出，出好会贴在这里。`
-          : `闭环“${opened.title}”没合上就结束了。下一张选择卡正在出，出好会贴在这里。`,
-      });
+      // 分叉闭环结束后回到父闭环，不在主对话里出下一张卡
+      if (!isFork) {
+        await this.hub.send(mainId, {
+          role: 'program',
+          text: closed
+            ? `闭环“${opened.title}”合上了（学习者已确认）。下一张选择卡正在出，出好会贴在这里。`
+            : `闭环“${opened.title}”没合上就结束了。下一张选择卡正在出，出好会贴在这里。`,
+        });
+      }
       if (closed) {
         await this.writeM09(loopId);
         await this.hub.record(loopId, {
@@ -600,19 +651,40 @@ export class Studium {
           step: 'm09_written',
           detail: '形成记录已写入 M09',
         });
+      } else {
+        // 没合上：先记停车记录（缺在哪个出发点 + 恢复计划），出卡时 M05 读得到
+        try {
+          await this.detours.park(loopId, 'ended_unclosed');
+          await this.hub.record(loopId, {
+            type: 'after_loop_step',
+            at: this.iso(),
+            step: 'parked',
+            detail: '停车记录已写入',
+          });
+        } catch (err) {
+          console.error(`闭环 ${loopId} 的停车记录失败：`, err);
+          await this.hub.record(loopId, {
+            type: 'after_loop_step',
+            at: this.iso(),
+            step: 'failed',
+            detail: `停车记录：${err instanceof Error ? err.message : String(err)}`,
+          });
+        }
       }
-      const card = await this.requestCard(
-        closed
-          ? `闭环“${opened.title}”（${loopId}）合上了`
-          : `闭环“${opened.title}”（${loopId}）没合上就结束了；可读它的原文`,
-        mainId,
-      );
-      await this.hub.record(loopId, {
-        type: 'after_loop_step',
-        at: this.iso(),
-        step: 'card_ready',
-        detail: card.cardId,
-      });
+      if (!isFork) {
+        const card = await this.requestCard(
+          closed
+            ? `闭环“${opened.title}”（${loopId}）合上了`
+            : `闭环“${opened.title}”（${loopId}）没合上就结束了；可读它的原文和停车记录`,
+          mainId,
+        );
+        await this.hub.record(loopId, {
+          type: 'after_loop_step',
+          at: this.iso(),
+          step: 'card_ready',
+          detail: card.cardId,
+        });
+      }
     } catch (err) {
       console.error(`闭环 ${loopId} 结束后的清单失败：`, err);
       await this.hub.record(loopId, {
@@ -621,6 +693,26 @@ export class Studium {
         step: 'failed',
         detail: err instanceof Error ? err.message : String(err),
       });
+    }
+    // 分叉闭环：不管前面的步骤成没成，都要回到父闭环（否则父闭环一直在等）
+    if (opened.fork !== undefined) {
+      try {
+        await this.detours.returnToParent(loopId, closed);
+        await this.hub.record(loopId, {
+          type: 'after_loop_step',
+          at: this.iso(),
+          step: 'returned',
+          detail: opened.fork.fromLoop,
+        });
+      } catch (err) {
+        console.error(`分叉闭环 ${loopId} 回父闭环失败：`, err);
+        await this.hub.record(loopId, {
+          type: 'after_loop_step',
+          at: this.iso(),
+          step: 'failed',
+          detail: `回父闭环：${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
     }
   }
 
@@ -801,15 +893,8 @@ export class Studium {
     const main = (await this.hub.records(mainId)).map((r) => r.record);
     const goal = main.filter((r) => r.type === 'project_goal').at(-1);
     const loops = this.hub.listSessions().filter((s) => s.kind === 'loop' && s.parent === mainId);
-    const loopStates: string[] = [];
-    for (const l of loops) {
-      const recs = (await this.hub.records(l.sessionId)).map((r) => r.record);
-      const ended = recs.filter((r) => r.type === 'loop_ended').at(-1);
-      const state =
-        ended?.type === 'loop_ended' ? (ended.closed ? '合上' : '没合上就结束') : '进行中';
-      loopStates.push(`- ${l.sessionId}「${l.title}」：${state}`);
-    }
     const known = this.o.m09.knownPoints();
+    const { lines: loopStates, load } = await this.loopStatesText(loops, known);
     const objections = this.o.objections.all().slice(-20);
     const scope = await this.scopeOf(mainId);
     const external = this.o.m09.externals().slice(-30);
@@ -833,6 +918,8 @@ export class Studium {
         : []),
       `闭环（路线事实）：\n${loopStates.length > 0 ? loopStates.join('\n') : '（还没有）'}`,
       '',
+      ...load,
+      '',
       ...(objections.length > 0
         ? [
             `学习者提过的异议（自述；没有改原记录，选单子时参考）：\n${objections.map((o) => `- ${this.o.objections.describe(o)}`).join('\n')}`,
@@ -843,6 +930,61 @@ export class Studium {
       '',
       '学习者状态（M15）：要用时用 query_state 查；没有记录按无状态约束。',
     ].join('\n');
+  }
+
+  /**
+   * 各闭环的状态行（含分叉来历、等分叉、停车记录），和“同时进行的闭环数 / 停车场”提示。
+   * 只提示、不硬拦（M05:28 负荷预算与任务限流）；阈值属实现细节：没收尾的 ≥3 个算多，停车场 ≥3 条算堆积。
+   */
+  private async loopStatesText(
+    loops: { sessionId: string; title: string }[],
+    known: string[],
+  ): Promise<{ lines: string[]; load: string[] }> {
+    const lines: string[] = [];
+    const count = { active: 0, shelved: 0, waiting: 0 };
+    const parked: string[] = [];
+    for (const l of loops) {
+      const recs = await this.hub.records(l.sessionId);
+      const opened = await this.hub.opened(l.sessionId);
+      const flags = foldLoop(recs);
+      const label = stateLabel(flags);
+      if (flags.ended === undefined) {
+        if (flags.shelved !== undefined) count.shelved++;
+        else if (flags.waitingFork !== undefined) count.waiting++;
+        else count.active++;
+      }
+      const extra: string[] = [];
+      if (opened.fork !== undefined) {
+        extra.push(`分叉自 ${opened.fork.fromLoop}，原因：${opened.fork.reason}`);
+      }
+      if (flags.waitingFork !== undefined) extra.push(`等分叉 ${flags.waitingFork} 回来`);
+      const parking = flags.parking;
+      const unresolved =
+        flags.ended?.closed === false &&
+        (opened.ticket === undefined || !known.includes(opened.ticket.newPoint));
+      if (parking !== undefined && (unresolved || flags.shelved !== undefined)) {
+        const text = `缺：${parking.missing
+          .map((m) =>
+            m.point !== undefined ? `${m.point}「${this.o.m08.name(m.point)}」` : m.text,
+          )
+          .join('、')}；恢复计划：${parking.when}，从${parking.resumeFrom}接上`;
+        extra.push(`停车记录：${text}`);
+        if (unresolved) parked.push(`- ${l.sessionId}「${l.title}」：${text}`);
+      } else if (unresolved) {
+        parked.push(
+          `- ${l.sessionId}「${l.title}」：没合上就结束（没有停车记录，读它的原文看缺在哪）`,
+        );
+      }
+      lines.push(
+        `- ${l.sessionId}「${l.title}」：${label}${extra.length > 0 ? `（${extra.join('；')}）` : ''}`,
+      );
+    }
+    const open = count.active + count.shelved + count.waiting;
+    const load = [
+      `同时没收尾的闭环：进行中 ${String(count.active)} 个、搁置 ${String(count.shelved)} 个、等分叉回来 ${String(count.waiting)} 个（共 ${String(open)} 个）。${open >= LOAD_HEAVY ? '已经不少了：这次别再开新的点，优先让学习者接着学搁置的、等分叉的或收尾进行中的（只是提示，最终由学习者选）。' : ''}`,
+      `停车场（没合上就结束、缺口还没补上）：${parked.length > 0 ? `${String(parked.length)} 条\n${parked.join('\n')}` : '空'}${parked.length >= PARKING_PILE ? '\n停车场堆积了：降载——这张卡优先“接着学没合上的 / 先补它们缺的出发点”，少开全新的点；缺的出发点相同的几条可以合并成一个先补。' : ''}`,
+    ];
+    return { lines, load };
   }
 
   private deadlineText(d: { deadline?: string; note?: string }): string {
@@ -893,10 +1035,7 @@ export class Studium {
       const opened = await this.hub.opened(l.sessionId);
       const p = opened.ticket ? this.o.m08.points.get(opened.ticket.newPoint) : undefined;
       if (p === undefined) continue;
-      const recs = (await this.hub.records(l.sessionId)).map((r) => r.record);
-      const ended = recs.filter((r) => r.type === 'loop_ended').at(-1);
-      const state =
-        ended?.type === 'loop_ended' ? (ended.closed ? '合上' : '没合上就结束') : '进行中';
+      const state = stateLabel(foldLoop(await this.hub.records(l.sessionId)));
       const book = this.o.m08.bookOf(p);
       return `学习者最近在：${book !== undefined ? `《${book.trim()}》 ` : ''}${this.o.m08.chapterOf(p)}（闭环 ${l.sessionId}「${l.title}」，新点 ${p.id}「${p.name}」，${state}）`;
     }
@@ -1050,13 +1189,8 @@ export class Studium {
           for (const l of this.hub
             .listSessions()
             .filter((s) => s.kind === 'loop' && s.parent === mainId)) {
-            const ended = (await this.hub.records(l.sessionId))
-              .map((r) => r.record)
-              .filter((r) => r.type === 'loop_ended')
-              .at(-1);
-            loops.push(
-              `- ${l.sessionId}「${l.title}」：${ended?.type === 'loop_ended' ? (ended.closed ? '合上' : '没合上就结束') : '进行中'}`,
-            );
+            const state = stateLabel(foldLoop(await this.hub.records(l.sessionId)));
+            loops.push(`- ${l.sessionId}「${l.title}」：${state}`);
           }
           const ext = this.o.m09
             .externals()
@@ -1213,6 +1347,29 @@ export class Studium {
           const v = await this.requestClose(loopId, 'model', a.reason as string);
           return ok(verdictFact(v));
         },
+      },
+      {
+        name: 'request_detour',
+        description:
+          '发现前置缺口（含学习者自述 / 假定的出发点其实不牢），或学习者想岔开去学别的时调用：通知 M05，由它在这个闭环里出一张小卡（先补 X，开分叉，补完回来 / 先不管接着学），学习者选。必须指回学习者的原话行。小卡出了之后你先别替学习者选，也别继续往下讲。',
+        input: {
+          kind: z.enum(['gap', 'branch']).describe('gap = 前置缺口；branch = 学习者想分叉去学别的'),
+          missing_point: z
+            .string()
+            .optional()
+            .describe('缺的出发点 / 想去的点（M08 点 id），对不上不填'),
+          missing_text: z.string().describe('缺什么 / 想去哪，用日常话一句'),
+          basis_lines: z.array(z.number().int()).describe('指回学习者原话的行号'),
+          note: z.string().optional(),
+        },
+        run: (a) =>
+          this.detours.raise(loopId, {
+            kind: a.kind as 'gap' | 'branch',
+            ...(a.missing_point !== undefined ? { missingPoint: a.missing_point as string } : {}),
+            missingText: a.missing_text as string,
+            basisLines: a.basis_lines as number[],
+            ...(a.note !== undefined ? { note: a.note as string } : {}),
+          }),
       },
       this.stateQueryTool(),
       {
@@ -1673,6 +1830,19 @@ export class Studium {
     if (!c) return `子句 ${t.clause} 在 M08 里查不到`;
     if (c.to !== t.newPoint) return `子句 ${t.clause} 指向的新点是 ${c.to}，不是 ${t.newPoint}`;
     return undefined;
+  }
+
+  /** 闭环还开着、且不是搁置着（要收口 / 确认合上）。 */
+  private async assertActiveLoop(loopId: string): Promise<void> {
+    await this.assertOpenLoop(loopId);
+    await this.assertNotShelved(loopId);
+  }
+
+  /** 搁置着的闭环不能收口 / 确认合上：先恢复。 */
+  async assertNotShelved(loopId: string): Promise<void> {
+    if (foldLoop(await this.hub.records(loopId)).shelved !== undefined) {
+      throw new BadRequestError('这部分搁置着，先点“接着学”再往下。');
+    }
   }
 
   private async assertOpenLoop(loopId: string): Promise<void> {

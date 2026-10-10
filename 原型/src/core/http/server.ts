@@ -6,6 +6,10 @@ import { timingSafeEqual } from 'node:crypto';
 import type {
   ChooseRequest,
   ChooseResponse,
+  DetourChooseRequest,
+  DetourChooseResponse,
+  LoopRelationsResponse,
+  ShelveRequest,
   CreateSessionResponse,
   ErrorResponse,
   ListProjectsResponse,
@@ -314,6 +318,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           }
           case 'close-request':
             await hub.opened(id);
+            await studium.assertNotShelved(id);
             background('申请收口', () => studium.requestClose(id, 'learner', note));
             send(res, 202, {});
             return;
@@ -338,6 +343,30 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             return;
           case 'end':
             await studium.endUnclosed(id, note);
+            send(res, 202, {});
+            return;
+          case 'detour': {
+            // 闭环中途小卡上的选择（先补 / 接着学 / 搁置）
+            const b = body as Partial<DetourChooseRequest>;
+            if (typeof b.cardId !== 'string' || typeof b.option !== 'number') {
+              throw new BadRequest('cardId 要是字符串、option 要是数字');
+            }
+            send(
+              res,
+              201,
+              (await studium.chooseDetour(id, b.cardId, b.option)) satisfies DetourChooseResponse,
+            );
+            return;
+          }
+          case 'shelve': {
+            const b = body as Partial<ShelveRequest>;
+            const why = typeof b.note === 'string' && b.note.trim() !== '' ? b.note : note;
+            await studium.shelveLoop(id, why);
+            send(res, 202, {});
+            return;
+          }
+          case 'resume':
+            await studium.resumeLoop(id);
             send(res, 202, {});
             return;
         }
@@ -523,6 +552,11 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, { loop: await ev.loop(b) } satisfies LoopEvidenceResponse);
     } else if (a === 'cards' && n === 3 && b !== undefined) {
       send(res, 200, { card: await ev.card(b) } satisfies CardResponse);
+    } else if (a === 'projects' && c === 'loop-relations' && n === 4 && b !== undefined) {
+      send(res, 200, {
+        mainSessionId: b,
+        relations: await ev.loopRelations(b),
+      } satisfies LoopRelationsResponse);
     } else if (a === 'projects' && c === 'overview' && n === 4 && b !== undefined) {
       send(res, 200, { overview: await ev.overview(b) } satisfies ProjectOverviewResponse);
     } else if (a === 'm09' && b === 'records' && n === 3) {

@@ -11,6 +11,7 @@ import {
 } from '../shared/protocol.ts';
 import type {
   ConversationKind,
+  ForkOrigin,
   ImageInput,
   LogRecord,
   NumberedRecord,
@@ -100,7 +101,13 @@ export class Hub {
 
   async createSession(
     kind: ConversationKind,
-    meta: { title: string; parent?: string; ticket?: Ticket; anchorLine?: number },
+    meta: {
+      title: string;
+      parent?: string;
+      ticket?: Ticket;
+      anchorLine?: number;
+      fork?: ForkOrigin;
+    },
   ): Promise<SessionSummary> {
     const at = this.now();
     const sessionId = `${stamp(at)}-${kind}-${randomBytes(3).toString('hex')}`;
@@ -115,6 +122,7 @@ export class Hub {
       ...(meta.parent !== undefined ? { parent: meta.parent } : {}),
       ...(meta.ticket !== undefined ? { ticket: meta.ticket } : {}),
       ...(meta.anchorLine !== undefined ? { anchorLine: meta.anchorLine } : {}),
+      ...(meta.fork !== undefined ? { fork: meta.fork } : {}),
     };
     await this.append(sessionId, opened);
     return summary(opened);
