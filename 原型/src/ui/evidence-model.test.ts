@@ -45,6 +45,22 @@ describe('sourceText', () => {
     ).toEqual({ kind: '之前对话里的话', title: '对话里的一句', detail: '查不到原文' });
   });
 
+  it('书里的一处：标题去掉“书里”，查到的给原文，查不到的写明', () => {
+    expect(
+      sourceText({
+        raw: '力学/ch01/a.md:3',
+        kind: 'book_line',
+        resolved: true,
+        label: '书里《力学》 1.2 速度 p.3 第 3 行',
+        detail: '平均速度',
+      }),
+    ).toEqual({ kind: '书里的一处', title: '《力学》 1.2 速度 p.3 第 3 行', detail: '平均速度' });
+    expect(
+      sourceText({ raw: 'a.md:3', kind: 'book_line', resolved: false, label: '书里 a.md 第 3 行' })
+        .detail,
+    ).toBe('查不到原文');
+  });
+
   it('给学习者看的部分不含编号与内部词', () => {
     const t = sourceText({
       raw: 'r1',
