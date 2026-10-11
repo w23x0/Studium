@@ -44,6 +44,16 @@ export interface Point {
   originalId?: string;
 }
 
+/** 一次更正能改的字段（来源、锚点不由更正改）。 */
+export interface CorrectionPatch {
+  name?: string;
+  sentence?: string;
+  threshold?: boolean;
+  text?: string;
+  from?: string[];
+  to?: string;
+}
+
 export interface Clause {
   id: string;
   /** 出发点。 */
@@ -181,6 +191,40 @@ export class M08 {
     return this.points.size === 0;
   }
 
+  /** 被更正过的点 / 子句更正前的样子（key = “point:id” / “clause:id”）；资料线产出文件不动，更正只叠在内存里。 */
+  private readonly baseline = new Map<string, Point | Clause>();
+
+  /** 把一次更正叠上去：只改给了的字段；第一次更正时记下更正前的样子。 */
+  applyCorrection(kind: 'point' | 'clause', id: string, fields: CorrectionPatch): void {
+    const key = `${kind}:${id}`;
+    if (kind === 'point') {
+      const p = this.points.get(id);
+      if (p === undefined) return;
+      if (!this.baseline.has(key)) this.baseline.set(key, p);
+      this.points.set(id, {
+        ...p,
+        ...(fields.name !== undefined ? { name: fields.name } : {}),
+        ...(fields.sentence !== undefined ? { sentence: fields.sentence } : {}),
+        ...(fields.threshold !== undefined ? { threshold: fields.threshold } : {}),
+      });
+      return;
+    }
+    const c = this.clauses.get(id);
+    if (c === undefined) return;
+    if (!this.baseline.has(key)) this.baseline.set(key, c);
+    this.clauses.set(id, {
+      ...c,
+      ...(fields.text !== undefined ? { text: fields.text } : {}),
+      ...(fields.from !== undefined ? { from: fields.from } : {}),
+      ...(fields.to !== undefined ? { to: fields.to } : {}),
+    });
+  }
+
+  /** 更正前的样子；没被更正过为空。 */
+  original(kind: 'point' | 'clause', id: string): Point | Clause | undefined {
+    return this.baseline.get(`${kind}:${id}`);
+  }
+
   search(keyword: string, books?: ReadonlySet<string>): Point[] {
     const k = keyword.trim().toLowerCase();
     return [...this.points.values()].filter(
@@ -280,7 +324,7 @@ export class M08 {
 
   describePoint(p: Point): string {
     const lines = [
-      `${p.id}「${p.name}」${p.threshold === true ? '（阈值概念）' : ''}（${p.source}${p.scope === '前置' ? '，前置' : ''}）`,
+      `${p.id}「${p.name}」${p.threshold === true ? '（阈值概念）' : ''}（${p.source}${p.scope === '前置' ? '，前置' : ''}）${this.original('point', p.id) !== undefined ? '（学习者更正过，这是更正后的）' : ''}`,
       `  ${p.sentence}`,
       ...(p.split_of !== undefined
         ? [`  同一对象的另一种定义：${p.split_of}「${this.name(p.split_of)}」`]
@@ -297,7 +341,7 @@ export class M08 {
   describeClause(c: Clause): string {
     const from = c.from.map((f) => `${f}「${this.name(f)}」`).join(' + ');
     const lines = [
-      `${c.id}：${from} → ${c.to}「${this.name(c.to)}」（${c.source}）`,
+      `${c.id}：${from} → ${c.to}「${this.name(c.to)}」（${c.source}）${this.original('clause', c.id) !== undefined ? '（学习者更正过，这是更正后的）' : ''}`,
       `  ${c.text}`,
       ...(c.anchors.length > 0 && c.source !== '书给的' ? ['  书里只露出零件：'] : []),
       ...c.anchors.map(describeAnchor),

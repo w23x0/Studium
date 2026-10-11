@@ -9,6 +9,7 @@ import { usePanel, useProject } from '../../panel.ts';
 import { chapterNumber, chapterTitles, NO_ANCHOR } from '../../scope-model.ts';
 import { W } from '../../wording.ts';
 import { Badge, Loading, Section, SourceBadge } from '../evidence/parts.tsx';
+import { ReviewMarks } from '../evidence/review-view.tsx';
 
 export function PointsBrowse(props: {
   book?: string | undefined;
@@ -139,6 +140,7 @@ function ChapterPoints(props: { book: string; chapter: string }) {
                     <span className="font-medium">{p.name}</span>
                     <SourceBadge source={p.source} note={p.sourceNote} />
                     {p.threshold === true && <Badge tone="accent">{W.threshold}</Badge>}
+                    <ReviewMarks correction={p.correction} candidates={p.candidates} />
                   </span>
                   <span className="text-muted-foreground line-clamp-2">{p.sentence}</span>
                 </button>

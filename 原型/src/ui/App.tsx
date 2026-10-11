@@ -39,6 +39,7 @@ import {
   UnclosedEndBar,
 } from './components/longterm/loop-extras.tsx';
 import { useReviewIds } from './components/longterm/reviews.tsx';
+import { StageCheckBanner, SummarizeButton } from './components/practice/loop-practice.tsx';
 import { OpenSessionContext, useOpenSession } from './open-session.ts';
 import { taskRows } from './relations-model.ts';
 import {
@@ -528,6 +529,7 @@ function Conversation(props: {
           ...(m.objection ? { objection: m.objection } : {}),
           ...(m.images ? { images: m.images } : {}),
           ...(m.detour ? { detour: m.detour } : {}),
+          ...(m.practice ? { practice: m.practice } : {}),
         },
       },
       ...(m.role === 'assistant'
@@ -672,6 +674,7 @@ function LoopBanner(props: {
         projectId={props.projectId}
         titleOf={titleOf}
       />
+      {side.stageCheck === true && <StageCheckBanner />}
       {side.fork !== undefined && (
         <div
           data-testid="fork-origin"
@@ -741,6 +744,7 @@ function MainBar(props: {
           reason: o.reason,
           revisit: revisitOf(o),
           cross: crossOf(o),
+          stageCheck: o.ticket.stageCheck === true,
         }))}
         onError={props.onError}
       />
@@ -877,6 +881,7 @@ function LoopBar(props: {
   }
   return (
     <div className="flex justify-end gap-2">
+      <SummarizeButton loopId={props.sessionId} disabled={props.running} />
       <Button
         variant="outline"
         size="sm"

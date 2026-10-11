@@ -12,8 +12,12 @@ import type {
 import type { RegressionView, TodayView } from './protocol-longterm.ts';
 import type { CrossDomainView } from './protocol-cross.ts';
 
+import type { CorrectionMark } from './m08-review.ts';
+
 export type * from './protocol-longterm.ts';
 export * from './protocol-cross.ts';
+export type * from './m08-review.ts';
+export type * from './protocol-practice.ts';
 
 export interface SessionSummary {
   sessionId: string;
@@ -128,6 +132,10 @@ export interface PointView {
   /** 多套 M08 合并时：来自哪一套（目录标签）；id 加了前缀时 originalId 是原来的 id。 */
   origin?: string;
   originalId?: string;
+  /** 更正过：几次、更正前资料里原本是什么（批 10a）。显示的 name / sentence 已是更正后的。 */
+  correction?: CorrectionMark;
+  /** 有几条候选涉及它（批 10a）。 */
+  candidates?: number;
 }
 
 export interface ClauseView {
@@ -141,6 +149,8 @@ export interface ClauseView {
   notes: string[];
   origin?: string;
   originalId?: string;
+  correction?: CorrectionMark;
+  candidates?: number;
 }
 
 export interface Points08Response {
@@ -180,6 +190,8 @@ export interface TicketView {
   revisit?: { kind: '复习' | '复检'; formationIds: string[] };
   /** 跨领域的单子（批 10b）：补习型 / 对比链接型，标两边的领域；同领域内的没有。 */
   crossDomain?: CrossDomainView;
+  /** 阶段验收的单子（批 9）：闭环里的练习都标阶段验收、默认不给提示。 */
+  stageCheck?: boolean;
 }
 
 /** 选项出处里的一条，已尽量回查。resolved 为假 = 查不到（原样给出 raw）。 */
@@ -413,6 +425,8 @@ export interface LoopBrief {
   resumedBy?: { loopSessionId: string; title?: string; status: LoopStatus }[];
   /** 这是复习 / 复检闭环（批 6）。 */
   revisit?: '复习' | '复检';
+  /** 这是阶段验收闭环（批 9）。 */
+  stageCheck?: boolean;
 }
 
 /** 同时没收尾的闭环数（M05:28 负荷预算与任务限流；只提示、不硬拦）。 */

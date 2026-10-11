@@ -10,6 +10,7 @@ import type {
   RouteSignal,
 } from '../shared/records.ts';
 import { parseReviewReturned } from '../shared/records-longterm.ts';
+import { finishPracticeCards, markAnswers, type PracticeUi } from './practice-model.ts';
 import { judgementLine, W } from './wording.ts';
 
 export interface UiMessage {
@@ -31,6 +32,8 @@ export interface UiMessage {
   images?: string[];
   /** 学到一半出的小卡（先去补 / 接着学 / 先放一放），选过的带 chosen。 */
   detour?: DetourUi;
+  /** 练习（批 9）：练习卡、交给练习的作答、写好的归纳。 */
+  practice?: PracticeUi;
 }
 
 /** 对话里的小卡。 */
@@ -62,6 +65,8 @@ export function toUiMessages(
   const detours = new Map<string, { msg: UiMessage; signalLine: number }>();
   /** 开出去的分叉 → 当初提的那条“先停一下”（补的是什么）。 */
   const forkSignal = new Map<string, RouteSignal>();
+  /** 练习编号 → 练什么（做完那一行用）。 */
+  const practiceFocus = new Map<string, string>();
   for (const { line, record: r } of records) {
     const id = `l${String(line)}`;
     switch (r.type) {
@@ -76,6 +81,15 @@ export function toUiMessages(
             : {}),
           ...(r.images !== undefined && r.images.length > 0
             ? { images: r.images.map((i) => i.attachmentId) }
+            : {}),
+          ...(r.practice !== undefined
+            ? {
+                practice: {
+                  kind: 'answer' as const,
+                  taskId: r.practice.taskId,
+                  label: W.practice.answerTag,
+                },
+              }
             : {}),
         });
         break;
@@ -241,11 +255,43 @@ export function toUiMessages(
         }
         break;
       }
+      // 练习（批 9）：布置的题是一张卡；老师认的作答把那几句标上；做完 / 放下与写好的归纳各一行
+      case 'practice_assigned':
+        practiceFocus.set(r.id, r.focus);
+        push({
+          id,
+          role: 'system',
+          text: W.practice.cardText(r.focus),
+          line,
+          practice: { kind: 'card', taskId: r.id, loopOpen: true, candidates: [] },
+        });
+        break;
+      case 'practice_submitted':
+        markAnswers(out, r.taskId, r.lines, W.practice.markedTag);
+        break;
+      case 'practice_done':
+        push({
+          id,
+          role: 'system',
+          text: W.practice.doneLine(r.outcome, practiceFocus.get(r.taskId) ?? ''),
+          line,
+        });
+        break;
+      case 'practice_summary':
+        push({
+          id,
+          role: 'system',
+          text: W.practice.summaryLine,
+          line,
+          practice: { kind: 'summary', id: r.id },
+        });
+        break;
       default:
         // 诊断记录、工具调用、原始消息等是给模型与审计用的，不显示
         break;
     }
   }
+  finishPracticeCards(out, records);
   if (draft !== '' || ctx.running === true) {
     out.push({ id: 'draft', role: 'assistant', text: draft, line: 0 });
   }
@@ -332,6 +378,8 @@ export interface LoopSide {
   resumeOf?: string;
   /** 这段是复习 / 复检（批 6）。 */
   revisit?: RevisitKind;
+  /** 这段是阶段验收（批 9）。 */
+  stageCheck?: boolean;
 }
 
 export function loopSide(records: NumberedRecord[]): LoopSide {
@@ -339,6 +387,7 @@ export function loopSide(records: NumberedRecord[]): LoopSide {
   let shelved: LoopSide['shelved'];
   let resumeOf: string | undefined;
   let revisit: RevisitKind | undefined;
+  let stageCheck = false;
   let ended = false;
   const signals = new Map<number, RouteSignal>();
   const cardSignal = new Map<string, number>();
@@ -352,6 +401,7 @@ export function loopSide(records: NumberedRecord[]): LoopSide {
         }
         if (r.resumeOf !== undefined) resumeOf = r.resumeOf.fromLoop;
         if (r.ticket?.revisit !== undefined) revisit = r.ticket.revisit.kind;
+        if (r.ticket?.stageCheck === true) stageCheck = true;
         break;
       case 'loop_ended':
         ended = true;
@@ -405,5 +455,6 @@ export function loopSide(records: NumberedRecord[]): LoopSide {
     openDetour: !ended && openDetour,
     ...(resumeOf !== undefined ? { resumeOf } : {}),
     ...(revisit !== undefined ? { revisit } : {}),
+    ...(stageCheck ? { stageCheck } : {}),
   };
 }

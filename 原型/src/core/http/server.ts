@@ -67,7 +67,10 @@ import { InputError, type Inputs } from '../inputs.ts';
 import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { inputsRoute } from './inputs-routes.ts';
 import { longtermRoute } from './longterm-routes.ts';
+import { m08ReviewRoute } from './m08-review-routes.ts';
+import { practiceRoute } from './practice-routes.ts';
 import { outputsRoute } from './outputs-routes.ts';
+import type { M08Review } from '../m08-review.ts';
 import type { Outputs } from '../outputs.ts';
 
 export interface ServerOptions {
@@ -85,6 +88,8 @@ export interface ServerOptions {
   outputs: Outputs;
   /** 跨资料的重复线索 / 检索标签 / 来源说明、状态回看（批 10b）。 */
   cross: CrossServices;
+  /** M08 候选区与更正（批 10a）。 */
+  m08Review: M08Review;
   token: string;
   host?: string;
   port: number;
@@ -198,6 +203,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     )
       return;
     if (
+      await practiceRoute(
+        req,
+        res,
+        new URL(req.url ?? '/', 'http://localhost'),
+        parts,
+        method,
+        studium,
+      )
+    )
+      return;
+    if (
       await outputsRoute(
         req,
         res,
@@ -205,6 +221,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         parts,
         method,
         opts.outputs,
+      )
+    )
+      return;
+    if (
+      await m08ReviewRoute(
+        req,
+        res,
+        new URL(req.url ?? '/', 'http://localhost'),
+        parts,
+        method,
+        opts.m08Review,
       )
     )
       return;

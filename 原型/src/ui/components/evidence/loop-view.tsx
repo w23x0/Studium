@@ -10,6 +10,7 @@ import { loopTrend, toolCounts } from '../../teaching-model.ts';
 import { IntensityLine, TrendChart } from './intensity-view.tsx';
 import { LoopDetours } from './loop-detour-view.tsx';
 import { ToolChip } from './tools-view.tsx';
+import { LoopPractice } from '../practice/loop-practice.tsx';
 import {
   Badge,
   Card,
@@ -106,6 +107,8 @@ export function LoopView(props: {
       <LoopDetours loop={loop} />
 
       <Regressions loop={loop} />
+
+      <LoopPractice loopId={loop.sessionId} />
 
       <Section title={W.judgements}>
         {loop.verdicts.length === 0 && (

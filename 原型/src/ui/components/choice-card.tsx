@@ -25,6 +25,8 @@ export function ChoiceCardBox(props: {
     revisit?: '复习' | '复检' | undefined;
     /** 跨领域的选项（批 10b）：类型与两边的领域。 */
     cross?: { kind: '补习型' | '对比链接型'; domain: string; otherDomain: string } | undefined;
+    /** 这一项是阶段验收（批 9）。 */
+    stageCheck?: boolean;
   }[];
   onError: (e: unknown) => void;
   className?: string;
@@ -80,6 +82,15 @@ export function ChoiceCardBox(props: {
                     {W.crossKind[o.cross.kind]}
                   </span>
                 )}
+                {o.stageCheck === true && (
+                  <span
+                    data-testid="stage-check-badge"
+                    title={W.practice.stageCheckHint}
+                    className="ms-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.7rem] font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
+                  >
+                    {W.practice.stageCheck}
+                  </span>
+                )}
                 {i === props.recommended && (
                   <span className="text-primary ms-2 text-xs">{W.recommended}</span>
                 )}
@@ -89,6 +100,7 @@ export function ChoiceCardBox(props: {
               </div>
               <div className="text-muted-foreground text-sm">
                 {o.revisit !== undefined && `${W.revisitHint[o.revisit]}。`}
+                {o.stageCheck === true && `${W.practice.stageCheckHint}。`}
                 {o.reason}
               </div>
             </button>
