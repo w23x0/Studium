@@ -10,8 +10,10 @@ import type {
   SourceReportKind,
 } from './records.ts';
 import type { RegressionView, TodayView } from './protocol-longterm.ts';
+import type { CrossDomainView } from './protocol-cross.ts';
 
 export type * from './protocol-longterm.ts';
+export * from './protocol-cross.ts';
 
 export interface SessionSummary {
   sessionId: string;
@@ -176,6 +178,8 @@ export interface TicketView {
   routeAction: string;
   /** 复习 / 复检的单子（批 6）：回头看以前合上过的点；学新点时没有。 */
   revisit?: { kind: '复习' | '复检'; formationIds: string[] };
+  /** 跨领域的单子（批 10b）：补习型 / 对比链接型，标两边的领域；同领域内的没有。 */
+  crossDomain?: CrossDomainView;
 }
 
 /** 选项出处里的一条，已尽量回查。resolved 为假 = 查不到（原样给出 raw）。 */

@@ -28,6 +28,7 @@ import {
 import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import type { NumberedRecord } from '../shared/records.ts';
 import { api } from './api.ts';
+import { crossOf } from './cross-model.ts';
 import { ChoiceCardBox, revisitOf } from './components/choice-card.tsx';
 import { OutputTaskBar } from './components/outputs/outputs-section.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
@@ -739,6 +740,7 @@ function MainBar(props: {
           title: o.title,
           reason: o.reason,
           revisit: revisitOf(o),
+          cross: crossOf(o),
         }))}
         onError={props.onError}
       />

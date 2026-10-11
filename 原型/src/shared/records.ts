@@ -8,8 +8,10 @@ import type {
   Revisit,
   ReviewWindow,
 } from './records-longterm.ts';
+import type { CrossDomain } from './records-cross.ts';
 
 export type * from './records-longterm.ts';
+export type * from './records-cross.ts';
 
 /**
  * main 主对话 · talk 畅谈对话 · loop 闭环对话 · guard 闭环守卫 · m09 写形成记录 · m05 出选择卡
@@ -30,6 +32,8 @@ export interface Ticket {
   routeAction: string;
   /** 复习 / 复检：回头看以前合上过的点（批 6）；没有 = 学新点。 */
   revisit?: Revisit;
+  /** 跨领域的单子（批 10b）：补习型 / 对比链接型；同领域内的没有。 */
+  crossDomain?: CrossDomain;
 }
 
 export interface SessionOpened {

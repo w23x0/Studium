@@ -51,6 +51,9 @@ export const ACTIONS = [
   'outputs.addLiterature',
   'outputs.markCandidate',
   'outputs.openTask',
+  // 批 10b：资料来源说明、状态记录的“我的解释”
+  'addSourceNote',
+  'addStateExplanation',
 ] as const;
 export type ActionName = (typeof ACTIONS)[number];
 

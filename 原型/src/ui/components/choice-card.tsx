@@ -19,7 +19,13 @@ export function ChoiceCardBox(props: {
   cardId: string;
   recommended: number;
   /** revisit：这一项是复习 / 复检以前学会的（批 6）。 */
-  options: { title: string; reason: string; revisit?: '复习' | '复检' | undefined }[];
+  options: {
+    title: string;
+    reason: string;
+    revisit?: '复习' | '复检' | undefined;
+    /** 跨领域的选项（批 10b）：类型与两边的领域。 */
+    cross?: { kind: '补习型' | '对比链接型'; domain: string; otherDomain: string } | undefined;
+  }[];
   onError: (e: unknown) => void;
   className?: string;
 }) {
@@ -63,6 +69,15 @@ export function ChoiceCardBox(props: {
                     className="bg-primary/10 text-primary ms-2 rounded-full px-1.5 py-0.5 text-[0.7rem] font-medium"
                   >
                     {W.revisitKind[o.revisit]}
+                  </span>
+                )}
+                {o.cross !== undefined && (
+                  <span
+                    data-testid="cross-badge"
+                    title={`${W.crossHint[o.cross.kind]}（${W.crossSides(o.cross.domain, o.cross.otherDomain)}）`}
+                    className="bg-primary/10 text-primary ms-2 rounded-full px-1.5 py-0.5 text-[0.7rem] font-medium"
+                  >
+                    {W.crossKind[o.cross.kind]}
                   </span>
                 )}
                 {i === props.recommended && (

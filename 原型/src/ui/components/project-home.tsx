@@ -36,6 +36,7 @@ import { usePanel } from '../panel.ts';
 import { hasForks, relationRows } from '../relations-model.ts';
 import { learnerShelveNote } from '../thread-model.ts';
 import { W } from '../wording.ts';
+import { crossOf } from '../cross-model.ts';
 import { ChoiceCardBox, revisitOf } from './choice-card.tsx';
 import { DeadlineLine, ProjectMaterials } from './project-materials.tsx';
 import { OutputsSection } from './outputs/outputs-section.tsx';
@@ -175,6 +176,7 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
               title: o.title,
               reason: o.reason,
               revisit: revisitOf(o),
+              cross: crossOf(o),
             }))}
             onError={props.onError}
           />

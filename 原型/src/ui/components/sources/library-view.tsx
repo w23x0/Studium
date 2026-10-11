@@ -1,11 +1,12 @@
 // 资料（右侧面板）：书列表（按学科分组、标出项目资料）→ 目录 → 小节原文；在书里搜（默认只搜项目资料，
 // 可切查全部）；原件的一页（知识点锚点点过来看）。
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { BookIcon, FileTextIcon, ListTreeIcon, NotebookPenIcon, SearchIcon } from 'lucide-react';
-import type { BBox, TocEntry } from '../../../shared/protocol.ts';
+import type { BBox, TaggedSearchResponse, TocEntry } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';
+import { activeFilters, filterParams } from '../../cross-model.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { useProjectScope } from '../../hooks/use-project-scope.ts';
 import { usePanel, useProject } from '../../panel.ts';
@@ -13,7 +14,9 @@ import { groupBySubject } from '../../scope-model.ts';
 import { markTerms } from '../../source-model.ts';
 import { W } from '../../wording.ts';
 import { Badge, Loading, Section } from '../evidence/parts.tsx';
+import { ClueList } from './clue-list.tsx';
 import { OriginalPage } from './original-page.tsx';
+import { SourceNoteCard } from './source-note.tsx';
 
 export function LibraryView(props: { book?: string | undefined }) {
   return (
@@ -142,6 +145,7 @@ function Books() {
           ))}
         </Section>
       ))}
+      <ClueList />
     </>
   );
 }
@@ -163,6 +167,7 @@ function Toc(props: { book: string }) {
         <ListTreeIcon />
         {W.bookPoints}
       </Button>
+      <SourceNoteCard book={book} />
       <Section title={W.toc}>
         <ul className="flex flex-col">
           {entries.map((e, i) => (
@@ -226,18 +231,77 @@ export function SearchView(props: {
 }) {
   const panel = usePanel();
   const project = useProject();
+  const [filter, setFilter] = useState<{ type?: string; point?: string; inBook?: string }>({});
   const r = useLoad(
-    `library:search:${props.book ?? ''}:${props.q}:${project ?? ''}:${String(props.all)}`,
-    () => api.search(props.q, props.book, 50, project, props.all),
+    `library:search:${props.book ?? ''}:${props.q}:${project ?? ''}:${String(props.all)}:${JSON.stringify(filterParams(filter))}`,
+    () =>
+      api.taggedSearch(props.q, {
+        book: props.book,
+        limit: 50,
+        project,
+        all: props.all,
+        ...filterParams(filter),
+      }),
     false,
+  );
+  // 筛的时候重读，标签栏不跟着闪：留着最近一次读到的标签
+  const [facets, setFacets] = useState<TaggedSearchResponse['facets'] | undefined>();
+  useEffect(() => {
+    if (r.data) setFacets(r.data.facets);
+  }, [r.data]);
+  const toggle = (k: 'type' | 'point' | 'inBook', v: string) =>
+    setFilter((f) => ({ ...f, [k]: f[k] === v ? undefined : v }));
+  const chip = (k: 'type' | 'point' | 'inBook', v: string, label: string, n: number) => (
+    <button
+      key={`${k}:${v}`}
+      type="button"
+      aria-pressed={filter[k] === v}
+      className={cn(
+        'rounded-full border px-2 py-0.5 text-xs',
+        filter[k] === v ? 'bg-primary/10 text-primary border-primary/40' : 'hover:bg-accent/60',
+      )}
+      onClick={() => toggle(k, v)}
+    >
+      {label} {n}
+    </button>
   );
   return (
     <div className="flex flex-col gap-4" data-testid="search-view">
       <SearchBox book={props.book} q={props.q} all={props.all} replace />
+      {facets !== undefined && (
+        <div className="flex flex-col gap-1.5 text-xs" data-testid="search-tags">
+          <div className="text-muted-foreground">{W.searchTags}</div>
+          {facets.books.length > 1 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground">{W.tagBook}</span>
+              {facets.books.map((b) => chip('inBook', b.book, b.bookTitle || b.book, b.count))}
+            </div>
+          )}
+          {facets.types.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5" title={W.tagTypeHint}>
+              <span className="text-muted-foreground">{W.tagType}</span>
+              {facets.types.map((t) => chip('type', t.type, t.type, t.count))}
+            </div>
+          )}
+          {facets.points.length > 0 && (
+            <div className="flex flex-wrap items-center gap-1.5">
+              <span className="text-muted-foreground">{W.tagPoint}</span>
+              {facets.points.map((p) => chip('point', p.id, p.name, p.count))}
+            </div>
+          )}
+          {activeFilters(filter) > 0 && (
+            <Button variant="ghost" size="xs" className="self-start" onClick={() => setFilter({})}>
+              {W.tagClear}
+            </Button>
+          )}
+        </div>
+      )}
       {!r.data ? (
         <Loading error={r.error} />
       ) : r.data.hits.length === 0 ? (
-        <div className="text-muted-foreground text-sm">{W.searchNone}</div>
+        <div className="text-muted-foreground text-sm">
+          {activeFilters(filter) > 0 ? W.tagNone : W.searchNone}
+        </div>
       ) : (
         <>
           <div className="text-muted-foreground text-xs">
@@ -267,6 +331,14 @@ export function SearchView(props: {
                       {`${h.num} ${h.title}`.trim()}
                     </span>
                     {h.pdfPage !== undefined && <span>{W.pageOf(h.pdfPage)}</span>}
+                    {h.tags.types.map((t) => (
+                      <Badge key={t} tone="accent">
+                        {t}
+                      </Badge>
+                    ))}
+                    {h.tags.points.map((p) => (
+                      <Badge key={p.id}>{p.name}</Badge>
+                    ))}
                   </span>
                   <span className="line-clamp-3 font-serif">
                     {markTerms(h.snippet, props.q).map((s, j) =>

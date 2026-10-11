@@ -55,6 +55,14 @@ import type {
   ReviewsResponse,
   TimelineResponse,
   TodayView,
+  AddExplanationResponse,
+  CluesResponse,
+  SectionLinksResponse,
+  SourceNoteField,
+  SourceNoteResponse,
+  SourceNotesResponse,
+  StateTimelineResponse,
+  TaggedSearchResponse,
 } from '../shared/protocol.ts';
 import type {
   AddLiteratureRequest,
@@ -181,6 +189,47 @@ export const api = {
   formations: () => call<FormationsResponse>('/m09/records'),
   strategies: () => call<StrategiesResponse>('/m10/records'),
   state: () => call<StateResponse>('/m15/state'),
+  // ── 批 10b：别的书也讲这里、带标签的检索、来源说明、状态回看 ──
+  links: (book: string, file: string) =>
+    call<SectionLinksResponse>(`/library/links?${qs({ book, file })}`),
+  clues: () => call<CluesResponse>('/library/clues'),
+  taggedSearch: (
+    q: string,
+    opt: {
+      book?: string | undefined;
+      project?: string | undefined;
+      all?: boolean | undefined;
+      limit?: number | undefined;
+      type?: string | undefined;
+      point?: string | undefined;
+      inBook?: string | undefined;
+    } = {},
+  ) =>
+    call<TaggedSearchResponse>(
+      `/library/tagged-search?${qs({
+        q,
+        book: opt.book,
+        project: opt.project,
+        all: opt.all === true ? 1 : undefined,
+        limit: opt.limit,
+        type: opt.type,
+        point: opt.point,
+        inBook: opt.inBook,
+      })}`,
+    ),
+  sourceNotes: () => call<SourceNotesResponse>('/library/source-notes'),
+  sourceNote: (book: string) => call<SourceNoteResponse>(`/library/source-notes?${qs({ book })}`),
+  addSourceNote: (book: string, field: SourceNoteField, text: string) =>
+    call<SourceNoteResponse>('/library/source-notes', {
+      method: 'POST',
+      body: JSON.stringify({ book, field, text }),
+    }),
+  stateTimeline: () => call<StateTimelineResponse>('/m15/timeline'),
+  addExplanation: (recordId: string, text: string) =>
+    call<AddExplanationResponse>(`/m15/records/${encodeURIComponent(recordId)}/explanations`, {
+      method: 'POST',
+      body: JSON.stringify({ text }),
+    }),
   disclosure: () => call<DisclosureResponse>('/disclosure'),
   sessionModel: (id: string) => call<SessionModelResponse>(`/sessions/${id}/model`),
   objectToVerdict: (loopId: string, line: number, text: string) =>

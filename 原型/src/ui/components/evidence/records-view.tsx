@@ -32,6 +32,7 @@ import {
   Section,
   Time,
 } from './parts.tsx';
+import { StateTimeline } from './state-timeline.tsx';
 import { ToolChip } from './tools-view.tsx';
 
 function Quotes(props: { quotes: QuoteView[]; sessionId: string }) {
@@ -271,15 +272,36 @@ export function Formation(props: {
 
 export function StateView() {
   const r = useLoad('m15', () => api.state());
+  const [view, setView] = useState<'list' | 'timeline'>('list');
   if (!r.data) return <Loading error={r.error} />;
   const { current, records } = r.data;
   return (
     <div className="flex flex-col gap-5">
       <h2 className="font-serif text-lg">{W.myState}</h2>
-      {current === undefined && records.length === 0 && (
+      {records.length > 0 && (
+        <div className="bg-muted flex gap-1 self-start rounded-lg p-0.5 text-sm">
+          {(['list', 'timeline'] as const).map((v) => (
+            <button
+              key={v}
+              type="button"
+              aria-pressed={view === v}
+              className={
+                view === v
+                  ? 'bg-background rounded-md px-3 py-1 shadow-xs'
+                  : 'text-muted-foreground rounded-md px-3 py-1'
+              }
+              onClick={() => setView(v)}
+            >
+              {v === 'list' ? W.stateList : W.stateTimeline}
+            </button>
+          ))}
+        </div>
+      )}
+      {view === 'timeline' && records.length > 0 && <StateTimeline />}
+      {view === 'list' && current === undefined && records.length === 0 && (
         <div className="text-muted-foreground text-sm">{W.myStateEmpty}</div>
       )}
-      {current !== undefined && (
+      {view === 'list' && current !== undefined && (
         <Section title={W.currentState}>
           <Card className="flex flex-col gap-3">
             <div className="font-serif whitespace-pre-wrap">{current.text}</div>
@@ -290,7 +312,7 @@ export function StateView() {
           </Card>
         </Section>
       )}
-      {records.length > 0 && (
+      {view === 'list' && records.length > 0 && (
         <Section title={W.stateRecords}>
           {[...records].reverse().map((s) => (
             <StateRecord key={s.id} record={s} onObjected={r.reload} />

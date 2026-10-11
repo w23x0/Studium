@@ -4,9 +4,11 @@ import { cp, readFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ConversationKind } from '../shared/records.ts';
+import { Crosslinks } from './crosslinks.ts';
 import { Evidence } from './evidence.ts';
 import { Hub } from './hub.ts';
 import { Inputs } from './inputs.ts';
+import { Lookback } from './lookback.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { Library } from './knowledge/m07.ts';
@@ -20,6 +22,7 @@ import { M10 } from './knowledge/m10.ts';
 import { M14 } from './knowledge/m14.ts';
 import { M15 } from './knowledge/m15.ts';
 import { Objections } from './knowledge/objections.ts';
+import { SourceNotes } from './knowledge/source-notes.ts';
 import { Outputs } from './outputs.ts';
 import { DataDir } from './log/data-dir.ts';
 import { isNotFound } from './log/session-log.ts';
@@ -116,11 +119,21 @@ export async function createApp(opts: AppOptions): Promise<App> {
     library,
     opts.now ?? (() => new Date()),
   );
+  const originals = new Originals(library, join(dataDir.root, 'cache', 'pages'));
+  const reports = await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports'));
   const sources = new Sources({
     library,
-    originals: new Originals(library, join(dataDir.root, 'cache', 'pages')),
+    originals,
     m08,
-    reports: await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports')),
+    reports,
+    ...(opts.now !== undefined ? { now: opts.now } : {}),
+  });
+  const cross = new Crosslinks({
+    library,
+    m08,
+    reports,
+    originals,
+    notes: await SourceNotes.load(join(dataDir.root, 'knowledge', 'source-notes')),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const outputs = new Outputs({
@@ -143,6 +156,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     deviations,
     teaching,
     outputs,
+    cross,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const inner = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
@@ -174,11 +188,20 @@ export async function createApp(opts: AppOptions): Promise<App> {
   opts.instrument?.(hub, studium);
   await studium.ensureMain();
   await studium.recover();
+  const evidence = new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs, teaching });
   const server = await startServer({
     hub,
     sources,
     notes: recorder ? recorder.wrap(notes, 'notes.') : notes,
-    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs, teaching }),
+    evidence,
+    cross: {
+      links: cross,
+      lookback: new Lookback({
+        evidence,
+        m15,
+        ...(opts.now !== undefined ? { now: opts.now } : {}),
+      }),
+    },
     inputs,
     outputs: recorder ? recorder.wrap(outputs, 'outputs.') : outputs,
     studium: recorder ? recorder.wrapStudium(studium) : studium,

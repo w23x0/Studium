@@ -48,6 +48,14 @@ export interface StateConfirmation {
   note?: string;
 }
 
+/** 学习者给一条状态记录补的“我的解释”（批 10b，M15:42）：单独追加，不改状态记录；整理时当自述读。 */
+export interface StateExplanation {
+  id: string;
+  at: string;
+  recordId: string;
+  text: string;
+}
+
 export interface CurrentStatePage {
   at: string;
   /** 现在仍有效的几条（带记录 id），自述与观察对不上的两条都留、标冲突。 */
@@ -74,6 +82,7 @@ export class M15 {
     private pages: CurrentStatePage[],
     private runs: OrganizeRun[],
     private confirmations: StateConfirmation[],
+    private explanations: StateExplanation[],
   ) {}
 
   static async load(dir: string): Promise<M15> {
@@ -83,6 +92,7 @@ export class M15 {
       await readJsonl<CurrentStatePage>(join(dir, 'current.jsonl')),
       await readJsonl<OrganizeRun>(join(dir, 'runs.jsonl')),
       await readJsonl<StateConfirmation>(join(dir, 'confirmations.jsonl')),
+      await readJsonl<StateExplanation>(join(dir, 'explanations.jsonl')),
     );
   }
 
@@ -104,6 +114,19 @@ export class M15 {
   async addConfirmation(c: StateConfirmation): Promise<void> {
     await appendJsonl(join(this.dir, 'confirmations.jsonl'), c);
     this.confirmations.push(c);
+  }
+
+  async addExplanation(e: StateExplanation): Promise<void> {
+    await appendJsonl(join(this.dir, 'explanations.jsonl'), e);
+    this.explanations.push(e);
+  }
+
+  allExplanations(): StateExplanation[] {
+    return [...this.explanations];
+  }
+
+  explanationsFor(recordId: string): StateExplanation[] {
+    return this.explanations.filter((e) => e.recordId === recordId);
   }
 
   allConfirmations(): StateConfirmation[] {
@@ -130,6 +153,11 @@ export class M15 {
 
   record(id: string): StateRecord | undefined {
     return this.records.find((r) => r.id === id);
+  }
+
+  /** 历次整理写下的“当前状态”页，旧的在前。 */
+  allPages(): CurrentStatePage[] {
+    return [...this.pages];
   }
 
   current(): CurrentStatePage | undefined {
@@ -159,6 +187,9 @@ export class M15 {
       ...(verdict?.verdict === '否认'
         ? [`  学习者否认了这条${verdict.note ? `：${verdict.note}` : ''}（对不上的两边都留着）`]
         : []),
+      ...this.explanationsFor(r.id).map(
+        (e) => `  学习者补充的解释（自述，原记录没改，不是对话原话）：${e.text}`,
+      ),
       ...(r.afterTeaching
         ? [`  出现在「${r.afterTeaching.text}」之后——先查自己的教法是不是成因，再当作他自己的状态`]
         : []),

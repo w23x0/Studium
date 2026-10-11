@@ -64,6 +64,7 @@ import type { Notes } from '../knowledge/m07-notes.ts';
 import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 import { InputError, type Inputs } from '../inputs.ts';
+import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { inputsRoute } from './inputs-routes.ts';
 import { longtermRoute } from './longterm-routes.ts';
 import { outputsRoute } from './outputs-routes.ts';
@@ -82,6 +83,8 @@ export interface ServerOptions {
   notes: Notes;
   /** M14 知识产出物（批 8）。 */
   outputs: Outputs;
+  /** 跨资料的重复线索 / 检索标签 / 来源说明、状态回看（批 10b）。 */
+  cross: CrossServices;
   token: string;
   host?: string;
   port: number;
@@ -158,6 +161,18 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     method: string,
   ): Promise<void> {
     const { hub, studium, evidence, sources } = opts;
+    if (
+      await crossRoute(
+        req,
+        res,
+        new URL(req.url ?? '/', 'http://localhost'),
+        parts,
+        method,
+        studium,
+        opts.cross,
+      )
+    )
+      return;
     if (parts[1] === 'library' && (await libraryRoute(req, res, parts, method, sources, studium)))
       return;
     if (

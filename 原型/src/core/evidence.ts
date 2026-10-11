@@ -364,6 +364,17 @@ export class Evidence {
       ...(t.revisit !== undefined
         ? { revisit: { kind: t.revisit.kind, formationIds: [...t.revisit.formationIds] } }
         : {}),
+      ...(t.crossDomain !== undefined
+        ? {
+            crossDomain: {
+              kind: t.crossDomain.kind,
+              domain: t.crossDomain.domain,
+              otherDomain: t.crossDomain.otherDomain,
+              otherPoint: this.pointRef(t.crossDomain.otherPoint),
+              problem: t.crossDomain.problem,
+            },
+          }
+        : {}),
     };
   }
 

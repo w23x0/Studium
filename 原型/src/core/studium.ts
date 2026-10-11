@@ -7,7 +7,10 @@ import type {
   ProjectDeadlineResponse,
   ProjectMaterialsResponse,
   ProjectMaterialView,
+  SourceNoteView,
+  StateExplanationView,
 } from '../shared/protocol.ts';
+import { CROSS_KINDS } from '../shared/records-cross.ts';
 import type {
   ChoiceCard,
   ChoiceOption,
@@ -19,6 +22,7 @@ import type {
   NumberedRecord,
   Ticket,
 } from '../shared/records.ts';
+import type { Crosslinks } from './crosslinks.ts';
 import { Detours } from './detour.ts';
 import { LongTerm } from './longterm.ts';
 import { REVISIT_KINDS } from '../shared/records-longterm.ts';
@@ -82,6 +86,8 @@ export interface StudiumOptions {
   teaching: TeachingTools;
   /** M14 知识产出物（批 8）。 */
   outputs: Outputs;
+  /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
+  cross: Crosslinks;
   now?: () => Date;
 }
 
@@ -214,6 +220,7 @@ export class Studium {
             this.loopTranscriptTool(),
             ...this.loopTools(sessionId),
             ...this.longterm.loopTools(sessionId),
+            this.o.cross.addNoteTool(sessionId),
           ];
         case 'guard':
           return [...this.readTools(sessionId, { m09: false }), this.verdictTool(sessionId)];
@@ -235,6 +242,8 @@ export class Studium {
               this.stateQueryTool(),
               this.cardTool(sessionId),
               ...this.longterm.m05Tools(sessionId),
+              this.o.cross.crossCandidatesTool(this.crossEnv(sessionId)),
+              this.o.cross.addNoteTool(sessionId),
             ]
           );
         case 'm15':
@@ -535,7 +544,11 @@ export class Studium {
     await this.longterm.onChosen(mainId, card, option, loop.sessionId);
     await this.hub.send(loop.sessionId, {
       role: 'program',
-      text: this.loopOpening(picked.ticket),
+      text: [
+        ...(await this.o.cross.crossOpening(picked.ticket)),
+        ...this.crossHistory(picked.ticket),
+        this.loopOpening(picked.ticket),
+      ].join('\n'),
     });
     return loop.sessionId;
   }
@@ -1055,6 +1068,7 @@ export class Studium {
       '',
       `资料范围：${scope !== undefined ? `项目选用了 ${String(scope.length)} 份资料：${scope.join('、')}。教材查询工具和 M08 工具默认只在这些里查；学习者或你明确要时，传 all=true 查全库。` : '项目没选资料：查全库。'}`,
       '',
+      ...(await this.domainsLine(scope)),
       `已合上过的新点（M09）：${known.length > 0 ? known.map((p) => `${p}「${this.o.m08.name(p)}」`).join('、') : '（空：冷启动，第一个闭环选小的）'}`,
       '',
       ...(external.length > 0
@@ -1207,6 +1221,16 @@ export class Studium {
         .describe(
           '复习 / 复检以前合上过的点时填：kind，和以前的 M09 形成记录 id（它们的新点必须就是 new_point）；学新点不填',
         ),
+      cross_domain: z
+        .object({
+          kind: z.enum(CROSS_KINDS),
+          other_point: z.string().describe('另一边的点 id'),
+          problem: z.string().describe('驱动这次学习的原问题，一句话'),
+        })
+        .optional()
+        .describe(
+          '跨领域选项才填：补习型（new_point 是学习者没学过的、另一个领域里的前置；other_point 是原问题所在领域里需要它的点）；对比链接型（other_point 是另一个领域里与 new_point 结构相似、学习者已经会了的点）。领域由程序按书的学科目录算，两边必须不在同一个领域；同领域的不填',
+        ),
       title: z.string().describe('给学习者看的一句话'),
       reason: z.string(),
       sources: z
@@ -1220,7 +1244,7 @@ export class Studium {
       name: 'submit_choice_card',
       description: '交回 2–4 个候选单子，推荐其中一个（从 0 数）。只提交一次。',
       input: { options: z.array(ticketShape).min(2).max(4), recommended: z.number().int().min(0) },
-      run: (a) => {
+      run: async (a) => {
         if (this.cards.has(sessionId)) return err('已经提交过选择卡');
         // 出处在模型参数里是必填（上面的校验）；这里对旧调用形态（没有 sources）宽容，不编
         const raw = a.options as (Omit<z.infer<typeof ticketShape>, 'sources'> & {
@@ -1254,12 +1278,71 @@ export class Studium {
           .filter(([, p]) => p !== undefined)
           .map(([i, p]) => `第 ${String(i)} 项：${p ?? ''}`);
         if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
+        const known = new Set(this.o.m09.knownPoints());
+        for (const [i, o] of raw.entries()) {
+          if (o.cross_domain === undefined) continue;
+          const r = await this.o.cross.buildCross(
+            o.new_point,
+            {
+              kind: o.cross_domain.kind,
+              otherPoint: o.cross_domain.other_point,
+              problem: o.cross_domain.problem,
+            },
+            known,
+          );
+          if ('error' in r) return err(`第 ${String(i)} 项：${r.error}。改好后重新提交`);
+          const opt = options[i];
+          if (opt !== undefined) opt.ticket.crossDomain = r.cross;
+        }
         const recommended = a.recommended as number;
         if (recommended >= options.length) return err('推荐的序号超出选项范围');
         this.cards.set(sessionId, { options, recommended });
         return ok('选择卡已收到');
       },
     };
+  }
+
+  /** 跨领域工具要的两样：项目选用的资料、M09 里已合上的点。 */
+  private crossEnv(sessionId: string) {
+    return {
+      scope: (all: boolean) => this.scopeOf(sessionId, all),
+      known: () => this.o.m09.knownPoints(),
+    };
+  }
+
+  /** 跨领域闭环开场里：学习者在另一边已有的 M09 记录（有才写）。 */
+  private crossHistory(t: Ticket): string[] {
+    if (t.crossDomain === undefined) return [];
+    const rows = this.o.m09.forPoint(t.crossDomain.otherPoint).map((r) => this.o.m09.describe(r));
+    return rows.length > 0 ? ['学习者在另一边的 M09 记录（闭环证据，已验证）：', ...rows, ''] : [];
+  }
+
+  /** M05 开场里的一行：资料涉及两个以上领域时才提，没有就不提（不鼓励硬凑跨领域）。 */
+  private async domainsLine(scope: string[] | undefined): Promise<string[]> {
+    const domains = await this.o.cross.domainsIn(scope);
+    if (domains.length < 2) return [];
+    return [
+      `资料涉及的领域：${domains.join('、')}。学习者的原问题需要另一个领域的前置、或两个领域里有相似的结构值得对照时，可以出跨领域选项（先用 cross_candidates 找；没有合适的就别出）。`,
+      '',
+    ];
+  }
+
+  /** 学习者给一本书 / 笔记补一句来源说明（只追加）。 */
+  async addSourceNote(book: string, field: string, text: string): Promise<SourceNoteView> {
+    await this.o.cross.addNote({ book, field, text, by: '学习者' });
+    return this.o.cross.sourceNote(book);
+  }
+
+  /** 学习者给一条状态记录补“我的解释”：只追加，不改原记录；下次整理时当自述读到。 */
+  async addStateExplanation(recordId: string, text: string): Promise<StateExplanationView> {
+    if (this.o.m15.record(recordId) === undefined) {
+      throw new BadRequestError(`找不到这条状态记录：${recordId}。`);
+    }
+    const t = text.trim();
+    if (t === '') throw new BadRequestError('解释不能是空的。');
+    const e = { id: this.newId('ex'), at: this.iso(), recordId, text: t };
+    await this.o.m15.addExplanation(e);
+    return e;
   }
 
   private loopTranscriptTool(): ToolSpec {
@@ -1658,11 +1741,16 @@ export class Studium {
     const freshConfirmations = this.o.m15
       .allConfirmations()
       .filter((c) => lastRun === undefined || c.at > lastRun);
+    // 学习者给状态记录补的“我的解释”，同样算上次整理之后的新记录
+    const freshExplanations = this.o.m15
+      .allExplanations()
+      .filter((e) => lastRun === undefined || e.at > lastRun);
     // 没有新记录不整理（03「M15」）
     if (
       facts.newLearnerLines === 0 &&
       fresh.length === 0 &&
       freshConfirmations.length === 0 &&
+      freshExplanations.length === 0 &&
       !force
     ) {
       return;
@@ -1688,6 +1776,12 @@ export class Studium {
         ...(freshConfirmations.length > 0
           ? [
               `学习者在界面上对状态记录的确认 / 否认（确认的来源档升为“已确认”，由程序记；否认的与原记录对不上，两边都留、标冲突）：\n${freshConfirmations.map((c) => `- ${c.recordId} ${c.verdict}${c.note ? `：${c.note}` : ''}`).join('\n')}`,
+              '',
+            ]
+          : []),
+        ...(freshExplanations.length > 0
+          ? [
+              `学习者给状态记录补的解释（自述；原记录没改，也不是对话原话，没有行号可引，所以不为它另写状态记录；体现在当前状态页里，明说“学习者自述”；与可观察事实对不上的两条都留、标冲突）：\n${freshExplanations.map((e) => `- ${e.recordId}：${e.text}`).join('\n')}`,
               '',
             ]
           : []),
@@ -2096,7 +2190,12 @@ export class Studium {
     const starts = t.startPoints
       .map((s) => `${s.point}「${this.o.m08.name(s.point)}」（来源：${s.source}）`)
       .join('、');
-    return `新点 ${t.newPoint}「${this.o.m08.name(t.newPoint)}」；子句 ${t.clause}；出发点 ${starts || '（无）'}；路线动作：${t.routeAction}`;
+    const c = t.crossDomain;
+    const cross =
+      c !== undefined
+        ? `；跨领域（${c.kind}）：新点在「${c.domain}」，另一边 ${c.otherPoint}「${this.o.m08.name(c.otherPoint)}」在「${c.otherDomain}」，原问题：${c.problem}`
+        : '';
+    return `新点 ${t.newPoint}「${this.o.m08.name(t.newPoint)}」；子句 ${t.clause}；出发点 ${starts || '（无）'}；路线动作：${t.routeAction}${cross}`;
   }
 
   private ticketProblem(t: Ticket): string | undefined {
@@ -2361,6 +2460,7 @@ export class Studium {
     ];
     if (opt.m07 !== false) {
       tools.push(
+        this.o.cross.relatedTool(),
         {
           name: 'textbook_index',
           description:
@@ -2393,7 +2493,7 @@ export class Studium {
                     : ''),
               );
             }
-            return ok(await this.o.m07.index(book));
+            return ok((await this.o.m07.index(book)) + (await this.o.cross.noteLines([book])));
           },
         },
         {
@@ -2417,9 +2517,10 @@ export class Studium {
             );
             const body = r.lines.map((l) => `${String(l.n)}\t${l.text}`).join('\n');
             return ok(
-              r.lines.length === 0
+              (r.lines.length === 0
                 ? `（这个文件共 ${String(r.total)} 行，没有第 ${String((a.from_line as number | undefined) ?? 1)} 行起的内容）`
-                : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ book, file, from: r.from, to: r.to })}，行段按你实际引用的缩小）`,
+                : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ book, file, from: r.from, to: r.to })}，行段按你实际引用的缩小）`) +
+                (await this.o.cross.noteLines([book])),
             );
           },
         },
@@ -2451,7 +2552,7 @@ export class Studium {
                 `《${h.bookTitle || h.book}》${h.num} ${h.title}｜${h.file} 第 ${String(h.line)} 行\n  ${h.snippet}\n  出处标记：${formatCitation({ book: h.book, file: h.file, from: h.line })}`,
             );
             return ok(
-              `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}`,
+              `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}${await this.o.cross.noteLines(r.hits.map((h) => h.book))}`,
             );
           },
         },
