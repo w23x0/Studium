@@ -5,6 +5,7 @@ import {
   ChevronLeftIcon,
   ClipboardListIcon,
   GaugeIcon,
+  LayersIcon,
   LibraryIcon,
   ListTreeIcon,
   SendIcon,
@@ -26,6 +27,8 @@ import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
 import { PointsBrowse } from '../sources/points-browse.tsx';
 import { SourceView } from '../sources/source-view.tsx';
 import { OutputPage } from '../outputs/output-page.tsx';
+import { ExercisesView } from '../practice/exercises-view.tsx';
+import { PracticeReviewView } from '../practice/practice-review.tsx';
 
 export function EvidencePanel(props: {
   target: PanelTarget;
@@ -97,6 +100,12 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
       return <ToolsView key={t.name ?? ''} name={t.name} />;
     case 'disclosure':
       return <DisclosureView />;
+    case 'practice':
+      return <PracticeReviewView key={t.summary ?? ''} summary={t.summary} />;
+    case 'exercises':
+      return (
+        <ExercisesView key={`${t.book}:${t.chapter ?? ''}`} book={t.book} chapter={t.chapter} />
+      );
     case 'library':
       return <LibraryView key={t.book ?? ''} book={t.book} />;
     case 'search':
@@ -174,6 +183,11 @@ function Home(props: { loopId?: string | undefined }) {
         icon={<BookCheckIcon />}
         label={W.learned}
         onClick={() => panel.show({ kind: 'learned' })}
+      />
+      <HomeItem
+        icon={<LayersIcon />}
+        label={W.practice.reviewTitle}
+        onClick={() => panel.show({ kind: 'practice' })}
       />
       <HomeItem
         icon={<GaugeIcon />}

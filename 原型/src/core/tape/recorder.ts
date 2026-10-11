@@ -17,7 +17,8 @@ import { IdTokens } from './ids.ts';
 
 /**
  * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
- * “outputs.” 是 M14 产出物的、“notes.” 是个人笔记的方法（本地服务拿到的都是录带包过的那一份）。
+ * “practice.” 是 studium.practice 的、“outputs.” 是 M14 产出物的、“notes.” 是个人笔记的方法
+ * （本地服务拿到的都是录带包过的那一份）。
  */
 export const ACTIONS = [
   'createProject',
@@ -51,6 +52,11 @@ export const ACTIONS = [
   'outputs.addLiterature',
   'outputs.markCandidate',
   'outputs.openTask',
+  // 批 9：练习的交作答、要提示、先不做、请老师归纳
+  'practice.submit',
+  'practice.askHint',
+  'practice.abandon',
+  'practice.requestSummary',
 ] as const;
 export type ActionName = (typeof ACTIONS)[number];
 
@@ -204,10 +210,13 @@ export class Recorder {
     }
   }
 
-  /** 给本地服务用的 Studium：学习者动作先记进录带再照常执行（studium.longterm 的动作同样）。 */
+  /** 给本地服务用的 Studium：学习者动作先记进录带再照常执行（studium.longterm、studium.practice 的动作同样）。 */
   wrapStudium(studium: Studium): Studium {
     const longterm = this.wrap(studium.longterm, 'longterm.');
-    return this.wrap(studium, '', (prop) => (prop === 'longterm' ? longterm : undefined));
+    const practice = this.wrap(studium.practice, 'practice.');
+    return this.wrap(studium, '', (prop) =>
+      prop === 'longterm' ? longterm : prop === 'practice' ? practice : undefined,
+    );
   }
 
   /** 给本地服务用的其他对象（产出物、笔记）：名字前缀 + 方法名在 ACTIONS 里的，先记再执行。 */
@@ -238,7 +247,7 @@ export class Recorder {
             args: this.ids.tokenize(withoutTrailingUndefined(args)),
             quiet: !(this.studium?.busy() ?? false),
             interject:
-              name === 'learnerSays' && typeof args[0] === 'string' && hub !== undefined
+              saysSomething(name, args) && typeof args[0] === 'string' && hub !== undefined
                 ? hub.isRunning(args[0])
                 : false,
           });
@@ -258,6 +267,14 @@ export class Recorder {
       },
     });
   }
+}
+
+/** 这个动作会在对话里添一句学习者的话（会话在跑时就是中途插话）：发话，或写一段作答交给练习。 */
+function saysSomething(name: string, args: unknown[]): boolean {
+  if (name === 'learnerSays') return true;
+  if (name !== 'practice.submit') return false;
+  const body = args[2];
+  return typeof body === 'object' && body !== null && 'text' in body;
 }
 
 function withoutTrailingUndefined(args: unknown[]): unknown[] {

@@ -7,8 +7,11 @@ import type {
   SourceReportKind,
   StateRecordView,
 } from '../shared/protocol.ts';
+import { WP } from './wording-practice.ts';
 
 export const W = {
+  /** 练习（批 9）的叫法在 wording-practice.ts。 */
+  practice: WP,
   // ── 项目页 ──
   projectHome: '项目概览', // 项目页（Overview）
   projectChat: '项目对话', // 主对话

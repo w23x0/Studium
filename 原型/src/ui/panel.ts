@@ -17,6 +17,10 @@ export type PanelTarget =
   /** 教法（教学工具）：不给名字 = 列表；给名字 = 这一份的全文。 */
   | { kind: 'tools'; name?: string }
   | { kind: 'disclosure' }
+  /** 练习里看到的（批 9）：常犯的错 + 这类题怎么想；summary 给了就展开那一份归纳。 */
+  | { kind: 'practice'; summary?: string }
+  /** 书里的习题（批 9）：给章就只看这一章。 */
+  | { kind: 'exercises'; book: string; chapter?: string }
   /** 资料：不给书 = 书列表；给书 = 这本书的目录。 */
   | { kind: 'library'; book?: string }
   /** all = 不限项目资料、查全部。 */
@@ -69,6 +73,7 @@ export function isWideTarget(t: PanelTarget): boolean {
     t.kind === 'search' ||
     t.kind === 'source' ||
     t.kind === 'page' ||
+    t.kind === 'exercises' ||
     t.kind === 'output'
   );
 }
