@@ -54,6 +54,7 @@ import { teachingToolSpecs, toolUsesOf, type TeachingTools } from './teaching-to
 import { isNotFound } from './log/session-log.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
+import type { M08Review } from './m08-review.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
 
 export class BadRequestError extends Error {}
@@ -82,6 +83,8 @@ export interface StudiumOptions {
   teaching: TeachingTools;
   /** M14 知识产出物（批 8）。 */
   outputs: Outputs;
+  /** M08 候选区与更正（批 10a）：写 M09 的会话可提去个人化候选。 */
+  m08Review: M08Review;
   now?: () => Date;
 }
 
@@ -131,6 +134,9 @@ export class Studium {
     });
     // 产出物那边生成的编号也经这里报给录带
     o.outputs.onNewId((prefix, id) => {
+      for (const fn of this.idListeners) fn(prefix, id);
+    });
+    o.m08Review.onNewId((prefix, id) => {
       for (const fn of this.idListeners) fn(prefix, id);
     });
   }
@@ -225,6 +231,7 @@ export class Studium {
                 ...this.readTools(sessionId, { m07: false, m09: false }),
                 this.formationTool(sessionId),
                 ...this.longterm.m09Tools(sessionId),
+                ...this.o.m08Review.m09Tools(sessionId, () => this.m09CandidateContext(sessionId)),
               ];
         case 'm05':
           // 同一类会话三种活：出下一闭环的选择卡；闭环中途的小卡；给没合上 / 搁置的闭环记停车记录
@@ -947,6 +954,17 @@ export class Studium {
   }
 
   private readonly m09Target = new Map<string, { loopId: string; records: NumberedRecord[] }>();
+
+  /** 写 M09 的会话提候选用的上下文：它写的是哪个闭环、哪些行是学习者说的、实际执行的模型。 */
+  private m09CandidateContext(sessionId: string) {
+    const target = this.m09Target.get(sessionId);
+    if (!target) return undefined;
+    return {
+      loopId: target.loopId,
+      learnerLines: learnerLines(target.records),
+      model: () => this.hub.executedModel(sessionId),
+    };
+  }
 
   private formationTool(sessionId: string): ToolSpec {
     const strengthShape = z.object({

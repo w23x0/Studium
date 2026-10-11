@@ -4,6 +4,7 @@ import {
   BookCheckIcon,
   ChevronLeftIcon,
   ClipboardListIcon,
+  FilePenLineIcon,
   GaugeIcon,
   LibraryIcon,
   ListTreeIcon,
@@ -20,6 +21,7 @@ import { CardEvidence } from './card-view.tsx';
 import { DisclosureView } from './disclosure-view.tsx';
 import { LoopView } from './loop-view.tsx';
 import { ClausePanel, PointPanel } from './m08-view.tsx';
+import { ReviewPage } from './review-view.tsx';
 import { LearnedView, StateView, TeachingView } from './records-view.tsx';
 import { ToolsView } from './tools-view.tsx';
 import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
@@ -97,6 +99,8 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
       return <ToolsView key={t.name ?? ''} name={t.name} />;
     case 'disclosure':
       return <DisclosureView />;
+    case 'review':
+      return <ReviewPage />;
     case 'library':
       return <LibraryView key={t.book ?? ''} book={t.book} />;
     case 'search':
@@ -169,6 +173,11 @@ function Home(props: { loopId?: string | undefined }) {
         icon={<ListTreeIcon />}
         label={W.pointsBrowse}
         onClick={() => panel.show({ kind: 'points' })}
+      />
+      <HomeItem
+        icon={<FilePenLineIcon />}
+        label={W.candPage}
+        onClick={() => panel.show({ kind: 'review' })}
       />
       <HomeItem
         icon={<BookCheckIcon />}

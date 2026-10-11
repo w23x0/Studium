@@ -53,6 +53,7 @@ import { NotFoundError, type Hub } from './hub.ts';
 const LATER_KINDS: ConversationKind[] = ['output'];
 import { foldLoop, LOAD_HEAVY, PARKING_PILE, type LoopFlags } from './loop-state.ts';
 import type { M08, Anchor, Clause, Point } from './knowledge/m08.ts';
+import type { M08Review } from './m08-review.ts';
 import type { M09 } from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { M15 } from './knowledge/m15.ts';
@@ -75,6 +76,8 @@ export interface EvidenceDeps {
   inputs?: Inputs;
   /** 教学工具（批 7）。 */
   teaching: TeachingTools;
+  /** M08 候选与更正（批 10a）：知识点上的“有更正”“有候选”标记；不给就不标。 */
+  m08Review?: M08Review;
 }
 
 export class Evidence {
@@ -888,6 +891,19 @@ export class Evidence {
       })),
       ...(p.origin !== undefined ? { origin: p.origin } : {}),
       ...(p.originalId !== undefined ? { originalId: p.originalId } : {}),
+      ...this.reviewMarks({ kind: 'point', id: p.id }),
+    };
+  }
+
+  /** 知识点 / 子句上的“有更正”“有候选”标记。 */
+  private reviewMarks(t: { kind: 'point' | 'clause'; id: string }) {
+    const r = this.d.m08Review;
+    if (r === undefined) return {};
+    const correction = r.correctionMark(t);
+    const candidates = r.candidateCount(t);
+    return {
+      ...(correction !== undefined ? { correction } : {}),
+      ...(candidates > 0 ? { candidates } : {}),
     };
   }
 
@@ -903,6 +919,7 @@ export class Evidence {
       notes: c.notes ?? [],
       ...(c.origin !== undefined ? { origin: c.origin } : {}),
       ...(c.originalId !== undefined ? { originalId: c.originalId } : {}),
+      ...this.reviewMarks({ kind: 'clause', id: c.id }),
     };
   }
 

@@ -161,7 +161,9 @@ async function perform(app: App, name: ActionName, args: unknown[]): Promise<voi
         ? app.outputs
         : where === 'notes'
           ? app.notes
-          : app.studium;
+          : where === 'm08review'
+            ? app.m08Review
+            : app.studium;
   const fn = (target as Record<string, unknown>)[method];
   if (typeof fn !== 'function') throw new Error(`回放不认识的动作：${name}`);
   const run = () => (fn as (...a: unknown[]) => Promise<unknown>).apply(target, args);

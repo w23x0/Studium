@@ -17,7 +17,7 @@ import { IdTokens } from './ids.ts';
 
 /**
  * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
- * “outputs.” 是 M14 产出物的、“notes.” 是个人笔记的方法（本地服务拿到的都是录带包过的那一份）。
+ * “outputs.” 是 M14 产出物的、“m08review.” 是 M08 候选区与更正的、“notes.” 是个人笔记的方法（本地服务拿到的都是录带包过的那一份）。
  */
 export const ACTIONS = [
   'createProject',
@@ -51,6 +51,10 @@ export const ACTIONS = [
   'outputs.addLiterature',
   'outputs.markCandidate',
   'outputs.openTask',
+  // 批 10a：M08 候选区——学习者提建议、审计、更正
+  'm08review.suggest',
+  'm08review.audit',
+  'm08review.correct',
 ] as const;
 export type ActionName = (typeof ACTIONS)[number];
 

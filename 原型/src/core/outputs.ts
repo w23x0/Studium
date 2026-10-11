@@ -428,6 +428,11 @@ export class Outputs {
     return this.d.store.allCandidates();
   }
 
+  /** 产出物的名字（候选区列 M14 的候选时用）。 */
+  titleOf(output: string): string | undefined {
+    return this.d.store.output(output)?.title;
+  }
+
   // ───────────── 会话：主对话开“写产出”任务对话，任务对话里的工具 ─────────────
 
   /** 主对话的工具：在学习者刚才那条消息下开一个“写产出”对话。 */

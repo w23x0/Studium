@@ -14,6 +14,8 @@ import { Notes } from './knowledge/m07-notes.ts';
 import { Originals } from './knowledge/m07-originals.ts';
 import { SourceReports } from './knowledge/m07-reports.ts';
 import { M08 } from './knowledge/m08.ts';
+import { ReviewStore } from './knowledge/m08-review.ts';
+import { M08Review } from './m08-review.ts';
 import { M09 } from './knowledge/m09.ts';
 import { Deviations } from './knowledge/m05-deviations.ts';
 import { M10 } from './knowledge/m10.ts';
@@ -58,6 +60,8 @@ export interface App {
   hub: Hub;
   /** M14 产出物与个人笔记（回放重做学习者在这两处的动作用）。 */
   outputs: Outputs;
+  /** M08 候选区与更正（回放重做学习者在这里的动作用）。 */
+  m08Review: M08Review;
   notes: Notes;
   studium: Studium;
   dataDir: DataDir;
@@ -130,6 +134,13 @@ export async function createApp(opts: AppOptions): Promise<App> {
     m08,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
+  const m08Review = M08Review.create({
+    store: await ReviewStore.load(join(dataDir.root, 'knowledge', 'm08-review')),
+    m08,
+    sources,
+    m14: { candidates: () => outputs.candidates(), outputTitle: (id) => outputs.titleOf(id) },
+    ...(opts.now !== undefined ? { now: opts.now } : {}),
+  });
   const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
   const studium = new Studium({
     prompts: await loadPrompts(),
@@ -143,6 +154,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     deviations,
     teaching,
     outputs,
+    m08Review,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const inner = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
@@ -170,6 +182,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
   });
   studium.attach(hub);
   outputs.attach(hub);
+  m08Review.attach(hub);
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
   await studium.ensureMain();
@@ -178,9 +191,21 @@ export async function createApp(opts: AppOptions): Promise<App> {
     hub,
     sources,
     notes: recorder ? recorder.wrap(notes, 'notes.') : notes,
-    evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs, teaching }),
+    evidence: new Evidence({
+      hub,
+      m08,
+      m09,
+      m10,
+      m15,
+      objections,
+      sources,
+      inputs,
+      teaching,
+      m08Review,
+    }),
     inputs,
     outputs: recorder ? recorder.wrap(outputs, 'outputs.') : outputs,
+    m08Review: recorder ? recorder.wrap(m08Review, 'm08review.') : m08Review,
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,
     port: opts.port,
@@ -190,6 +215,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     server,
     hub,
     outputs,
+    m08Review,
     notes,
     studium,
     dataDir,

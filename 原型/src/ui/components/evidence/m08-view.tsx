@@ -5,6 +5,7 @@ import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
 import { W } from '../../wording.ts';
 import { Anchors, Badge, Card, Loading, Section, SourceBadge } from './parts.tsx';
+import { CorrectionNote, ReviewMarks, TargetReview } from './review-view.tsx';
 
 export function PointPanel(props: { id: string }) {
   const r = useLoad(`point:${props.id}`, () => api.point(props.id), false);
@@ -14,6 +15,7 @@ export function PointPanel(props: { id: string }) {
   return (
     <div className="flex flex-col gap-5">
       <PointHead point={point} />
+      <CorrectionNote mark={point.correction} />
       {point.splitOf !== undefined && (
         <div className="text-sm">
           {W.splitOf}
@@ -43,6 +45,16 @@ export function PointPanel(props: { id: string }) {
       )}
       <ClauseList title={W.pointFrom} clauses={into} />
       <ClauseList title={W.pointTo} clauses={from} />
+      <TargetReview
+        target={{ kind: 'point', id: point.id }}
+        current={{
+          kind: 'point',
+          name: point.name,
+          sentence: point.sentence,
+          threshold: point.threshold === true,
+        }}
+        onChanged={r.reload}
+      />
     </div>
   );
 }
@@ -57,6 +69,7 @@ function PointHead(props: { point: PointView }) {
         <SourceBadge source={p.source} note={p.sourceNote} />
         {p.threshold === true && <Badge tone="accent">{W.threshold}</Badge>}
         {p.scope !== undefined && <Badge>{W.scope[p.scope]}</Badge>}
+        <ReviewMarks correction={p.correction} candidates={p.candidates} />
       </div>
       <div className="text-muted-foreground text-xs">{p.sourceNote}</div>
       <p className="font-serif leading-relaxed">{p.sentence}</p>
@@ -79,6 +92,7 @@ function ClauseList(props: { title: string; clauses: ClauseView[] }) {
           <span className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
             {c.from.map((f) => f.name).join(' + ')} → {c.to.name}
             <SourceBadge source={c.source} note={c.sourceNote} />
+            <ReviewMarks correction={c.correction} candidates={c.candidates} />
           </span>
           <span className="line-clamp-3">{c.text}</span>
         </button>
@@ -118,10 +132,12 @@ export function ClausePanel(props: { id: string }) {
         </h2>
         <div className="flex flex-wrap items-center gap-1.5">
           <SourceBadge source={c.source} note={c.sourceNote} />
+          <ReviewMarks correction={c.correction} candidates={c.candidates} />
           <span className="text-muted-foreground text-xs">{c.sourceNote}</span>
         </div>
         <p className="font-serif leading-relaxed whitespace-pre-wrap">{c.text}</p>
       </div>
+      <CorrectionNote mark={c.correction} />
       {c.anchors.length > 0 && (
         <Section title={W.anchors}>
           <Anchors anchors={c.anchors} />
@@ -136,6 +152,11 @@ export function ClausePanel(props: { id: string }) {
           </ul>
         </Section>
       )}
+      <TargetReview
+        target={{ kind: 'clause', id: c.id }}
+        current={{ kind: 'clause', text: c.text }}
+        onChanged={r.reload}
+      />
     </div>
   );
 }

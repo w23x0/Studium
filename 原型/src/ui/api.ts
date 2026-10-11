@@ -69,6 +69,18 @@ import type {
   SaveVersionRequest,
   VersionResponse,
 } from '../shared/m14.ts';
+import type {
+  AuditRequest,
+  AuditResponse,
+  CorrectRequest,
+  CorrectionResponse,
+  CorrectionsResponse,
+  ReviewCandidatesResponse,
+  ReviewCandidateResponse,
+  SuggestRequest,
+  TargetRef,
+  TargetReviewResponse,
+} from '../shared/m08-review.ts';
 import { SHELVE_NO_NOTE } from './thread-model.ts';
 
 function token(): string {
@@ -295,6 +307,24 @@ export const api = {
         brief !== undefined && brief.trim() !== '' ? { brief: brief.trim() } : {},
       ),
     }),
+  // ── 候选与更正（批 10a） ──
+  reviewCandidates: () => call<ReviewCandidatesResponse>('/m08/candidates'),
+  reviewCorrections: () => call<CorrectionsResponse>('/m08/corrections'),
+  /** 一个知识点 / 一步连接上的候选、更正历史、涉及它原文的资料报错。 */
+  targetReview: (t: TargetRef) =>
+    call<TargetReviewResponse>(`/m08/review?${qs({ target: `${t.kind}:${t.id}` })}`),
+  suggest: (req: SuggestRequest) =>
+    call<ReviewCandidateResponse>('/m08/suggestions', {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  auditCandidate: (id: string, req: AuditRequest) =>
+    call<AuditResponse>(`/m08/candidates/${encodeURIComponent(id)}/audits`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  correct: (req: CorrectRequest) =>
+    call<CorrectionResponse>('/m08/corrections', { method: 'POST', body: JSON.stringify(req) }),
   // ── 跨段学习的长期功能（批 6） ──
   /** 我学会的：每个知识点现在的样子（派生，不存盘）。 */
   pointView: () => call<PointViewResponse>('/m09/view'),

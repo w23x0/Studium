@@ -10,8 +10,10 @@ import type {
   SourceReportKind,
 } from './records.ts';
 import type { RegressionView, TodayView } from './protocol-longterm.ts';
+import type { CorrectionMark } from './m08-review.ts';
 
 export type * from './protocol-longterm.ts';
+export type * from './m08-review.ts';
 
 export interface SessionSummary {
   sessionId: string;
@@ -126,6 +128,10 @@ export interface PointView {
   /** 多套 M08 合并时：来自哪一套（目录标签）；id 加了前缀时 originalId 是原来的 id。 */
   origin?: string;
   originalId?: string;
+  /** 更正过：几次、更正前资料里原本是什么（批 10a）。显示的 name / sentence 已是更正后的。 */
+  correction?: CorrectionMark;
+  /** 有几条候选涉及它（批 10a）。 */
+  candidates?: number;
 }
 
 export interface ClauseView {
@@ -139,6 +145,8 @@ export interface ClauseView {
   notes: string[];
   origin?: string;
   originalId?: string;
+  correction?: CorrectionMark;
+  candidates?: number;
 }
 
 export interface Points08Response {
