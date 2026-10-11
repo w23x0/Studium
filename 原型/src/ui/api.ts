@@ -95,7 +95,8 @@ function token(): string {
 
 const TOKEN = token();
 
-async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
+/** 带口令调一个接口（练习等分出去的接口文件也用它）。 */
+export async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
   const res = await fetch(`/api${path}`, {
     ...init,
     headers: { authorization: `Bearer ${TOKEN}`, 'content-type': 'application/json' },
@@ -106,7 +107,7 @@ async function call<T>(path: string, init: RequestInit = {}): Promise<T> {
 }
 
 /** 查询串：值为空的参数不带。 */
-function qs(params: Record<string, string | number | undefined>): string {
+export function qs(params: Record<string, string | number | undefined>): string {
   const u = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined) u.set(k, String(v));
   return u.toString();

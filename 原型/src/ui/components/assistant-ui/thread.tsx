@@ -18,8 +18,10 @@ import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
 import { ImageViewer } from '@/components/input/modal';
 import { DetourCardBox } from '@/components/detour-card';
+import { PracticeCard } from '@/components/practice/practice-card';
 import { coversAny } from '@/evidence-model';
 import type { DetourUi } from '@/thread-model';
+import type { PracticeUi } from '@/practice-model';
 import { useOpenSession } from '@/open-session';
 import { useCurrentSession, useHighlight, usePanel } from '@/panel';
 import { W } from '@/wording';
@@ -34,6 +36,7 @@ interface MessageMeta {
   objection?: { toLine: number; label: string };
   images?: string[];
   detour?: DetourUi;
+  practice?: PracticeUi;
 }
 
 function useMeta(): MessageMeta {
@@ -193,6 +196,11 @@ const UserMessage: FC = () => {
       {meta.objection !== undefined && (
         <span className="text-muted-foreground text-xs">{meta.objection.label}</span>
       )}
+      {meta.practice?.kind === 'answer' && (
+        <span data-testid="practice-answer-tag" className="text-primary text-xs">
+          {meta.practice.label}
+        </span>
+      )}
       {meta.images !== undefined && <SentImages ids={meta.images} />}
       <div
         data-testid="user-message"
@@ -241,7 +249,7 @@ const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, verdict, line, detour } = useMeta();
+  const { link, verdict, line, detour, practice } = useMeta();
   const open = useOpenSession();
   const panel = usePanel();
   const sessionId = useCurrentSession();
@@ -249,6 +257,28 @@ const SystemMessage: FC = () => {
     <MessagePrimitive.Root data-role="system" className="px-1">
       {detour !== undefined && sessionId !== undefined ? (
         <DetourCardBox loopId={sessionId} card={detour} />
+      ) : practice?.kind === 'card' && sessionId !== undefined && line !== undefined ? (
+        <PracticeCard
+          loopId={sessionId}
+          taskId={practice.taskId}
+          line={line}
+          loopOpen={practice.loopOpen}
+          candidates={practice.candidates}
+        />
+      ) : practice?.kind === 'summary' ? (
+        <button
+          type="button"
+          data-testid="practice-summary-line"
+          className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm"
+          onClick={() => panel.show({ kind: 'practice', summary: practice.id })}
+        >
+          <span className="bg-border h-px w-4" />
+          {text}
+          <span className="text-primary flex items-center text-xs opacity-80 group-hover:opacity-100">
+            {W.practice.summaryOpen}
+            <ChevronRightIcon className="size-3.5" />
+          </span>
+        </button>
       ) : verdict !== undefined && sessionId !== undefined && line !== undefined ? (
         <button
           type="button"

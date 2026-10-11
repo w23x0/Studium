@@ -14,6 +14,7 @@ import {
   GitForkIcon,
   InfoIcon,
   GaugeIcon,
+  LayersIcon,
   LibraryIcon,
   ListTreeIcon,
   MessageCircleIcon,
@@ -43,6 +44,7 @@ import { Badge, Loading } from './evidence/parts.tsx';
 import { RemindersSection } from './longterm/reminders.tsx';
 import { ReviewsSection } from './longterm/reviews.tsx';
 import { TodaySection, useGoOnWith } from './longterm/today.tsx';
+import { PracticeOverview } from './practice/practice-review.tsx';
 
 export function ProjectHome(props: {
   projectId: string;
@@ -80,6 +82,7 @@ export function ProjectHome(props: {
                   <LoadNotice load={o.load} />
                   <Groups overview={o} onError={props.onError} />
                   <OutputsSection projectId={props.projectId} />
+                  <PracticeOverview />
                   <Relations projectId={props.projectId} />
                   <AboutMe />
                 </div>
@@ -175,6 +178,7 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
               title: o.title,
               reason: o.reason,
               revisit: revisitOf(o),
+              stageCheck: o.ticket.stageCheck === true,
             }))}
             onError={props.onError}
           />
@@ -327,6 +331,11 @@ function LoopRow(props: {
           {l.revisit !== undefined && (
             <Badge tone="accent" title={W.revisitHint[l.revisit]}>
               {W.revisitKind[l.revisit]}
+            </Badge>
+          )}
+          {l.stageCheck === true && (
+            <Badge tone="warn" title={W.practice.stageCheckHint}>
+              {W.practice.stageCheck}
             </Badge>
           )}
         </span>
@@ -521,6 +530,11 @@ function AboutMe() {
       onClick: () => panel.show({ kind: 'points' }),
     },
     { icon: <BookCheckIcon />, label: W.learned, onClick: () => panel.show({ kind: 'learned' }) },
+    {
+      icon: <LayersIcon />,
+      label: W.practice.reviewTitle,
+      onClick: () => panel.show({ kind: 'practice' }),
+    },
     { icon: <GaugeIcon />, label: W.myState, onClick: () => panel.show({ kind: 'state' }) },
     {
       icon: <ClipboardListIcon />,

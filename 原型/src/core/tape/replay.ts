@@ -149,7 +149,7 @@ const IN_BACKGROUND: readonly ActionName[] = [
   'reanalyzeLoop',
 ];
 
-/** 重做一个学习者动作：“longterm.” / “outputs.” / “notes.” 开头的找对应的对象，别的是 Studium 的方法。 */
+/** 重做一个学习者动作：“longterm.” / “practice.” / “outputs.” / “notes.” 开头的找对应的对象，别的是 Studium 的方法。 */
 async function perform(app: App, name: ActionName, args: unknown[]): Promise<void> {
   const dot = name.indexOf('.');
   const where = dot < 0 ? '' : name.slice(0, dot);
@@ -157,13 +157,15 @@ async function perform(app: App, name: ActionName, args: unknown[]): Promise<voi
   const target: object =
     where === 'longterm'
       ? app.studium.longterm
-      : where === 'outputs'
-        ? app.outputs
-        : where === 'notes'
-          ? app.notes
-          : where === 'm08review'
-            ? app.m08Review
-            : app.studium;
+      : where === 'practice'
+        ? app.studium.practice
+        : where === 'outputs'
+          ? app.outputs
+          : where === 'notes'
+            ? app.notes
+            : where === 'm08review'
+              ? app.m08Review
+              : app.studium;
   const fn = (target as Record<string, unknown>)[method];
   if (typeof fn !== 'function') throw new Error(`回放不认识的动作：${name}`);
   const run = () => (fn as (...a: unknown[]) => Promise<unknown>).apply(target, args);

@@ -67,6 +67,7 @@ import { InputError, type Inputs } from '../inputs.ts';
 import { inputsRoute } from './inputs-routes.ts';
 import { longtermRoute } from './longterm-routes.ts';
 import { m08ReviewRoute } from './m08-review-routes.ts';
+import { practiceRoute } from './practice-routes.ts';
 import { outputsRoute } from './outputs-routes.ts';
 import type { M08Review } from '../m08-review.ts';
 import type { Outputs } from '../outputs.ts';
@@ -177,6 +178,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return;
     if (
       await longtermRoute(
+        req,
+        res,
+        new URL(req.url ?? '/', 'http://localhost'),
+        parts,
+        method,
+        studium,
+      )
+    )
+      return;
+    if (
+      await practiceRoute(
         req,
         res,
         new URL(req.url ?? '/', 'http://localhost'),

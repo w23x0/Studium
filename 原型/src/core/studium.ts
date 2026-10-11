@@ -21,6 +21,7 @@ import type {
 } from '../shared/records.ts';
 import { Detours } from './detour.ts';
 import { LongTerm } from './longterm.ts';
+import { Practice } from './practice.ts';
 import { REVISIT_KINDS } from '../shared/records-longterm.ts';
 import type { Deviations } from './knowledge/m05-deviations.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
@@ -102,8 +103,22 @@ export class Studium {
   /** 跨闭环的长期功能（批 6）：复习 / 复检、降档、当前视图、接着学、复盘、提醒、路线偏差。 */
   readonly longterm: LongTerm;
 
+  /** 练习任务（批 9，M03）：布置 → 作答 → 反馈 → 完成 / 放弃，习题清单，重复错误成模式，题型归纳，阶段验收。 */
+  readonly practice: Practice;
+
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
+    this.practice = new Practice({
+      hub: () => this.hub,
+      m07: o.m07,
+      m08: o.m08,
+      iso: () => this.iso(),
+      newId: (prefix) => this.newId(prefix),
+      scopeOf: (id, all) => this.scopeOf(id, all),
+      assertActiveLoop: (id) => this.assertActiveLoop(id),
+      assertOpenLoop: (id) => this.assertOpenLoop(id),
+      learnerSays: (id, text, practice) => this.learnerSays(id, text, undefined, practice),
+    });
     this.longterm = new LongTerm({
       hub: () => this.hub,
       m08: o.m08,
@@ -220,6 +235,7 @@ export class Studium {
             this.loopTranscriptTool(),
             ...this.loopTools(sessionId),
             ...this.longterm.loopTools(sessionId),
+            ...this.practice.loopTools(sessionId),
           ];
         case 'guard':
           return [...this.readTools(sessionId, { m09: false }), this.verdictTool(sessionId)];
@@ -266,6 +282,7 @@ export class Studium {
 
   /** 一个项目一条主对话；没有就开一条。 */
   async ensureMain(): Promise<string> {
+    await this.practice.warm();
     const main = this.hub.listSessions().find((s) => s.kind === 'main');
     if (main) return main.sessionId;
     return this.createProject();
@@ -444,8 +461,16 @@ export class Studium {
   }
 
   /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（03「闭环外」暂停）。images = 附图的来历（批 4，文字已并进 text）。 */
-  async learnerSays(sessionId: string, text: string, images?: ImageInput[]): Promise<void> {
-    const meta = images !== undefined && images.length > 0 ? { images } : {};
+  async learnerSays(
+    sessionId: string,
+    text: string,
+    images?: ImageInput[],
+    practice?: { taskId: string },
+  ): Promise<void> {
+    const meta = {
+      ...(images !== undefined && images.length > 0 ? { images } : {}),
+      ...(practice !== undefined ? { practice } : {}),
+    };
     const recs = await this.hub.records(sessionId);
     if (recs.some((r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended')) {
       throw new BadRequestError('这段对话已经结束了，回到项目里接着聊。');
@@ -1216,6 +1241,12 @@ export class Studium {
         z.object({ point: z.string(), source: z.enum(['M09', '自述', '假定']) }),
       ),
       route_action: z.string(),
+      stage_check: z
+        .boolean()
+        .optional()
+        .describe(
+          '阶段验收：这个闭环是一次阶段验收（练习都按验收算、默认不给提示），不是学新内容或日常练习时填真；守卫照常判',
+        ),
       revisit: z
         .object({
           kind: z.enum(REVISIT_KINDS),
@@ -1256,6 +1287,7 @@ export class Studium {
             ...(o.revisit !== undefined
               ? { revisit: { kind: o.revisit.kind, formationIds: o.revisit.formation_ids } }
               : {}),
+            ...(o.stage_check === true ? { stageCheck: true } : {}),
           },
         }));
         const blank = raw.flatMap((o, i) =>
@@ -1648,6 +1680,7 @@ export class Studium {
             '',
           ]
         : []),
+      ...this.practice.openingFacts(t),
       '学习者状态（M15）与以前的教法记录（M10）：要用时查。',
       '',
       '现在开始这个闭环：先简短说明这次学什么、从哪出发，然后开始。',
