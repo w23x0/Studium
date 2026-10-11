@@ -17,9 +17,12 @@ import type {
 } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { api } from '../../api.ts';
 import { segmentLines, shortTime, splitLineRefs } from '../../evidence-model.ts';
+import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
-import { asBBox } from '../../source-model.ts';
+import { asBBox, citationPieces } from '../../source-model.ts';
+import { CitationChip, CitationsProvider } from '../sources/citation.tsx';
 import { W } from '../../wording.ts';
 
 export function Section(props: {
@@ -120,6 +123,9 @@ export function SourceBadge(props: { source: M08Source; note?: string }) {
 
 export function Anchors(props: { anchors: AnchorView[] }) {
   const panel = usePanel();
+  // 显示书名；书目还没取到时先用编号
+  const books = useLoad('library:books', () => api.books(), false);
+  const titleOf = (id: string) => books.data?.books.find((b) => b.id === id)?.title ?? id;
   if (props.anchors.length === 0) return null;
   /** 有页码就看原件那一页（标出位置框），没有就看转录的原文那一行。 */
   const open = (a: AnchorView): (() => void) | undefined => {
@@ -154,7 +160,7 @@ export function Anchors(props: { anchors: AnchorView[] }) {
           <>
             <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
               <BookOpenIcon className="size-3.5" />
-              {W.page(a.book, a.page)}
+              {W.page(titleOf(a.book), a.page)}
               {go !== undefined && <ChevronRightIcon className="size-3.5" />}
             </div>
             {a.quote !== '' && (
@@ -262,7 +268,9 @@ export function Quote(props: { quote: QuoteView; sessionId: string }) {
   const { quote } = props;
   return (
     <div className="bg-muted/60 flex flex-col gap-1 rounded-lg px-3 py-2">
-      <div className="text-[0.92rem] whitespace-pre-wrap">{quote.text ?? W.notAvailable}</div>
+      <div className="text-[0.92rem] whitespace-pre-wrap">
+        {quote.text !== undefined ? <QuoteText text={quote.text} /> : W.notAvailable}
+      </div>
       <button
         type="button"
         className="text-primary flex items-center gap-1 self-start text-xs hover:underline"
@@ -272,6 +280,19 @@ export function Quote(props: { quote: QuoteView; sessionId: string }) {
         {W.jumpTo}
       </button>
     </div>
+  );
+}
+
+/** 引用的原话：里面的教材出处标记画成出处小标签（代码里的不换），别的照原样。 */
+function QuoteText(props: { text: string }) {
+  const pieces = citationPieces(props.text);
+  if (pieces.every((p) => 'text' in p)) return <>{props.text}</>;
+  return (
+    <CitationsProvider text={props.text} done>
+      {pieces.map((p, i) =>
+        'cite' in p ? <CitationChip key={i} index={p.cite} /> : <span key={i}>{p.text}</span>,
+      )}
+    </CitationsProvider>
   );
 }
 

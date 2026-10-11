@@ -9,6 +9,7 @@ import type {
   RevisitKind,
   RouteSignal,
 } from '../shared/records.ts';
+import { parseReviewReturned } from '../shared/records-longterm.ts';
 import { judgementLine, W } from './wording.ts';
 
 export interface UiMessage {
@@ -225,8 +226,23 @@ export function toUiMessages(
           line,
         });
         break;
+      case 'program_fact': {
+        // 程序事实是给模型看的，不显示；唯一例外：阶段复盘交回主对话的那一句（像学完一段那样显示一行）
+        const back = parseReviewReturned(r.text);
+        if (back !== undefined) {
+          const label = W.reviewEndedLine(back.summary);
+          push({
+            id,
+            role: 'system',
+            text: label,
+            line,
+            link: { sessionId: back.reviewSessionId, label },
+          });
+        }
+        break;
+      }
       default:
-        // 程序事实、诊断记录、工具调用、原始消息等是给模型与审计用的，不显示
+        // 诊断记录、工具调用、原始消息等是给模型与审计用的，不显示
         break;
     }
   }

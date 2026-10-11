@@ -21,6 +21,7 @@ import type {
 } from '../shared/records.ts';
 import {
   REMINDER_KINDS,
+  reviewReturnedFact,
   SUSPICIONS,
   type ReminderKind,
   type Revisit,
@@ -1033,7 +1034,7 @@ export class LongTerm {
           });
           await this.hub.send(mainId, {
             role: 'program',
-            text: `阶段复盘的对话（${talkId}）交回了：${summary}`,
+            text: reviewReturnedFact(talkId, summary),
           });
           return ok('复盘已交回项目，本对话结束。和学习者简短说一句就好。');
         },

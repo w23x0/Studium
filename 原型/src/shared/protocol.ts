@@ -19,6 +19,8 @@ export interface SessionSummary {
   title: string;
   openedAt: string;
   parent?: string;
+  /** 学习对话的来历：从哪段学习中途岔出去补的（fork），或接着哪段没学完的学的（resume）。 */
+  from?: { kind: 'fork' | 'resume'; loop: string };
 }
 
 export interface CreateSessionResponse {

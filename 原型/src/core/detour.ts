@@ -6,6 +6,7 @@ import type {
   DetourMade,
   DetourOption,
   ForkOrigin,
+  M05Job,
   NumberedRecord,
   ParkingNote,
   Ticket,
@@ -32,10 +33,11 @@ export interface DetourDeps {
   m05ReadTools(sessionId: string): ToolSpec[];
 }
 
-/** 一个 M05 会话在干哪件活（不是出下一闭环的选择卡）。 */
-type Job =
-  | { kind: 'detour'; loopId: string; signalLine: number }
-  | { kind: 'park'; loopId: string; reason: ParkingNote['reason'] };
+/** 一个 M05 会话在干哪件活（不是出下一闭环的选择卡）；写在该会话正本的开场记录里（m05Job）。 */
+type Job = M05Job;
+
+/** 重启后重做一件没交完的活时，开场前加的这句（也用来认出“已经重做过一次”，不再重做）。 */
+const RESTARTED = '（服务中途重启过，这件活上次没交完。照下面的说明从头做一遍，交回一次。）';
 
 interface ParkingInput {
   missing: { point?: string; text: string }[];
@@ -45,7 +47,7 @@ interface ParkingInput {
 }
 
 export class Detours {
-  /** M05 会话 id → 它干的活。 */
+  /** M05 会话 id → 它干的活（正本开场记录的缓存；启动时由 restore 重建）。 */
   private readonly jobs = new Map<string, Job>();
   private readonly cards = new Map<string, { options: DetourOption[]; recommended: number }>();
   private readonly parks = new Map<string, ParkingInput>();
@@ -113,35 +115,35 @@ export class Detours {
     });
     const mainId = opened.parent;
     if (mainId === undefined) return fail('这个闭环不属于任何项目，无法出小卡。');
-    const m05 = await this.d.hub().createSession('m05', { title: '闭环中途小卡', parent: loopId });
-    this.jobs.set(m05.sessionId, { kind: 'detour', loopId, signalLine });
-    try {
-      await this.d.hub().send(m05.sessionId, {
-        role: 'program',
-        text: await this.detourOpening(
-          loopId,
-          mainId,
-          signalLine,
-          await this.d.hub().records(loopId),
-        ),
-      });
-      await this.d.hub().idle(m05.sessionId);
-    } finally {
-      this.jobs.delete(m05.sessionId);
+    const job: Job = { kind: 'detour', loopId, signalLine };
+    const m05 = await this.d
+      .hub()
+      .createSession('m05', { title: '闭环中途小卡', parent: loopId, m05Job: job });
+    this.jobs.set(m05.sessionId, job);
+    const opening = await this.detourOpening(
+      loopId,
+      mainId,
+      signalLine,
+      await this.d.hub().records(loopId),
+    );
+    return this.runDetour(m05.sessionId, job, opening);
+  }
+
+  /** 让 M05 会话出小卡，交回了就贴进闭环。返回给教学侧的话。 */
+  private async runDetour(sessionId: string, job: Job, opening: string): Promise<ToolResult> {
+    await this.d.hub().send(sessionId, { role: 'program', text: opening });
+    await this.d.hub().idle(sessionId);
+    const card = this.cards.get(sessionId);
+    this.cards.delete(sessionId);
+    if (card === undefined || job.kind !== 'detour') {
+      return fail(`M05 没有交回小卡（见会话 ${sessionId}）。你先照常往下教，需要时再通知一次。`);
     }
-    const card = this.cards.get(m05.sessionId);
-    this.cards.delete(m05.sessionId);
-    if (card === undefined) {
-      return fail(
-        `M05 没有交回小卡（见会话 ${m05.sessionId}）。你先照常往下教，需要时再通知一次。`,
-      );
-    }
-    await this.d.hub().record(loopId, {
+    await this.d.hub().record(job.loopId, {
       type: 'detour_card',
       at: this.d.iso(),
       cardId: this.d.newId('dcard'),
-      m05SessionId: m05.sessionId,
-      signalLine,
+      m05SessionId: sessionId,
+      signalLine: job.signalLine,
       options: card.options,
       recommended: card.recommended,
     });
@@ -464,52 +466,153 @@ export class Detours {
 
   /** 让 M05 的一个会话记停车记录：缺在哪个出发点、建议的恢复计划。记进该闭环自己的正本。 */
   async park(loopId: string, reason: ParkingNote['reason']): Promise<void> {
+    const job: Job = { kind: 'park', loopId, reason };
+    const m05 = await this.d
+      .hub()
+      .createSession('m05', { title: '记停车记录', parent: loopId, m05Job: job });
+    this.jobs.set(m05.sessionId, job);
+    await this.runPark(m05.sessionId, job, await this.parkOpening(loopId, reason));
+  }
+
+  private async parkOpening(loopId: string, reason: ParkingNote['reason']): Promise<string> {
     const opened = await this.d.hub().opened(loopId);
     const recs = await this.d.hub().records(loopId);
-    const m05 = await this.d.hub().createSession('m05', { title: '记停车记录', parent: loopId });
-    this.jobs.set(m05.sessionId, { kind: 'park', loopId, reason });
-    try {
-      const ended = foldLoop(recs).ended;
-      const signals = recs.flatMap((r) =>
-        r.record.type === 'route_signal'
-          ? [
-              `L${String(r.line)} ${r.record.kind === 'gap' ? '前置缺口' : '想分叉'}：${r.record.missingPoint !== undefined ? this.pointText(r.record.missingPoint) + '；' : ''}${r.record.missingText}（依据 ${r.record.basisLines.map((l) => `L${String(l)}`).join('、')}）`,
-            ]
-          : [],
-      );
-      await this.d.hub().send(m05.sessionId, {
-        role: 'program',
-        text: [
-          `这次的活：给一个${reason === 'shelved' ? '被学习者搁置' : '没合上就结束'}的闭环记停车记录（不是出选择卡）。`,
-          '停车记录 = 缺在哪个出发点 + 恢复计划（何时、从哪接上）。可靠的搁置要有具体的恢复计划，而不是笼统的“以后再说”。',
-          '读下面的单子、教学侧中途报过的缺口和对话原文（需要时用 read_loop 或查 M08 / M09），用 submit_parking_note 交回，只交一次。',
-          '',
-          `闭环：「${opened.title}」（${loopId}）`,
-          `单子：${opened.ticket ? this.d.describeTicket(opened.ticket) : '（缺）'}`,
-          ...(ended !== undefined ? [`结束时学习者说：${ended.note}`] : []),
-          `教学侧中途通知过的缺口：${signals.length > 0 ? '\n' + signals.join('\n') : '（没有）'}`,
-          '',
-          '对话原文：',
-          renderTranscript(recs),
-        ].join('\n'),
-      });
-      await this.d.hub().idle(m05.sessionId);
-    } finally {
-      this.jobs.delete(m05.sessionId);
+    const ended = foldLoop(recs).ended;
+    const signals = recs.flatMap((r) =>
+      r.record.type === 'route_signal'
+        ? [
+            `L${String(r.line)} ${r.record.kind === 'gap' ? '前置缺口' : '想分叉'}：${r.record.missingPoint !== undefined ? this.pointText(r.record.missingPoint) + '；' : ''}${r.record.missingText}（依据 ${r.record.basisLines.map((l) => `L${String(l)}`).join('、')}）`,
+          ]
+        : [],
+    );
+    return [
+      `这次的活：给一个${reason === 'shelved' ? '被学习者搁置' : '没合上就结束'}的闭环记停车记录（不是出选择卡）。`,
+      '停车记录 = 缺在哪个出发点 + 恢复计划（何时、从哪接上）。可靠的搁置要有具体的恢复计划，而不是笼统的“以后再说”。',
+      '读下面的单子、教学侧中途报过的缺口和对话原文（需要时用 read_loop 或查 M08 / M09），用 submit_parking_note 交回，只交一次。',
+      '',
+      `闭环：「${opened.title}」（${loopId}）`,
+      `单子：${opened.ticket ? this.d.describeTicket(opened.ticket) : '（缺）'}`,
+      ...(ended !== undefined ? [`结束时学习者说：${ended.note}`] : []),
+      `教学侧中途通知过的缺口：${signals.length > 0 ? '\n' + signals.join('\n') : '（没有）'}`,
+      '',
+      '对话原文：',
+      renderTranscript(recs),
+    ].join('\n');
+  }
+
+  /** 让 M05 会话记停车记录，交回了就记进闭环正本；没交回就报错。 */
+  private async runPark(sessionId: string, job: Job, opening: string): Promise<void> {
+    await this.d.hub().send(sessionId, { role: 'program', text: opening });
+    await this.d.hub().idle(sessionId);
+    const note = this.parks.get(sessionId);
+    this.parks.delete(sessionId);
+    if (note === undefined || job.kind !== 'park') {
+      throw new Error(`M05 没有交回停车记录（见会话 ${sessionId}）`);
     }
-    const note = this.parks.get(m05.sessionId);
-    this.parks.delete(m05.sessionId);
-    if (note === undefined) throw new Error(`M05 没有交回停车记录（见会话 ${m05.sessionId}）`);
-    await this.d.hub().record(loopId, {
+    await this.d.hub().record(job.loopId, {
       type: 'parking_note',
       at: this.d.iso(),
-      reason,
+      reason: job.reason,
       missing: note.missing,
       when: note.when,
       resumeFrom: note.resumeFrom,
       basisLines: note.basisLines,
-      m05SessionId: m05.sessionId,
+      m05SessionId: sessionId,
     });
+  }
+
+  // ───────────── 重启后恢复 ─────────────
+
+  /**
+   * 启动时调：从各 M05 会话正本的开场记录（m05Job）重建“它干哪件活”，免得重启后退回出选择卡的工具；
+   * 返回中途被重启打断、还没交回的那几件（每件只重做一次）。
+   */
+  async restore(): Promise<string[]> {
+    const pending: string[] = [];
+    for (const s of this.d.hub().listSessions()) {
+      if (s.kind !== 'm05') continue;
+      const opened = await this.d.hub().opened(s.sessionId);
+      if (opened.m05Job === undefined) continue;
+      this.jobs.set(s.sessionId, opened.m05Job);
+      if (await this.interrupted(s.sessionId, opened.at, opened.m05Job)) pending.push(s.sessionId);
+    }
+    return pending;
+  }
+
+  /** 这件活是不是被重启打断了：没交回结果、调用方也没收到结果、闭环还用得着它。 */
+  private async interrupted(sessionId: string, openedAt: string, job: Job): Promise<boolean> {
+    const own = await this.d.hub().records(sessionId);
+    if (own.some((r) => r.record.type === 'program_fact' && r.record.text.startsWith(RESTARTED))) {
+      return false; // 已经重做过一次
+    }
+    const recs = await this.d.hub().records(job.loopId);
+    const flags = foldLoop(recs);
+    if (job.kind === 'detour') {
+      if (flags.ended !== undefined) return false;
+      return !recs.some(
+        (r) =>
+          (r.record.type === 'detour_card' && r.record.m05SessionId === sessionId) ||
+          // 教学侧的那次通知已经拿到结果（成或不成），或者之后又通知过
+          (r.line > job.signalLine &&
+            ((r.record.type === 'tool_call' && r.record.name === 'request_detour') ||
+              r.record.type === 'route_signal')),
+      );
+    }
+    if (recs.some((r) => r.record.type === 'parking_note' && r.record.at >= openedAt)) return false;
+    if (job.reason === 'shelved') return flags.shelved !== undefined;
+    return (
+      flags.ended !== undefined &&
+      !recs.some(
+        (r) =>
+          r.record.type === 'after_loop_step' &&
+          r.record.step === 'failed' &&
+          r.record.detail.startsWith('停车记录'),
+      )
+    );
+  }
+
+  /** 重做一件被重启打断的活：小卡贴回闭环并告诉教学侧；停车记录照记（没合上就结束的补记清单步骤）。 */
+  async finishInterrupted(sessionId: string): Promise<void> {
+    const job = this.jobs.get(sessionId);
+    if (job === undefined) return;
+    if (job.kind === 'detour') {
+      const mainId = (await this.d.hub().opened(job.loopId)).parent;
+      if (mainId === undefined) return;
+      const opening = await this.detourOpening(
+        job.loopId,
+        mainId,
+        job.signalLine,
+        await this.d.hub().records(job.loopId),
+      );
+      const r = await this.runDetour(sessionId, job, `${RESTARTED}\n\n${opening}`);
+      await this.d.hub().send(job.loopId, {
+        role: 'program',
+        text: `（服务中途重启过，你刚才那次通知的结果现在才回来。）${r.text}`,
+      });
+      return;
+    }
+    const opening = await this.parkOpening(job.loopId, job.reason);
+    try {
+      await this.runPark(sessionId, job, `${RESTARTED}\n\n${opening}`);
+    } catch (err) {
+      if (job.reason === 'ended_unclosed') {
+        await this.d.hub().record(job.loopId, {
+          type: 'after_loop_step',
+          at: this.d.iso(),
+          step: 'failed',
+          detail: `停车记录：${err instanceof Error ? err.message : String(err)}`,
+        });
+      }
+      throw err;
+    }
+    if (job.reason === 'ended_unclosed') {
+      await this.d.hub().record(job.loopId, {
+        type: 'after_loop_step',
+        at: this.d.iso(),
+        step: 'parked',
+        detail: '停车记录已写入（重启后补做）',
+      });
+    }
   }
 
   private parkingTool(sessionId: string, job: Extract<Job, { kind: 'park' }>): ToolSpec {

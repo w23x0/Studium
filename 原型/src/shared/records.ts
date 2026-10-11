@@ -49,7 +49,14 @@ export interface SessionOpened {
   resumeOf?: ResumeOrigin;
   /** 这是一次阶段复盘（畅谈类会话的另一种活，批 6）：回看的时间窗口。 */
   review?: ReviewWindow;
+  /** M05 会话干的是哪件活（批 5）：闭环中途的小卡 / 记停车记录；没有 = 出下一闭环的选择卡。重启后按它恢复工具。 */
+  m05Job?: M05Job;
 }
+
+/** M05 会话的活（闭环中途）：对哪个闭环、因哪条通知出小卡，或给哪个闭环记停车记录。 */
+export type M05Job =
+  | { kind: 'detour'; loopId: string; signalLine: number }
+  | { kind: 'park'; loopId: string; reason: 'shelved' | 'ended_unclosed' };
 
 /** 分叉闭环的来历（M01:18 会话关系：来源、分叉、返回；M05:19 返回条件）。 */
 export interface ForkOrigin {

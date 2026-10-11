@@ -39,6 +39,7 @@ import {
 } from './components/longterm/loop-extras.tsx';
 import { useReviewIds } from './components/longterm/reviews.tsx';
 import { OpenSessionContext, useOpenSession } from './open-session.ts';
+import { taskRows } from './relations-model.ts';
 import {
   CurrentSessionContext,
   HighlightContext,
@@ -254,8 +255,12 @@ export function App() {
                           {W.projectChat}
                         </SideItem>
                         <ul data-testid="session-list" className="flex flex-col gap-0.5">
-                          {tasks.map((s) => (
-                            <li key={s.sessionId}>
+                          {taskRows(tasks).map(({ session: s, depth, from }) => (
+                            <li
+                              key={s.sessionId}
+                              data-from={from}
+                              style={depth > 0 ? { paddingInlineStart: `${depth * 0.75}rem` } : {}}
+                            >
                               <SideItem
                                 active={page === 'chat' && s.sessionId === current}
                                 onClick={() => {
@@ -272,10 +277,19 @@ export function App() {
                                   />
                                 ) : (
                                   <span className="text-muted-foreground w-3.5 text-center text-xs">
-                                    ·
+                                    {from !== undefined ? '↳' : '·'}
                                   </span>
                                 )}
-                                {s.title}
+                                {from !== undefined ? (
+                                  <span className="flex min-w-0 flex-col">
+                                    <span className="truncate">{s.title}</span>
+                                    <span className="text-muted-foreground text-[0.7rem] leading-tight">
+                                      {W.taskFrom[from]}
+                                    </span>
+                                  </span>
+                                ) : (
+                                  s.title
+                                )}
                               </SideItem>
                             </li>
                           ))}

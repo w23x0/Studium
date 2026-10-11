@@ -12,6 +12,8 @@ export const W = {
   // ── 项目页 ──
   projectHome: '项目概览', // 项目页（Overview）
   projectChat: '项目对话', // 主对话
+  /** 左栏对话列表里学习对话的来历。 */
+  taskFrom: { fork: '岔出去补的', resume: '接着学的' } as const,
   goal: '想学的方向', // 方向目标
   goalMissing: '还没谈定。在项目对话里说说你想学什么。',
   backToChat: '回到项目对话',
@@ -137,8 +139,8 @@ export const W = {
     string
   >,
   timeRange: '时间范围',
-  teaching: '教法记录', // M10
-  teachingEmpty: '还没有教法记录。',
+  teaching: '对我用过的教法', // M10 个人策略记录（与下面的“教学方法库”分开叫）
+  teachingEmpty: '还没有对你用过的教法记录。',
   conditions: '当时的情况',
   strategies: '用了什么教法',
   followedBy: '之后怎样',
@@ -429,7 +431,7 @@ export const W = {
   notChosenYet: '还没选',
 
   // ── 教法：老师可以取用的教学方法、每轮的教法强度、状态确认（批 7） ──
-  tools: '教法', // 教学工具库（M10 通用策略知识层）
+  tools: '教学方法库', // 教学工具库（M10 通用策略知识层）
   toolsHint:
     '老师教的时候可以取用的做法。每份写了什么时候用、怎么做、怎么看出学会没有、要注意什么。',
   toolsEmpty: '还没有可用的教法。',
@@ -698,6 +700,9 @@ export const W = {
   reminderNeedText: '要写一句做什么。',
   reminderNeedPick: '要选是哪一个。',
   reminderNeedDate: '要选日期。',
+  remindersClosed: (n: number) => `已办 / 已跳过的（${String(n)}）`,
+  reminderOutcome: { done: '已办', dismissed: '已跳过' } as const,
+  reminderClosedBy: { learner: '你标的', program: '学的时候顺手办掉的' } as const,
   // 复习 / 复检
   revisitKind: { 复习: '复习', 复检: '复检' } as const,
   revisitHint: {

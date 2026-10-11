@@ -1,5 +1,5 @@
 // 学习之间的关系（来源、岔开、回来）→ 按“从哪岔出来”排成的缩进列表。纯函数，单测覆盖。
-import type { ForkLinkView, LoopRelationView } from '../shared/protocol.ts';
+import type { ForkLinkView, LoopRelationView, SessionSummary } from '../shared/protocol.ts';
 
 export interface RelationRow {
   rel: LoopRelationView;
@@ -42,5 +42,40 @@ export function relationRows(relations: LoopRelationView[]): RelationRow[] {
   for (const r of relations) if (parentOf(r) === undefined) visit(r, 0);
   // 成环之类的坏数据：剩下的照原样平铺，不丢
   for (const r of relations) visit(r, 0);
+  return out;
+}
+
+/** 左栏对话列表的一行：缩进几层（最多 3 层），和它的来历（岔出去补的 / 接着学的）。 */
+export interface TaskRow {
+  session: SessionSummary;
+  depth: number;
+  from?: 'fork' | 'resume';
+}
+
+/** 左栏缩进最多几层（再深也按这一层画，免得挤没了名字）。 */
+const MAX_INDENT = 3;
+
+/**
+ * 左栏的对话列表：按开的先后，岔出去补的、接着学的紧跟在它来自的那段下面并缩进一层；
+ * 来自的那段不在列表里（别的项目、已删）时不缩进，但照样标来历。
+ */
+export function taskRows(tasks: SessionSummary[]): TaskRow[] {
+  const sorted = [...tasks].sort((a, b) => a.openedAt.localeCompare(b.openedAt));
+  const ids = new Set(sorted.map((s) => s.sessionId));
+  const out: TaskRow[] = [];
+  const seen = new Set<string>();
+  const visit = (s: SessionSummary, depth: number) => {
+    if (seen.has(s.sessionId)) return;
+    seen.add(s.sessionId);
+    out.push({
+      session: s,
+      depth: Math.min(depth, MAX_INDENT),
+      ...(s.from !== undefined ? { from: s.from.kind } : {}),
+    });
+    for (const c of sorted) if (c.from?.loop === s.sessionId) visit(c, depth + 1);
+  };
+  for (const s of sorted) if (s.from === undefined || !ids.has(s.from.loop)) visit(s, 0);
+  // 成环之类的坏数据：剩下的照原样平铺，不丢
+  for (const s of sorted) visit(s, 0);
   return out;
 }

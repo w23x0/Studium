@@ -303,6 +303,9 @@ export function PageView(props: {
 }) {
   const panel = usePanel();
   const { book, file, line } = props;
+  // 标题用书名；书目还没取到（或书库里没有这本）时先用编号
+  const books = useLoad('library:books', () => api.books(), false);
+  const title = books.data?.books.find((b) => b.id === book)?.title ?? book;
   return (
     <div className="flex flex-col gap-4" data-testid="page-view">
       <div className="flex flex-col gap-1">
@@ -311,9 +314,9 @@ export function PageView(props: {
           className="text-muted-foreground hover:text-foreground self-start text-xs"
           onClick={() => panel.show({ kind: 'library', book })}
         >
-          {book} · {W.toc}
+          {title} · {W.toc}
         </button>
-        <h2 className="font-serif text-lg">{W.page(book, props.page)}</h2>
+        <h2 className="font-serif text-lg">{W.page(title, props.page)}</h2>
       </div>
       {props.quote !== undefined && props.quote !== '' && (
         <Section title={W.quoteOnPage}>

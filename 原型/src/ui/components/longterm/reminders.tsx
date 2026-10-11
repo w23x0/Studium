@@ -1,8 +1,12 @@
-// 项目概览旁栏的“提醒”（批 6）：还开着的提醒（哪天、做什么），可标做完了 / 不要了；
+// 项目概览旁栏的“提醒”（批 6）：还开着的提醒（哪天、做什么），可标做完了 / 不要了；办过的可展开看（已办 / 已跳过）；
 // 加一条：做什么（复检一个学过的知识点 / 接着一段没学完的 / 为期限做准备 / 别的事）、什么时候（某一天 / 期限前几天）。
 import { useState } from 'react';
-import { BellIcon, CheckIcon, XIcon } from 'lucide-react';
-import type { AddReminderRequest, ProjectOverview } from '../../../shared/protocol.ts';
+import { BellIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, XIcon } from 'lucide-react';
+import type {
+  AddReminderRequest,
+  ProjectOverview,
+  ReminderView,
+} from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
@@ -18,7 +22,7 @@ export function RemindersSection(props: {
   onError: (e: unknown) => void;
 }) {
   const { projectId } = props;
-  const r = useLoad(`reminders:${projectId}`, () => api.reminders(projectId, true));
+  const r = useLoad(`reminders:${projectId}`, () => api.reminders(projectId));
   const [adding, setAdding] = useState(false);
   const [busy, setBusy] = useState<string | undefined>();
   const close = (id: string, outcome: 'done' | 'dismissed') => {
@@ -28,7 +32,13 @@ export function RemindersSection(props: {
       .then(r.reload, props.onError)
       .finally(() => setBusy(undefined));
   };
-  const reminders = [...(r.data?.reminders ?? [])].sort((a, b) => a.due.localeCompare(b.due));
+  const all = r.data?.reminders ?? [];
+  const reminders = all
+    .filter((x) => x.closed === undefined)
+    .sort((a, b) => a.due.localeCompare(b.due));
+  const closed = all
+    .filter((x) => x.closed !== undefined)
+    .sort((a, b) => (b.closed?.at ?? '').localeCompare(a.closed?.at ?? ''));
   return (
     <section data-testid="reminders" className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
@@ -100,7 +110,56 @@ export function RemindersSection(props: {
           ))}
         </ul>
       )}
+      {closed.length > 0 && <ClosedReminders reminders={closed} />}
     </section>
+  );
+}
+
+/** 办过的提醒（已办 / 已跳过）：默认收起，点开看。 */
+function ClosedReminders(props: { reminders: ReminderView[] }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex flex-col gap-1.5" data-testid="reminders-closed">
+      <button
+        type="button"
+        className="text-muted-foreground hover:text-foreground flex items-center gap-1 self-start text-xs"
+        aria-expanded={open}
+        onClick={() => setOpen((o) => !o)}
+      >
+        {open ? (
+          <ChevronDownIcon className="size-3.5" />
+        ) : (
+          <ChevronRightIcon className="size-3.5" />
+        )}
+        {W.remindersClosed(props.reminders.length)}
+      </button>
+      {open && (
+        <ul className="flex flex-col gap-1">
+          {props.reminders.map((x) => (
+            <li
+              key={x.id}
+              className="text-muted-foreground flex flex-col gap-0.5 rounded-lg border border-dashed px-3 py-1.5 text-sm"
+            >
+              <div className="flex flex-wrap items-center gap-1.5 text-xs">
+                <span>{x.due}</span>
+                <Badge tone="neutral">{W.reminderKind[x.kind]}</Badge>
+                {x.closed !== undefined && (
+                  <span>
+                    {W.reminderOutcome[x.closed.outcome]} · {x.closed.at.slice(0, 10)} ·{' '}
+                    {W.reminderClosedBy[x.closed.by]}
+                  </span>
+                )}
+              </div>
+              <span className="line-through decoration-1 opacity-80">{x.text}</span>
+              {/* 程序代办时的备注是给核对用的（带内部编号），只显示学习者自己写的 */}
+              {x.closed?.by === 'learner' &&
+                x.closed.note !== undefined &&
+                x.closed.note !== '' && <span className="text-xs">{x.closed.note}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

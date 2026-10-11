@@ -1,6 +1,7 @@
 // 改产出物：正文用文本框（可预览），方法比较用表；存为新的一版时带上“基于哪一版”。
 // 别人（或老师）刚存了更新的版本时不覆盖：提示先看最新版，稿子留着（翻到别处再回来也在）。
-import { useState } from 'react';
+// 重新打开编辑时回到上次的光标与滚动位置（存在浏览器本地，按产出物）。
+import { useEffect, useRef, useState } from 'react';
 import { TriangleAlertIcon } from 'lucide-react';
 import type { OutputView, SaveVersionRequest } from '../../../shared/m14.ts';
 import { Button } from '@/components/ui/button';
@@ -8,8 +9,10 @@ import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';
 import {
   draftProblems,
+  editPositionKey,
   fromDraft,
   isStaleError,
+  parseEditPosition,
   toDraft,
   type ComparisonDraft,
 } from '../../output-model.ts';
@@ -55,6 +58,25 @@ export function OutputEditor(props: {
   };
   const isTable = o.kind === '方法比较';
   const behind = draft.base < o.latest;
+  const textRef = useRef<HTMLTextAreaElement>(null);
+  const posKey = editPositionKey(o.id);
+  const rememberPosition = () => {
+    const t = textRef.current;
+    if (t === null) return;
+    localStorage.setItem(
+      posKey,
+      JSON.stringify({ start: t.selectionStart, end: t.selectionEnd, scrollTop: t.scrollTop }),
+    );
+  };
+  // 文本框出现时（打开编辑、从预览切回来）回到上次停的地方
+  useEffect(() => {
+    const t = textRef.current;
+    if (t === null) return;
+    const pos = parseEditPosition(localStorage.getItem(posKey), t.value.length);
+    if (pos === undefined) return;
+    t.setSelectionRange(pos.start, pos.end);
+    t.scrollTop = pos.scrollTop;
+  }, [posKey, preview]);
 
   const save = () => {
     const found = isTable
@@ -155,12 +177,16 @@ export function OutputEditor(props: {
             </div>
           ) : (
             <textarea
+              ref={textRef}
               data-testid="output-text"
               className="bg-background focus:border-foreground/30 min-h-[50vh] resize-y rounded-2xl border px-5 py-4 text-[0.95rem] leading-7 outline-none"
               value={draft.text}
               autoFocus
               aria-label={W.outputTabs.text}
               onChange={(e) => setDraft({ ...draft, text: e.target.value })}
+              onSelect={rememberPosition}
+              onScroll={rememberPosition}
+              onBlur={rememberPosition}
             />
           )}
           <p className="text-muted-foreground text-xs">{W.outputEditorHint}</p>

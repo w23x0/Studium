@@ -56,6 +56,9 @@ export interface AppOptions {
 export interface App {
   server: RunningServer;
   hub: Hub;
+  /** M14 产出物与个人笔记（回放重做学习者在这两处的动作用）。 */
+  outputs: Outputs;
+  notes: Notes;
   studium: Studium;
   dataDir: DataDir;
   close(): Promise<void>;
@@ -170,13 +173,14 @@ export async function createApp(opts: AppOptions): Promise<App> {
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
   await studium.ensureMain();
+  await studium.recover();
   const server = await startServer({
     hub,
     sources,
-    notes,
+    notes: recorder ? recorder.wrap(notes, 'notes.') : notes,
     evidence: new Evidence({ hub, m08, m09, m10, m15, objections, sources, inputs, teaching }),
     inputs,
-    outputs,
+    outputs: recorder ? recorder.wrap(outputs, 'outputs.') : outputs,
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,
     port: opts.port,
@@ -185,6 +189,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
   return {
     server,
     hub,
+    outputs,
+    notes,
     studium,
     dataDir,
     close: async () => {

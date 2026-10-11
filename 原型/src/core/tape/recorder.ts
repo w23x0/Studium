@@ -15,7 +15,10 @@ import type {
 import type { Studium } from '../studium.ts';
 import { IdTokens } from './ids.ts';
 
-/** 学习者经界面做的动作：回放时按顺序重做。 */
+/**
+ * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
+ * “outputs.” 是 M14 产出物的、“notes.” 是个人笔记的方法（本地服务拿到的都是录带包过的那一份）。
+ */
 export const ACTIONS = [
   'createProject',
   'learnerSays',
@@ -27,6 +30,27 @@ export const ACTIONS = [
   'objectToVerdict',
   'objectToRecord',
   'confirmRecord',
+  // 批 3a：项目资料、期限、笔记导入与提点
+  'changeMaterials',
+  'setDeadline',
+  'notes.import',
+  'extractNotePoints',
+  // 批 5：小卡上的选择、搁置、恢复
+  'chooseDetour',
+  'shelveLoop',
+  'resumeLoop',
+  // 批 6：接着学、提醒、复盘、重新分析
+  'longterm.continueLoop',
+  'longterm.addReminder',
+  'longterm.closeReminder',
+  'longterm.startReview',
+  'reanalyzeLoop',
+  // 批 8：产出物、版本、文献、候选、写产出对话
+  'outputs.create',
+  'outputs.save',
+  'outputs.addLiterature',
+  'outputs.markCandidate',
+  'outputs.openTask',
 ] as const;
 export type ActionName = (typeof ACTIONS)[number];
 
@@ -180,15 +204,28 @@ export class Recorder {
     }
   }
 
-  /** 给本地服务用的 Studium：学习者动作先记进录带再照常执行。 */
+  /** 给本地服务用的 Studium：学习者动作先记进录带再照常执行（studium.longterm 的动作同样）。 */
   wrapStudium(studium: Studium): Studium {
+    const longterm = this.wrap(studium.longterm, 'longterm.');
+    return this.wrap(studium, '', (prop) => (prop === 'longterm' ? longterm : undefined));
+  }
+
+  /** 给本地服务用的其他对象（产出物、笔记）：名字前缀 + 方法名在 ACTIONS 里的，先记再执行。 */
+  wrap<T extends object>(
+    target: T,
+    prefix: string,
+    override: (prop: string | symbol) => unknown = () => undefined,
+  ): T {
     const actions: readonly string[] = ACTIONS;
-    return new Proxy(studium, {
-      get: (target, prop, receiver) => {
-        const value: unknown = Reflect.get(target, prop, receiver);
+    return new Proxy(target, {
+      get: (t, prop, receiver) => {
+        const replaced = override(prop);
+        if (replaced !== undefined) return replaced;
+        const value: unknown = Reflect.get(t, prop, receiver);
         if (typeof value !== 'function') return value;
         const fn = value as (...a: unknown[]) => unknown;
-        if (typeof prop !== 'string' || !actions.includes(prop)) return fn.bind(target);
+        const name = typeof prop === 'string' ? `${prefix}${prop}` : '';
+        if (!actions.includes(name)) return fn.bind(t);
         return (...args: unknown[]) => {
           const seq = ++this.seq;
           const hub = this.hub;
@@ -196,15 +233,16 @@ export class Recorder {
             t: 'action',
             seq,
             at: this.at(),
-            name: prop as ActionName,
-            args: this.ids.tokenize(args),
+            name: name as ActionName,
+            // 末尾没给的参数不记（JSON 里 undefined 会变成 null，回放时意思就变了）
+            args: this.ids.tokenize(withoutTrailingUndefined(args)),
             quiet: !(this.studium?.busy() ?? false),
             interject:
-              prop === 'learnerSays' && typeof args[0] === 'string' && hub !== undefined
+              name === 'learnerSays' && typeof args[0] === 'string' && hub !== undefined
                 ? hub.isRunning(args[0])
                 : false,
           });
-          const out = fn.apply(target, args);
+          const out = fn.apply(t, args);
           if (out instanceof Promise) {
             return out.catch((e: unknown) => {
               this.write({
@@ -220,4 +258,10 @@ export class Recorder {
       },
     });
   }
+}
+
+function withoutTrailingUndefined(args: unknown[]): unknown[] {
+  let n = args.length;
+  while (n > 0 && args[n - 1] === undefined) n--;
+  return args.slice(0, n);
 }

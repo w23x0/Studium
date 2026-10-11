@@ -212,3 +212,40 @@ export function splitAuthors(s: string): string[] {
     .map((a) => a.trim())
     .filter((a) => a !== '');
 }
+
+// ───────────── 编辑位置（存在浏览器本地） ─────────────
+
+/** 上次编辑停在哪：光标 / 选区起止、文本框滚到哪（M14“恢复位置”）。 */
+export interface EditPosition {
+  start: number;
+  end: number;
+  scrollTop: number;
+}
+
+/** 浏览器本地存放编辑位置的键（按产出物）。 */
+export function editPositionKey(outputId: string): string {
+  return `studium:output-edit-position:${outputId}`;
+}
+
+/** 读回存着的编辑位置：存坏了返回空；光标超出现在正文长度的收到末尾。 */
+export function parseEditPosition(
+  raw: string | null,
+  textLength: number,
+): EditPosition | undefined {
+  if (raw === null) return undefined;
+  let v: unknown;
+  try {
+    v = JSON.parse(raw);
+  } catch (e) {
+    // 存坏了就当没存过（只影响打开时光标停在哪）
+    console.warn('编辑位置读不出：', e);
+    return undefined;
+  }
+  if (typeof v !== 'object' || v === null) return undefined;
+  const o = v as Record<string, unknown>;
+  const num = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : 0);
+  const clamp = (x: number) => Math.min(Math.floor(x), textLength);
+  const start = clamp(num(o.start));
+  const end = Math.max(start, clamp(num(o.end)));
+  return { start, end, scrollTop: num(o.scrollTop) };
+}

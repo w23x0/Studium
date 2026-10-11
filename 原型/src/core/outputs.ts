@@ -67,8 +67,18 @@ export class Outputs {
     return this.now().toISOString();
   }
 
+  private readonly idListeners = new Set<(prefix: string, id: string) => void>();
+
+  /** 生成的编号（产出物、版本、文献、候选）；录带按生成顺序给它们稳定记号（Studium 转发）。 */
   private id(prefix: string): string {
-    return `${prefix}-${randomBytes(4).toString('hex')}`;
+    const id = `${prefix}-${randomBytes(4).toString('hex')}`;
+    for (const fn of this.idListeners) fn(prefix, id);
+    return id;
+  }
+
+  onNewId(fn: (prefix: string, id: string) => void): () => void {
+    this.idListeners.add(fn);
+    return () => this.idListeners.delete(fn);
   }
 
   // ───────────── 产出物 ─────────────

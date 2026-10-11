@@ -3,11 +3,12 @@
 import { DatabaseSync } from 'node:sqlite';
 import { rmSync } from 'node:fs';
 import type { SessionSummary } from '../../shared/protocol.ts';
-import type { LogRecord, NumberedRecord } from '../../shared/records.ts';
+import type { LogRecord, NumberedRecord, SessionOpened } from '../../shared/records.ts';
+import { sessionFrom } from '../hub.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 3;
+const SCHEMA_VERSION = 4;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -53,9 +54,17 @@ export class DerivedIndex {
     if (record.type === 'session_opened') {
       this.db
         .prepare(
-          'INSERT OR REPLACE INTO sessions (session_id, kind, title, parent, opened_at, last_at) VALUES (?, ?, ?, ?, ?, ?)',
+          'INSERT OR REPLACE INTO sessions (session_id, kind, title, parent, from_kind, from_loop, opened_at, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
         )
-        .run(sessionId, record.kind, record.title, record.parent ?? null, record.at, record.at);
+        .run(
+          sessionId,
+          record.kind,
+          record.title,
+          record.parent ?? null,
+          ...fromOf(record),
+          record.at,
+          record.at,
+        );
     } else if (record.type === 'project_title') {
       // 项目名随方向变：正本开头那行不改，派生层取最新一条
       this.db
@@ -76,13 +85,15 @@ export class DerivedIndex {
   listSessions(): SessionSummary[] {
     const rows = this.db
       .prepare(
-        'SELECT session_id, kind, title, parent, opened_at FROM sessions ORDER BY opened_at DESC',
+        'SELECT session_id, kind, title, parent, from_kind, from_loop, opened_at FROM sessions ORDER BY opened_at DESC',
       )
       .all() as {
       session_id: string;
       kind: SessionSummary['kind'];
       title: string;
       parent: string | null;
+      from_kind: 'fork' | 'resume' | null;
+      from_loop: string | null;
       opened_at: string;
     }[];
     return rows.map((r) => ({
@@ -91,6 +102,9 @@ export class DerivedIndex {
       title: r.title,
       openedAt: r.opened_at,
       ...(r.parent !== null ? { parent: r.parent } : {}),
+      ...(r.from_kind !== null && r.from_loop !== null
+        ? { from: { kind: r.from_kind, loop: r.from_loop } }
+        : {}),
     }));
   }
 
@@ -138,6 +152,8 @@ function createSchema(db: DatabaseSync): void {
       kind TEXT NOT NULL,
       title TEXT NOT NULL,
       parent TEXT,
+      from_kind TEXT,
+      from_loop TEXT,
       opened_at TEXT NOT NULL,
       last_at TEXT NOT NULL
     );
@@ -151,6 +167,12 @@ function createSchema(db: DatabaseSync): void {
     );
     PRAGMA user_version = ${String(SCHEMA_VERSION)};
   `);
+}
+
+/** 学习对话的来历（分叉 / 接着学），给会话列表用。 */
+function fromOf(o: SessionOpened): [string | null, string | null] {
+  const f = sessionFrom(o);
+  return f !== undefined ? [f.kind, f.loop] : [null, null];
 }
 
 function searchableText(r: LogRecord): string {

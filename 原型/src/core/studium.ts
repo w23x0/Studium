@@ -129,6 +129,10 @@ export class Studium {
         this.stateQueryTool(),
       ],
     });
+    // 产出物那边生成的编号也经这里报给录带
+    o.outputs.onNewId((prefix, id) => {
+      for (const fn of this.idListeners) fn(prefix, id);
+    });
   }
 
   private iso(): string {
@@ -175,6 +179,13 @@ export class Studium {
 
   attach(hub: Hub): void {
     this.hubRef = hub;
+  }
+
+  /** 启动时调（开服务之前）：重建 M05 会话的活；被重启打断的小卡 / 停车记录放后台重做一次。 */
+  async recover(): Promise<void> {
+    for (const id of await this.detours.restore()) {
+      this.background(`重启后补做 ${id}`, () => this.detours.finishInterrupted(id));
+    }
   }
 
   private get hub(): Hub {

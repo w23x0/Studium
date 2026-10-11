@@ -4,7 +4,7 @@
 // 交给模型的输入、工具结果与录带不一致的，都记进问题清单；改了核心代码后用它看行为变没变。
 import { randomBytes } from 'node:crypto';
 import { readFile } from 'node:fs/promises';
-import { createApp } from '../app.ts';
+import { createApp, type App } from '../app.ts';
 import type {
   ConversationSpec,
   ModelAdapter,
@@ -12,7 +12,6 @@ import type {
   ModelEvent,
   TurnInput,
 } from '../model/port.ts';
-import type { Studium } from '../studium.ts';
 import { IdTokens, normalizeForCompare } from './ids.ts';
 import type { ActionName, TapeLine } from './recorder.ts';
 
@@ -113,7 +112,7 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
       }
       const expected = errors.get(a.seq);
       try {
-        await perform(app.studium, a.name, ids.resolve(a.args));
+        await perform(app, a.name, ids.resolve(a.args));
         if (expected !== undefined)
           problems.push(`${where}：录的那次报错“${expected}”，回放没报错`);
       } catch (e) {
@@ -142,14 +141,35 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
   return { problems, turns: used, actions: actions.length };
 }
 
-/** 重做一个学习者动作。本地服务在后台做的（出选择卡、申请收口），回放也放后台。 */
-async function perform(studium: Studium, name: ActionName, args: unknown[]): Promise<void> {
-  const s = studium as unknown as Record<ActionName, (...a: unknown[]) => Promise<unknown>>;
-  if (name === 'requestCard' || name === 'requestClose') {
-    studium.background(`回放 ${name}`, () => s[name](...args));
+/** 本地服务放后台做的动作（出选择卡、申请收口、从笔记里提点、重新分析），回放也放后台。 */
+const IN_BACKGROUND: readonly ActionName[] = [
+  'requestCard',
+  'requestClose',
+  'extractNotePoints',
+  'reanalyzeLoop',
+];
+
+/** 重做一个学习者动作：“longterm.” / “outputs.” / “notes.” 开头的找对应的对象，别的是 Studium 的方法。 */
+async function perform(app: App, name: ActionName, args: unknown[]): Promise<void> {
+  const dot = name.indexOf('.');
+  const where = dot < 0 ? '' : name.slice(0, dot);
+  const method = name.slice(dot + 1);
+  const target: object =
+    where === 'longterm'
+      ? app.studium.longterm
+      : where === 'outputs'
+        ? app.outputs
+        : where === 'notes'
+          ? app.notes
+          : app.studium;
+  const fn = (target as Record<string, unknown>)[method];
+  if (typeof fn !== 'function') throw new Error(`回放不认识的动作：${name}`);
+  const run = () => (fn as (...a: unknown[]) => Promise<unknown>).apply(target, args);
+  if (IN_BACKGROUND.includes(name)) {
+    app.studium.background(`回放 ${name}`, run);
     return;
   }
-  await s[name](...args);
+  await run();
 }
 
 async function waitUntil(ms: number, cond: () => Promise<boolean>): Promise<boolean> {

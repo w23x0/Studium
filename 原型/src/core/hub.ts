@@ -14,6 +14,7 @@ import type {
   ForkOrigin,
   ImageInput,
   LogRecord,
+  M05Job,
   NumberedRecord,
   ResumeOrigin,
   ReviewWindow,
@@ -111,6 +112,7 @@ export class Hub {
       fork?: ForkOrigin;
       resumeOf?: ResumeOrigin;
       review?: ReviewWindow;
+      m05Job?: M05Job;
     },
   ): Promise<SessionSummary> {
     const at = this.now();
@@ -129,6 +131,7 @@ export class Hub {
       ...(meta.fork !== undefined ? { fork: meta.fork } : {}),
       ...(meta.resumeOf !== undefined ? { resumeOf: meta.resumeOf } : {}),
       ...(meta.review !== undefined ? { review: meta.review } : {}),
+      ...(meta.m05Job !== undefined ? { m05Job: meta.m05Job } : {}),
     };
     await this.append(sessionId, opened);
     return summary(opened);
@@ -413,13 +416,22 @@ function newLive(log: SessionLog, kind: ConversationKind): Live {
 }
 
 function summary(o: SessionOpened): SessionSummary {
+  const from = sessionFrom(o);
   return {
     sessionId: o.sessionId,
     kind: o.kind,
     title: o.title,
     openedAt: o.at,
     ...(o.parent !== undefined ? { parent: o.parent } : {}),
+    ...(from !== undefined ? { from } : {}),
   };
+}
+
+/** 学习对话的来历：从哪段学习中途岔出去补的，或接着哪段没学完的学的；都不是返回空。 */
+export function sessionFrom(o: SessionOpened): SessionSummary['from'] {
+  if (o.fork !== undefined) return { kind: 'fork', loop: o.fork.fromLoop };
+  if (o.resumeOf !== undefined) return { kind: 'resume', loop: o.resumeOf.fromLoop };
+  return undefined;
 }
 
 function stamp(d: Date): string {

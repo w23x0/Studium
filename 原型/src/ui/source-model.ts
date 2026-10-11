@@ -30,6 +30,33 @@ export function linkCitations(text: string, streaming: boolean): string {
   return out + rest;
 }
 
+/** 纯文字里的一段：照原样的文字，或第 index 个出处标记（index 按 parseCitations 的顺序，从 0 数）。 */
+export type CitationPiece = { text: string } | { cite: number };
+
+/**
+ * 把一段纯文字（依据面板里引用的对话原话）切成文字与出处标记；代码块（``` 围起来的）和行内代码（`…`）里的标记
+ * 照原样留作文字，不换成小标签。出处的序号仍按整段文字里的顺序数，与核对结果对得上。
+ */
+export function citationPieces(text: string): CitationPiece[] {
+  const marks = parseCitations(text);
+  if (marks.length === 0) return [{ text }];
+  const code: { start: number; end: number }[] = [];
+  for (const m of text.matchAll(/```[\s\S]*?(?:```|$)|`[^`\n]+`/g)) {
+    code.push({ start: m.index, end: m.index + m[0].length });
+  }
+  const inCode = (i: number) => code.some((c) => i >= c.start && i < c.end);
+  const out: CitationPiece[] = [];
+  let last = 0;
+  marks.forEach((c, i) => {
+    if (inCode(c.start)) return;
+    if (c.start > last) out.push({ text: text.slice(last, c.start) });
+    out.push({ cite: i });
+    last = c.end;
+  });
+  if (last < text.length) out.push({ text: text.slice(last) });
+  return out;
+}
+
 /** 链接地址 → 第几个出处；不是出处链接返回空。 */
 export function citationIndex(href: string | undefined): number | undefined {
   if (href?.startsWith(CITE_HREF) !== true) return undefined;
