@@ -364,6 +364,7 @@ export class Evidence {
       ...(t.revisit !== undefined
         ? { revisit: { kind: t.revisit.kind, formationIds: [...t.revisit.formationIds] } }
         : {}),
+      ...(t.stageCheck === true ? { stageCheck: true } : {}),
     };
   }
 
@@ -633,6 +634,7 @@ export class Evidence {
           }
         : {}),
       ...(opened.ticket?.revisit !== undefined ? { revisit: opened.ticket.revisit.kind } : {}),
+      ...(opened.ticket?.stageCheck === true ? { stageCheck: true } : {}),
       ...(ended !== undefined ? { endedAt: ended.record.at } : {}),
       status: statusOf(recs),
       ...(opened.ticket !== undefined ? { newPoint: this.pointRef(opened.ticket.newPoint) } : {}),

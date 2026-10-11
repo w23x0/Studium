@@ -171,11 +171,16 @@ export class Hub {
   async send(
     sessionId: string,
     input: TurnInput,
-    meta: { objection?: { toLine: number }; images?: ImageInput[] } = {},
+    meta: {
+      objection?: { toLine: number };
+      images?: ImageInput[];
+      practice?: { taskId: string };
+    } = {},
   ): Promise<{ line: number; done: Promise<void> }> {
     const live = await this.ensureLive(sessionId);
     const objection = input.role === 'learner' ? meta.objection : undefined;
     const images = input.role === 'learner' ? meta.images : undefined;
+    const practice = input.role === 'learner' ? meta.practice : undefined;
     const line = await this.append(
       sessionId,
       input.role === 'learner'
@@ -185,6 +190,7 @@ export class Hub {
             text: input.text,
             ...(objection !== undefined ? { objection } : {}),
             ...(images !== undefined && images.length > 0 ? { images } : {}),
+            ...(practice !== undefined ? { practice } : {}),
           }
         : { type: 'program_fact', at: this.iso(), text: input.text },
     );
@@ -195,7 +201,7 @@ export class Hub {
         objection !== undefined
           ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
           : ''
-      }${input.text}`,
+      }${practice !== undefined ? `（学习者对练习任务 ${practice.taskId} 的作答）` : ''}${input.text}`,
     };
     let resolve!: () => void;
     const done = new Promise<void>((r) => (resolve = r));

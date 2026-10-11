@@ -12,6 +12,7 @@ import type {
 import type { RegressionView, TodayView } from './protocol-longterm.ts';
 
 export type * from './protocol-longterm.ts';
+export type * from './protocol-practice.ts';
 
 export interface SessionSummary {
   sessionId: string;
@@ -174,6 +175,8 @@ export interface TicketView {
   routeAction: string;
   /** 复习 / 复检的单子（批 6）：回头看以前合上过的点；学新点时没有。 */
   revisit?: { kind: '复习' | '复检'; formationIds: string[] };
+  /** 阶段验收的单子（批 9）：闭环里的练习都标阶段验收、默认不给提示。 */
+  stageCheck?: boolean;
 }
 
 /** 选项出处里的一条，已尽量回查。resolved 为假 = 查不到（原样给出 raw）。 */
@@ -407,6 +410,8 @@ export interface LoopBrief {
   resumedBy?: { loopSessionId: string; title?: string; status: LoopStatus }[];
   /** 这是复习 / 复检闭环（批 6）。 */
   revisit?: '复习' | '复检';
+  /** 这是阶段验收闭环（批 9）。 */
+  stageCheck?: boolean;
 }
 
 /** 同时没收尾的闭环数（M05:28 负荷预算与任务限流；只提示、不硬拦）。 */
