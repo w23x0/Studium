@@ -6,6 +6,7 @@ import {
   boxStyle,
   citationIndex,
   citationLabel,
+  citationPieces,
   citationTarget,
   cropBox,
   linkCitations,
@@ -145,5 +146,33 @@ describe('检索与选项出处', () => {
     expect(bookLineTarget({ ...base, resolved: false, book: '力学', file: 'a.md', from: 3 })).toBe(
       undefined,
     );
+  });
+});
+
+describe('引用原话里的出处标记', () => {
+  const A = '【教材|力学入门样例|ch01/sec-1.2.md|L5-9】';
+  const B = '【教材|力学入门样例|ch01/sec-1.3.md|L2】';
+
+  it('标记换成第几个出处，前后文字照原样', () => {
+    expect(citationPieces(`书上说${A}位移是矢量${B}。`)).toEqual([
+      { text: '书上说' },
+      { cite: 0 },
+      { text: '位移是矢量' },
+      { cite: 1 },
+      { text: '。' },
+    ]);
+  });
+
+  it('代码块与行内代码里的标记不换，序号仍按整段的顺序', () => {
+    const t = `看 \`${A}\` 和\n\`\`\`\n${A}\n\`\`\`\n再看${B}`;
+    const pieces = citationPieces(t);
+    expect(pieces.filter((p) => 'cite' in p)).toEqual([{ cite: 2 }]);
+    expect(pieces.map((p) => ('text' in p ? p.text : `#${String(p.cite)}`)).join('')).toBe(
+      t.replace(B, '#2'),
+    );
+  });
+
+  it('没有标记就是整段文字', () => {
+    expect(citationPieces('没有出处')).toEqual([{ text: '没有出处' }]);
   });
 });

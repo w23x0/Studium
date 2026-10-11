@@ -5,12 +5,14 @@ import {
   addMethod,
   diffRows,
   draftProblems,
+  editPositionKey,
   fromDraft,
   isStaleError,
   linkObjectRefs,
   linkOutputText,
   objectRefOf,
   orderPair,
+  parseEditPosition,
   refMap,
   removeDim,
   restoreRequest,
@@ -128,5 +130,24 @@ describe('方法比较的表格稿', () => {
 describe('相关文献', () => {
   it('作者按逗号、顿号、分号隔开', () => {
     expect(splitAuthors(' Kleppner, Kolenkow；张三、 ')).toEqual(['Kleppner', 'Kolenkow', '张三']);
+  });
+});
+
+describe('编辑位置', () => {
+  it('按产出物存；读回时光标收进现在的正文长度，存坏了当没存过', () => {
+    expect(editPositionKey('out-1')).not.toBe(editPositionKey('out-2'));
+    expect(parseEditPosition('{"start":3,"end":5,"scrollTop":120}', 10)).toEqual({
+      start: 3,
+      end: 5,
+      scrollTop: 120,
+    });
+    expect(parseEditPosition('{"start":30,"end":40,"scrollTop":0}', 10)).toEqual({
+      start: 10,
+      end: 10,
+      scrollTop: 0,
+    });
+    expect(parseEditPosition(null, 10)).toBeUndefined();
+    expect(parseEditPosition('坏的', 10)).toBeUndefined();
+    expect(parseEditPosition('{"start":"x"}', 10)).toEqual({ start: 0, end: 0, scrollTop: 0 });
   });
 });

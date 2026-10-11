@@ -9,6 +9,7 @@ import type {
   TodayItem,
 } from '../shared/protocol.ts';
 import type { NumberedRecord } from '../shared/records.ts';
+import { reviewReturnedFact } from '../shared/records-longterm.ts';
 import {
   addDays,
   analysisGroups,
@@ -247,5 +248,29 @@ describe('对话里的复习 / 复检、接着学、阶段复盘', () => {
     ];
     expect(toUiMessages(main, '', { isReview: (id) => id === 'T' })[0]?.text).toBe(W.reviewTask);
     expect(toUiMessages(main, '')[0]?.text).toBe('单独谈谈你想学什么');
+  });
+});
+
+describe('复盘交回主对话的那一句', () => {
+  it('主对话里显示交回的那一句并能回到复盘；别的程序事实照旧不显示', () => {
+    const main: NumberedRecord[] = [
+      { line: 1, record: { type: 'program_fact', at: 'x', text: '下一张选择卡正在出' } },
+      {
+        line: 2,
+        record: {
+          type: 'program_fact',
+          at: 'x',
+          text: reviewReturnedFact('20261011-talk-abc123', '这段学得稳，下周补位移'),
+        },
+      },
+    ];
+    const ui = toUiMessages(main, '');
+    expect(ui).toHaveLength(1);
+    expect(ui[0]).toMatchObject({
+      role: 'system',
+      text: W.reviewEndedLine('这段学得稳，下周补位移'),
+      line: 2,
+      link: { sessionId: '20261011-talk-abc123' },
+    });
   });
 });
