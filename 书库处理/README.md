@@ -20,6 +20,7 @@ python3 -m studium.m08_batch <书库根> --out-root <目录> --model <模型> [-
 
 - 书目录 = 含 `p<页段>/full.md` 的目录（或 `source.json` 列出页段）；M07 产出在书目录的 `m07/`（书的原文不进 git）。
 - M08 产出放私有仓库工作区 `~/studium-m08-data/m08/<书>-<范围>/`：`points.jsonl`、`clauses.jsonl`（原型 `STUDIUM_M08` 直接读）、`report.md`（程序检查）、`work/`（每次模型调用的原样输出与 `calls.log`）。已有的步骤跳过；`--redo gen` 重生成（连带重审、重补漏），`--redo audit` 只重审与重补漏。
+- 节归章（`m08.chapter_sections`）：编号带点的按前缀（3.2 属第 3 章），不带点的（1、2、3A、空号的 Introduction）按目录位置归前面最近的章。同一文件只审一次；10-12 前跑的缓存（`work/` 有审核、没有 `sections-once` 标记）照旧逐行重放（后面各节的审核引用的是那时的编号），最后合并复本。前置点被改判范围内、全章跑完仍没有子句进入的退回前置。
 - 原型用真书：`STUDIUM_LIBRARY=<含书目录的上一级> STUDIUM_M08=<产出目录> npm start`。
 
 ## M08 流程（`studium/m08.py`）

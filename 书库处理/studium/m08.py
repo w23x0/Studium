@@ -18,7 +18,7 @@
    核过的摘录对到 MinerU content_list 的块（含要点框 code_body、图表标题；先用核对时定位到的原文行找，找不到再用摘录文本），
    得到原件 PDF 页与位置框；来源标签：
    点——有核过的摘录且判“一致”，或是回扫补入的书的点 = 书给的；范围内其余 = 模型补的；前置点本章没讲到 = 未审（不在本次处理的范围里，没对原文审过）。
-   前置点被某节列为书讲的点（一致、摘录核得到）改判范围内，记进“并入时的问题”。
+   前置点被某节列为书讲的点（一致、摘录核得到）改判范围内，记进“并入时的问题”；全章跑完仍没有子句进入它的退回前置（书只是回顾 / 引用）。
    子句——某节判书给的且书走出了关键一步（book_walks 不为 false）、有核过的摘录，= 书给的；其余 = 模型补的（零件、书没走出的摘录照样挂上）。
    book_walks 为 false 却没写缺哪一步（missing_step）的按书给的记并记进问题；已判模型补的子句被后来的“同一条”改判书给的，照改并记进问题，
    但依据只在本节小结 / 要点行的不改判、本节已有写了 missing_step 的“没走”判断的不改判（记“来源冲突”）；
@@ -75,11 +75,24 @@ def _index_rows(book: Path) -> list[dict]:
     return rows
 
 
+def chapter_sections(rows: list[dict], chapter: str) -> list[dict]:
+    """本章的节（有文件的）：编号带点的按前缀（3.2 属第 3 章）；不带点的（1、2、3A、空号的 Introduction）按目录位置
+    归到前面最近的章行（10-12：概率论节号只写 1、2、3，按前缀把全书各章第 3 节拼成了一章）。"""
+    out, cur = [], None
+    for r in rows:
+        if r["kind"] == "ch":
+            cur = r["number"]
+        elif r["kind"] == "sec" and r["file"]:
+            if (r["number"].split(".")[0] == chapter) if "." in r["number"] else cur == chapter:
+                out.append(r)
+    return out
+
+
 def chapter_scope(book: Path, chapter: str) -> tuple[str, list[dict], list[str]]:
     rows = _index_rows(book)
     ch = next(r for r in rows if r["kind"] == "ch" and r["number"] == chapter)
-    secs = [r for r in rows if r["kind"] == "sec" and r["number"].split(".")[0] == chapter and r["file"]
-            and (book / "m07" / r["file"]).is_file()]  # M07 目录偶有坏行（10-09 Oppenheim：文件名“= +∞”）
+    secs = [r for r in chapter_sections(rows, chapter)
+            if (book / "m07" / r["file"]).is_file()]  # M07 目录偶有坏行（10-09 Oppenheim：文件名“= +∞”）
     before = []
     for r in rows:
         if r is ch:
@@ -503,8 +516,47 @@ def generate(work: Path, scope: str, secs: list[dict], before: list[str], subjec
 
 # ---------- 清单状态：生成结果 + 各节审核依次并入 ----------
 
+_TEXT = {"name", "sentence", "text", "note", "reason", "missing_step", "should_be"}  # 缺了按空串
+_ONE = {"id", "tmp", "to", "match", "split_of", "same_as", "point", "seg", "action", "scope", "same_object", "lines"}  # 单值，可为 null
+_MANY = {"from", "quotes", "keys", "refs"}  # 列表
+
+
+def _tidy(x):
+    """模型输出字段类型统一（10-11：偶有 null、把单值写成列表、把列表写成单值，散落各处崩溃）。"""
+    if isinstance(x, list):
+        return [_tidy(v) for v in x]
+    if not isinstance(x, dict):
+        return x
+    out = {}
+    for k, v in x.items():
+        if k in _TEXT:
+            v = v if isinstance(v, str) else ("" if v is None else (" ".join(map(str, v)) if isinstance(v, list) else str(v)))
+        elif k in _ONE:
+            if isinstance(v, list):
+                v = next((i for i in v if i is not None), None)
+            v = None if v is None else (v if isinstance(v, str) else str(v)) if k != "lines" or not isinstance(v, int) else v
+        elif k in _MANY:
+            v = [] if v is None else (v if isinstance(v, list) else [v])
+            if k in ("from", "keys", "refs"):
+                v = [i if isinstance(i, str) else str(i) for i in v if i is not None]
+            else:  # quotes
+                v = [q for q in (_tidy(i) if isinstance(i, dict) else {"line": 0, "text": str(i)} for i in v)]
+                for q in v:
+                    if not isinstance(q.get("line"), int):
+                        try:
+                            q["line"] = int(str(q.get("line")).split("-")[0])
+                        except (TypeError, ValueError):
+                            q["line"] = 0
+                    q["text"] = q.get("text") if isinstance(q.get("text"), str) else ""
+            out[k] = v
+            continue
+        out[k] = _tidy(v)
+    return out
+
+
 class State:
     def __init__(self, gen: dict):
+        gen = _tidy(gen)
         meta = gen["_meta"]
         self.points, self.clauses = {}, {}
         self.problems: list[str] = []
@@ -540,6 +592,63 @@ class State:
         self.summary: dict[str, set[int]] = {}  # 各节的小结 / 要点行（summary_lines）：来源改判的依据只在这些行里不算
         self.fill_stats: Counter = Counter()  # 补漏对账：答补但摘录不在本段（首答打回 / 追问后仍是）
 
+    def collapse_copies(self) -> None:
+        """旧缓存重放后合并复本（10-12 前同一文件的子节行各并入一次：Razavi 10.5 两份、Oppenheim 推断 9.2 四份）。
+        后面各节的审核看到的是含复本的编号，所以重放时照旧逐行并入、编号不变，最后才把复本并回第一份：
+        同一节回扫补入、名字与一句话相同的点；改写引用后同一节补入、出发点 / 新点 / 话都相同的子句。"""
+        def merge_into(dst: dict, src: dict, keys: tuple) -> None:
+            for k in keys:
+                have = {json.dumps(x, ensure_ascii=False, sort_keys=True) for x in dst[k]}
+                for x in src[k]:
+                    if (j := json.dumps(x, ensure_ascii=False, sort_keys=True)) not in have:
+                        dst[k].append(x); have.add(j)
+        pmap, first = {}, {}
+        for pid, pt in list(self.points.items()):
+            if pt["origin"] == "生成":
+                continue
+            key = (pt["origin"], pt["name"], pt["sentence"])
+            if key in first:
+                orig = self.points[first[key]]
+                merge_into(orig, pt, ("audits", "cautions"))
+                if pt["scope"] == "范围内":
+                    orig["scope"] = "范围内"
+                pmap[pid] = first[key]
+                del self.points[pid]
+            else:
+                first[key] = pid
+        rp = lambda x: pmap.get(x, x)
+        for pt in self.points.values():
+            pt["split_of"] = rp(pt["split_of"]) if pt["split_of"] else pt["split_of"]
+        for m in self.mentions:
+            m["point"] = rp(m["point"]) if m["point"] else m["point"]
+        cmap, firstc = {}, {}
+        for cid, cl in list(self.clauses.items()):
+            cl["from"] = list(dict.fromkeys(rp(x) for x in cl["from"]))
+            cl["to"] = rp(cl["to"])
+            if cl["origin"] == "生成":
+                continue
+            key = (cl["origin"], tuple(cl["from"]), cl["to"], cl["text"])
+            if key in firstc:
+                merge_into(self.clauses[firstc[key]], cl, ("audits",))
+                cmap[cid] = firstc[key]
+                del self.clauses[cid]
+            else:
+                firstc[key] = cid
+        for cl in self.clauses.values():
+            cl["replaces"] = cmap.get(cl["replaces"], cl["replaces"])
+        if pmap or cmap:
+            self.problems.append(f"重放旧缓存：合并复本 点 {len(pmap)}、子句 {len(cmap)}")
+        self.problems = list(dict.fromkeys(self.problems))
+
+    def undo_rescope(self) -> None:
+        """改判范围内的前置点，全章跑完仍没有子句进入它：书只是回顾 / 引用，退回前置（10-12 全库抽查：
+        Stewart P36 “Recall from Section 4.3”、Razavi P2、概率论 P99 “由第五章…知”，学不到的点 22% 是这种）。"""
+        targets = {c["to"] for c in self.clauses.values()}
+        for pt in self.points.values():
+            if pt.get("rescoped") and pt["scope"] == "范围内" and pt["id"] not in targets:
+                pt["scope"] = "前置"
+                self.problems.append(f"{pt['rescoped']}：前置点 {pt['id']}「{pt['name']}」改判范围内后全章没有路线进入它，退回前置")
+
     def listing(self) -> str:
         pts = [f"{p['id']} | {p['name']} | {p['sentence']} | {self._src(p)}" for p in self.points.values()]
         cls = [f"{c['id']} | {' + '.join(c['from'])} → {c['to']} | {c['text']} | {self._src(c)}" for c in self.clauses.values()]
@@ -555,6 +664,7 @@ class State:
         return f"回扫自 {x['origin']}" + ("" if got else "；书没走出关键一步（模型补的）")
 
     def merge(self, file: str, audit: dict, meta: dict, lines: list[str] | None = None) -> None:
+        audit = _tidy(audit)
         """lines：本节 M07 文件的行，用来核前置点改判的摘录（不给就不改判）。"""
         if "book_points" in audit or "book_routes" in audit:
             audit = _from_book_view(audit, meta.get("asks_missing_step", False))
@@ -565,7 +675,7 @@ class State:
                 self.skipped.setdefault(file, []).append(k)
         tmp = {}
         # 学不到的点不并入：新点须有本输出里的路线指向它；只当出发点用的（书当作已知）照旧并入，有摘录的仍会在检查里报“学不到”
-        targets = {b.get("to") for b in audit.get("book_clauses", [])}
+        targets = {b.get("to") for b in audit.get("book_clauses", []) if isinstance(b.get("to"), str)}  # 偶有把 to 写成列表的（10-11 Microelectronic ch7）
         sources = {x for b in audit.get("book_clauses", []) for x in b.get("from", [])}
         rejected = set()
         for n in audit.get("new_points", []):
@@ -577,7 +687,7 @@ class State:
             pid = f"P{self.np}"; self.np += 1
             tmp[n["tmp"]] = pid
             split = n.get("split_of") if n.get("split_of") in self.points else None
-            self.points[pid] = {"id": pid, "name": n["name"], "sentence": n["sentence"], "keys": n.get("keys", []),
+            self.points[pid] = {"id": pid, "name": n["name"], "sentence": n.get("sentence") or "", "keys": n.get("keys", []),
                                 "scope": "范围内" if n.get("quotes") else "前置", "origin": file, "split_of": split, "audits": [], "cautions": [],
                                 "gen": tag}
             self.points[pid]["audits"].append({"file": file, "kind": "一致", "quotes": n.get("quotes", []),
@@ -597,7 +707,7 @@ class State:
             if pt["scope"] == "前置" and kind == "一致" and lines is not None:
                 got = [ln for q in p.get("quotes", []) if (ln := locate_quote(lines, q)[0])]
                 if got:
-                    pt["scope"] = "范围内"
+                    pt["scope"], pt["rescoped"] = "范围内", file
                     self.problems.append(f"{file}：前置点 {pt['id']}「{pt['name']}」本节书讲了（摘录核到第 {got[0]} 行），改判范围内")
         for c in audit.get("clauses", []):
             if c.get("id") not in self.clauses:
@@ -662,7 +772,7 @@ class State:
         for k in audit.get("cautions", []):
             pid = ref(k.get("point", ""))
             if pid in self.points:
-                self.points[pid]["cautions"].append({"file": file, "text": k["text"], "quotes": k.get("quotes", [])})
+                self.points[pid]["cautions"].append({"file": file, "text": k.get("text", ""), "quotes": k.get("quotes", [])})
         for t in audit.get("transcription_issues", []):
             self.transcription.append({"file": file, **t})
         for m in audit.get("mentions", []):
@@ -724,7 +834,17 @@ def audit_all(book: Path, work: Path, st: State, secs: list[dict], model: str, c
     """逐节：审核 → 并入 → （fill）算本节没覆盖的段落，有就补漏 → 并入。call=False 只读已有结果（build）。"""
     system = AUDIT_PROMPT.read_text(encoding="utf-8")
     blocks = Blocks(book)
+    # 子节与所属节同一文件（M07 子节行）：只审一次（10-12 Razavi 10.5 整节被并入两次）。10-12 前跑的缓存（work/ 有审核、
+    # 没有标记）是逐行并入时编号的，后面各节的审核引用这些编号：照旧逐行重放，最后 collapse_copies 合并复本
+    mark = work / "sections-once"
+    legacy = not mark.exists() and any(work.glob("audit-*.json"))
+    if not legacy and call:
+        mark.touch()
+    seen = set()
     for s in secs:
+        if s["file"] in seen and not legacy:
+            continue
+        seen.add(s["file"])
         stem = s["file"].replace("/", "_").removesuffix(".md")
         sec_lines = (book / "m07" / s["file"]).read_text(encoding="utf-8").splitlines()
         st.summary[s["file"]] = summary_lines(sec_lines, s["title"], blocks.codes(_pdf_range(sec_lines[0])))
@@ -985,7 +1105,9 @@ def build(book: Path, out: Path, st: State, secs: list[dict]) -> dict:
         f.writelines(json.dumps(p, ensure_ascii=False) + "\n" for p in points)
     with (out / "clauses.jsonl").open("w", encoding="utf-8") as f:
         f.writelines(json.dumps(c, ensure_ascii=False) + "\n" for c in clauses)
-    cov = {s["file"]: {"number": s["number"], "title": s["title"], "blocks": coverage(book, st, s["file"])} for s in secs}
+    cov = {s["file"]: {"number": s["number"], "title": s["title"], "blocks": coverage(book, st, s["file"])}
+           for s in reversed(secs)}  # 同一文件取第一行（所属节，不是子节）
+    cov = dict(reversed(cov.items()))
     for c in cov.values():
         c["classes"] = _cov_counts(c["blocks"])
     loose = [{"name": m["name"], "anchors": anchors([{"file": m["file"], "kind": "m", "quotes": m["quotes"]}], {"m"})}
@@ -1062,8 +1184,8 @@ def check(out: Path, seed: int = 7) -> str:
     no_route = [p for p in pts.values() if p["scope"] == "范围内" and not into[p["id"]]]
     dup = [n for n, k in Counter(p["name"] for p in pts.values()).items() if k > 1]
     dup_clause = [k for k, v in Counter((tuple(sorted(c["from"])), c["to"]) for c in cls).items() if v > 1]
-    long_p = [p for p in pts.values() if len(p["sentence"]) > 90]
-    long_c = [c for c in cls if len(c["text"]) > 140]
+    long_p = [p for p in pts.values() if len(p.get("sentence") or "") > 90]
+    long_c = [c for c in cls if len(c.get("text") or "") > 140]
     cyc = _cycles(pts, cls)
     book_no_anchor = [c["id"] for c in cls if c["source"] == "书给的" and not c["anchors"]]
     L += ["## 结构", "",
@@ -1168,6 +1290,8 @@ def main(argv=None):
         gen = generate(work, scope, secs, before, a.subject, a.model, call=a.cmd == "run")
         st = State(gen)
         audit_all(a.book, work, st, secs, a.model, call=a.cmd == "run", fill=not a.no_fill)
+        st.collapse_copies()
+        st.undo_rescope()
         build(a.book, a.out, st, secs)
     print(check(a.out))
 
