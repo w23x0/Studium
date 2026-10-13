@@ -89,6 +89,7 @@ import type {
   TargetRef,
   TargetReviewResponse,
 } from '../shared/m08-review.ts';
+import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
 import { SHELVE_NO_NOTE } from './thread-model.ts';
 
 function token(): string {
@@ -133,6 +134,10 @@ export const api = {
   listSessions: () => call<ListSessionsResponse>('/sessions'),
   projects: () => call<ListProjectsResponse>('/projects'),
   createProject: () => call<ProjectResponse>('/projects', { method: 'POST', body: '{}' }),
+  // ── 左栏：置顶、从列表删掉（只藏起来）、改名 ──
+  sidebar: () => call<SidebarResponse>('/sidebar'),
+  sidebarAct: (req: SidebarActionRequest) =>
+    call<SidebarResponse>('/sidebar', { method: 'POST', body: JSON.stringify(req) }),
   requestCard: (projectId: string) =>
     call<object>('/cards/request', { method: 'POST', body: JSON.stringify({ projectId }) }),
   choose: (cardId: string, option: number) =>

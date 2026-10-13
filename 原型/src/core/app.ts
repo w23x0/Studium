@@ -30,6 +30,7 @@ import { DataDir } from './log/data-dir.ts';
 import { isNotFound } from './log/session-log.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
+import { SidebarStore } from './sidebar.ts';
 import { OFFICIAL_TOOLS_DIR, TeachingTools } from './teaching-tools.ts';
 import { Studium } from './studium.ts';
 import { Recorder } from './tape/recorder.ts';
@@ -215,6 +216,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
   });
   const server = await startServer({
     hub,
+    sidebar: await SidebarStore.load(join(dataDir.root, 'ui', 'sidebar.jsonl'), opts.now),
     sources,
     notes: recorder ? recorder.wrap(notes, 'notes.') : notes,
     evidence,

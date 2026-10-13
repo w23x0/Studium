@@ -70,6 +70,8 @@ import { longtermRoute } from './longterm-routes.ts';
 import { m08ReviewRoute } from './m08-review-routes.ts';
 import { practiceRoute } from './practice-routes.ts';
 import { outputsRoute } from './outputs-routes.ts';
+import { sidebarRoute } from './sidebar-routes.ts';
+import type { SidebarStore } from '../sidebar.ts';
 import type { M08Review } from '../m08-review.ts';
 import type { Outputs } from '../outputs.ts';
 
@@ -90,6 +92,8 @@ export interface ServerOptions {
   cross: CrossServices;
   /** M08 候选区与更正（批 10a）。 */
   m08Review: M08Review;
+  /** 左栏的界面操作（置顶、从列表删掉、对话改名）。 */
+  sidebar: SidebarStore;
   token: string;
   host?: string;
   port: number;
@@ -180,6 +184,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return;
     if (parts[1] === 'library' && (await libraryRoute(req, res, parts, method, sources, studium)))
       return;
+    if (await sidebarRoute(req, res, parts, method, { store: opts.sidebar, hub, studium })) return;
     if (
       await inputsRoute(
         req,

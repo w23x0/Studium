@@ -8,10 +8,13 @@ import type {
   StateRecordView,
 } from '../shared/protocol.ts';
 import { WP } from './wording-practice.ts';
+import { WS } from './wording-sidebar.ts';
 
 export const W = {
   /** 练习（批 9）的叫法在 wording-practice.ts。 */
   practice: WP,
+  /** 左栏、全部项目页、账号菜单与设置的叫法在 wording-sidebar.ts。 */
+  sidebar: WS,
   // ── 项目页 ──
   projectHome: '项目概览', // 项目页（Overview）
   projectChat: '项目对话', // 主对话

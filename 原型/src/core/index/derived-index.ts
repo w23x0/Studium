@@ -85,7 +85,7 @@ export class DerivedIndex {
   listSessions(): SessionSummary[] {
     const rows = this.db
       .prepare(
-        'SELECT session_id, kind, title, parent, from_kind, from_loop, opened_at FROM sessions ORDER BY opened_at DESC',
+        'SELECT session_id, kind, title, parent, from_kind, from_loop, opened_at, last_at FROM sessions ORDER BY opened_at DESC',
       )
       .all() as {
       session_id: string;
@@ -95,12 +95,14 @@ export class DerivedIndex {
       from_kind: 'fork' | 'resume' | null;
       from_loop: string | null;
       opened_at: string;
+      last_at: string | null;
     }[];
     return rows.map((r) => ({
       sessionId: r.session_id,
       kind: r.kind,
       title: r.title,
       openedAt: r.opened_at,
+      ...(r.last_at !== null ? { lastAt: r.last_at } : {}),
       ...(r.parent !== null ? { parent: r.parent } : {}),
       ...(r.from_kind !== null && r.from_loop !== null
         ? { from: { kind: r.from_kind, loop: r.from_loop } }

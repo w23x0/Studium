@@ -318,8 +318,8 @@ export interface ProjectTitle {
   type: 'project_title';
   at: string;
   title: string;
-  /** goal = 谈定方向时一起定的。 */
-  source: 'goal';
+  /** goal = 谈定方向时一起定的；learner = 学习者在界面上改的名（左栏“重命名”）。 */
+  source: 'goal' | 'learner';
 }
 
 /** 畅谈对话交回：谈出的方向目标（已记进项目），本对话结束。 */

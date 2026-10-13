@@ -3,20 +3,10 @@ import { Thread } from '@/components/assistant-ui/thread';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
 import {
-  BookCheckIcon,
   ChevronLeftIcon,
-  ClipboardListIcon,
-  GaugeIcon,
-  HistoryIcon,
   LayoutGridIcon,
-  LibraryIcon,
-  ListTreeIcon,
-  MessageCircleIcon,
   PanelRightCloseIcon,
   PanelRightOpenIcon,
-  PenLineIcon,
-  SendIcon,
-  SparklesIcon,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import {
@@ -33,6 +23,11 @@ import { ChoiceCardBox, revisitOf } from './components/choice-card.tsx';
 import { OutputTaskBar } from './components/outputs/outputs-section.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
 import { ProjectHome } from './components/project-home.tsx';
+import { Sidebar } from './components/sidebar/sidebar.tsx';
+import { ProjectsPage } from './components/sidebar/projects-page.tsx';
+import { useSidebarView } from './hooks/use-sidebar.ts';
+import { useSetting } from './settings.ts';
+import { buildSidebar, withTitles } from './sidebar-model.ts';
 import {
   LongtermBanner,
   ReviewBanner,
@@ -41,7 +36,6 @@ import {
 import { useReviewIds } from './components/longterm/reviews.tsx';
 import { StageCheckBanner, SummarizeButton } from './components/practice/loop-practice.tsx';
 import { OpenSessionContext, useOpenSession } from './open-session.ts';
-import { taskRows } from './relations-model.ts';
 import {
   CurrentSessionContext,
   HighlightContext,
@@ -73,16 +67,23 @@ interface PanelState {
 export function App() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [projectId, setProjectId] = useState<string | undefined>();
-  const [sessions, setSessions] = useState<SessionSummary[]>([]);
+  const [rawSessions, setSessions] = useState<SessionSummary[]>([]);
   const [current, setCurrent] = useState<string | undefined>();
-  /** 中间显示项目概览还是对话。 */
-  const [page, setPage] = useState<'chat' | 'overview'>('chat');
+  /** 中间显示对话、项目概览（项目页），还是全部项目页。 */
+  const [page, setPage] = useState<'chat' | 'overview' | 'projects'>('chat');
   const [panel, setPanel] = useState<PanelState>({ open: false, stack: [{ kind: 'home' }] });
   const [focus, setFocus] = useState<Focus | undefined>();
   const [error, setError] = useState<string | undefined>();
   const fail = useCallback((e: unknown) => {
     setError(e instanceof Error ? e.message : String(e));
   }, []);
+  const sidebar = useSidebarView(fail);
+  const [devMode] = useSetting('devMode');
+  /** 对话改过的名字叠上去（左栏“重命名”）。 */
+  const sessions = useMemo(
+    () => withTitles(rawSessions, sidebar.view.titles),
+    [rawSessions, sidebar.view.titles],
+  );
 
   const refresh = useCallback(async () => {
     const [{ projects }, { sessions }] = await Promise.all([api.projects(), api.listSessions()]);
@@ -107,6 +108,19 @@ export function App() {
     });
   }, [refresh, fail]);
 
+  // 当前项目被从列表删掉（藏起来）了：换到第一个还在的项目；一个都没有就去全部项目页
+  useEffect(() => {
+    if (!sidebar.loaded || projectId === undefined) return;
+    if (!sidebar.view.hidden.some((h) => h.kind === 'project' && h.id === projectId)) return;
+    const next = buildSidebar({ projects, sessions: rawSessions, view: sidebar.view }).projects[0];
+    if (next !== undefined) {
+      setProjectId(next.id);
+      setCurrent(next.id);
+    } else {
+      setPage('projects');
+    }
+  }, [sidebar.loaded, sidebar.view, projectId, projects, rawSessions]);
+
   const project = projects.find((p) => p.mainSessionId === projectId);
   const reviewIds = useReviewIds(projectId);
   const isReview = useCallback((id: string) => reviewIds.has(id), [reviewIds]);
@@ -125,6 +139,21 @@ export function App() {
     setProjectId(id);
     setCurrent(id);
     setPage('chat');
+  };
+  /** 左栏点项目：进项目页。 */
+  const openProjectHome = (id: string) => {
+    setProjectId(id);
+    setCurrent(id);
+    setPage('overview');
+  };
+  const newProject = () => {
+    api
+      .createProject()
+      .then(async (r) => {
+        await refresh();
+        openProject(r.mainSessionId);
+      })
+      .catch(fail);
   };
   const showSession = useCallback((id: string, list: SessionSummary[]) => {
     const s = list.find((x) => x.sessionId === id);
@@ -185,7 +214,8 @@ export function App() {
                 : [{ kind: 'home' }],
           },
     );
-  const panelButton = (
+  // 开发者模式关掉时不给打开面板的按钮（对话里的出处照样能在面板里打开）
+  const panelButton = devMode && (
     <TooltipIconButton
       tooltip={panel.open ? W.panelClose : W.panelOpen}
       data-testid="panel-toggle"
@@ -201,150 +231,17 @@ export function App() {
       <PanelContext.Provider value={panelApi}>
         <ProjectContext.Provider value={projectId}>
           <div className="flex h-screen">
-            <aside className="bg-sidebar flex w-64 shrink-0 flex-col gap-1 border-r p-3 text-sm">
-              <div className="px-2 pt-1 pb-3 font-serif text-xl tracking-tight">Studium</div>
-              <button
-                type="button"
-                className="hover:bg-accent/60 flex items-center gap-2 rounded-lg px-2 py-1.5 text-left"
-                onClick={() => {
-                  api
-                    .createProject()
-                    .then(async (r) => {
-                      await refresh();
-                      openProject(r.mainSessionId);
-                    })
-                    .catch(fail);
-                }}
-              >
-                <span className="bg-primary text-primary-foreground flex size-5 items-center justify-center rounded-full text-xs">
-                  ＋
-                </span>
-                新项目
-              </button>
-              <div className="text-muted-foreground mt-4 px-2 pb-1 text-xs">项目</div>
-              <ul
-                data-testid="project-list"
-                className="flex min-h-0 flex-1 flex-col gap-0.5 overflow-y-auto"
-              >
-                {projects.map((p) => (
-                  <li key={p.mainSessionId}>
-                    <SideItem
-                      active={
-                        p.mainSessionId === projectId && current === projectId && page === 'chat'
-                      }
-                      onClick={() => openProject(p.mainSessionId)}
-                    >
-                      {p.title}
-                    </SideItem>
-                    {p.mainSessionId === projectId && (
-                      <div className="border-border ms-3 mt-0.5 mb-2 flex flex-col gap-0.5 border-s ps-2">
-                        <SideItem
-                          active={page === 'overview'}
-                          onClick={() => setPage('overview')}
-                          testId="nav-overview"
-                        >
-                          <LayoutGridIcon className="text-muted-foreground size-3.5" />
-                          {W.projectHome}
-                        </SideItem>
-                        <SideItem
-                          active={page === 'chat' && current === projectId}
-                          onClick={() => {
-                            setCurrent(p.mainSessionId);
-                            setPage('chat');
-                          }}
-                        >
-                          <MessageCircleIcon className="text-muted-foreground size-3.5" />
-                          {W.projectChat}
-                        </SideItem>
-                        <ul data-testid="session-list" className="flex flex-col gap-0.5">
-                          {taskRows(tasks).map(({ session: s, depth, from }) => (
-                            <li
-                              key={s.sessionId}
-                              data-from={from}
-                              style={depth > 0 ? { paddingInlineStart: `${depth * 0.75}rem` } : {}}
-                            >
-                              <SideItem
-                                active={page === 'chat' && s.sessionId === current}
-                                onClick={() => {
-                                  setCurrent(s.sessionId);
-                                  setPage('chat');
-                                }}
-                              >
-                                {s.kind === 'output' ? (
-                                  <PenLineIcon className="text-muted-foreground size-3.5 shrink-0" />
-                                ) : reviewIds.has(s.sessionId) ? (
-                                  <HistoryIcon
-                                    className="text-muted-foreground size-3.5 shrink-0"
-                                    aria-label={W.reviewBadge}
-                                  />
-                                ) : (
-                                  <span className="text-muted-foreground w-3.5 text-center text-xs">
-                                    {from !== undefined ? '↳' : '·'}
-                                  </span>
-                                )}
-                                {from !== undefined ? (
-                                  <span className="flex min-w-0 flex-col">
-                                    <span className="truncate">{s.title}</span>
-                                    <span className="text-muted-foreground text-[0.7rem] leading-tight">
-                                      {W.taskFrom[from]}
-                                    </span>
-                                  </span>
-                                ) : (
-                                  s.title
-                                )}
-                              </SideItem>
-                            </li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </li>
-                ))}
-              </ul>
-              <div className="mt-2 flex flex-col gap-0.5 border-t pt-2">
-                <SideItem
-                  active={false}
-                  onClick={() => panelApi.show({ kind: 'library' })}
-                  testId="nav-library"
-                >
-                  <LibraryIcon className="text-muted-foreground size-3.5" />
-                  {W.library}
-                </SideItem>
-                <SideItem active={false} onClick={() => panelApi.show({ kind: 'points' })}>
-                  <ListTreeIcon className="text-muted-foreground size-3.5" />
-                  {W.pointsBrowse}
-                </SideItem>
-                <SideItem active={false} onClick={() => panelApi.show({ kind: 'learned' })}>
-                  <BookCheckIcon className="text-muted-foreground size-3.5" />
-                  {W.learned}
-                </SideItem>
-                <SideItem active={false} onClick={() => panelApi.show({ kind: 'state' })}>
-                  <GaugeIcon className="text-muted-foreground size-3.5" />
-                  {W.myState}
-                </SideItem>
-                <SideItem active={false} onClick={() => panelApi.show({ kind: 'teaching' })}>
-                  <ClipboardListIcon className="text-muted-foreground size-3.5" />
-                  {W.teaching}
-                </SideItem>
-                <SideItem
-                  active={false}
-                  onClick={() => panelApi.show({ kind: 'tools' })}
-                  testId="nav-tools"
-                >
-                  <SparklesIcon className="text-muted-foreground size-3.5" />
-                  {W.tools}
-                </SideItem>
-                <button
-                  type="button"
-                  data-testid="disclosure-link"
-                  className="text-muted-foreground hover:text-foreground mt-1 flex items-center gap-1.5 px-2 py-1 text-left text-xs"
-                  onClick={() => panelApi.show({ kind: 'disclosure' })}
-                >
-                  <SendIcon className="size-3" />
-                  {W.disclosure}
-                </button>
-              </div>
-            </aside>
+            <Sidebar
+              projects={projects}
+              sessions={rawSessions}
+              view={sidebar.view}
+              active={{ page, projectId, current }}
+              onAct={(req) => void sidebar.act(req)}
+              onOpenProject={openProjectHome}
+              onOpenChat={open}
+              onOpenProjects={() => setPage('projects')}
+              onNewProject={newProject}
+            />
             <main className="flex min-w-0 flex-1 flex-col">
               {error !== undefined && (
                 <div
@@ -355,10 +252,26 @@ export function App() {
                   <button onClick={() => setError(undefined)}>关闭</button>
                 </div>
               )}
+              {page === 'projects' && (
+                <ProjectsPage
+                  projects={projects}
+                  sessions={rawSessions}
+                  view={sidebar.view}
+                  header={
+                    <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
+                      {panelButton}
+                    </header>
+                  }
+                  onAct={(req) => void sidebar.act(req)}
+                  onOpenProject={openProjectHome}
+                  onNewProject={newProject}
+                />
+              )}
               {projectId !== undefined && page === 'overview' && (
                 <ProjectHome
                   key={projectId}
                   projectId={projectId}
+                  tasks={tasks}
                   header={
                     <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
                       <span className="truncate font-medium">{W.projectHome}</span>
@@ -389,6 +302,7 @@ export function App() {
                   onOverview={() => setPage('overview')}
                   onError={fail}
                   onBack={() => setCurrent(projectId)}
+                  onProject={() => setPage('overview')}
                 />
               )}
             </main>
@@ -420,26 +334,6 @@ export function App() {
   );
 }
 
-function SideItem(props: {
-  active: boolean;
-  onClick: () => void;
-  children: ReactNode;
-  testId?: string;
-}) {
-  return (
-    <button
-      data-testid={props.testId}
-      className={cn(
-        'flex w-full items-center gap-2 truncate rounded-md px-2 py-1.5 text-left',
-        props.active ? 'bg-accent' : 'hover:bg-accent/60',
-      )}
-      onClick={props.onClick}
-    >
-      {props.children}
-    </button>
-  );
-}
-
 function Conversation(props: {
   sessionId: string;
   kind: SessionSummary['kind'];
@@ -453,6 +347,8 @@ function Conversation(props: {
   onOverview: () => void;
   onError: (e: unknown) => void;
   onBack: () => void;
+  /** 顶部的项目名：回项目页。 */
+  onProject: () => void;
 }) {
   const { sessionId, kind, onError, titleOf, isReview, focus } = props;
   const isMain = kind === 'main';
@@ -587,7 +483,8 @@ function Conversation(props: {
             <button
               type="button"
               className="text-muted-foreground hover:text-foreground flex items-center gap-1"
-              onClick={props.onBack}
+              data-testid="crumb-project"
+              onClick={props.onProject}
             >
               <ChevronLeftIcon className="size-4" />
               {props.projectTitle}

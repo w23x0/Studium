@@ -24,6 +24,8 @@ export interface SessionSummary {
   kind: ConversationKind;
   title: string;
   openedAt: string;
+  /** 最近一条记录的时间（派生层算的；左栏“最近”按它排）。 */
+  lastAt?: string;
   parent?: string;
   /** 学习对话的来历：从哪段学习中途岔出去补的（fork），或接着哪段没学完的学的（resume）。 */
   from?: { kind: 'fork' | 'resume'; loop: string };

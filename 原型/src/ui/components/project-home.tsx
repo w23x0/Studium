@@ -27,6 +27,7 @@ import type {
   LoopStatus,
   ParkingView,
   ProjectOverview,
+  SessionSummary,
 } from '../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { api } from '../api.ts';
@@ -46,15 +47,20 @@ import { RemindersSection } from './longterm/reminders.tsx';
 import { ReviewsSection } from './longterm/reviews.tsx';
 import { TodaySection, useGoOnWith } from './longterm/today.tsx';
 import { PracticeOverview } from './practice/practice-review.tsx';
+import { ProjectChats } from './project-chats.tsx';
+import { useSetting } from '../settings.ts';
 
 export function ProjectHome(props: {
   projectId: string;
+  /** 这个项目里的学习、谈话、写产出对话（列在“这个项目里的对话”）。 */
+  tasks: SessionSummary[];
   header: ReactNode;
   onOpenChat: () => void;
   onError: (e: unknown) => void;
 }) {
   const r = useLoad(`overview:${props.projectId}`, () => api.overview(props.projectId));
   const o = r.data?.overview;
+  const [devMode] = useSetting('devMode');
   return (
     <div data-testid="project-home" className="@container flex h-full flex-col">
       {props.header}
@@ -81,11 +87,13 @@ export function ProjectHome(props: {
               <div className="grid grid-cols-1 gap-8 @4xl:grid-cols-[minmax(0,1fr)_18rem]">
                 <div className="flex min-w-0 flex-col gap-8">
                   <LoadNotice load={o.load} />
+                  <ProjectChats projectId={props.projectId} tasks={props.tasks} />
                   <Groups overview={o} onError={props.onError} />
                   <OutputsSection projectId={props.projectId} />
                   <PracticeOverview />
                   <Relations projectId={props.projectId} />
-                  <AboutMe />
+                  {/* 资料、知识点、记录、教法这些入口：开发者模式关掉时不显示 */}
+                  {devMode && <AboutMe />}
                 </div>
                 <aside className="flex min-w-0 flex-col gap-6">
                   <ProjectMaterials projectId={props.projectId} onError={props.onError} />

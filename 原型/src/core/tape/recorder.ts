@@ -64,6 +64,8 @@ export const ACTIONS = [
   'practice.askHint',
   'practice.abandon',
   'practice.requestSummary',
+  // 左栏：项目改名（置顶、从列表删掉、对话改名只记在 ui/sidebar.jsonl，不进正本，不录）
+  'renameProject',
 ] as const;
 export type ActionName = (typeof ACTIONS)[number];
 

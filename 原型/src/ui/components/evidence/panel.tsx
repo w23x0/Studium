@@ -17,6 +17,7 @@ import {
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import type { PanelTarget } from '../../panel.ts';
 import { usePanel } from '../../panel.ts';
+import { useSetting } from '../../settings.ts';
 import { W } from '../../wording.ts';
 import { CardEvidence } from './card-view.tsx';
 import { DisclosureView } from './disclosure-view.tsx';
@@ -160,8 +161,10 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
   }
 }
 
+/** 面板首页：这次学习的依据，和开发者模式下的各个入口（资料、知识点、记录、教法、教学工具、外发内容）。 */
 function Home(props: { loopId?: string | undefined }) {
   const panel = usePanel();
+  const [devMode] = useSetting('devMode');
   const { loopId } = props;
   return (
     <div className="flex flex-col gap-2">
@@ -173,9 +176,19 @@ function Home(props: { loopId?: string | undefined }) {
           onClick={() => panel.show({ kind: 'loop', loopId })}
         />
       )}
+      {devMode && <DevItems />}
+    </div>
+  );
+}
+
+function DevItems() {
+  const panel = usePanel();
+  return (
+    <div data-testid="dev-items" className="flex flex-col gap-2">
       <HomeItem
         icon={<LibraryIcon />}
         label={W.library}
+        testId="nav-library"
         onClick={() => panel.show({ kind: 'library' })}
       />
       <HomeItem
@@ -211,21 +224,24 @@ function Home(props: { loopId?: string | undefined }) {
       <HomeItem
         icon={<SparklesIcon />}
         label={W.tools}
+        testId="nav-tools"
         onClick={() => panel.show({ kind: 'tools' })}
       />
       <HomeItem
         icon={<SendIcon />}
         label={W.disclosure}
+        testId="disclosure-link"
         onClick={() => panel.show({ kind: 'disclosure' })}
       />
     </div>
   );
 }
 
-function HomeItem(props: { icon: ReactNode; label: string; onClick: () => void }) {
+function HomeItem(props: { icon: ReactNode; label: string; onClick: () => void; testId?: string }) {
   return (
     <button
       type="button"
+      data-testid={props.testId}
       className="bg-card hover:bg-accent/40 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm shadow-xs [&_svg]:size-4"
       onClick={props.onClick}
     >

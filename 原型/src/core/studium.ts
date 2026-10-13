@@ -435,6 +435,19 @@ export class Studium {
     return still.length > 0 ? still : undefined;
   }
 
+  /** 学习者给项目改名（左栏“重命名”）：主对话里追加一条 project_title，开头那行不改。 */
+  async renameProject(mainId: string, title: string): Promise<void> {
+    await this.requireProject(mainId);
+    const t = title.trim();
+    if (t === '') throw new BadRequestError('新名字不能为空');
+    await this.hub.record(mainId, {
+      type: 'project_title',
+      at: this.iso(),
+      title: t,
+      source: 'learner',
+    });
+  }
+
   /** 记 / 清项目期限（可不填）。 */
   async setDeadline(
     mainId: string,
