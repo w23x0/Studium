@@ -30,19 +30,24 @@ export type * from './records-practice.ts';
 export type ConversationKind =
   'main' | 'talk' | 'loop' | 'guard' | 'm09' | 'm05' | 'm15' | 'm10' | 'output';
 
-/** M05 给一个闭环开的单子。 */
+/** 出发点的来源：学过的记录 / 自述 / 假定（只是来源标注，不是证据）。 */
+export const START_SOURCES = ['学过的记录', '自述', '假定'] as const;
+
+/** 单子：这次打算学什么、从哪出发（记录/单子与路线.md）。各栏都是文字，不再查知识点编号库。 */
 export interface Ticket {
-  /** 新点（M08 点 id）。 */
+  /** 新点，一句话。 */
   newPoint: string;
-  /** 选中的子句（M08 子句 id）。 */
+  /** 预期理解：出发点怎么接到新点，一两句。 */
   clause: string;
-  /** 这次用的出发点及其来源。 */
-  startPoints: { point: string; source: 'M09' | '自述' | '假定' }[];
-  /** 路线动作：继续主线 / 补前置 / 开分叉 / 返回主线 …… */
+  /** 这次用的出发点及其来源；`ref` = 依据（`会话 id:行号`）。 */
+  startPoints: { point: string; source: (typeof START_SOURCES)[number]; ref?: string }[];
+  /** 路线动作：继续主线 / 补前置 / 复习 / 复检 / 接着学 …… */
   routeAction: string;
-  /** 复习 / 复检：回头看以前合上过的点（批 6）；没有 = 学新点。 */
+  /** 对资料核的结果：`at` = 教材出处（`书/文件:行号`）；资料里没有的标 `modelAdded`。 */
+  sourceCheck: { claim: string; at?: string; modelAdded?: boolean }[];
+  /** 复习 / 复检：回头看以前那次学习（批 6）；没有 = 学新点。 */
   revisit?: Revisit;
-  /** 跨领域的单子（批 10b）：补习型 / 对比链接型；同领域内的没有。 */
+  /** 跨领域的单子：补习型 / 对比链接型；同领域内的没有。 */
   crossDomain?: CrossDomain;
   /** 阶段验收闭环（批 9）：闭环里的练习都标阶段验收、默认不给提示；守卫照常判。没有 = 日常闭环。 */
   stageCheck?: boolean;
@@ -82,7 +87,7 @@ export interface ForkOrigin {
   kind: 'gap' | 'branch';
   /** 分叉原因：缺哪个出发点 / 学习者想去学什么（一句话）。 */
   reason: string;
-  /** 缺的出发点（M08 点 id）；说不到点上时没有。 */
+  /** 缺的出发点（文字）；说不到点上时没有。 */
   missingPoint?: string;
   /** 父闭环里指回学习者原话的行。 */
   basisLines: number[];
@@ -277,7 +282,7 @@ export interface ChoiceOption {
   /** 给学习者看的一句话。 */
   title: string;
   reason: string;
-  /** 这个选项从哪来：M08 点 / 子句 id、M09 记录 id、闭环原文（会话 id:行号）、书里 书名/文件:行号（旧卡可能只有文件:行号，认不出是哪一本）；须可回查。旧卡没有。 */
+  /** 这个选项从哪来：学习对话里冒出的问题、导航现场说出的候选、现场判断的知识边缘（会话 id:行号）、书里 书名/文件:行号；须可回查。旧卡没有。 */
   sources?: string[];
 }
 
@@ -291,6 +296,25 @@ export interface ChoiceCard {
   recommended: number;
   /** 触发原因：学习者要下一步 / 闭环合上 / 没合上就结束。 */
   trigger: string;
+}
+
+/**
+ * 一次出卡时导航作出的路线决定与理由（记录/单子与路线.md「路线决定与理由」）。
+ * 写在项目主对话的正本里，紧接它的是这次的选择卡；新决定取代旧决定时旧的留着，`supersedes` 指上一条的行号。
+ */
+export interface RouteDecision {
+  type: 'route_decision';
+  at: string;
+  /** 交这次卡的导航会话。 */
+  navSessionId: string;
+  /** 为什么出卡：合上 / 没合上 / 学习者要求 / 补前置合上 …… */
+  trigger: string;
+  decision: string;
+  reason: string;
+  /** 理由的依据，每条 `会话 id:行号` 或 `书/文件:行号`；须可回查。 */
+  basis: string[];
+  /** 主对话里上一条路线决定的行号；第一条没有。 */
+  supersedes?: number;
 }
 
 /** 学习者在选择卡上选定（M01 存成路线事实），并开出闭环对话。 */
@@ -368,7 +392,7 @@ export interface RouteSignal {
   at: string;
   /** gap = 前置缺口（含自述 / 假定的出发点不牢）；branch = 学习者想分叉去学别的。 */
   kind: 'gap' | 'branch';
-  /** 缺的出发点或想去的点（M08 点 id）；对不上 M08 时没有。 */
+  /** 缺的出发点或想去的点（文字）；说不准时没有。 */
   missingPoint?: string;
   /** 缺什么 / 想去哪，用日常话写。 */
   missingText: string;
@@ -476,6 +500,7 @@ export type LogRecord =
   | AfterLoopStep
   | ProjectGoal
   | ChoiceCard
+  | RouteDecision
   | ChoiceMade
   | TaskOpened
   | ProjectTitle

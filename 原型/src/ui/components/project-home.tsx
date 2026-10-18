@@ -16,7 +16,6 @@ import {
   GaugeIcon,
   LayersIcon,
   LibraryIcon,
-  ListTreeIcon,
   MessageCircleIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -534,11 +533,6 @@ function AboutMe() {
   const panel = usePanel();
   const items: { icon: ReactNode; label: string; onClick: () => void }[] = [
     { icon: <LibraryIcon />, label: W.library, onClick: () => panel.show({ kind: 'library' }) },
-    {
-      icon: <ListTreeIcon />,
-      label: W.pointsBrowse,
-      onClick: () => panel.show({ kind: 'points' }),
-    },
     { icon: <BookCheckIcon />, label: W.learned, onClick: () => panel.show({ kind: 'learned' }) },
     {
       icon: <LayersIcon />,

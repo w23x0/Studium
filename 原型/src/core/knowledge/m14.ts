@@ -1,13 +1,7 @@
-// M14 知识产出物存放处（M14 审查单）：学习者自己的产出物对象、版本链、相关文献、“可作通用知识候选”说明、
-// “写产出”对话的绑定。每类一个只追加的 JSONL，永不改写；每次保存 = 新版本。不写 M08、不写 M09。
+// M14 知识产出物存放处（M14 审查单）：学习者自己的产出物对象、版本链、相关文献、“写产出”对话的绑定。
+// 每类一个只追加的 JSONL，永不改写；每次保存 = 新版本。不写 M09。
 import { join } from 'node:path';
-import type {
-  GeneralCandidate,
-  LiteratureEntry,
-  OutputObject,
-  OutputTask,
-  OutputVersion,
-} from '../../shared/m14.ts';
+import type { LiteratureEntry, OutputObject, OutputTask, OutputVersion } from '../../shared/m14.ts';
 import { appendJsonl, readJsonl } from './jsonl.ts';
 
 export class M14 {
@@ -19,7 +13,6 @@ export class M14 {
     private readonly outputs: OutputObject[],
     private readonly versions: OutputVersion[],
     private readonly literature: LiteratureEntry[],
-    private readonly candidates: GeneralCandidate[],
     private readonly tasks: OutputTask[],
   ) {}
 
@@ -29,7 +22,6 @@ export class M14 {
       await readJsonl<OutputObject>(join(dir, 'outputs.jsonl')),
       await readJsonl<OutputVersion>(join(dir, 'versions.jsonl')),
       await readJsonl<LiteratureEntry>(join(dir, 'literature.jsonl')),
-      await readJsonl<GeneralCandidate>(join(dir, 'candidates.jsonl')),
       await readJsonl<OutputTask>(join(dir, 'tasks.jsonl')),
     );
   }
@@ -102,21 +94,6 @@ export class M14 {
 
   literatureOf(output: string): LiteratureEntry[] {
     return this.literature.filter((e) => e.output === output);
-  }
-
-  addCandidate(c: GeneralCandidate): Promise<void> {
-    return this.exclusive(async () => {
-      await appendJsonl(join(this.dir, 'candidates.jsonl'), c);
-      this.candidates.push(c);
-    });
-  }
-
-  allCandidates(): GeneralCandidate[] {
-    return [...this.candidates];
-  }
-
-  candidatesOf(output: string): GeneralCandidate[] {
-    return this.candidates.filter((c) => c.output === output);
   }
 
   bindTask(t: OutputTask): Promise<void> {

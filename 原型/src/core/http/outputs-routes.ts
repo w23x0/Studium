@@ -1,10 +1,8 @@
-// M14 产出物的接口（批 8）：项目下的产出物、版本链与比较、相关文献、“可作通用知识候选”。
+// M14 产出物的接口（批 8）：项目下的产出物、版本链与比较、相关文献。
 // 写入的都是学习者自己写的（作者记“学习者”）；模型协助写入走“写产出”对话里的工具。
 // POST /api/outputs/:id/tasks：学习者从产出物页直接开一个“写产出”对话（批 8b）。
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type {
-  CandidateResponse,
-  CandidatesResponse,
   CompareResponse,
   ListOutputsResponse,
   LiteratureListResponse,
@@ -41,10 +39,6 @@ export async function outputsRoute(
       return true;
     }
     return false;
-  }
-  if (a === 'm14' && b === 'candidates' && n === 3 && method === 'GET') {
-    json(res, 200, { candidates: outputs.candidates() } satisfies CandidatesResponse);
-    return true;
   }
   if (a !== 'outputs' || b === undefined) return false;
   if (n === 3 && method === 'GET') {
@@ -100,21 +94,6 @@ export async function outputsRoute(
       sessionId: await outputs.openTask(b, body.brief),
     } satisfies OpenOutputTaskResponse);
     return true;
-  }
-  if (c === 'candidates' && n === 4) {
-    if (method === 'GET') {
-      json(res, 200, {
-        candidates: (await outputs.view(b)).candidates,
-      } satisfies CandidatesResponse);
-      return true;
-    }
-    if (method === 'POST') {
-      const body = (await readJson(req)) as Parameters<Outputs['markCandidate']>[1];
-      json(res, 201, {
-        candidate: await outputs.markCandidate(b, body),
-      } satisfies CandidateResponse);
-      return true;
-    }
   }
   return false;
 }

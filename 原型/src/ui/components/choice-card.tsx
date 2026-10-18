@@ -24,7 +24,7 @@ export function ChoiceCardBox(props: {
     reason: string;
     revisit?: '复习' | '复检' | undefined;
     /** 跨领域的选项（批 10b）：类型与两边的领域。 */
-    cross?: { kind: '补习型' | '对比链接型'; domain: string; otherDomain: string } | undefined;
+    cross?: { kind: '补习型' | '对比链接型'; otherPoint: string } | undefined;
     /** 这一项是阶段验收（批 9）。 */
     stageCheck?: boolean;
   }[];
@@ -76,7 +76,7 @@ export function ChoiceCardBox(props: {
                 {o.cross !== undefined && (
                   <span
                     data-testid="cross-badge"
-                    title={`${W.crossHint[o.cross.kind]}（${W.crossSides(o.cross.domain, o.cross.otherDomain)}）`}
+                    title={`${W.crossHint[o.cross.kind]}（${W.crossSides(o.cross.otherPoint)}）`}
                     className="bg-primary/10 text-primary ms-2 rounded-full px-1.5 py-0.5 text-[0.7rem] font-medium"
                   >
                     {W.crossKind[o.cross.kind]}

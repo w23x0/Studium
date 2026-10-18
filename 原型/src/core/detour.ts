@@ -2,30 +2,40 @@
 // → 开分叉闭环（记来源、原因、返回条件）/ 接着学 / 搁置；分叉结束回父闭环；没合上或搁置时记停车记录。
 // 对应 M04:21-22 · M05:18-19,26-28,42 · M01:16,18-19。设计没写的地方的补法见 工作单.md「补位清单」。
 import { z } from 'zod';
-import type {
-  DetourMade,
-  DetourOption,
-  ForkOrigin,
-  M05Job,
-  NumberedRecord,
-  ParkingNote,
-  Ticket,
+import {
+  START_SOURCES,
+  type DetourMade,
+  type DetourOption,
+  type ForkOrigin,
+  type M05Job,
+  type NumberedRecord,
+  type ParkingNote,
+  type Ticket,
 } from '../shared/records.ts';
 import { foldLoop, MAX_FORK_DEPTH } from './loop-state.ts';
 import type { Hub } from './hub.ts';
-import type { M08 } from './knowledge/m08.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
+
+/** 单子的最基本核对（工单 §4.4）：新点与预期理解非空、出发点来源在三种里。 */
+function badTicket(t: Ticket): string | undefined {
+  if (t.newPoint.trim() === '') return '新点是空的';
+  if (t.clause.trim() === '') return '预期理解是空的';
+  for (const s of t.startPoints) {
+    if (!(START_SOURCES as readonly string[]).includes(s.source)) {
+      return `出发点的来源 ${s.source} 不在 ${START_SOURCES.join(' / ')} 里`;
+    }
+  }
+  return undefined;
+}
 import { BadRequestError } from './studium.ts';
 
 export interface DetourDeps {
   hub(): Hub;
-  m08: M08;
   iso(): string;
   newId(prefix: string): string;
   describeTicket(t: Ticket): string;
-  ticketProblem(t: Ticket): string | undefined;
-  /** M05 通用开场（方向、期限、资料、M09、闭环状态与数量、停车场、M08 概要）。 */
+  /** M05 通用开场（方向、期限、资料、M09、闭环状态与数量、停车场）。 */
   m05Opening(trigger: string, mainId: string): Promise<string>;
   /** 闭环开场（单子 + 知识片段 + “现在开始”）。 */
   loopOpening(t: Ticket): string;
@@ -93,11 +103,6 @@ export class Detours {
       return fail(`分叉已经嵌了 ${String(MAX_FORK_DEPTH)} 层，先把里面的收尾，不再往下分。`);
     }
     if (a.missingText.trim() === '') return fail('missing_text 不能是空的：写清缺什么 / 想去哪。');
-    if (a.missingPoint !== undefined && !this.d.m08.points.has(a.missingPoint)) {
-      return fail(
-        `M08 里没有点 ${a.missingPoint}；对不上就不填 missing_point，用 missing_text 说。`,
-      );
-    }
     if (a.basisLines.length === 0) return fail('basis_lines 至少给一行学习者的原话。');
     const learner = learnerLines(recs);
     const bad = a.basisLines.filter((l) => !learner.has(l));
@@ -193,7 +198,7 @@ export class Detours {
   }
 
   private pointText(id: string): string {
-    return `${id}「${this.d.m08.name(id)}」`;
+    return id;
   }
 
   private detourCardTool(sessionId: string, job: Extract<Job, { kind: 'detour' }>): ToolSpec {
@@ -205,12 +210,12 @@ export class Detours {
         .array(z.string().min(1))
         .optional()
         .describe(
-          '可回查的出处（M08 点 / 子句 id、闭环原文“会话 id:行号”等）；学习者的原话行程序会补',
+          '可回查的出处（闭环原文“会话 id:行号”、书里“书名/文件:行号”等）；学习者的原话行程序会补',
         ),
-      new_point: z.string().optional().describe('fork：分叉闭环的新点（M08 点 id）'),
-      clause: z.string().optional().describe('fork：选中的子句（M08 子句 id）'),
+      new_point: z.string().optional().describe('fork：分叉要学的新点，一句话'),
+      clause: z.string().optional().describe('fork：预期理解，一两句'),
       start_points: z
-        .array(z.object({ point: z.string(), source: z.enum(['M09', '自述', '假定']) }))
+        .array(z.object({ point: z.string(), source: z.enum(START_SOURCES) }))
         .optional(),
       route_action: z.string().optional(),
       scope: z.string().optional().describe('fork：补到什么程度为止'),
@@ -262,8 +267,9 @@ export class Detours {
               o.route_action !== undefined && o.route_action.trim() !== ''
                 ? o.route_action
                 : '补前置（分叉）',
+            sourceCheck: [],
           };
-          const p = this.d.ticketProblem(ticket);
+          const p = badTicket(ticket);
           if (p !== undefined) problems.push(`第 ${String(i)} 项：${p}`);
           else if (o.new_point === opened.ticket?.newPoint) {
             problems.push(`第 ${String(i)} 项：分叉的新点不能就是本闭环正在学的新点`);
@@ -336,12 +342,12 @@ export class Detours {
     }
     // fork
     const ticket = picked.ticket;
-    const problem = ticket ? this.d.ticketProblem(ticket) : '小卡的 fork 选项没有单子';
+    const problem = ticket ? badTicket(ticket) : '小卡的 fork 选项没有单子';
     if (!ticket || problem !== undefined) {
       console.error(
         `小卡 ${cardId} 第 ${String(option)} 项的单子有问题，不开分叉：${problem ?? ''}`,
       );
-      throw new BadRequestError('这个选项现在开不了（资料里查不到它要学的内容），换一个试试。');
+      throw new BadRequestError('这个选项现在开不了（单子缺了新点或预期理解），换一个试试。');
     }
     if (opened.parent === undefined) throw new BadRequestError('这个闭环不属于任何项目。');
     const fork: ForkOrigin = {
@@ -353,7 +359,7 @@ export class Detours {
       fromLoop: loopId,
       basisLines: sig?.type === 'route_signal' ? sig.basisLines : [],
       signalLine: found.signalLine,
-      returnCondition: `分叉的新点「${this.d.m08.name(ticket.newPoint)}」合上就回到「${opened.title}」`,
+      returnCondition: `分叉的新点「${ticket.newPoint}」合上就回到「${opened.title}」`,
       ...(picked.scope !== undefined ? { scope: picked.scope } : {}),
     };
     const child = await this.d.hub().createSession('loop', {
@@ -488,7 +494,7 @@ export class Detours {
     return [
       `这次的活：给一个${reason === 'shelved' ? '被学习者搁置' : '没合上就结束'}的闭环记停车记录（不是出选择卡）。`,
       '停车记录 = 缺在哪个出发点 + 恢复计划（何时、从哪接上）。可靠的搁置要有具体的恢复计划，而不是笼统的“以后再说”。',
-      '读下面的单子、教学侧中途报过的缺口和对话原文（需要时用 read_loop 或查 M08 / M09），用 submit_parking_note 交回，只交一次。',
+      '读下面的单子、教学侧中途报过的缺口和对话原文（需要时用 read_loop 或查 M09），用 submit_parking_note 交回，只交一次。',
       '',
       `闭环：「${opened.title}」（${loopId}）`,
       `单子：${opened.ticket ? this.d.describeTicket(opened.ticket) : '（缺）'}`,
@@ -619,12 +625,12 @@ export class Detours {
     return {
       name: 'submit_parking_note',
       description:
-        '交回停车记录：缺在哪个出发点（可多个；点在 M08 里就填 point，对不上只写 text），和恢复计划（何时、从哪接上）。只提交一次。',
+        '交回停车记录：缺在哪个出发点（可多个；point 写那个出发点，不确定就只写 text），和恢复计划（何时、从哪接上）。只提交一次。',
       input: {
         missing: z
           .array(
             z.object({
-              point: z.string().optional().describe('缺的出发点（M08 点 id）；对不上不填'),
+              point: z.string().optional().describe('缺的出发点（文字）；不确定不填'),
               text: z.string().describe('缺什么，一句话'),
             }),
           )
@@ -639,14 +645,6 @@ export class Detours {
       run: async (a) => {
         if (this.parks.has(sessionId)) return fail('已经提交过了');
         const missing = a.missing as { point?: string; text: string }[];
-        const badPoint = missing.filter(
-          (m) => m.point !== undefined && !this.d.m08.points.has(m.point),
-        );
-        if (badPoint.length > 0) {
-          return fail(
-            `M08 里没有点 ${badPoint.map((m) => m.point ?? '').join('、')}；对不上就不填 point`,
-          );
-        }
         if (missing.some((m) => m.text.trim() === '')) return fail('text 不能是空的');
         const when = (a.when as string).trim();
         const resumeFrom = (a.resume_from as string).trim();

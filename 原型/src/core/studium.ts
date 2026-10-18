@@ -11,16 +11,18 @@ import type {
   StateExplanationView,
 } from '../shared/protocol.ts';
 import { CROSS_KINDS } from '../shared/records-cross.ts';
-import type {
-  ChoiceCard,
-  ChoiceOption,
-  ConversationKind,
-  GuardVerdict,
-  ImageInput,
-  LearnerObjection,
-  LogRecord,
-  NumberedRecord,
-  Ticket,
+import {
+  START_SOURCES,
+  type ChoiceCard,
+  type ChoiceOption,
+  type ConversationKind,
+  type GuardVerdict,
+  type ImageInput,
+  type LearnerObjection,
+  type LogRecord,
+  type NumberedRecord,
+  type RouteDecision,
+  type Ticket,
 } from '../shared/records.ts';
 import type { Crosslinks } from './crosslinks.ts';
 import { Detours } from './detour.ts';
@@ -32,7 +34,6 @@ import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { foldLoop, LOAD_HEAVY, PARKING_PILE, stateLabel } from './loop-state.ts';
 import type { Library } from './knowledge/m07.ts';
 import type { Sources } from './sources.ts';
-import type { M08 } from './knowledge/m08.ts';
 import {
   EVIDENCE_INDEPENDENCE,
   EVIDENCE_TIMES,
@@ -56,10 +57,10 @@ import {
   type IntensityChange,
 } from './intensity.ts';
 import { teachingToolSpecs, toolUsesOf, type TeachingTools } from './teaching-tools.ts';
+import { locate, type LocateDeps } from './locate.ts';
 import { isNotFound } from './log/session-log.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
-import type { M08Review } from './m08-review.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
 
 export class BadRequestError extends Error {}
@@ -74,7 +75,6 @@ const TEACHING_EXCERPT = 160;
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
   m07: Library;
-  m08: M08;
   m09: M09;
   m10: M10;
   m15: M15;
@@ -90,8 +90,6 @@ export interface StudiumOptions {
   outputs: Outputs;
   /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
   cross: Crosslinks;
-  /** M08 候选区与更正（批 10a）：写 M09 的会话可提去个人化候选。 */
-  m08Review: M08Review;
   now?: () => Date;
 }
 
@@ -117,7 +115,6 @@ export class Studium {
     this.practice = new Practice({
       hub: () => this.hub,
       m07: o.m07,
-      m08: o.m08,
       iso: () => this.iso(),
       newId: (prefix) => this.newId(prefix),
       scopeOf: (id, all) => this.scopeOf(id, all),
@@ -127,7 +124,6 @@ export class Studium {
     });
     this.longterm = new LongTerm({
       hub: () => this.hub,
-      m08: o.m08,
       m09: o.m09,
       m15: o.m15,
       deviations: o.deviations,
@@ -140,11 +136,9 @@ export class Studium {
     });
     this.detours = new Detours({
       hub: () => this.hub,
-      m08: o.m08,
       iso: () => this.iso(),
       newId: (prefix) => this.newId(prefix),
       describeTicket: (t) => this.describeTicket(t),
-      ticketProblem: (t) => this.ticketProblem(t),
       m05Opening: (trigger, mainId) => this.m05Opening(trigger, mainId),
       loopOpening: (t) => this.loopOpening(t),
       m05ReadTools: (id) => [
@@ -155,9 +149,6 @@ export class Studium {
     });
     // 产出物那边生成的编号也经这里报给录带
     o.outputs.onNewId((prefix, id) => {
-      for (const fn of this.idListeners) fn(prefix, id);
-    });
-    o.m08Review.onNewId((prefix, id) => {
       for (const fn of this.idListeners) fn(prefix, id);
     });
   }
@@ -254,7 +245,6 @@ export class Studium {
                 ...this.readTools(sessionId, { m07: false, m09: false }),
                 this.formationTool(sessionId),
                 ...this.longterm.m09Tools(sessionId),
-                ...this.o.m08Review.m09Tools(sessionId, () => this.m09CandidateContext(sessionId)),
               ];
         case 'm05':
           // 同一类会话三种活：出下一闭环的选择卡；闭环中途的小卡；给没合上 / 搁置的闭环记停车记录
@@ -265,7 +255,6 @@ export class Studium {
               this.stateQueryTool(),
               this.cardTool(sessionId),
               ...this.longterm.m05Tools(sessionId),
-              this.o.cross.crossCandidatesTool(this.crossEnv(sessionId)),
               this.o.cross.addNoteTool(sessionId),
             ]
           );
@@ -278,7 +267,7 @@ export class Studium {
             this.strategyTool(sessionId),
           ];
         case 'output':
-          // M14 不直读 M09（审查单），只读 M07 / M08；写产出新版本的工具由 Outputs 给
+          // M14 不直读 M09（审查单），只读 M07；写产出新版本的工具由 Outputs 给
           return [
             ...this.readTools(sessionId, { m09: false }),
             ...this.o.outputs.sessionTools(sessionId),
@@ -531,6 +520,20 @@ export class Studium {
     await this.hub.idle(m05.sessionId);
     const card = this.cards.get(m05.sessionId);
     if (!card) throw new Error('M05 没有提交选择卡（见该会话记录）');
+    // 每次出卡先写一条路线决定，紧接着写卡（记录/单子与路线.md「路线决定与理由」）
+    const before = await this.hub.records(mainId);
+    const last = [...before].reverse().find((r) => r.record.type === 'route_decision');
+    const decision: RouteDecision = {
+      type: 'route_decision',
+      at: this.iso(),
+      navSessionId: m05.sessionId,
+      trigger,
+      decision: card.routeDecision.decision,
+      reason: card.routeDecision.reason,
+      basis: card.routeDecision.basis,
+      ...(last !== undefined ? { supersedes: last.line } : {}),
+    };
+    await this.hub.record(mainId, decision);
     const record: ChoiceCard = {
       type: 'choice_card',
       at: this.iso(),
@@ -565,14 +568,6 @@ export class Studium {
     }
     const picked = card.options[option];
     if (!picked) throw new BadRequestError(`没有第 ${String(option + 1)} 个选项。`);
-    // 必需项：单子（新点 + 子句）在 M08 里查得到，否则不开（03「缺料与冲突」）
-    const problem = this.ticketProblem(picked.ticket);
-    if (problem) {
-      console.error(
-        `选择卡 ${cardId} 第 ${String(option)} 项的单子有问题，不开闭环对话：${problem}`,
-      );
-      throw new BadRequestError('这个选项现在开不了（资料里查不到它要学的内容），换一个试试。');
-    }
 
     const loop = await this.hub.createSession('loop', {
       title: picked.title,
@@ -589,11 +584,7 @@ export class Studium {
     await this.longterm.onChosen(mainId, card, option, loop.sessionId);
     await this.hub.send(loop.sessionId, {
       role: 'program',
-      text: [
-        ...(await this.o.cross.crossOpening(picked.ticket)),
-        ...this.crossHistory(picked.ticket),
-        this.loopOpening(picked.ticket),
-      ].join('\n'),
+      text: this.loopOpening(picked.ticket),
     });
     return loop.sessionId;
   }
@@ -1103,7 +1094,14 @@ export class Studium {
 
   // ───────────── M05 ─────────────
 
-  private readonly cards = new Map<string, { options: ChoiceOption[]; recommended: number }>();
+  private readonly cards = new Map<
+    string,
+    {
+      options: ChoiceOption[];
+      recommended: number;
+      routeDecision: { decision: string; reason: string; basis: string[] };
+    }
+  >();
 
   private async m05Opening(trigger: string, mainId: string): Promise<string> {
     const main = (await this.hub.records(mainId)).map((r) => r.record);
@@ -1122,14 +1120,13 @@ export class Studium {
       '',
       `期限：${deadline !== undefined ? this.deadlineText(foldDeadline(main)) : '没有记'}`,
       '',
-      `资料范围：${scope !== undefined ? `项目选用了 ${String(scope.length)} 份资料：${scope.join('、')}。教材查询工具和 M08 工具默认只在这些里查；学习者或你明确要时，传 all=true 查全库。` : '项目没选资料：查全库。'}`,
+      `资料范围：${scope !== undefined ? `项目选用了 ${String(scope.length)} 份资料：${scope.join('、')}。教材查询工具默认只在这些里查；学习者或你明确要时，传 all=true 查全库。` : '项目没选资料：查全库。'}`,
       '',
-      ...(await this.domainsLine(scope)),
-      `已合上过的新点（M09）：${known.length > 0 ? known.map((p) => `${p}「${this.o.m08.name(p)}」`).join('、') : '（空：冷启动，第一个闭环选小的）'}`,
+      `已合上过的新点（学过的记录）：${known.length > 0 ? known.join('、') : '（空：冷启动，第一次学习选小的）'}`,
       '',
       ...(external.length > 0
         ? [
-            `外部导入（学习者在系统之外学到的：自述 / 笔记里写过；未验证，可信度低于闭环记录，闭环证据永远优先，可以怀疑，不算“已合上过”）：\n${external.map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id))).join('\n')}`,
+            `外部导入（学习者在系统之外学到的：自述 / 笔记里写过；未验证，可信度低于学习记录，学习里的证据永远优先，可以怀疑，不算“已合上过”）：\n${external.map((r) => this.o.m09.describeExternal(r, (id) => id)).join('\n')}`,
             '',
           ]
         : []),
@@ -1143,8 +1140,6 @@ export class Studium {
             '',
           ]
         : []),
-      this.m08Summary(scope, await this.recentSpot(loops)),
-      '',
       ...(await this.longterm.m05Opening(mainId)),
       '学习者状态（M15）：要用时用 query_state 查；没有记录按无状态约束。',
     ].join('\n');
@@ -1182,9 +1177,7 @@ export class Studium {
         (opened.ticket === undefined || !known.includes(opened.ticket.newPoint));
       if (parking !== undefined && (unresolved || flags.shelved !== undefined)) {
         const text = `缺：${parking.missing
-          .map((m) =>
-            m.point !== undefined ? `${m.point}「${this.o.m08.name(m.point)}」` : m.text,
-          )
+          .map((m) => (m.point !== undefined ? m.point : m.text))
           .join('、')}；恢复计划：${parking.when}，从${parking.resumeFrom}接上`;
         extra.push(`停车记录：${text}`);
         if (unresolved) parked.push(`- ${l.sessionId}「${l.title}」：${text}`);
@@ -1212,62 +1205,30 @@ export class Studium {
     return `${d.deadline}（${left}）${d.note !== undefined ? `；${d.note}` : ''}`;
   }
 
-  /** M08 概要（给 M05 开场用）：各书各章有多少点 / 子句；全部点按需用工具查（m08_overview / list_chapter_points / search_points）。 */
-  private m08Summary(scope: string[] | undefined, recent: string): string {
-    const m08 = this.o.m08;
-    if (m08.empty) return 'M08：空（缺通用知识依据）';
-    const set = scope !== undefined ? new Set(scope) : undefined;
-    const counts = m08.counts(set);
-    const shown = counts.slice(0, 20);
-    const lines = shown.map(
-      (b) =>
-        `- 《${b.book}》${String(b.points)} 点 / ${String(b.clauses)} 子句：${b.chapters
-          .slice(0, 40)
-          .map((c) => `${c.chapter} ${String(c.points)}/${String(c.clauses)}`)
-          .join('，')}${b.chapters.length > 40 ? '……' : ''}`,
-    );
-    const total = [...m08.points.values()].filter(
-      (p) => set === undefined || m08.pointInBooks(p, set),
-    ).length;
-    const hidden = m08.points.size - total;
-    return [
-      `M08 概要（共 ${String(total)} 个点${m08.origins.length > 1 ? `，合并自 ${String(m08.origins.length)} 套产出` : ''}；章后是 点数/子句数）：`,
-      lines.join('\n') || '（项目选的资料里还没有 M08 点）',
-      ...(counts.length > shown.length
-        ? [`……另有 ${String(counts.length - shown.length)} 本`]
-        : []),
-      ...(hidden > 0
-        ? [`（另有 ${String(hidden)} 个点属于没选进项目的资料，要看用 all=true）`]
-        : []),
-      recent,
-      '要看某一章的点：list_chapter_points（书名、章名）；按关键词找：search_points；一个点的细节与前后子句：get_point。点只在需要时再查，开场不列。',
-    ].join('\n');
-  }
-
-  /** 学习者最近在哪一章：本项目最近开的带单子的闭环，它的新点所在的书与章。 */
-  private async recentSpot(
-    loops: { sessionId: string; title: string; openedAt: string }[],
-  ): Promise<string> {
-    const sorted = [...loops].sort((a, b) => b.openedAt.localeCompare(a.openedAt));
-    for (const l of sorted) {
-      const opened = await this.hub.opened(l.sessionId);
-      const p = opened.ticket ? this.o.m08.points.get(opened.ticket.newPoint) : undefined;
-      if (p === undefined) continue;
-      const state = stateLabel(foldLoop(await this.hub.records(l.sessionId)));
-      const book = this.o.m08.bookOf(p);
-      return `学习者最近在：${book !== undefined ? `《${book.trim()}》 ` : ''}${this.o.m08.chapterOf(p)}（闭环 ${l.sessionId}「${l.title}」，新点 ${p.id}「${p.name}」，${state}）`;
-    }
-    return '学习者最近在：还没有开过闭环';
-  }
-
   private cardTool(sessionId: string): ToolSpec {
     const ticketShape = z.object({
-      new_point: z.string().describe('M08 点 id'),
-      clause: z.string().describe('M08 子句 id'),
-      start_points: z.array(
-        z.object({ point: z.string(), source: z.enum(['M09', '自述', '假定']) }),
-      ),
-      route_action: z.string(),
+      new_point: z.string().describe('新点，一句话'),
+      clause: z.string().describe('预期理解：出发点怎么接到新点，一两句'),
+      start_points: z
+        .array(
+          z.object({
+            point: z.string().describe('出发点，一句话'),
+            source: z.enum(START_SOURCES).describe('来源：学过的记录 / 自述 / 假定'),
+            ref: z.string().optional().describe('依据：学过的记录或自述写“会话 id:行号”'),
+          }),
+        )
+        .describe('这次用的出发点（一个或几个）'),
+      route_action: z.string().describe('继续主线 / 补前置 / 复习 / 复检 / 接着学 ……'),
+      source_check: z
+        .array(
+          z.object({
+            claim: z.string().describe('对资料核过的一条说法'),
+            at: z.string().optional().describe('教材出处“书/文件:行号”'),
+            model_added: z.boolean().optional().describe('资料里没有、模型补的'),
+          }),
+        )
+        .optional()
+        .describe('对资料核的结果；一条都没有就不填'),
       stage_check: z
         .boolean()
         .optional()
@@ -1286,12 +1247,12 @@ export class Studium {
       cross_domain: z
         .object({
           kind: z.enum(CROSS_KINDS),
-          other_point: z.string().describe('另一边的点 id'),
+          other_point: z.string().describe('另一边的点，一句话'),
           problem: z.string().describe('驱动这次学习的原问题，一句话'),
         })
         .optional()
         .describe(
-          '跨领域选项才填：补习型（new_point 是学习者没学过的、另一个领域里的前置；other_point 是原问题所在领域里需要它的点）；对比链接型（other_point 是另一个领域里与 new_point 结构相似、学习者已经会了的点）。领域由程序按书的学科目录算，两边必须不在同一个领域；同领域的不填',
+          '跨领域选项才填：补习型（新点是学习者还没学过的那一边、原问题需要的前置）或对比链接型（另一边的点与学习者已经会了的那个结构相似）。只写这三项，领域自己判断、不用填',
         ),
       title: z.string().describe('给学习者看的一句话'),
       reason: z.string(),
@@ -1299,95 +1260,161 @@ export class Studium {
         .array(z.string().min(1))
         .min(1)
         .describe(
-          '这个选项从哪来，每条可回查：M08 点 / 子句 id、M09 记录 id、闭环原文“会话 id:行号”、书里“书名/文件:行号”（书名、文件照教材查询工具给的写）',
+          '这个选项从哪来，每条可回查：闭环原文“会话 id:行号”、书里“书名/文件:行号”（书名、文件照教材查询工具给的写）',
         ),
     });
     return {
       name: 'submit_choice_card',
-      description: '交回 2–4 个候选单子，推荐其中一个（从 0 数）。只提交一次。',
-      input: { options: z.array(ticketShape).min(2).max(4), recommended: z.number().int().min(0) },
+      description: '交回 2–4 个候选单子与这次的路线决定，推荐其中一个（从 0 数）。只提交一次。',
+      input: {
+        options: z.array(ticketShape).min(2).max(4),
+        recommended: z.number().int().min(0),
+        route_decision: z.object({
+          decision: z.string().describe('这次走哪条路（含“维持”），一句话'),
+          reason: z.string().describe('为什么这样定'),
+          basis: z
+            .array(z.string())
+            .min(1)
+            .describe('理由的依据，每条“会话 id:行号”或“书/文件:行号”'),
+        }),
+      },
       run: async (a) => {
         if (this.cards.has(sessionId)) return err('已经提交过选择卡');
-        // 出处在模型参数里是必填（上面的校验）；这里对旧调用形态（没有 sources）宽容，不编
-        const raw = a.options as (Omit<z.infer<typeof ticketShape>, 'sources'> & {
+        // 假模型直接调 run、不经 zod（工单 README §4.2）：这里按“字段可能缺”的宽松形状收，逐条核
+        const raw = a.options as {
+          new_point?: string;
+          clause?: string;
+          start_points?: { point?: string; source?: string; ref?: string }[];
+          route_action?: string;
+          source_check?: { claim?: string; at?: string; model_added?: boolean }[];
+          stage_check?: boolean;
+          revisit?: { kind: '复习' | '复检'; formation_ids?: string[] };
+          cross_domain?: { kind?: string; other_point?: string; problem?: string };
+          title?: string;
+          reason?: string;
           sources?: string[];
-        })[];
-        const options: ChoiceOption[] = raw.map((o) => ({
-          title: o.title,
-          reason: o.reason,
-          ...(o.sources !== undefined ? { sources: o.sources } : {}),
-          ticket: {
-            newPoint: o.new_point,
-            clause: o.clause,
-            startPoints: o.start_points.map((s) => ({ point: s.point, source: s.source })),
-            routeAction: o.route_action,
-            ...(o.revisit !== undefined
-              ? { revisit: { kind: o.revisit.kind, formationIds: o.revisit.formation_ids } }
-              : {}),
-            ...(o.stage_check === true ? { stageCheck: true } : {}),
-          },
-        }));
-        const blank = raw.flatMap((o, i) =>
-          o.sources?.some((s) => s.trim() === '') === true
-            ? [`第 ${String(i)} 项的出处有空白条目`]
-            : [],
-        );
-        if (blank.length > 0) return err(`${blank.join('；')}。改好后重新提交`);
-        const problems = options
-          .map(
-            (o, i) =>
-              [i, this.ticketProblem(o.ticket) ?? this.longterm.revisitProblem(o.ticket)] as const,
-          )
-          .filter(([, p]) => p !== undefined)
-          .map(([i, p]) => `第 ${String(i)} 项：${p ?? ''}`);
-        if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
-        const known = new Set(this.o.m09.knownPoints());
+        }[];
+        const decision = a.route_decision as
+          { decision?: string; reason?: string; basis?: string[] } | undefined;
+        const problems: string[] = [];
+        const blank = (s: unknown): boolean => typeof s !== 'string' || s.trim() === '';
+
+        // 路线决定：必有，决定与理由非空，依据至少一条且每条都能定位
+        const basis = Array.isArray(decision?.basis) ? decision.basis : [];
+        if (blank(decision?.decision)) problems.push('路线决定缺 decision（这次走哪条路）');
+        if (blank(decision?.reason)) problems.push('路线决定的 reason 不能是空的');
+        if (basis.length === 0) problems.push('路线决定的 basis 至少给一条依据');
+        for (const b of basis) {
+          const at = await locate(b, this.locateDeps());
+          if (!at.ok) problems.push(`路线决定的依据 ${b} 定位不了`);
+        }
+
+        const options: ChoiceOption[] = [];
         for (const [i, o] of raw.entries()) {
-          if (o.cross_domain === undefined) continue;
-          const r = await this.o.cross.buildCross(
-            o.new_point,
-            {
-              kind: o.cross_domain.kind,
-              otherPoint: o.cross_domain.other_point,
-              problem: o.cross_domain.problem,
-            },
-            known,
-          );
-          if ('error' in r) return err(`第 ${String(i)} 项：${r.error}。改好后重新提交`);
-          const opt = options[i];
-          if (opt !== undefined) opt.ticket.crossDomain = r.cross;
+          const n = `第 ${String(i + 1)} 项`;
+          const textFields: [string | undefined, string][] = [
+            [o.new_point, 'new_point（新点）'],
+            [o.clause, 'clause（预期理解）'],
+            [o.route_action, 'route_action（路线动作）'],
+            [o.title, 'title'],
+            [o.reason, 'reason'],
+          ];
+          for (const [value, label] of textFields) {
+            if (blank(value)) problems.push(`${n}的 ${label} 不能是空的`);
+          }
+          const sources = o.sources ?? [];
+          if (sources.length === 0) problems.push(`${n}的 sources 至少给一条（这个选项从哪来）`);
+          if (sources.some((x) => blank(x))) problems.push(`${n}的 sources 有空白条目`);
+          const startPoints: Ticket['startPoints'] = [];
+          for (const sp of o.start_points ?? []) {
+            if (blank(sp.point)) problems.push(`${n}的出发点不能是空的`);
+            if (
+              sp.source === undefined ||
+              !(START_SOURCES as readonly string[]).includes(sp.source)
+            ) {
+              problems.push(`${n}的出发点来源 ${sp.source} 不在 ${START_SOURCES.join(' / ')} 里`);
+            }
+            if (sp.ref !== undefined && sp.ref.trim() !== '') {
+              const at = await locate(sp.ref, this.locateDeps());
+              if (!at.ok) problems.push(`${n}的出发点依据 ${sp.ref} 定位不了`);
+            }
+            startPoints.push({
+              point: sp.point ?? '',
+              source: (sp.source ?? '假定') as (typeof START_SOURCES)[number],
+              ...(sp.ref !== undefined && sp.ref.trim() !== '' ? { ref: sp.ref } : {}),
+            });
+          }
+          const sourceCheck: Ticket['sourceCheck'] = [];
+          for (const c of o.source_check ?? []) {
+            if (blank(c.claim)) problems.push(`${n}的对资料核的结果缺 claim（核过的那条说法）`);
+            if (c.at !== undefined && c.at.trim() !== '') {
+              const at = await locate(c.at, this.locateDeps());
+              if (!at.ok) problems.push(`${n}的出处 ${c.at} 定位不了`);
+            }
+            sourceCheck.push({
+              claim: c.claim ?? '',
+              ...(c.at !== undefined && c.at.trim() !== '' ? { at: c.at } : {}),
+              ...(c.model_added === true ? { modelAdded: true } : {}),
+            });
+          }
+          let crossDomain: Ticket['crossDomain'];
+          if (o.cross_domain !== undefined) {
+            if (
+              o.cross_domain.kind === undefined ||
+              !(CROSS_KINDS as readonly string[]).includes(o.cross_domain.kind)
+            ) {
+              problems.push(
+                `${n}的跨领域类型 ${o.cross_domain.kind} 不在 ${CROSS_KINDS.join(' / ')} 里`,
+              );
+            }
+            if (blank(o.cross_domain.other_point)) problems.push(`${n}的跨领域缺 other_point`);
+            if (blank(o.cross_domain.problem)) problems.push(`${n}的跨领域缺 problem（原问题）`);
+            crossDomain = {
+              kind: (o.cross_domain.kind ?? '补习型') as (typeof CROSS_KINDS)[number],
+              otherPoint: o.cross_domain.other_point ?? '',
+              problem: o.cross_domain.problem ?? '',
+            };
+          }
+          const ticket: Ticket = {
+            newPoint: o.new_point ?? '',
+            clause: o.clause ?? '',
+            startPoints,
+            routeAction: o.route_action ?? '',
+            sourceCheck,
+            ...(o.revisit !== undefined
+              ? { revisit: { kind: o.revisit.kind, formationIds: o.revisit.formation_ids ?? [] } }
+              : {}),
+            ...(crossDomain !== undefined ? { crossDomain } : {}),
+            ...(o.stage_check === true ? { stageCheck: true } : {}),
+          };
+          const revisit = this.longterm.revisitProblem(ticket);
+          if (revisit !== undefined) problems.push(`${n}：${revisit}`);
+          options.push({
+            title: o.title ?? '',
+            reason: o.reason ?? '',
+            ...(o.sources !== undefined ? { sources: o.sources } : {}),
+            ticket,
+          });
         }
         const recommended = a.recommended as number;
-        if (recommended >= options.length) return err('推荐的序号超出选项范围');
-        this.cards.set(sessionId, { options, recommended });
+        if (recommended >= raw.length) problems.push('推荐的序号超出选项范围');
+        if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
+        this.cards.set(sessionId, {
+          options,
+          recommended,
+          routeDecision: {
+            decision: decision?.decision ?? '',
+            reason: decision?.reason ?? '',
+            basis: [...basis],
+          },
+        });
         return ok('选择卡已收到');
       },
     };
   }
 
-  /** 跨领域工具要的两样：项目选用的资料、M09 里已合上的点。 */
-  private crossEnv(sessionId: string) {
-    return {
-      scope: (all: boolean) => this.scopeOf(sessionId, all),
-      known: () => this.o.m09.knownPoints(),
-    };
-  }
-
-  /** 跨领域闭环开场里：学习者在另一边已有的 M09 记录（有才写）。 */
-  private crossHistory(t: Ticket): string[] {
-    if (t.crossDomain === undefined) return [];
-    const rows = this.o.m09.forPoint(t.crossDomain.otherPoint).map((r) => this.o.m09.describe(r));
-    return rows.length > 0 ? ['学习者在另一边的 M09 记录（闭环证据，已验证）：', ...rows, ''] : [];
-  }
-
-  /** M05 开场里的一行：资料涉及两个以上领域时才提，没有就不提（不鼓励硬凑跨领域）。 */
-  private async domainsLine(scope: string[] | undefined): Promise<string[]> {
-    const domains = await this.o.cross.domainsIn(scope);
-    if (domains.length < 2) return [];
-    return [
-      `资料涉及的领域：${domains.join('、')}。学习者的原问题需要另一个领域的前置、或两个领域里有相似的结构值得对照时，可以出跨领域选项（先用 cross_candidates 找；没有合适的就别出）。`,
-      '',
-    ];
+  private locateDeps(): LocateDeps {
+    return { hub: this.hub, sources: this.o.sources };
   }
 
   /** 学习者给一本书 / 笔记补一句来源说明（只追加）。 */
@@ -1502,9 +1529,7 @@ export class Studium {
             const state = stateLabel(foldLoop(await this.hub.records(l.sessionId)));
             loops.push(`- ${l.sessionId}「${l.title}」：${state}`);
           }
-          const ext = this.o.m09
-            .externals()
-            .map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id)));
+          const ext = this.o.m09.externals().map((r) => this.o.m09.describeExternal(r, (id) => id));
           return ok(
             `闭环：\n${loops.join('\n') || '（还没有）'}\n\nM09 形成记录（闭环证据）：\n${rows.join('\n') || '（还没有）'}${ext.length > 0 ? `\n\n外部导入（学习者自述 / 笔记，未验证，不算学会）：\n${ext.join('\n')}` : ''}`,
           );
@@ -1553,7 +1578,7 @@ export class Studium {
           .array(
             z.object({
               claim: z.string().describe('学习者自己说他已经会 / 学过的是什么，一句话'),
-              point: z.string().optional().describe('对得上 M08 的点就填点 id，对不上不填'),
+              point: z.string().optional().describe('学习者说的那个东西，一句话；不填也行'),
               basis: z.string().optional().describe('判读依据：他怎么说的、说到什么程度'),
               lines: z.array(z.number().int()).min(1).describe('学习者说这话的行号（本对话里）'),
             }),
@@ -1585,9 +1610,6 @@ export class Studium {
           const bad = k.lines.filter((l) => !learner.has(l));
           if (bad.length > 0) {
             return err(`known 里引的第 ${bad.join('、')} 行不是学习者说的话；自述只引学习者的行`);
-          }
-          if (k.point !== undefined && k.point !== '' && !this.o.m08.points.has(k.point)) {
-            return err(`known 里的点 ${k.point} 在 M08 里查不到；对不上就不填 point`);
           }
         }
         const at = this.iso();
@@ -1679,7 +1701,7 @@ export class Studium {
           missing_point: z
             .string()
             .optional()
-            .describe('缺的出发点 / 想去的点（M08 点 id），对不上不填'),
+            .describe('缺的出发点 / 想去的点（文字），不确定不填'),
           missing_text: z.string().describe('缺什么 / 想去哪，用日常话一句'),
           basis_lines: z.array(z.number().int()).describe('指回学习者原话的行号'),
           note: z.string().optional(),
@@ -1736,50 +1758,34 @@ export class Studium {
   }
 
   private loopOpening(t: Ticket): string {
-    const p = this.o.m08.points.get(t.newPoint);
-    const c = this.o.m08.clauses.get(t.clause);
-    const starts = t.startPoints
-      .map((s) => {
-        const sp = this.o.m08.points.get(s.point);
-        return sp ? this.o.m08.describePoint(sp) : `${s.point}（M08 里没有）`;
-      })
-      .join('\n');
     const history = t.startPoints
       .flatMap((s) => this.o.m09.forPoint(s.point))
       .map((r) => this.o.m09.describe(r));
     const external = t.startPoints
       .flatMap((s) => this.o.m09.externalsForPoint(s.point))
-      .map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id)));
+      .map((r) => this.o.m09.describeExternal(r, (id) => id));
+    const check = t.sourceCheck.map(
+      (c) =>
+        `- ${c.claim}${c.at !== undefined ? `（出处：${c.at}）` : ''}${c.modelAdded === true ? '（资料里没有，模型补的）' : ''}`,
+    );
     return [
       ...this.longterm.revisitOpening(t),
-      '本闭环的单子（M05）：',
+      '本闭环的单子：',
       this.describeTicket(t),
       '',
-      '新点（M08）：',
-      p ? this.o.m08.describePoint(p) : '（缺通用知识依据）',
+      '对资料核的结果：',
+      check.length > 0 ? check.join('\n') : '（没核过）',
       '',
-      '选中的子句（M08）：',
-      c ? this.o.m08.describeClause(c) : '（缺）',
-      '',
-      '出发点（M08）：',
-      starts || '（无）',
-      '',
-      `M09 相关记录：${history.length > 0 ? '\n' + history.join('\n') : '缺历史背景（这些出发点还没有闭环记录）'}`,
+      `学过的记录里相关的：${history.length > 0 ? '\n' + history.join('\n') : '缺历史背景（这些出发点还没有记录）'}`,
       ...(external.length > 0
         ? [
-            `外部导入记录（学习者在系统之外学到的：自述 / 笔记；未验证，可信度低于闭环记录，教学中可以怀疑它）：\n${external.join('\n')}`,
-          ]
-        : []),
-      ...(p?.threshold === true
-        ? [
-            '新点是阈值概念：学习者在这一点上卡住是质变前的预期状态。卡住时在本闭环里调教法强度（分解粒度、节奏、信息量、提示强度、挑战程度），不换点、不改道（路线归 M05，闭环里不动）；合上标准不变，仍由守卫判。',
-            '',
+            `外部导入记录（学习者在系统之外学到的：自述 / 笔记；未验证，可信度低于学习记录，教学中可以怀疑它）：\n${external.join('\n')}`,
           ]
         : []),
       ...this.practice.openingFacts(t),
       '学习者状态（M15）与以前的教法记录（M10）：要用时查。',
       '',
-      '现在开始这个闭环：先简短说明这次学什么、从哪出发，然后开始。',
+      '现在开始这次学习：先简短说明这次学什么、从哪出发，然后开始。',
     ].join('\n');
   }
 
@@ -2252,22 +2258,13 @@ export class Studium {
 
   describeTicket(t: Ticket): string {
     const starts = t.startPoints
-      .map((s) => `${s.point}「${this.o.m08.name(s.point)}」（来源：${s.source}）`)
-      .join('、');
-    const c = t.crossDomain;
+      .map((s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`)
+      .join('；');
     const cross =
-      c !== undefined
-        ? `；跨领域（${c.kind}）：新点在「${c.domain}」，另一边 ${c.otherPoint}「${this.o.m08.name(c.otherPoint)}」在「${c.otherDomain}」，原问题：${c.problem}`
+      t.crossDomain !== undefined
+        ? `；跨领域（${t.crossDomain.kind}）：另一边 ${t.crossDomain.otherPoint}；原问题：${t.crossDomain.problem}`
         : '';
-    return `新点 ${t.newPoint}「${this.o.m08.name(t.newPoint)}」；子句 ${t.clause}；出发点 ${starts || '（无）'}；路线动作：${t.routeAction}${cross}`;
-  }
-
-  private ticketProblem(t: Ticket): string | undefined {
-    if (!this.o.m08.points.has(t.newPoint)) return `新点 ${t.newPoint} 在 M08 里查不到`;
-    const c = this.o.m08.clauses.get(t.clause);
-    if (!c) return `子句 ${t.clause} 在 M08 里查不到`;
-    if (c.to !== t.newPoint) return `子句 ${t.clause} 指向的新点是 ${c.to}，不是 ${t.newPoint}`;
-    return undefined;
+    return `新点 ${t.newPoint}；预期理解 ${t.clause}；出发点 ${starts || '（无）'}；路线动作：${t.routeAction}${cross}`;
   }
 
   /** 闭环还开着、且不是搁置着（要收口 / 确认合上）。 */
@@ -2339,13 +2336,13 @@ export class Studium {
     return {
       name: 'write_note_points',
       description:
-        '把从学习者笔记里提到的点写进 M09 的“笔记、未验证”档。每个点：学习者写过的是什么、对得上 M08 就填点 id、笔记里写到什么程度、依据的笔记行段。只提交一次；笔记里没有的不要编。',
+        '把从学习者笔记里提到的点写进 M09 的“笔记、未验证”档。每个点：学习者写过的是什么、笔记里写到什么程度、依据的笔记行段。只提交一次；笔记里没有的不要编。',
       input: {
         points: z
           .array(
             z.object({
               claim: z.string().describe('学习者在笔记里写过的是什么，一句话'),
-              point: z.string().optional().describe('对得上 M08 的点就填点 id，对不上不填'),
+              point: z.string().optional().describe('笔记里提到的那个东西，一句话；不填也行'),
               grade: z.enum(NOTE_GRADES).describe('笔记里写到什么程度'),
               basis: z.string().describe('判读依据：笔记里看到了什么才这样分'),
               file: z.string().describe('笔记小节文件，如 ch01/sec-1.1.md'),
@@ -2370,9 +2367,6 @@ export class Studium {
         }[];
         for (const p of points) {
           if (p.claim.trim() === '' || p.basis.trim() === '') return err('claim 和 basis 都不能空');
-          if (p.point !== undefined && p.point !== '' && !this.o.m08.points.has(p.point)) {
-            return err(`点 ${p.point} 在 M08 里查不到；对不上就不填 point`);
-          }
           let r;
           try {
             r = await this.o.m07.lines(target.book, p.file, p.from_line, p.to_line);
@@ -2415,116 +2409,15 @@ export class Studium {
       : '';
   }
 
-  /** 只读查询工具：M08、M07、M09（按 03「读写权限」）；资料类工具默认只查项目选的资料（没选 = 全库）。 */
+  /** 只读查询工具：M07、M09（按 03「读写权限」）；资料类工具默认只查项目选的资料（没选 = 全库）。 */
   private readTools(sessionId: string, opt: { m07?: boolean; m09?: boolean } = {}): ToolSpec[] {
-    const m08 = this.o.m08;
     const allParam = z
       .boolean()
       .optional()
       .describe('true = 查整个书库，不限项目选用的资料（学习者或你明确要时才用）');
-    const tools: ToolSpec[] = [
-      {
-        name: 'search_points',
-        description:
-          '在 M08 里按关键词找点（名字或一句话里含这个词）。默认只找项目选用的资料里的点。',
-        input: { keyword: z.string(), all: allParam },
-        run: async (a) => {
-          const scope = await this.scopeOf(sessionId, a.all === true);
-          const hits = m08.search(a.keyword as string, scope ? new Set(scope) : undefined);
-          return ok(
-            hits.length > 0
-              ? hits.map((p) => m08.describePoint(p)).join('\n')
-              : `没找到${this.scopeHint(scope)}`,
-          );
-        },
-      },
-      {
-        name: 'm08_overview',
-        description:
-          '看 M08 的概要：每本书每一章有多少点、多少子句（章名可用于 list_chapter_points）。默认只算项目选用的资料。',
-        input: { all: allParam },
-        run: async (a) => {
-          const scope = await this.scopeOf(sessionId, a.all === true);
-          if (m08.empty) return ok('M08 是空的（缺通用知识依据）');
-          const counts = m08.counts(scope ? new Set(scope) : undefined);
-          return ok(
-            counts.length > 0
-              ? counts
-                  .map(
-                    (b) =>
-                      `《${b.book}》${String(b.points)} 点 / ${String(b.clauses)} 子句\n${b.chapters.map((c) => `  ${c.chapter}：${String(c.points)} 点 / ${String(c.clauses)} 子句`).join('\n')}`,
-                  )
-                  .join('\n') + this.scopeHint(scope)
-              : `项目选用的资料里还没有 M08 点${this.scopeHint(scope)}`,
-          );
-        },
-      },
-      {
-        name: 'list_chapter_points',
-        description:
-          '按章列出 M08 的点（id、名字、一句话）和进入这些点的子句。book 照 m08_overview 的书名写；chapter 如 ch03（不给 = 整本）。',
-        input: { book: z.string(), chapter: z.string().optional() },
-        run: (a) => {
-          const want = (a.book as string).trim();
-          const books = m08.counts().map((b) => b.book);
-          const book =
-            books.find((b) => b === want) ??
-            (() => {
-              const near = books.filter((b) => b.toLowerCase().includes(want.toLowerCase()));
-              return near.length === 1 ? near[0] : undefined;
-            })();
-          if (book === undefined) {
-            return err(`M08 里没有这本书：${want}。有：${books.join('；') || '（无）'}`);
-          }
-          const r = m08.inChapter(book, a.chapter as string | undefined);
-          if (r.points.length === 0) {
-            const chapters = m08.counts().find((b) => b.book === book)?.chapters ?? [];
-            return err(
-              `《${book}》没有这一章的点：${(a.chapter as string | undefined) ?? ''}。有：${chapters.map((c) => c.chapter).join('、')}`,
-            );
-          }
-          const tag = (x: string): string => (x === '书给的' ? '' : `（${x}）`);
-          return ok(
-            [
-              `《${book}》${typeof a.chapter === 'string' ? ` ${a.chapter}` : ''}：${String(r.points.length)} 个点，${String(r.clauses.length)} 条进入这些点的子句`,
-              '点：',
-              ...r.points.map((p) => `- ${p.id}「${p.name}」${tag(p.source)}：${p.sentence}`),
-              '子句（出发点 → 新点）：',
-              ...r.clauses.map(
-                (c) =>
-                  `- ${c.id}：${c.from.map((f) => `${f}「${m08.name(f)}」`).join(' + ')} → ${c.to}「${m08.name(c.to)}」${tag(c.source)}`,
-              ),
-            ].join('\n'),
-          );
-        },
-      },
-      {
-        name: 'get_point',
-        description: '看 M08 的一个点：它的一句话、原文锚点、进入它的子句、从它出发的子句。',
-        input: { point: z.string().describe('点 id') },
-        run: (a) => {
-          const p = m08.points.get(a.point as string);
-          if (!p) return err(`没有这个点：${a.point as string}`);
-          const into = m08.clausesInto(p.id).map((c) => m08.describeClause(c));
-          const from = m08.clausesFrom(p.id).map((c) => m08.describeClause(c));
-          return ok(
-            `${m08.describePoint(p)}\n\n进入它的子句：\n${into.join('\n') || '（无）'}\n\n从它出发的子句：\n${from.join('\n') || '（无）'}`,
-          );
-        },
-      },
-      {
-        name: 'get_clause',
-        description: '看 M08 的一条子句。',
-        input: { clause: z.string().describe('子句 id') },
-        run: (a) => {
-          const c = m08.clauses.get(a.clause as string);
-          return c ? ok(m08.describeClause(c)) : err(`没有这条子句：${a.clause as string}`);
-        },
-      },
-    ];
+    const tools: ToolSpec[] = [];
     if (opt.m07 !== false) {
       tools.push(
-        this.o.cross.relatedTool(),
         {
           name: 'textbook_index',
           description:
@@ -2637,9 +2530,7 @@ export class Studium {
             .map((r) => this.o.m09.describe(r) + this.objectionNotes('m09', r.id))
             .join('\n');
           if (ext.length === 0) return ok(rows.length > 0 ? closed : '没有记录');
-          const outside = ext
-            .map((r) => this.o.m09.describeExternal(r, (id) => this.o.m08.name(id)))
-            .join('\n');
+          const outside = ext.map((r) => this.o.m09.describeExternal(r, (id) => id)).join('\n');
           return ok(
             `闭环形成记录（已验证）：\n${closed || '没有'}\n\n外部导入（未验证，自述 / 笔记；不算学会，闭环证据优先，可以怀疑）：\n${outside}`,
           );

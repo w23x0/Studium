@@ -1,7 +1,47 @@
 // 数据目录：sessions/<id>.jsonl 是正本；.lock 保证同一时刻只有一个核心进程在写。
-import { mkdir, open, readdir, readFile, rm } from 'node:fs/promises';
+import { mkdir, open, readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { isNotFound } from './session-log.ts';
+
+/** 当前数据目录的版本（工单 W1「数据版本」）；单子与记录的形状变了就加一，旧目录不能直接开。 */
+export const DATA_VERSION = '2';
+
+async function sessionFileNames(root: string): Promise<string[]> {
+  try {
+    return (await readdir(join(root, 'sessions'))).filter((n) => n.endsWith('.jsonl'));
+  } catch (err) {
+    if (isNotFound(err)) return [];
+    throw err;
+  }
+}
+
+/**
+ * 启动核对（取锁之前）：有会话正本、而 data-version 不是当前版本 → 报错。
+ * 空目录 / 新目录照常开。
+ */
+export async function checkDataVersion(root: string): Promise<void> {
+  if ((await sessionFileNames(root)).length === 0) return;
+  let version: string | undefined;
+  try {
+    version = (await readFile(join(root, 'data-version'), 'utf8')).trim();
+  } catch (err) {
+    if (!isNotFound(err)) throw err;
+  }
+  if (version !== DATA_VERSION) {
+    throw new Error(
+      `数据目录 ${root} 是旧版本的（单子与记录的形状变了，旧记录读不了）：删掉 var/ 重来，或换一个 STUDIUM_DATA`,
+    );
+  }
+}
+
+/** 取锁之后写版本文件；已经有就不动。 */
+export async function writeDataVersion(root: string): Promise<void> {
+  try {
+    await writeFile(join(root, 'data-version'), `${DATA_VERSION}\n`, { flag: 'wx' });
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
+  }
+}
 
 export class DataDir {
   private constructor(

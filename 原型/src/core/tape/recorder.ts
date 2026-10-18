@@ -18,7 +18,7 @@ import { IdTokens } from './ids.ts';
 /**
  * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
  * “practice.” 是 studium.practice 的、“outputs.” 是 M14 产出物的、“notes.” 是个人笔记的、
- * “m08review.” 是 M08 候选区与更正的（本地服务拿到的都是录带包过的那一份）。
+ * “notes.” / “outputs.” 是个人笔记与产出物那几处的（本地服务拿到的都是录带包过的那一份）。
  */
 export const ACTIONS = [
   'createProject',
@@ -50,15 +50,10 @@ export const ACTIONS = [
   'outputs.create',
   'outputs.save',
   'outputs.addLiterature',
-  'outputs.markCandidate',
   'outputs.openTask',
   // 批 10b：资料来源说明、状态记录的“我的解释”
   'addSourceNote',
   'addStateExplanation',
-  // 批 10a：M08 候选区——学习者提建议、审计、更正
-  'm08review.suggest',
-  'm08review.audit',
-  'm08review.correct',
   // 批 9：练习的交作答、要提示、先不做、请老师归纳
   'practice.submit',
   'practice.askHint',
@@ -78,7 +73,6 @@ export type TapeLine =
       /** 开录时数据目录里已有的会话数；不为 0 时回放会有偏差（回放从空目录开始）。 */
       preexisting: number;
       library?: string;
-      m08Dir?: string | string[];
     }
   | { t: 'turn'; s: string; n: number; at: string; input: TurnInput }
   | { t: 'interject'; s: string; n: number; at: string; input: TurnInput }
@@ -115,7 +109,7 @@ export class Recorder {
 
   constructor(
     private readonly path: string,
-    private readonly opts: { library?: string; m08Dir?: string | string[]; now: () => Date },
+    private readonly opts: { library?: string; now: () => Date },
   ) {
     mkdirSync(dirname(path), { recursive: true });
   }
@@ -147,7 +141,6 @@ export class Recorder {
       adapter,
       preexisting,
       ...(this.opts.library !== undefined ? { library: this.opts.library } : {}),
-      ...(this.opts.m08Dir !== undefined ? { m08Dir: this.opts.m08Dir } : {}),
     });
   }
 

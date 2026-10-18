@@ -4,13 +4,23 @@ import { FakeModel, type FakeContext, type FakeStep } from '../src/core/model/fa
 import type { EvalModels } from './run.ts';
 
 const OPTION = {
-  new_point: 'p-displacement',
-  clause: 'c-disp-from-pos',
-  start_points: [{ point: 'p-position', source: '假定' }],
+  new_point: '位移：一段时间内位置的变化量，只看起点和终点',
+  clause: '从“用坐标 x 表示位置”出发，两个时刻的坐标相减',
+  start_points: [{ point: '直线上用坐标 x 表示位置', source: '假定' }],
   route_action: '继续主线',
   title: '位移',
   reason: '接着你已经会的位置往下学',
+  sources: ['导航现场说出'],
 };
+
+/** 交卡必须带的路线决定（依据指回导航会话自己的第 1 行）。 */
+function navRoute(ctx: FakeContext) {
+  return {
+    decision: '维持主线',
+    reason: '按推荐往下学',
+    basis: [`${ctx.spec.session?.id ?? ''}:1`],
+  };
+}
 
 function has(ctx: FakeContext, tool: string): boolean {
   return ctx.spec.tools.some((t) => t.name === tool);
@@ -26,7 +36,12 @@ function system(bad: boolean) {
     const evidence = learnerLine(ctx.input.text, '终点减起点');
     if (has(ctx, 'submit_choice_card')) {
       return {
-        calls: [{ name: 'submit_choice_card', args: { options: [OPTION], recommended: 0 } }],
+        calls: [
+          {
+            name: 'submit_choice_card',
+            args: { options: [OPTION], recommended: 0, route_decision: navRoute(ctx) },
+          },
+        ],
       };
     }
     if (has(ctx, 'submit_verdict')) {

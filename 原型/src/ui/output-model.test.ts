@@ -11,7 +11,6 @@ import {
   linkOutputText,
   orderPair,
   parseEditPosition,
-  refMap,
   removeDim,
   restoreRequest,
   splitAuthors,
@@ -22,14 +21,6 @@ describe('产出物正文里的引用', () => {
   it('教材出处换成链接', () => {
     const t = '速度【教材|力学|ch01/a.md|L3-4】与【知识点|p-v】';
     expect(linkOutputText(t)).toBe('速度[1](#studium-cite-0)与【知识点|p-v】');
-  });
-
-  it('核对结果按种类和编号查', () => {
-    const m = refMap([
-      { kind: 'point', id: 'p-v', raw: '', start: 0, end: 0, resolved: true, name: '速度' },
-    ]);
-    expect(m.get('point:p-v')?.name).toBe('速度');
-    expect(m.get('clause:p-v')).toBeUndefined();
   });
 });
 

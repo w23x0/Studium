@@ -4,11 +4,9 @@ import {
   BookCheckIcon,
   ChevronLeftIcon,
   ClipboardListIcon,
-  FilePenLineIcon,
   GaugeIcon,
   LayersIcon,
   LibraryIcon,
-  ListTreeIcon,
   SendIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -22,12 +20,9 @@ import { W } from '../../wording.ts';
 import { CardEvidence } from './card-view.tsx';
 import { DisclosureView } from './disclosure-view.tsx';
 import { LoopView } from './loop-view.tsx';
-import { ClausePanel, PointPanel } from './m08-view.tsx';
-import { ReviewPage } from './review-view.tsx';
 import { LearnedView, StateView, TeachingView } from './records-view.tsx';
 import { ToolsView } from './tools-view.tsx';
 import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
-import { PointsBrowse } from '../sources/points-browse.tsx';
 import { SourceView } from '../sources/source-view.tsx';
 import { OutputPage } from '../outputs/output-page.tsx';
 import { ExercisesView } from '../practice/exercises-view.tsx';
@@ -83,10 +78,6 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
       );
     case 'card':
       return <CardEvidence key={t.cardId} cardId={t.cardId} option={t.option} />;
-    case 'point':
-      return <PointPanel key={t.id} id={t.id} />;
-    case 'clause':
-      return <ClausePanel key={t.id} id={t.id} />;
     case 'learned':
       return (
         <LearnedView
@@ -103,8 +94,6 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
       return <ToolsView key={t.name ?? ''} name={t.name} />;
     case 'disclosure':
       return <DisclosureView />;
-    case 'review':
-      return <ReviewPage />;
     case 'practice':
       return <PracticeReviewView key={t.summary ?? ''} summary={t.summary} />;
     case 'exercises':
@@ -119,15 +108,6 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
           key={`${t.book ?? ''}:${t.q}:${String(t.all)}`}
           q={t.q}
           book={t.book}
-          all={t.all}
-        />
-      );
-    case 'points':
-      return (
-        <PointsBrowse
-          key={`${t.book ?? ''}:${t.chapter ?? ''}:${String(t.all)}`}
-          book={t.book}
-          chapter={t.chapter}
           all={t.all}
         />
       );
@@ -190,16 +170,6 @@ function DevItems() {
         label={W.library}
         testId="nav-library"
         onClick={() => panel.show({ kind: 'library' })}
-      />
-      <HomeItem
-        icon={<ListTreeIcon />}
-        label={W.pointsBrowse}
-        onClick={() => panel.show({ kind: 'points' })}
-      />
-      <HomeItem
-        icon={<FilePenLineIcon />}
-        label={W.candPage}
-        onClick={() => panel.show({ kind: 'review' })}
       />
       <HomeItem
         icon={<BookCheckIcon />}

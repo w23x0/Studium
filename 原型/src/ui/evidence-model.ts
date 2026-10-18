@@ -36,14 +36,6 @@ export function sourceText(s: SourceView): SourceText {
   const kind = W.sourceKind[s.kind];
   const detail = s.detail !== undefined ? { detail: s.detail } : {};
   switch (s.kind) {
-    case 'm08_point': {
-      const name = /「(.+)」/.exec(s.label)?.[1];
-      return { kind, title: name ?? kind, ...detail };
-    }
-    case 'm08_clause': {
-      const arrow = s.label.split('：').slice(1).join('：');
-      return { kind, title: arrow !== '' ? arrow : kind, ...detail };
-    }
     case 'm09_record':
       return { kind, title: s.detail ?? kind };
     case 'loop_line':

@@ -50,7 +50,7 @@ export type Suspicion = (typeof SUSPICIONS)[number];
  * 进行中只是候选；写 M09 的会话只读这类条目，不读诊断全文；提交时才可能成为 M09 的“提取失败 / 降档”记录。
  */
 export interface RegressionNote {
-  /** 哪个点（M08 点 id）。 */
+  /** 哪个点。 */
   point: string;
   /** 指回本闭环里学习者原话的行。 */
   basisLines: number[];
@@ -72,7 +72,7 @@ export interface ReminderAdded {
   kind: ReminderKind;
   /** 做什么，用日常话。 */
   text: string;
-  /** recheck：复检哪个点（M08 点 id）。 */
+  /** recheck：复检哪个点。 */
   point?: string;
   /** resume：接着哪个闭环。 */
   loopSessionId?: string;

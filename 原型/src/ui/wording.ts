@@ -1,12 +1,7 @@
 // 界面上给学习者看的叫法，统一放这里（以后改叫法只改这一处）。
 // 内部词（闭环、选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里；
 // wording.test.ts 会查。对照：右边注释是内部叫法，只给写代码的人看。
-import type {
-  LoopStatus,
-  M08Source,
-  SourceReportKind,
-  StateRecordView,
-} from '../shared/protocol.ts';
+import type { LoopStatus, SourceReportKind, StateRecordView } from '../shared/protocol.ts';
 import { WP } from './wording-practice.ts';
 import { WS } from './wording-sidebar.ts';
 
@@ -69,12 +64,15 @@ export const W = {
     unclosed: '先放下了',
   } satisfies Record<LoopStatus, string>,
   plan: '这次学什么', // 开场单子
+  point: '哪个点',
   newPoint: '这次要学的', // 新点
-  clause: '这一步怎么连上的', // 子句
+  clause: '预期理解', // 出发点怎么接到新点
   startPoints: '从你已有的出发', // 出发点
   routeAction: '这一步的安排', // 路线动作
+  sourceCheck: '对资料核过的',
+  modelAdded: '资料里没有，模型补的',
   startSource: {
-    M09: '你之前学会的',
+    学过的记录: '你之前学会的',
     自述: '你自己说会的',
     假定: '先假定你会的',
   } as const,
@@ -110,18 +108,7 @@ export const W = {
   objections: '你提过的不同看法',
   objectionTag: '对上面那次判断的不同看法',
 
-  // ── 知识点（书里的） ──
-  point: '知识点',
-  pointFrom: '怎么连到这里的',
-  pointTo: '从这里能接着学',
-  cautions: '要小心',
-  extraNotes: '补充说明',
-  anchors: '书里的位置',
-  threshold: '关键的一步', // 阈值点
-  scope: { 范围内: '在这次要学的范围里', 前置: '要先会的' } as const,
-  splitOf: '从这个大的拆出来：',
   page: (book: string, page?: number) => (page !== undefined ? `${book} · 第 ${page} 页` : book),
-  emptyLibrary: '书里的知识点还没整理出来。',
 
   // ── 记录 ──
   learned: '我学会的', // M09 形成记录
@@ -154,21 +141,12 @@ export const W = {
 
   // ── 出处种类 ──
   sourceKind: {
-    m08_point: '书里的知识点',
-    m08_clause: '书里的一步连接',
     m09_record: '你之前学会的',
     loop_line: '之前对话里的话',
     book_line: '书里的一处',
     unknown: '查不到的出处',
   } as const,
   sourceNotResolved: '查不到原文',
-
-  // ── 书给的 / 模型补的 ──
-  m08Source: {
-    书给的: '书给的',
-    模型补的: '模型补的',
-    未审: '没核对过',
-  } satisfies Record<M08Source, string>,
 
   // ── 模型与外发 ──
   modelLabel: '模型',
@@ -211,7 +189,6 @@ export const W = {
   showOnOriginal: '看原件上的位置',
   thisSpot: '书上的这一处',
   wholePage: '整页',
-  onThisPage: '这一页上的知识点',
   noOriginal: '这本书没有原件页面，只能看转录的文字。',
   notLocated: '这一段在原件上没比对出位置，先显示本节的第一页。',
   imageFailed: '原件页面没显示出来。',
@@ -325,25 +302,7 @@ export const W = {
   noteMineHint: '这是你自己写的笔记，不是书上的原文。',
   noteImageMissing: (ref: string) => `（图片找不到：${ref}）`,
 
-  // ── 别的书也讲这里、检索标签、资料的来源说明、跨领域、状态回看（批 10b） ──
-  alsoElsewhere: '别的书也讲这里', // 重复线索
-  alsoElsewhereHint: '按书里标出的知识点、相同的名字或检索词连起来的，不一定全。',
-  alsoNone: '没查到别的书讲同一处（不等于别的书没讲）。',
-  linkVia: {
-    anchor: '同一个知识点，两本书里都标了',
-    same_name: '名字相同的知识点',
-    same_key: '检索词相同的知识点',
-  } as const,
-  clues: '几本书都讲了的',
-  cluesHint: '同一个知识点在不同书里各讲在哪里。',
-  cluesNone: '还没有讲在两本以上书里的知识点。',
-  searchTags: '按标签筛',
-  tagBook: '书',
-  tagType: '内容',
-  tagPoint: '知识点',
-  tagTypeHint: '内容类型按所在小节标：书里给了定义的节、目录里列了例题的节、习题。没依据的不标。',
-  tagClear: '清除筛选',
-  tagNone: '这几个条件一起，没有结果。',
+  // ── 资料的来源说明、状态回看（批 10b） ──
   sourceNote: '这份资料的说明',
   sourceNoteHint: '只是已知的情况，不是打分；还没写的就是还没人说明。',
   noteField: {
@@ -374,7 +333,7 @@ export const W = {
     补习型: '你要弄懂的问题用到另一个领域的东西，先补到够用再回来。',
     对比链接型: '另一个领域里有相似的内容，你已经会了，把两边对着看。',
   } as const,
-  crossSides: (a: string, b: string) => `${a}，对着${b}`,
+  crossSides: (other: string) => `另一边：${other}`,
   crossProblem: '起因',
   stateTimeline: '按时间回看',
   stateList: '列表',
@@ -399,12 +358,6 @@ export const W = {
   searchScopeAll: '在全部资料里搜',
   searchAll: '查全部资料',
 
-  // ── 书里的知识点（按书、按章） ──
-  pointsBrowse: '书里的知识点', // M08 浏览
-  pointsBrowseHint: '按书、按章列出整理好的知识点；点开看它怎么连上前后。',
-  pointsCount: (n: number) => `${String(n)} 个知识点`,
-  chapterOf: (n: number) => `第 ${String(n)} 章`,
-  noAnchor: '没标书里位置的',
   pointsNone: '这一章没有知识点。',
   pointsScopeProject: '只列项目资料里的书',
   pointsScopeAll: '列出全部的书',
@@ -644,7 +597,6 @@ export const W = {
   refsBadHint: '对不上的引用显示成灰色；点开或悬停能看到原因。',
   refBad: '这个引用对不上',
   refWritten: '正文里写的是',
-  refKind: { point: '书里的知识点', clause: '书里的一步连接' } as const,
   refUnchecked: '存了以后才核对',
   // 方法比较
   cmpMethod: '方法',
@@ -708,15 +660,6 @@ export const W = {
   litSave: '登记',
   litProblem: '书库里对不上了：',
   litWholeBookLine: '整本书',
-  // 可能对别人也有用
-  generalHint:
-    '觉得哪一部分去掉你个人的色彩后，对别人学这块也有用，就标一条说明。只记在这里等以后审，不会改书里的知识点。',
-  generalEmpty: '还没标过。',
-  generalMark: '标一条',
-  generalPlaceholder: '哪一部分、为什么可能对别人也有用…',
-  generalVersion: '标在哪一版',
-  generalSave: '标上',
-  generalNeedText: '要写一句说明。',
   // 写产出的对话
   outputChatWelcome: '我们一起写。说说这次想写或改哪里。',
   outputChatOn: '在写',
@@ -880,74 +823,6 @@ export const W = {
   devDetour: (rec: string, chosen: string) =>
     `学到一半问要不要先停一下：推荐「${rec}」，你选了「${chosen}」`,
   devDetourSame: (chosen: string) => `学到一半问要不要先停一下：你照推荐选了「${chosen}」`,
-
-  // ── 候选与更正（书里的知识点上的补充、改动想法） ──
-  candPage: '候选与更正',
-  candPageHint:
-    '这里是还没并进“书里的知识点”的补充和改动想法，老师讲课时不会拿它们当依据。能不能转正的规则还没定，所以现在只能看、写意见，不能转正。',
-  candidateTag: '候选、未审',
-  candidateEmpty: '还没有候选。',
-  candidateSource: {
-    m14: '我的产出里标的',
-    m09: '从学习里整理出来的',
-    learner: '我提的建议',
-  } as const,
-  candidateKind: {
-    new_point: '一个新知识点',
-    new_clause: '一条新的连接',
-    supplement: '这里该补',
-    fix: '这里该改',
-    general_note: '可作通用知识的说明',
-  } as const,
-  candidateFromOutput: (title: string, version: number) =>
-    `来自「${title}」第 ${String(version)} 版`,
-  candidateDraftPoint: '草稿：一个知识点',
-  candidateDraftClause: '草稿：一条连接',
-  candidateYourWords: '学习时你说的原话',
-  auditHeading: '看过的意见',
-  auditNone: '还没有人看过。',
-  auditBy: { 学习者: '你', 模型审计: '模型审计' } as const,
-  auditVerdict: { 建议晋升: '建议转正', 不晋升: '不建议转正', 待定: '先放着' } as const,
-  auditVerdictFix: { 建议晋升: '建议采纳', 不晋升: '不采纳', 待定: '先放着' } as const,
-  auditPlaceholder: '你的意见（可以不写）',
-  auditAdd: '写下我的看法',
-  auditSubmit: '记下',
-  auditNoPromote: '转正的规则还没定：这里只记意见，不会改动书里的知识点。',
-  suggestHeading: '这里有问题？',
-  suggestSupplement: '这里该补',
-  suggestFix: '这里该改',
-  suggestPlaceholder: '说说哪里该补、该怎么改',
-  suggestSubmit: '提出来',
-  suggestSent: '已记在“候选与更正”里。',
-  suggestReportHint: '如果是书里的原文本身有错，到“资料”里对那一段报错。',
-  correctedTag: '有更正',
-  candidateTagShort: (n: number) => `有 ${String(n)} 条候选`,
-  correctedNote: (n: number) => (n > 1 ? `已更正 ${String(n)} 次` : '已更正'),
-  correctedWas: '原文是',
-  correctionHistory: '更正的经过',
-  correctionHistoryNone: '还没有更正。',
-  correctionBecause: '原因',
-  correctionBasisCandidate: '依据：经看过的建议',
-  correctionBasisReport: '依据：资料报错',
-  correctionStale: '资料后来变过，这次更正是按旧的写的，请再看一眼。',
-  correctionHeading: '据此更正',
-  correctionApply: '更正',
-  correctionReason: '为什么这样改',
-  correctionFieldLabels: {
-    name: '名字',
-    sentence: '一句话说明',
-    threshold: '是不是关键的一步',
-    text: '说明',
-    from: '从哪些知识点连来',
-    to: '连到哪个知识点',
-  } as const,
-  correctionTrue: '是',
-  correctionFalse: '不是',
-  correctionReports: '涉及这段原文的资料报错',
-  correctionNeedAudit: '先给一条“改”的建议写下“建议采纳”的意见，才能据此更正。',
-  correctionDone: '已更正，书里的原文没有动，更正记在这里。',
-  reviewCorrections: '更正的记录',
-  reviewCandidates: '候选',
 
   // ── 通用 ──
   loading: '正在读…',

@@ -189,9 +189,10 @@ describe('选择卡出处', () => {
     expect(schema.safeParse({ ...ok, options: [SOURCED] }).success).toBe(false);
     const five = Array.from({ length: 5 }, () => SOURCED);
     expect(schema.safeParse({ ...ok, options: five }).success).toBe(false);
-    expect(schema.safeParse({ ...ok, options: [SOURCED, DISPLACEMENT_OPTION] }).success).toBe(
-      false,
-    );
+    // 一项没有 sources 时整张卡不合格
+    expect(
+      schema.safeParse({ ...ok, options: [SOURCED, { ...SOURCED_B, sources: undefined }] }).success,
+    ).toBe(false);
     expect(
       schema.safeParse({ ...ok, options: [SOURCED, { ...SOURCED_B, sources: [] }] }).success,
     ).toBe(false);

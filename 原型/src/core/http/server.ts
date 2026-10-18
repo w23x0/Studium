@@ -15,9 +15,7 @@ import type {
   ListProjectsResponse,
   ProjectResponse,
   CardResponse,
-  Clause08Response,
   ExternalRecordsResponse,
-  M08OverviewResponse,
   NoteExtractRequest,
   NoteImportRequest,
   NoteImportResponse,
@@ -35,7 +33,6 @@ import type {
   RecordConfirmationRequest,
   TeachingToolResponse,
   TeachingToolsResponse,
-  Points08Response,
   ProjectOverviewResponse,
   RecordObjectionRequest,
   SessionModelResponse,
@@ -67,12 +64,10 @@ import { InputError, type Inputs } from '../inputs.ts';
 import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { inputsRoute } from './inputs-routes.ts';
 import { longtermRoute } from './longterm-routes.ts';
-import { m08ReviewRoute } from './m08-review-routes.ts';
 import { practiceRoute } from './practice-routes.ts';
 import { outputsRoute } from './outputs-routes.ts';
 import { sidebarRoute } from './sidebar-routes.ts';
 import type { SidebarStore } from '../sidebar.ts';
-import type { M08Review } from '../m08-review.ts';
 import type { Outputs } from '../outputs.ts';
 
 export interface ServerOptions {
@@ -88,10 +83,8 @@ export interface ServerOptions {
   notes: Notes;
   /** M14 知识产出物（批 8）。 */
   outputs: Outputs;
-  /** 跨资料的重复线索 / 检索标签 / 来源说明、状态回看（批 10b）。 */
+  /** 资料的来源说明、状态回看（批 10b）。 */
   cross: CrossServices;
-  /** M08 候选区与更正（批 10a）。 */
-  m08Review: M08Review;
   /** 左栏的界面操作（置顶、从列表删掉、对话改名）。 */
   sidebar: SidebarStore;
   token: string;
@@ -230,17 +223,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     )
       return;
     if (
-      await m08ReviewRoute(
-        req,
-        res,
-        new URL(req.url ?? '/', 'http://localhost'),
-        parts,
-        method,
-        opts.m08Review,
-      )
-    )
-      return;
-    if (
       method === 'GET' &&
       (await readRoute(res, new URL(req.url ?? '/', 'http://localhost'), parts, evidence))
     )
@@ -323,16 +305,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         );
         return;
       }
-    }
-    if (parts[1] === 'm08' && parts[2] === 'overview' && parts.length === 3 && method === 'GET') {
-      const q = new URL(req.url ?? '/', 'http://localhost').searchParams;
-      const project = q.get('project');
-      const scope =
-        project !== null && project !== ''
-          ? await studium.scopeOf(project, q.get('all') === '1')
-          : undefined;
-      send(res, 200, evidence.m08Overview(scope) satisfies M08OverviewResponse);
-      return;
     }
     if (parts[1] === 'm09' && parts[2] === 'external' && parts.length === 3 && method === 'GET') {
       send(res, 200, { records: evidence.externals() } satisfies ExternalRecordsResponse);
@@ -676,20 +648,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, { records } satisfies StrategiesResponse);
     } else if (a === 'm15' && b === 'state' && n === 3) {
       send(res, 200, (await ev.state()) satisfies StateResponse);
-    } else if (a === 'm08' && b === 'points' && n === 3) {
-      send(
-        res,
-        200,
-        ev.points(
-          q.get('q') ?? undefined,
-          q.get('book') ?? undefined,
-          q.get('chapter') ?? undefined,
-        ) satisfies Points08Response,
-      );
-    } else if (a === 'm08' && b === 'points' && n === 4 && c !== undefined) {
-      send(res, 200, ev.point(c));
-    } else if (a === 'm08' && b === 'clauses' && n === 4 && c !== undefined) {
-      send(res, 200, { clause: ev.clause(c) } satisfies Clause08Response);
     } else if (a === 'objections' && n === 2) {
       const objections = ev.objections(q.get('kind') ?? undefined, q.get('record') ?? undefined);
       send(res, 200, { objections } satisfies ObjectionsResponse);

@@ -1,40 +1,23 @@
-// 产出物正文（Markdown + 公式）：书里的出处画成已有的出处小标签；知识点 / 一步连接的引用画成知识点小标签，
-// 点开在面板里看那个知识点；对不上的灰显，悬停写明原因。核对结果由核心随版本给（存了才核对）。
-import { createContext, useContext, useMemo, type ReactNode } from 'react';
+// 产出物正文（Markdown + 公式）：书里的出处画成已有的出处小标签；对不上的灰显，悬停写明原因。
+// 核对结果由核心随版本给（存了才核对）。
+import { useMemo, type ReactNode } from 'react';
 import Markdown, { type Components } from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
-import { ListTreeIcon, TriangleAlertIcon } from 'lucide-react';
-import type { ObjectRefView } from '../../../shared/m14.ts';
-import type { M08Source } from '../../../shared/protocol.ts';
-import type { ObjectRef } from '../../../shared/object-ref.ts';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { prepareMath } from '../../lib/math.ts';
-import { linkOutputText, objectRefOf, refKey, refMap } from '../../output-model.ts';
-import { usePanel } from '../../panel.ts';
 import { citationIndex } from '../../source-model.ts';
-import { W } from '../../wording.ts';
-import { SourceBadge } from '../evidence/parts.tsx';
+import { linkOutputText } from '../../output-model.ts';
 import { CitationChip, CitationsProvider } from '../sources/citation.tsx';
 
-/** 核心核对过的知识点引用；没有（还没存的稿子）时小标签标“存了以后才核对”。 */
-const RefsContext = createContext<Map<string, ObjectRefView> | undefined>(undefined);
-
-/** 一段产出物文字。refs = 这一版核对过的知识点引用（同一版里的方法比较各格子也用它）。 */
-export function OutputText(props: {
-  text: string;
-  refs?: readonly ObjectRefView[] | undefined;
-  compact?: boolean;
-  className?: string;
-}) {
-  const { text, refs } = props;
-  const map = useMemo(() => (refs !== undefined ? refMap(refs) : undefined), [refs]);
+/** 一段产出物文字。 */
+export function OutputText(props: { text: string; compact?: boolean; className?: string }) {
+  const { text } = props;
   const md = useMemo(() => prepareMath(linkOutputText(text), false), [text]);
   return (
-    <RefsContext.Provider value={map}>
+    <>
       <CitationsProvider text={text} done>
         <div
           className={cn(
@@ -51,15 +34,13 @@ export function OutputText(props: {
           </Markdown>
         </div>
       </CitationsProvider>
-    </RefsContext.Provider>
+    </>
   );
 }
 
 function Link(p: { href?: string | undefined; children?: ReactNode }) {
   const cite = citationIndex(p.href);
   if (cite !== undefined) return <CitationChip index={cite} />;
-  const ref = objectRefOf(p.href);
-  if (ref !== undefined) return <ObjectRefChip refOf={ref} />;
   return (
     <a className="text-primary underline" href={p.href} target="_blank" rel="noreferrer">
       {p.children}
@@ -104,81 +85,3 @@ const COMPACT: Components = {
   ul: (p) => <ul className="my-1 ms-4 list-disc">{p.children}</ul>,
   ol: (p) => <ol className="my-1 ms-4 list-decimal">{p.children}</ol>,
 };
-
-/** 正文里引的一个知识点 / 一步连接：小标签写它的名字，悬停看一句话说明，点开在面板里看。 */
-export function ObjectRefChip(props: { refOf: ObjectRef }) {
-  const map = useContext(RefsContext);
-  const panel = usePanel();
-  const { kind, id } = props.refOf;
-  const view = map?.get(refKey(props.refOf));
-  const bad = view !== undefined && !view.resolved;
-  const pending = view === undefined;
-  const label = view?.resolved === true && view.name !== undefined ? view.name : W.refKind[kind];
-  const tip: ReactNode = pending ? (
-    <span className="flex flex-col gap-0.5">
-      <span>{W.refUnchecked}</span>
-      <span className="opacity-80">
-        {W.refWritten}：{id}
-      </span>
-    </span>
-  ) : bad ? (
-    <span className="flex flex-col gap-0.5">
-      <span className="font-medium">{W.refBad}</span>
-      <span>
-        {W.refWritten}：{id}
-      </span>
-    </span>
-  ) : (
-    <span className="flex flex-col gap-1">
-      <span className="font-medium">
-        {W.refKind[kind]} · {view.name}
-      </span>
-      {view.sentence !== undefined && <span className="opacity-90">{view.sentence}</span>}
-    </span>
-  );
-  return (
-    <TooltipProvider>
-      <Tooltip>
-        <TooltipTrigger
-          render={
-            <button
-              type="button"
-              data-testid="object-ref"
-              data-resolved={pending ? 'pending' : String(!bad)}
-              className={cn(
-                'mx-0.5 inline-flex max-w-[16rem] translate-y-[-0.1em] items-center gap-1 rounded-md border px-1.5 py-px align-middle font-sans text-[0.72rem] leading-snug transition-colors',
-                bad
-                  ? 'border-dashed border-muted-foreground/40 text-muted-foreground bg-muted/60 hover:bg-muted'
-                  : pending
-                    ? 'text-muted-foreground bg-muted/40'
-                    : 'border-emerald-600/25 bg-emerald-50 text-emerald-800 hover:bg-emerald-100 dark:bg-emerald-900/30 dark:text-emerald-200',
-              )}
-              onClick={() => {
-                if (!bad) panel.show({ kind, id });
-              }}
-            />
-          }
-        >
-          {bad ? (
-            <TriangleAlertIcon className="size-3 shrink-0" />
-          ) : (
-            <ListTreeIcon className="size-3 shrink-0" />
-          )}
-          <span className="truncate">{label}</span>
-        </TooltipTrigger>
-        <TooltipContent side="top" className="max-w-sm">
-          {tip}
-          {view?.resolved === true && view.source !== undefined && isM08Source(view.source) && (
-            <span className="mt-1 block">
-              <SourceBadge source={view.source} />
-            </span>
-          )}
-        </TooltipContent>
-      </Tooltip>
-    </TooltipProvider>
-  );
-}
-
-function isM08Source(s: string): s is M08Source {
-  return s === '书给的' || s === '模型补的' || s === '未审';
-}

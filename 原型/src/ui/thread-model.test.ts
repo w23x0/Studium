@@ -59,7 +59,13 @@ describe('toUiMessages', () => {
             {
               title: '位移',
               reason: '',
-              ticket: { newPoint: 'p', clause: 'c', startPoints: [], routeAction: '' },
+              ticket: {
+                newPoint: 'p',
+                clause: 'c',
+                startPoints: [],
+                routeAction: '',
+                sourceCheck: [],
+              },
             },
           ],
           recommended: 0,

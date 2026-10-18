@@ -2,60 +2,18 @@
 import type {
   DiffLine,
   MethodComparison,
-  ObjectRefView,
   OutputAuthor,
   SaveVersionRequest,
   VersionView,
 } from '../shared/m14.ts';
-import { parseObjectRefs, type ObjectRef, type ObjectRefKind } from '../shared/object-ref.ts';
 import { linkCitations } from './source-model.ts';
 import { W } from './wording.ts';
 
 // ───────────── 正文里的引用 ─────────────
 
-/** 知识点 / 一步连接引用换成的链接地址前缀；Markdown 的链接组件认到它就画成知识点小标签。 */
-export const OBJ_HREF = '#studium-obj-';
-
-function encodeId(id: string): string {
-  return encodeURIComponent(id).replace(/\(/g, '%28').replace(/\)/g, '%29');
-}
-
-/** 正文里的【知识点|id】【子句|id】换成 Markdown 链接 `[n](#studium-obj-point-<id>)`。 */
-export function linkObjectRefs(text: string): string {
-  let out = '';
-  let last = 0;
-  parseObjectRefs(text).forEach((r, i) => {
-    out += `${text.slice(last, r.start)}[${String(i + 1)}](${OBJ_HREF}${r.kind}-${encodeId(r.id)})`;
-    last = r.end;
-  });
-  return out + text.slice(last);
-}
-
-/** 链接地址 → 引的是哪个知识点 / 哪一步连接；不是这种链接返回空。 */
-export function objectRefOf(href: string | undefined): ObjectRef | undefined {
-  if (href?.startsWith(OBJ_HREF) !== true) return undefined;
-  const m = /^(point|clause)-(.+)$/.exec(href.slice(OBJ_HREF.length));
-  if (m?.[1] === undefined || m[2] === undefined) return undefined;
-  try {
-    return { kind: m[1] as ObjectRefKind, id: decodeURIComponent(m[2]) };
-  } catch {
-    // 地址里的编码坏了（不是我们换出来的链接）：当普通链接处理
-    return undefined;
-  }
-}
-
-/** 产出物正文交给 Markdown 前：教材出处与知识点引用都换成链接。 */
+/** 产出物正文交给 Markdown 前：教材出处换成链接。 */
 export function linkOutputText(text: string): string {
-  return linkObjectRefs(linkCitations(text, false));
-}
-
-export function refKey(r: ObjectRef): string {
-  return `${r.kind}:${r.id}`;
-}
-
-/** 核心核对过的知识点引用，按“种类:编号”查。 */
-export function refMap(objects: readonly ObjectRefView[]): Map<string, ObjectRefView> {
-  return new Map(objects.map((o) => [refKey(o), o]));
+  return linkCitations(text, false);
 }
 
 // ───────────── 版本 ─────────────

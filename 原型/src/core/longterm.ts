@@ -28,7 +28,6 @@ import {
 } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import type { Deviations } from './knowledge/m05-deviations.ts';
-import type { M08 } from './knowledge/m08.ts';
 import { LEVELS, TIMELINE_KINDS, type M09, type TimelineRecord } from './knowledge/m09.ts';
 import { buildPointView } from './knowledge/m09-view.ts';
 import type { M15 } from './knowledge/m15.ts';
@@ -51,7 +50,6 @@ const REVIEW_LINES = 30;
 
 export interface LongTermDeps {
   hub(): Hub;
-  m08: M08;
   m09: M09;
   m15: M15;
   deviations: Deviations;
@@ -79,18 +77,19 @@ export class LongTerm {
     return this.d.hub();
   }
 
-  private name(id: string): string {
-    return this.d.m08.name(id);
+  private pointText(id: string): string {
+    return id;
   }
 
-  private pointText(id: string): string {
-    return `${id}「${this.name(id)}」`;
+  /** 一个点的显示名：不再查知识点库，就是它自己。 */
+  private pointName(id: string): string {
+    return id;
   }
 
   // ───────────── M09 当前视图（派生层，随时从记录重算）─────────────
 
   pointView(opt: { q?: string; status?: string } = {}): PointViewEntry[] {
-    let entries = buildPointView(this.d.m09, (id) => this.name(id), this.d.now());
+    let entries = buildPointView(this.d.m09, (id) => id, this.d.now());
     if (opt.status !== undefined && opt.status !== '') {
       entries = entries.filter((e) => e.status === opt.status);
     }
@@ -119,7 +118,7 @@ export class LongTerm {
         id: t.id,
         at: t.at,
         kind: t.kind,
-        point: { id: t.point, name: this.name(t.point) },
+        point: { id: t.point, name: this.pointName(t.point) },
         loopSessionId: t.loopSessionId,
         targets: t.targets,
         reason: t.reason,
@@ -191,7 +190,7 @@ export class LongTerm {
     const timeline = this.d.m09
       .timelines()
       .filter((x) => x.point === t.newPoint)
-      .map((x) => this.d.m09.describeTimeline(x, (id) => this.name(id)));
+      .map((x) => this.d.m09.describeTimeline(x, (id) => id));
     return [
       `这是一次${r.kind}，不是第一次学这个点。${r.kind === '复检' ? '复检 = 对以前作出的掌握结论重新验证，是个短闭环。' : '复习 = 巩固已经形成的内容，是个短闭环。'}`,
       `以前的形成记录：\n${old.join('\n') || '（查不到）'}`,
@@ -214,7 +213,7 @@ export class LongTerm {
         description:
           '闭环里发现“以前会的（M09 里有记录，含外部导入）现在答不出 / 表现与之不符”时，在诊断里记一条结构化条目：哪个点、指回学习者原话的行、怀疑是什么原因（遗忘 / 提取失败 / 状态原因：疲劳、分心等）、针对 M09 哪条旧记录。这只是候选，不是 M09 记录；闭环合上时写 M09 的会话会读到这类条目（不读诊断全文），自己判断记不记。',
         input: {
-          point: z.string().describe('哪个点（M08 点 id）'),
+          point: z.string().describe('哪个点'),
           observed: z.string().describe('观察到什么：以前的记录说会，现在表现怎样（一两句）'),
           basis_lines: z.array(z.number().int()).describe('指回学习者原话的行号'),
           suspicion: z.enum(SUSPICIONS),
@@ -227,7 +226,6 @@ export class LongTerm {
           const recs = await this.hub.records(loopId);
           if (recs.some((r) => r.record.type === 'loop_ended')) return fail('这个闭环已经结束了。');
           const point = a.point as string;
-          if (!this.d.m08.points.has(point)) return fail(`M08 里没有点 ${point}。`);
           const observed = (a.observed as string).trim();
           if (observed === '') return fail('observed 不能是空的：写清观察到什么。');
           const basis = a.basis_lines as number[];
@@ -350,7 +348,7 @@ export class LongTerm {
         '追加一条时间版本记录，指向 M09 里的旧记录，旧记录不改：提取失败 / 降档（来自本闭环里教学侧记下的结构化条目，须已排除状态侧解释）；重新掌握（只在复检闭环合上之后，此前这个点有提取失败 / 降档）。可以调用多次，每个点一条。',
       input: {
         kind: z.enum(TIMELINE_KINDS),
-        point: z.string().describe('M08 点 id'),
+        point: z.string().describe('哪个点'),
         targets: z
           .array(z.string())
           .min(1)
@@ -366,7 +364,6 @@ export class LongTerm {
       run: async (a) => {
         const kind = a.kind as (typeof TIMELINE_KINDS)[number];
         const point = a.point as string;
-        if (!this.d.m08.points.has(point)) return fail(`M08 里没有点 ${point}。`);
         const lines = a.evidence_lines as number[];
         if (lines.length === 0) return fail('evidence_lines 至少给一行学习者的原话。');
         const bad = lines.filter((l) => !job.learner.has(l));
@@ -375,7 +372,8 @@ export class LongTerm {
         const targets = a.targets as string[];
         const known = this.knownRecordIds(point);
         const unknown = targets.filter((id) => !known.has(id));
-        if (unknown.length > 0) return fail(`M09 里没有点 ${point} 的记录 ${unknown.join('、')}。`);
+        if (unknown.length > 0)
+          return fail(`以前学过的记录里没有这个点的这几条：${unknown.join('、')}。`);
         const reason = (a.reason as string).trim();
         if (reason === '') return fail('reason 不能是空的。');
         const level = a.level as (typeof LEVELS)[number] | undefined;
@@ -504,7 +502,7 @@ export class LongTerm {
             .describe('在项目期限前几天；与 due 二选一'),
           text: z.string().describe('做什么，给学习者看的日常话'),
           kind: z.enum(REMINDER_KINDS),
-          point: z.string().optional().describe('recheck 时：M08 点 id'),
+          point: z.string().optional().describe('recheck 时：哪个点'),
           loop: z.string().optional().describe('resume 时：闭环对话的会话 id'),
         },
         run: async (a) => {
@@ -586,9 +584,6 @@ export class LongTerm {
     } else if (!isDate(due)) {
       throw new BadRequestError('日期要写成 YYYY-MM-DD 的真实日期。');
     }
-    if (input.point !== undefined && !this.d.m08.points.has(input.point)) {
-      throw new BadRequestError(`M08 里没有点 ${input.point}。`);
-    }
     if (kind === 'recheck' && input.point === undefined) {
       throw new BadRequestError('复检提醒要写是哪个点（point）。');
     }
@@ -653,7 +648,7 @@ export class LongTerm {
       due: r.due,
       kind: r.kind,
       text: r.text,
-      ...(r.point !== undefined ? { point: { id: r.point, name: this.name(r.point) } } : {}),
+      ...(r.point !== undefined ? { point: { id: r.point, name: this.pointName(r.point) } } : {}),
       ...(r.loopSessionId !== undefined ? { loopSessionId: r.loopSessionId } : {}),
       by: r.by,
       addedAt: r.at,
@@ -812,7 +807,7 @@ export class LongTerm {
                 ? {
                     newPoint: {
                       id: r.recommended.newPoint,
-                      name: this.name(r.recommended.newPoint),
+                      name: this.pointName(r.recommended.newPoint),
                     },
                   }
                 : {}),
@@ -825,7 +820,7 @@ export class LongTerm {
               option: r.chosen.option,
               title: r.chosen.title,
               ...(r.chosen.newPoint !== undefined
-                ? { newPoint: { id: r.chosen.newPoint, name: this.name(r.chosen.newPoint) } }
+                ? { newPoint: { id: r.chosen.newPoint, name: this.pointName(r.chosen.newPoint) } }
                 : {}),
               ...(r.chosen.kind !== undefined ? { kind: r.chosen.kind } : {}),
             },
@@ -1006,7 +1001,7 @@ export class LongTerm {
     ];
   }
 
-  /** 畅谈类会话的另一种活（阶段复盘）的工具：状态与当前视图查询 + 交回（查询 M08 / M07 / M09 的工具畅谈本来就有）。 */
+  /** 畅谈类会话的另一种活（阶段复盘）的工具：状态与当前视图查询 + 交回（查询 M07 / M09 的工具畅谈本来就有）。 */
   reviewTools(talkId: string): ToolSpec[] {
     return [
       this.d.stateQueryTool(),
@@ -1187,7 +1182,7 @@ export class LongTerm {
           .join('\n') || '（没有）'
       }`,
       '',
-      `本阶段的时间版本记录（提取失败 / 降档 / 重新掌握）：\n${tl.map((t) => this.d.m09.describeTimeline(t, (id) => this.name(id))).join('\n') || '（没有）'}`,
+      `本阶段的时间版本记录（提取失败 / 降档 / 重新掌握）：\n${tl.map((t) => this.d.m09.describeTimeline(t, (id) => id)).join('\n') || '（没有）'}`,
       '',
       `涉及的点现在的状态（M09 当前视图）：\n${viewLines.slice(0, REVIEW_LINES).join('\n') || '（没有）'}`,
       '',

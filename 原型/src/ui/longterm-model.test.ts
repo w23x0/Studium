@@ -84,7 +84,7 @@ function formation(
     id,
     at,
     loopSessionId: loop,
-    newPoint: { id: 'p-a', name: '位移', found: true },
+    newPoint: { id: 'p-a', name: '位移' },
     clause: 'c',
     startPoints: [],
     understanding: '',
@@ -121,8 +121,8 @@ describe('一个知识点的经过与分析版本', () => {
       revisit: { kind: '复检', formationIds: ['f1b'] },
     }),
     formation('f4', 'L4', '2026-10-02T00:00:00Z', {
-      newPoint: { id: 'p-b', name: '速度', found: true },
-      startPoints: [{ id: 'p-a', name: '位移', found: true }],
+      newPoint: { id: 'p-b', name: '速度' },
+      startPoints: [{ id: 'p-a', name: '位移' }],
     }),
   ];
   it('每段取最新一版、时间用第一次写分析的时间；加上时间版本记录，旧在前', () => {
@@ -202,6 +202,7 @@ describe('对话里的复习 / 复检、接着学、阶段复盘', () => {
             clause: 'c',
             startPoints: [],
             routeAction: '',
+            sourceCheck: [],
             revisit: { kind: '复检', formationIds: ['f1'] },
           },
           resumeOf: { fromLoop: 'L1', endedAt: 'x' },

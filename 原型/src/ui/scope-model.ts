@@ -1,9 +1,6 @@
 // 资料范围（批 3b）的纯转换：书按学科分组、章名、笔记里的图片引用、外部导入记录分档。
 import type { BookSummary, ExternalRecordView, TocEntry } from '../shared/protocol.ts';
 
-/** 多套 M08 概要里“没有锚点”的书 / 章（与核心 NO_ANCHOR_CHAPTER 同字）。 */
-export const NO_ANCHOR = '（无锚点）';
-
 /** 个人笔记在书库里的学科名（核心给笔记的 subject）。 */
 export const NOTE_SUBJECT = '个人笔记';
 

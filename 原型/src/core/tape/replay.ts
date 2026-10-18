@@ -17,9 +17,8 @@ import type { ActionName, TapeLine } from './recorder.ts';
 
 export interface ReplayOptions {
   dataRoot: string;
-  /** 不给就用录带头里记的（录的时候用的书库与 M08）。 */
+  /** 不给就用录带头里记的（录的时候用的书库）。 */
   library?: string;
-  m08Dir?: string | string[];
   /** 等一个条件的最长毫秒数（插话、会话出现）。 */
   waitMs?: number;
 }
@@ -81,7 +80,6 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
   const ids = new IdTokens();
   const model = new ReplayModel(header.adapter, turns, ids, problems, advance, waitMs);
   const library = opts.library ?? header.library;
-  const m08Dir = opts.m08Dir ?? header.m08Dir;
   const app = await createApp({
     dataRoot: opts.dataRoot,
     model,
@@ -90,7 +88,6 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
     now: () => new Date(clock),
     instrument: (hub, studium) => ids.attach(hub, studium),
     ...(library !== undefined ? { library } : {}),
-    ...(m08Dir !== undefined ? { m08Dir } : {}),
   });
 
   try {
@@ -149,6 +146,14 @@ const IN_BACKGROUND: readonly ActionName[] = [
   'reanalyzeLoop',
 ];
 
+/** 旧录带里可能有、现在已经没有的动作（工单 W1 §4.8）。 */
+const REMOVED_ACTIONS = new Set<string>([
+  'outputs.markCandidate',
+  'm08review.suggest',
+  'm08review.audit',
+  'm08review.correct',
+]);
+
 /** 重做一个学习者动作：“longterm.” / “practice.” / “outputs.” / “notes.” 开头的找对应的对象，别的是 Studium 的方法。 */
 async function perform(app: App, name: ActionName, args: unknown[]): Promise<void> {
   const dot = name.indexOf('.');
@@ -163,11 +168,13 @@ async function perform(app: App, name: ActionName, args: unknown[]): Promise<voi
           ? app.outputs
           : where === 'notes'
             ? app.notes
-            : where === 'm08review'
-              ? app.m08Review
-              : app.studium;
+            : app.studium;
   const fn = (target as Record<string, unknown>)[method];
-  if (typeof fn !== 'function') throw new Error(`回放不认识的动作：${name}`);
+  if (typeof fn !== 'function') {
+    // 这些动作随知识点编号库一起删了（工单 W1 §4.8）：旧录带回放到这里就停，说清是版本的事
+    if (REMOVED_ACTIONS.has(name)) throw new Error(`录带版本过旧：${name} 这个动作已经没有了`);
+    throw new Error(`回放不认识的动作：${name}`);
+  }
   const run = () => (fn as (...a: unknown[]) => Promise<unknown>).apply(target, args);
   if (IN_BACKGROUND.includes(name)) {
     app.studium.background(`回放 ${name}`, run);

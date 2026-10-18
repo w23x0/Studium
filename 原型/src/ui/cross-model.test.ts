@@ -100,12 +100,12 @@ describe('状态时间轴', () => {
 });
 
 describe('跨领域标记', () => {
-  it('单子里有就带出类型与两边领域，没有就是空', () => {
+  it('单子里有就带出类型与另一边，没有就是空', () => {
     expect(
       crossOf({
-        ticket: { crossDomain: { kind: '补习型', domain: '线性代数', otherDomain: '大学物理' } },
+        ticket: { crossDomain: { kind: '补习型', otherPoint: '向量点积' } },
       }),
-    ).toEqual({ kind: '补习型', domain: '线性代数', otherDomain: '大学物理' });
+    ).toEqual({ kind: '补习型', otherPoint: '向量点积' });
     expect(crossOf({ ticket: {} })).toBeUndefined();
   });
 });
