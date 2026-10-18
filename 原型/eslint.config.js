@@ -3,7 +3,7 @@ import tseslint from 'typescript-eslint';
 import globals from 'globals';
 
 export default tseslint.config(
-  { ignores: ['node_modules', 'dist', 'var', 'scripts/*.cjs'] },
+  { ignores: ['node_modules', 'dist', 'var', 'scripts/*.cjs', '工单'] },
   js.configs.recommended,
   ...tseslint.configs.strictTypeChecked,
   {

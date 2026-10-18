@@ -5,3 +5,5 @@ package-lock.json
 样例
 evals/tapes
 evals/reports
+工单/*.md
+工单/*.json
