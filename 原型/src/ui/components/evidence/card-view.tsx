@@ -1,4 +1,4 @@
-// 一组“接下来学哪个”的选项：每项为什么推荐、这一步的安排、出处（可点开知识点、之前的对话）。
+// 一组“接下来学哪个”的选项：每项为什么推荐、这一步的安排、出处（书里的一处可点开）。
 import { useEffect } from 'react';
 import type { CardOptionView, SourceView } from '../../../shared/protocol.ts';
 import { api } from '../../api.ts';

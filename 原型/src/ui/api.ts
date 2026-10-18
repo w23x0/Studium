@@ -243,7 +243,7 @@ export const api = {
     call<SourceReportsResponse>(`/library/reports?${qs({ book, file })}`),
   report: (req: SourceReportRequest) =>
     call<SourceReportResponse>('/library/reports', { method: 'POST', body: JSON.stringify(req) }),
-  // ── 资料范围：项目资料、期限、个人笔记、外部导入、知识点概要 ──
+  // ── 资料范围：项目资料、期限、个人笔记、外部导入 ──
   materials: (projectId: string) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`),
   changeMaterials: (projectId: string, req: ProjectMaterialsRequest) =>

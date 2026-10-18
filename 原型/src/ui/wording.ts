@@ -358,13 +358,6 @@ export const W = {
   searchScopeAll: '在全部资料里搜',
   searchAll: '查全部资料',
 
-  pointsNone: '这一章没有知识点。',
-  pointsScopeProject: '只列项目资料里的书',
-  pointsScopeAll: '列出全部的书',
-  pointsShowAll: '看全部',
-  pointsShowProject: '只看项目资料',
-  bookPoints: '这本书的知识点',
-
   // ── 我学会的：分档 ──
   learnedUnverified: '还没核实的',
   learnedUnverifiedHint: '没经过学习验证，只作参考；真学过一遍之后，以学过的记录为准。',

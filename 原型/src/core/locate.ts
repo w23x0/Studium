@@ -40,8 +40,3 @@ export async function locate(raw: string, d: LocateDeps): Promise<LocateResult> 
   const recs = await d.hub.records(sessionId);
   return { raw, ok: recs.some((r) => r.line === tail), kind: 'session', sessionId, line: tail };
 }
-
-/** 一次定位多条，全部定位到才算通过。 */
-export async function locateAll(raws: string[], d: LocateDeps): Promise<LocateResult[]> {
-  return Promise.all(raws.map((r) => locate(r, d)));
-}

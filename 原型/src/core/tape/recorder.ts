@@ -17,8 +17,8 @@ import { IdTokens } from './ids.ts';
 
 /**
  * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
- * “practice.” 是 studium.practice 的、“outputs.” 是 M14 产出物的、“notes.” 是个人笔记的、
- * “notes.” / “outputs.” 是个人笔记与产出物那几处的（本地服务拿到的都是录带包过的那一份）。
+ * “practice.” 是 studium.practice 的、“outputs.” 是 M14 产出物的、“notes.” 是个人笔记的
+ *（本地服务拿到的都是录带包过的那一份）。
  */
 export const ACTIONS = [
   'createProject',

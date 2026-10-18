@@ -304,7 +304,7 @@ export function SearchView(props: {
   );
 }
 
-/** 原件的一页（从知识点的“书里的位置”点过来）：书里的原句 + 页面图上的位置框。 */
+/** 原件的一页（从出处点过来）：书里的原句 + 页面图上的位置框。 */
 export function PageView(props: {
   book: string;
   page: number;

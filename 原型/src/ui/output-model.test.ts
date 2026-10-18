@@ -19,8 +19,8 @@ import {
 
 describe('产出物正文里的引用', () => {
   it('教材出处换成链接', () => {
-    const t = '速度【教材|力学|ch01/a.md|L3-4】与【知识点|p-v】';
-    expect(linkOutputText(t)).toBe('速度[1](#studium-cite-0)与【知识点|p-v】');
+    const t = '速度【教材|力学|ch01/a.md|L3-4】，只看这一段。';
+    expect(linkOutputText(t)).toBe('速度[1](#studium-cite-0)，只看这一段。');
   });
 });
 

@@ -1,4 +1,4 @@
-// 依据面板里反复用到的小块：小节、标签、模型、书里的位置、知识点链接、原话、不同看法。
+// 依据面板里反复用到的小块：小节、标签、模型、点的名字、原话、不同看法。
 import { useState, type ReactNode } from 'react';
 import { CornerDownRightIcon, MessageSquareQuoteIcon } from 'lucide-react';
 import type {

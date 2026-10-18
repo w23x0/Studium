@@ -141,7 +141,7 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
   }
 }
 
-/** 面板首页：这次学习的依据，和开发者模式下的各个入口（资料、知识点、记录、教法、教学工具、外发内容）。 */
+/** 面板首页：这次学习的依据，和开发者模式下的各个入口（资料、记录、教法、教学工具、外发内容）。 */
 function Home(props: { loopId?: string | undefined }) {
   const panel = usePanel();
   const [devMode] = useSetting('devMode');
