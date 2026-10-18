@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡补 route_decision；去掉“提醒的点不在知识点库被拒”一例（不再按知识点核）。）
 // 验收：计划、日程与提醒（M05:30，应用内，不做系统通知）。只经 HTTP 验证，模型是假模型。
 // - 学习者或 M05 可加提醒（什么时候、做什么：复检某点、接着某个闭环、期限前、其他），只追加；
 // - 接口列出到期的提醒；项目概览带“今天该做的”（到期提醒、期限临近）；
@@ -22,6 +23,7 @@ import {
   newLong,
   startLong,
 } from '../helpers/longterm-flow.ts';
+import { navRoute } from './共用/w1-card.ts';
 
 const apps: App[] = [];
 afterEach(async () => {
@@ -119,7 +121,6 @@ describe('计划与提醒', () => {
       { text: 'x', due: '2026-02-30' },
       { text: 'x', due: '2026-10-09', kind: '不是类型' },
       { text: 'x', due: '2026-10-09', kind: 'recheck' },
-      { text: 'x', due: '2026-10-09', point: '不存在的点' },
       { text: 'x', due: '2026-10-09', kind: 'resume' },
       { text: 'x', due: '2026-10-09', loopSessionId: 'no-such-loop' },
     ]) {
@@ -151,7 +152,11 @@ describe('计划与提醒', () => {
               },
               {
                 name: 'submit_choice_card',
-                args: { options: [DISPLACEMENT_SRC, AVG_OPTION], recommended: 0 },
+                args: {
+                  options: [DISPLACEMENT_SRC, AVG_OPTION],
+                  recommended: 0,
+                  route_decision: navRoute(ctx),
+                },
               },
             ],
           }

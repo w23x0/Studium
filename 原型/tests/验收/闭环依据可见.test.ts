@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：单子是文字；出处不再回查知识点编号；DISPLACEMENT_OPTION 带书里出处。）
 // 验收：闭环里系统依据什么（M02:11 M04:24 M05:18,21，总览「横切原则」5 产出可见）。只经 HTTP 验证。
 // - 守卫每次判定：合上与否、理由、引用的行号与那几行原文，判定用的模型；
 // - 诊断记录能查到（不进给学习者的回复）；开场单子：新点、子句、出发点及来源、路线动作；
@@ -40,13 +41,13 @@ describe('闭环依据可见', () => {
     expect(before.loop.status).toBe('in_progress');
     expect(before.loop.verdicts).toEqual([]);
     expect(before.loop.diagnoses.map((d) => d.text)).toEqual([DIAGNOSIS]);
-    // 开场单子：新点、子句、出发点及来源、路线动作
-    const t = before.loop.ticket;
-    expect(t?.newPoint).toMatchObject({ id: 'p-displacement', name: '位移', found: true });
-    expect(t?.clause?.id).toBe('c-disp-from-pos');
-    expect(t?.clause?.source).toBe('书给的');
-    expect(t?.startPoints.map((x) => [x.point.id, x.source])).toEqual([['p-position', '假定']]);
-    expect(t?.routeAction).toBe('继续主线');
+    // 开场单子（文字）：新点、子句、出发点及来源、路线动作
+    expect(before.loop.ticket as unknown, '单子原样是文字').toMatchObject({
+      newPoint: 'p-displacement',
+      clause: 'c-disp-from-pos',
+      startPoints: [{ point: 'p-position', source: '假定' }],
+      routeAction: '继续主线',
+    });
 
     // 第一次判没合上（理由里没有引用行），第二次判合上
     state.guardClosed = false;
@@ -83,7 +84,7 @@ describe('闭环依据可见', () => {
     expect((await fetchStatus(app, '/loops/no-such/evidence')).status).toBe(404);
   });
 
-  it('选择卡每个选项的单子与出处；旧卡没有出处不编', async () => {
+  it('选择卡每个选项的单子与出处；查不到的出处原样给出、不编', async () => {
     const state = newState();
     const { app, mainId } = await startApp(state);
     apps.push(app);
@@ -94,20 +95,18 @@ describe('闭环依据可见', () => {
     expect(card.chosen).toEqual({ option: 0, loopSessionId: loopId });
     expect(card.model.known).toBe(true);
     const [first, second] = card.options;
-    // 第一项没带出处：不编
-    expect(first?.sources).toBeUndefined();
+    // 第一项：书里的出处（书名/文件:行号）回查到原文
+    expect(first?.sources).toEqual([
+      expect.objectContaining({ kind: 'book_line', resolved: true, book: '力学入门样例' }),
+    ]);
     expect(first?.chosen).toBe(true);
-    expect(first?.ticket.newPoint.name).toBe('位移');
-    // 第二项：点、子句能回查；书里的给定位；不认识的原样给
+    expect((first?.ticket as unknown as { newPoint?: unknown }).newPoint).toBe('p-displacement');
+    // 第二项：不再有知识点编号可回查，原样给出；没书名的给定位；不认识的原样给
     expect(second?.recommended).toBe(false);
-    expect(second?.ticket.startPoints[0]).toMatchObject({ source: 'M09' });
+    expect(second?.ticket.startPoints[0]).toMatchObject({ source: '学过的记录' });
     expect(second?.sources).toEqual([
-      expect.objectContaining({
-        kind: 'm08_point',
-        resolved: true,
-        label: '点 p-avg-velocity「平均速度」',
-      }),
-      expect.objectContaining({ kind: 'm08_clause', resolved: true }),
+      expect.objectContaining({ kind: 'unknown', resolved: false, raw: 'p-avg-velocity' }),
+      expect.objectContaining({ kind: 'unknown', resolved: false, raw: 'c-avgv-from-disp' }),
       expect.objectContaining({
         kind: 'book_line',
         resolved: false,
@@ -161,7 +160,7 @@ describe('闭环依据可见', () => {
     expect(o.groups.closed.map((l) => l.sessionId)).toEqual([first.loopId]);
     expect(o.groups.closed[0]).toMatchObject({
       status: 'closed',
-      newPoint: { name: '位移' },
+      newPoint: { id: 'p-displacement' },
       lastVerdict: { closed: true },
     });
     expect(o.groups.awaitingChoice).toHaveLength(1);

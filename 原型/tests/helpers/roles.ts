@@ -34,4 +34,7 @@ export const DISPLACEMENT_OPTION = {
   route_action: '继续主线',
   title: '位移',
   reason: '接着你已经会的位置往下学',
+  sources: ['力学入门样例/ch01/sec-1.1.md:5'],
 };
+
+export { navRoute } from '../验收/共用/w1-card.ts';

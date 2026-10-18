@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：去掉“点不在知识点库被拒”一例。）
 // 验收：练习任务的生命周期（M03:15,16,19,21）。只经 HTTP 验证，模型是假模型。
 // - 教学侧布置一道练习：练什么、题目来源（生成的标“生成”）、交什么、能否提示、何时算完、功能、难度；
 // - 学习者提交（经接口提交的一句话是学习者原话行；或教学侧认对话里的原话行）→ 教学侧反馈 → 完成 / 放弃；
@@ -63,7 +64,7 @@ describe('练习任务生命周期', () => {
     );
   });
 
-  it('布置前的检查：来源二选一、点和子句得在 M08 里、follows 得在本闭环', async () => {
+  it('布置前的检查：来源二选一、follows 得在本闭环', async () => {
     const { app, st, loopId } = await start();
     const bad = async (args: Record<string, unknown>, say: string) => {
       const rows = await teach(
@@ -85,9 +86,6 @@ describe('练习任务生命周期', () => {
       difficulty: '低',
     };
     expect(await bad(base, '一')).toContain('二选一');
-    expect(await bad({ ...base, generated_prompt: '题', points: ['p-不存在'] }, '二')).toContain(
-      'p-不存在',
-    );
     expect(await bad({ ...base, generated_prompt: '题', follows: 'pr-00000000' }, '三')).toContain(
       'pr-00000000',
     );

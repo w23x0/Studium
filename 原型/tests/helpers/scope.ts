@@ -1,4 +1,4 @@
-// 资料范围（批 3a）的测试夹具：多层书库、笔记目录、M08 多套产出、从项目主对话取工具。
+// 资料范围（批 3a）的测试夹具：多层书库、笔记目录、从项目主对话取工具。
 import { cp, mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { SAMPLE_DIR } from '../../src/core/app.ts';
@@ -57,46 +57,6 @@ export async function makeNotesDir(): Promise<{ dir: string; file1: string; file
   await writeFile(file2, '矩阵乘向量，就是列的线性组合。\n没有任何标题。\n');
   await writeFile(join(dir, '附件.txt'), '不是笔记');
   return { dir, file1, file2 };
-}
-
-/** 写一套 M08（只含 points.jsonl / clauses.jsonl）。 */
-export async function writeM08(
-  dir: string,
-  book: string,
-  chapter: string,
-  points: { id: string; name: string; sentence?: string }[],
-  clauses: { id: string; from: string[]; to: string }[],
-): Promise<void> {
-  await mkdir(dir, { recursive: true });
-  await writeFile(
-    join(dir, 'points.jsonl'),
-    points
-      .map((p) =>
-        JSON.stringify({
-          id: p.id,
-          name: p.name,
-          sentence: p.sentence ?? `${p.name}是什么`,
-          anchors: [{ book, file: `${chapter}/sec-1.1.md`, quote: p.name }],
-          source: '书给的',
-        }),
-      )
-      .join('\n') + '\n',
-  );
-  await writeFile(
-    join(dir, 'clauses.jsonl'),
-    clauses
-      .map((c) =>
-        JSON.stringify({
-          id: c.id,
-          from: c.from,
-          to: c.to,
-          text: `从 ${c.from.join('、')} 到 ${c.to}`,
-          anchors: [],
-          source: '书给的',
-        }),
-      )
-      .join('\n') + '\n',
-  );
 }
 
 /** 从某个会话（项目主对话 id 也行）取一类会话的工具。 */

@@ -1,7 +1,8 @@
+// （W1 新版，取代旧的同名测试：转写质量不再有知识点审核的疑似转录错误数；不再传 m08Dir。）
 // 验收：来源可靠性与适用性说明（M07:19）。每本书 / 笔记一份说明：类型、层次、作者、适用范围、转写质量。
-// 程序能算的算（个人笔记、作者、报错数、M08 审核的疑似转录错误数），其余由学习者或模型补一句（只追加，旧的留着）；
+// 程序能算的算（个人笔记、作者、报错数），其余由学习者或模型补一句（只追加，旧的留着）；
 // 不给综合分数；模型查资料的工具结果带上这条说明。只经 HTTP / 工具验证（假模型）。
-import { readFile, writeFile } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type {
@@ -13,8 +14,7 @@ import type { App } from '../../src/core/app.ts';
 import { FakeModel } from '../../src/core/model/fake.ts';
 import { call, getJson, post } from '../helpers/http.ts';
 import { ALG, bootCross, PHYS_A, PHYS_B } from '../helpers/cross.ts';
-import { makeNotesDir, toolOf, writeM08 } from '../helpers/scope.ts';
-import { tempDir } from '../helpers/tmp.ts';
+import { makeNotesDir, toolOf } from '../helpers/scope.ts';
 
 const apps: App[] = [];
 afterEach(async () => {
@@ -128,25 +128,13 @@ describe('验收：资料来源说明', () => {
     expect(n.importedAt).toBeDefined();
   });
 
-  it('M08 审核报告里的“疑似转录错误”数：报告对得上这一本书才算，读不到就不写', async () => {
-    const m08 = await tempDir();
-    await writeM08(join(m08, 'alg-set'), ALG.trim(), 'ch01', [{ id: 'a1', name: '甲' }], []);
-    await writeM08(join(m08, 'phys-set'), PHYS_A, 'ch01', [{ id: 'b1', name: '乙' }], []);
-    await writeFile(
-      join(m08, 'alg-set', 'report.md'),
-      '# M08 产出检查（程序）\n\n- 并入时的问题 0；丢弃的摘录 1；疑似转录错误 3\n\n## 疑似转录错误（审核报的，未核实）\n',
-    );
-    const r = await bootCross({ model: new FakeModel(), m08Dir: m08 });
+  it('转写质量只写学习者的报错数，不再有知识点审核的疑似转录错误数', async () => {
+    const r = await bootCross({ model: new FakeModel() });
     apps.push(r.app);
     const alg = await note(r.app, ALG);
-    expect(alg.quality.suspected).toBe(3);
-    expect(alg.quality.suspectedFrom).toContain('alg-set');
-    expect(alg.quality.text).toContain('疑似转录错误 3');
-    expect(alg.quality.text).toContain('没核实');
-    // 另一套没有报告：没有数据
-    const phys = await note(r.app, PHYS_A);
-    expect(phys.quality.suspected).toBeUndefined();
-    expect(phys.quality.text).toContain('没有审核数据');
+    expect(alg.quality).not.toHaveProperty('suspected');
+    expect(alg.quality).not.toHaveProperty('suspectedFrom');
+    expect(alg.quality.text).not.toContain('审核');
   });
 
   it('模型也能补一句（须写依据，标“模型”、记在哪个会话）；闭环 / M05 查资料的结果带这条说明', async () => {

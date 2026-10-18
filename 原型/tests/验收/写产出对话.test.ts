@@ -1,4 +1,5 @@
-// 验收：M14 的“写产出”任务对话——主对话在学习者消息下开它（新会话类），里面读得到 M07 / M08 的只读工具和
+// （W1 新版，取代旧的同名测试：没有知识点工具；对不上的引用改用书里不存在的出处。）
+// 验收：M14 的“写产出”任务对话——主对话在学习者消息下开它（新会话类），里面读得到资料的只读工具（没有知识点工具）和
 // 写产出新版本、登记文献的工具；模型写入时程序记“模型协助”和对话 id；引用对不上时工具结果里点出；
 // 学习者也能直接经接口存自己写的版本；外发披露里列出这类会话。只经 HTTP 验证。
 import { afterEach, describe, expect, it } from 'vitest';
@@ -47,7 +48,7 @@ function responder(ctx: FakeContext): FakeStep | undefined {
           {
             name: 'save_output_version',
             args: {
-              text: `平均速度是位移除以时间${cite}；另一处引用没核对【知识点|p-nope】。`,
+              text: `平均速度是位移除以时间${cite}；另一处引用没核对【教材|${BOOK}|ch09/sec-9.9.md|L1】。`,
               note: '第一版',
             },
           },
@@ -71,7 +72,9 @@ function responder(ctx: FakeContext): FakeStep | undefined {
       };
     }
     if (ctx.input.text.includes('查点')) {
-      return { calls: [{ name: 'get_point', args: { point: 'p-displacement' } }] };
+      return {
+        calls: [{ name: 'read_source', args: { book: BOOK, file: 'ch01/sec-1.1.md' } }],
+      };
     }
   }
   return undefined;
@@ -150,7 +153,7 @@ describe('写产出对话', () => {
     expect(save?.isError).toBe(false);
     expect(save?.result).toContain('已存为第 1 版');
     expect(save?.result).toContain('1 处对不上');
-    expect(save?.result).toContain('p-nope');
+    expect(save?.result).toContain('ch09/sec-9.9.md');
     expect(calls.find((c) => c.name === 'read_output')?.result).toContain('还没有任何版本');
 
     const outputs = (
@@ -191,7 +194,7 @@ describe('写产出对话', () => {
     ]);
   });
 
-  it('写产出对话读得到 M08（只读工具），读不到 M09 和别的写工具', async () => {
+  it('写产出对话读得到资料（只读工具），读不到知识点工具、M09 和别的写工具', async () => {
     const { app, mainId, model } = await startOutputsApp({ responder });
     apps.push(app);
     const { taskId } = await openTask(app, mainId);
@@ -199,8 +202,6 @@ describe('写产出对话', () => {
     const names = spec?.tools.map((t) => t.name) ?? [];
     expect(names).toEqual(
       expect.arrayContaining([
-        'get_point',
-        'search_points',
         'read_source',
         'search_textbook',
         'read_output',
@@ -208,17 +209,19 @@ describe('写产出对话', () => {
         'add_literature',
       ]),
     );
+    expect(names).not.toContain('get_point');
+    expect(names).not.toContain('search_points');
     expect(names).not.toContain('query_m09');
     expect(names).not.toContain('request_close');
     expect(names).not.toContain('settle_goal');
     await post(app, `/sessions/${taskId}/messages`, { text: '查点' });
     const rs = await waitFor('查点', async () => {
       const x = await idle(app, taskId);
-      return x.some((r) => r.record.type === 'tool_call' && r.record.name === 'get_point')
+      return x.some((r) => r.record.type === 'tool_call' && r.record.name === 'read_source')
         ? x
         : undefined;
     });
-    const call = rs.find((r) => r.record.type === 'tool_call' && r.record.name === 'get_point');
+    const call = rs.find((r) => r.record.type === 'tool_call' && r.record.name === 'read_source');
     expect(call?.record.type === 'tool_call' && call.record.result).toContain('位移');
   });
 

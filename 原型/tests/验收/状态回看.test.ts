@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡补 route_decision。）
 // 验收：状态回看与学习者解释（M15:42，第二梯队）。学习者能按时间回看自己的状态记录（时间轴：每条带依据、整理出它的那一轮
 // 判的阶段、来源档），每条可补一句“我的解释”：只追加、不改原记录；下次整理状态时读到并标为自述。只经 HTTP 验证（假模型）。
 import { readFile } from 'node:fs/promises';
@@ -19,6 +20,7 @@ import { settled } from '../helpers/evidence-flow.ts';
 import { DISPLACEMENT_OPTION, learnerLine, roleOf } from '../helpers/roles.ts';
 import { toolOf } from '../helpers/scope.ts';
 import { tempDir } from '../helpers/tmp.ts';
+import { navRoute } from './共用/w1-card.ts';
 
 const apps: App[] = [];
 afterEach(async () => {
@@ -54,7 +56,11 @@ function makeResponder() {
           calls: [
             {
               name: 'submit_choice_card',
-              args: { options: [DISPLACEMENT_OPTION], recommended: 0 },
+              args: {
+                options: [DISPLACEMENT_OPTION],
+                recommended: 0,
+                route_decision: navRoute(ctx),
+              },
             },
           ],
         };

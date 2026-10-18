@@ -176,7 +176,7 @@ describe('中途状态', () => {
           fork: {
             fromLoop: 'L',
             kind: 'gap',
-            reason: 'p-displacement「位移」，你说位移还不太会',
+            reason: 'p-displacement，你说位移还不太会',
             basisLines: [2],
             signalLine: 3,
             returnCondition: '',
@@ -184,7 +184,7 @@ describe('中途状态', () => {
         },
       },
     ]);
-    expect(side.fork).toEqual({ fromLoop: 'L', kind: 'gap', what: '位移' });
+    expect(side.fork).toEqual({ fromLoop: 'L', kind: 'gap', what: 'p-displacement' });
     expect(forkWhat('想先看看能量')).toBe('想先看看能量');
   });
 

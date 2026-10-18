@@ -27,14 +27,27 @@ const option = {
   route_action: '继续主线',
   title: '位移',
   reason: '离出发点近',
+  sources: ['导航现场说出'],
 };
+
+/** 交卡必须带的路线决定（依据指回导航会话自己的第 1 行）。 */
+const route = (ctx: FakeContext) => ({
+  decision: '维持主线',
+  reason: '按推荐往下学',
+  basis: [`${ctx.spec.session?.id ?? ''}:1`],
+});
 
 function responder(guardLine: { line: number }) {
   return (ctx: FakeContext): FakeStep | undefined => {
     switch (kindOf(ctx)) {
       case 'm05':
         return {
-          calls: [{ name: 'submit_choice_card', args: { options: [option], recommended: 0 } }],
+          calls: [
+            {
+              name: 'submit_choice_card',
+              args: { options: [option], recommended: 0, route_decision: route(ctx) },
+            },
+          ],
           text: '好了',
         };
       case 'guard':
@@ -129,29 +142,6 @@ describe('闭环主路径（假模型）', () => {
     expect(steps).toEqual(['m09_written', 'card_ready']);
     const cards = (await hub.records(mainId)).filter((r) => r.record.type === 'choice_card');
     expect(cards).toHaveLength(2);
-  });
-
-  it('单子在 M08 里查不到，不开闭环对话', async () => {
-    const app = await createApp({
-      dataRoot: await tempDir(),
-      model: new FakeModel({
-        responder: (ctx) =>
-          kindOf(ctx) === 'm05'
-            ? {
-                calls: [
-                  {
-                    name: 'submit_choice_card',
-                    args: { options: [{ ...option, new_point: '不存在' }], recommended: 0 },
-                  },
-                ],
-              }
-            : undefined,
-      }),
-      token: 'flow-token-0123456789',
-      port: 0,
-    });
-    apps.push(app);
-    await expect(app.studium.requestCard('测试')).rejects.toThrow('没有提交选择卡');
   });
 });
 
