@@ -166,11 +166,6 @@ export class LongTerm {
 
   // ───────────── 提醒与“今天该做的” ─────────────
 
-  /** 核心时钟的现在（ISO）。 */
-  nowIso(): string {
-    return this.d.iso();
-  }
-
   today(): string {
     return this.d.now().toISOString().slice(0, 10);
   }

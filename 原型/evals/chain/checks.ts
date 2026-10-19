@@ -431,15 +431,17 @@ function verdictRule(run: ChainRun): CheckResult {
   const id = '判定带实际理解';
   if (!end) return { id, by: '程序', outcome: '未判', detail: '学习对话没结束' };
   if (!end.closed) {
-    return vs.length === 0
-      ? { id, by: '程序', outcome: '过', detail: '没合上就结束，没开守卫、没有判定' }
+    // 申请收口后守卫判没合上、学习者再结束是正常流程；只查不该有判合上的判定
+    const closedVs = vs.filter((v) => v.closed);
+    return closedVs.length === 0
+      ? { id, by: '程序', outcome: '过', detail: '没合上就结束，没有判合上的判定' }
       : {
           id,
           by: '程序',
           outcome: '不过',
-          detail: `没合上却记了 ${String(vs.length)} 份判定`,
+          detail: `没合上却记了 ${String(closedVs.length)} 份判合上的判定`,
           attribution: '系统·程序',
-          why: '没合上的清单不该开守卫',
+          why: '判合上后结束应记成合上',
         };
   }
   const passed = vs.filter((v) => v.closed).at(-1);

@@ -118,7 +118,7 @@ describe('闭环依据可见', () => {
     expect((await fetchStatus(app, '/cards/card-nope')).status).toBe(404);
   });
 
-  it('出处里的闭环原文行与 M09 记录能回查', async () => {
+  it('出处里的学习原文行能回查（W2 起没有 M09 记录这种出处）', async () => {
     const state = newState();
     const { app, mainId } = await startApp(state);
     apps.push(app);
@@ -126,15 +126,13 @@ describe('闭环依据可见', () => {
     await requestClose(app, loopId, 1);
     await confirmAndSettle(app, loopId);
     const mark = (await records(app, mainId)).at(-1)?.line ?? 0;
-    const m09 = await getJson<{ records: { id: string }[] }>(app, '/m09/records');
     const cited = (await records(app, loopId)).find((r) => r.record.type === 'user_message');
-    state.extraSources = [`${loopId}:${String(cited?.line)}`, m09.records[0]?.id ?? '缺'];
+    state.extraSources = [`${loopId}:${String(cited?.line)}`];
     await post(app, '/cards/request', { projectId: mainId });
     const second = await waitCard(app, mainId, mark);
     const card = (await getJson<CardResponse>(app, `/cards/${second}`)).card;
     expect(card.options[0]?.sources).toEqual([
       expect.objectContaining({ kind: 'loop_line', resolved: true, detail: SAY }),
-      expect.objectContaining({ kind: 'm09_record', resolved: true, detail: '位移只看起点终点' }),
     ]);
   });
 

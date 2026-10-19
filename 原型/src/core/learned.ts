@@ -64,6 +64,7 @@ export class Learned {
 
   /** 一次学习的两层；不是学习或没有这个会话 → 404。 */
   async one(loopId: string): Promise<Learning> {
+    if (!/^[A-Za-z0-9_-]+$/.test(loopId)) throw new NotFoundError(`没有这个会话：${loopId}`);
     const hub = this.o.hub();
     const opened = await hub.opened(loopId).catch((err: unknown) => {
       if (err instanceof NotFoundError) throw new NotFoundError(`没有这个会话：${loopId}`);
@@ -97,6 +98,7 @@ export class Learned {
   }
 
   private async requireProject(mainId: string): Promise<string> {
+    if (!/^[A-Za-z0-9_-]+$/.test(mainId)) throw new NotFoundError(`没有这个项目：${mainId}`);
     const opened = await this.o
       .hub()
       .opened(mainId)
