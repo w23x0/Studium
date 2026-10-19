@@ -71,8 +71,6 @@ export interface UserMessage {
   objection?: { toLine: number };
   /** 随这句话附的图片（拍照 / 手写，批 4）：转写文字已并进 text（教学只读文字，M02:19），这里记原图与转写的来历。 */
   images?: ImageInput[];
-  /** 有这一项 = 这句话是学习者经练习任务提交的作答（批 9）：taskId 是任务编号；原话照记。 */
-  practice?: { taskId: string };
 }
 
 /** 学习者消息里的一张图片：原图在输入存放处（只追加），转写由模型接口做、学习者发送前可改。 */
