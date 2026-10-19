@@ -254,9 +254,17 @@ async function runSandboxOp(
       text: `写不了 ${shown}：只读，或在工作区外`,
     };
   }
-  await mkdir(dirname(abs), { recursive: true });
-  if (op.op === 'write') await writeFile(abs, op.content);
-  else await appendFile(abs, op.content);
+  try {
+    await mkdir(dirname(abs), { recursive: true });
+    if (op.op === 'write') await writeFile(abs, op.content);
+    else await appendFile(abs, op.content);
+  } catch (e) {
+    const reason = e instanceof Error ? e.message : String(e);
+    return {
+      action: { op: 'write', path: shown, summary: `写 ${shown}`, ok: false },
+      text: `写不了 ${shown}：${reason}`,
+    };
+  }
   return {
     action: {
       op: 'write',

@@ -240,11 +240,7 @@ export class Studium {
         case 'm15':
           return this.stateTools(sessionId);
         case 'm10':
-          return [
-            ...this.readTools(sessionId, { m07: false }),
-            this.stateQueryTool(),
-            this.strategyTool(sessionId),
-          ];
+          return [this.stateQueryTool(), this.strategyTool(sessionId)];
         case 'output':
           // M14 只读 M07；写产出新版本的工具由 Outputs 给
           return [...this.readTools(sessionId), ...this.o.outputs.sessionTools(sessionId)];
@@ -570,6 +566,9 @@ export class Studium {
     let resumeOf: { fromLoop: string; endedAt: string } | undefined;
     if (picked.ticket.resumeOf !== undefined) {
       const origId = picked.ticket.resumeOf;
+      // 出卡后可能已经从别的卡接着学了（同一次没合上的学习出现在两张卡上）
+      const bad = await this.resumeProblem(origId, mainId);
+      if (bad !== undefined) throw new BadRequestError(bad);
       const ended = (await this.hub.records(origId)).find((r) => r.record.type === 'loop_ended');
       const at =
         ended?.record.type === 'loop_ended' ? ended.record.at : (await this.hub.opened(origId)).at;
@@ -863,7 +862,7 @@ export class Studium {
         '要判的闭环单子：',
         ticket ? this.describeTicket(ticket) : '（缺单子）',
         '',
-        '这次学习的对话（L 后是行号；只放学习者看得到的与程序事实，模型一侧的诊断与沙盒动作不给）：',
+        '这次学习的对话（L 后是行号；只放双方对话；程序事实、模型一侧的诊断与沙盒动作不给）：',
         guardView(records),
       ].join('\n'),
     });
@@ -1618,7 +1617,8 @@ export class Studium {
     const deadline = foldDeadline(records.map((r) => r.record));
     const messages: string[] = [];
     for (const { line, record } of records) {
-      if (line >= inputLine) continue;
+      // 本轮这条输入与排在它后面的输入不算“前面说过的”；排队时上一轮的回复会落在本轮输入之后，照给
+      if (line >= inputLine && record.type !== 'assistant_message') continue;
       if (
         record.type !== 'user_message' &&
         record.type !== 'assistant_message' &&
@@ -2396,7 +2396,7 @@ export class Studium {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
     const notes = records.flatMap((r) =>
-      r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG
+      r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok
         ? [`L${String(r.line)} ${r.record.content ?? ''}`]
         : [],
     );
@@ -2540,111 +2540,109 @@ export class Studium {
   }
 
   /** 只读查询工具：资料原文与出处（按记录/读写权限.md）；默认只查项目选的资料（没选 = 全库）。 */
-  private readTools(sessionId: string, opt: { m07?: boolean } = {}): ToolSpec[] {
+  private readTools(sessionId: string): ToolSpec[] {
     const allParam = z
       .boolean()
       .optional()
       .describe('true = 查整个书库，不限项目选用的资料（学习者或你明确要时才用）');
     const tools: ToolSpec[] = [];
-    if (opt.m07 !== false) {
-      tools.push(
-        {
-          name: 'textbook_index',
-          description:
-            '不给书名：列出项目选用的资料（书和个人笔记，按学科分组；项目没选就是整个书库），all=true 列整个书库；给书名：读这本书的 M07 目录。',
-          input: { book: z.string().optional(), all: allParam },
-          run: async (a) => {
-            const book = a.book as string | undefined;
-            if (book === undefined || book === '') {
-              const lib = await this.o.m07.books();
-              if (lib.length === 0) return ok('书库是空的（缺资料依据）');
-              const scope = await this.scopeOf(sessionId, a.all === true);
-              const shown = scope ?? lib;
-              const groups = new Map<string, string[]>();
-              for (const id of shown) {
-                const subject = (await this.o.m07.info(id))?.subject ?? '';
-                groups.set(subject, [...(groups.get(subject) ?? []), id]);
-              }
-              const lines: string[] = [];
-              for (const [subject, ids] of [...groups.entries()].sort((x, y) =>
-                x[0].localeCompare(y[0], 'zh-CN'),
-              )) {
-                if (subject !== '') lines.push(`【${subject}】`);
-                lines.push(...ids);
-              }
-              const rest = lib.length - shown.length;
-              return ok(
-                lines.join('\n') +
-                  (scope !== undefined
-                    ? `\n\n（这是项目选用的资料；书库里另有 ${String(rest)} 份没选，要看全库传 all=true）`
-                    : ''),
-              );
+    tools.push(
+      {
+        name: 'textbook_index',
+        description:
+          '不给书名：列出项目选用的资料（书和个人笔记，按学科分组；项目没选就是整个书库），all=true 列整个书库；给书名：读这本书的 M07 目录。',
+        input: { book: z.string().optional(), all: allParam },
+        run: async (a) => {
+          const book = a.book as string | undefined;
+          if (book === undefined || book === '') {
+            const lib = await this.o.m07.books();
+            if (lib.length === 0) return ok('书库是空的（缺资料依据）');
+            const scope = await this.scopeOf(sessionId, a.all === true);
+            const shown = scope ?? lib;
+            const groups = new Map<string, string[]>();
+            for (const id of shown) {
+              const subject = (await this.o.m07.info(id))?.subject ?? '';
+              groups.set(subject, [...(groups.get(subject) ?? []), id]);
             }
-            return ok((await this.o.m07.index(book)) + (await this.o.cross.noteLines([book])));
-          },
-        },
-        {
-          name: 'read_source',
-          description:
-            '读 M07 一个小节文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
-          input: {
-            book: z.string(),
-            file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md'),
-            from_line: z.number().int().optional(),
-            to_line: z.number().int().optional(),
-          },
-          run: async (a) => {
-            const book = a.book as string;
-            const file = a.file as string;
-            const r = await this.o.m07.lines(
-              book,
-              file,
-              (a.from_line as number | undefined) ?? 1,
-              (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER,
-            );
-            const body = r.lines.map((l) => `${String(l.n)}\t${l.text}`).join('\n');
-            return ok(
-              (r.lines.length === 0
-                ? `（这个文件共 ${String(r.total)} 行，没有第 ${String((a.from_line as number | undefined) ?? 1)} 行起的内容）`
-                : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ book, file, from: r.from, to: r.to })}，行段按你实际引用的缩小）`) +
-                (await this.o.cross.noteLines([book])),
-            );
-          },
-        },
-        {
-          name: 'search_textbook',
-          description:
-            '在教材原文里全文检索（词用空白隔开，要同时出现在同一段里），默认只搜项目选用的资料。返回书、小节、行号、片段和可直接用的出处标记。想引用教材原文、核对教材怎么说时用。',
-          input: {
-            query: z.string(),
-            book: z.string().optional().describe('只搜这一本（明确指定的书不受项目资料限制）'),
-            limit: z.number().int().optional().describe('最多几条，默认 10'),
-            all: allParam,
-          },
-          run: async (a) => {
-            const book = (a.book as string | undefined) || undefined;
-            const scope =
-              book !== undefined ? undefined : await this.scopeOf(sessionId, a.all === true);
-            const r = await this.o.sources.search(
-              a.query as string,
-              book,
-              (a.limit as number | undefined) ?? 10,
-              scope,
-            );
-            if (r.hits.length === 0) {
-              return ok(`没找到（原文里没有同时含这些词的一段）${this.scopeHint(scope)}`);
+            const lines: string[] = [];
+            for (const [subject, ids] of [...groups.entries()].sort((x, y) =>
+              x[0].localeCompare(y[0], 'zh-CN'),
+            )) {
+              if (subject !== '') lines.push(`【${subject}】`);
+              lines.push(...ids);
             }
-            const rows = r.hits.map(
-              (h) =>
-                `《${h.bookTitle || h.book}》${h.num} ${h.title}｜${h.file} 第 ${String(h.line)} 行\n  ${h.snippet}\n  出处标记：${formatCitation({ book: h.book, file: h.file, from: h.line })}`,
-            );
+            const rest = lib.length - shown.length;
             return ok(
-              `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}${await this.o.cross.noteLines(r.hits.map((h) => h.book))}`,
+              lines.join('\n') +
+                (scope !== undefined
+                  ? `\n\n（这是项目选用的资料；书库里另有 ${String(rest)} 份没选，要看全库传 all=true）`
+                  : ''),
             );
-          },
+          }
+          return ok((await this.o.m07.index(book)) + (await this.o.cross.noteLines([book])));
         },
-      );
-    }
+      },
+      {
+        name: 'read_source',
+        description:
+          '读 M07 一个小节文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
+        input: {
+          book: z.string(),
+          file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md'),
+          from_line: z.number().int().optional(),
+          to_line: z.number().int().optional(),
+        },
+        run: async (a) => {
+          const book = a.book as string;
+          const file = a.file as string;
+          const r = await this.o.m07.lines(
+            book,
+            file,
+            (a.from_line as number | undefined) ?? 1,
+            (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER,
+          );
+          const body = r.lines.map((l) => `${String(l.n)}\t${l.text}`).join('\n');
+          return ok(
+            (r.lines.length === 0
+              ? `（这个文件共 ${String(r.total)} 行，没有第 ${String((a.from_line as number | undefined) ?? 1)} 行起的内容）`
+              : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ book, file, from: r.from, to: r.to })}，行段按你实际引用的缩小）`) +
+              (await this.o.cross.noteLines([book])),
+          );
+        },
+      },
+      {
+        name: 'search_textbook',
+        description:
+          '在教材原文里全文检索（词用空白隔开，要同时出现在同一段里），默认只搜项目选用的资料。返回书、小节、行号、片段和可直接用的出处标记。想引用教材原文、核对教材怎么说时用。',
+        input: {
+          query: z.string(),
+          book: z.string().optional().describe('只搜这一本（明确指定的书不受项目资料限制）'),
+          limit: z.number().int().optional().describe('最多几条，默认 10'),
+          all: allParam,
+        },
+        run: async (a) => {
+          const book = (a.book as string | undefined) || undefined;
+          const scope =
+            book !== undefined ? undefined : await this.scopeOf(sessionId, a.all === true);
+          const r = await this.o.sources.search(
+            a.query as string,
+            book,
+            (a.limit as number | undefined) ?? 10,
+            scope,
+          );
+          if (r.hits.length === 0) {
+            return ok(`没找到（原文里没有同时含这些词的一段）${this.scopeHint(scope)}`);
+          }
+          const rows = r.hits.map(
+            (h) =>
+              `《${h.bookTitle || h.book}》${h.num} ${h.title}｜${h.file} 第 ${String(h.line)} 行\n  ${h.snippet}\n  出处标记：${formatCitation({ book: h.book, file: h.file, from: h.line })}`,
+          );
+          return ok(
+            `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}${await this.o.cross.noteLines(r.hits.map((h) => h.book))}`,
+          );
+        },
+      },
+    );
     return tools;
   }
 }

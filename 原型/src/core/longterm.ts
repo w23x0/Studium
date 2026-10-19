@@ -483,7 +483,8 @@ export class LongTerm {
     const earlier = (await this.reviews(mainId)).filter((r) => r.summary !== undefined);
     return [
       `这一次的活：给学习者做一次阶段复盘（回看 ${since.slice(0, 10)} 到 ${until.slice(0, 10)}），不是谈方向。`,
-      `${goal !== undefined ? describeGoal(goal.goal) : '方向目标：（还没有）'}；期限：${dl.deadline ?? '没有记'}`,
+      goal !== undefined ? describeGoal(goal.goal) : '方向目标：（还没有）',
+      `期限：${dl.deadline ?? '没有记'}`,
       '',
       '── 这段时间的学习（学过的记录上层 / 中层）──',
       learnings

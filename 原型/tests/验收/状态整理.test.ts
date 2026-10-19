@@ -41,7 +41,7 @@ function responder(ids: { loop: string }) {
       case 'loop':
         if (ctx.input.text.includes('有点累')) {
           return {
-            calls: [{ name: 'write_diagnosis', args: { text: DIAGNOSIS } }],
+            sandbox: [{ op: 'append', path: '诊断.md', content: DIAGNOSIS }],
             text: '那我们慢一点。你说说位移是什么？',
           };
         }

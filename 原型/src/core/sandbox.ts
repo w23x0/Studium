@@ -182,8 +182,9 @@ export class Sandboxes {
       );
     }
     if (l.routeDecision !== undefined) {
+      const main = (await this.o.hub().opened(l.loopId)).parent ?? '项目主对话';
       lines.push(
-        `- 当时的路线决定（项目主对话 L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（理由：${l.routeDecision.reason}）`,
+        `- 当时的路线决定（${main}:L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（理由：${l.routeDecision.reason}）`,
       );
     }
     if (l.verdict !== undefined) {
@@ -288,7 +289,7 @@ export class Sandboxes {
 
 /** 下层一行：对话本身，或模型在工作区里写的诊断（守卫看不到，这里照给）。 */
 function lowerLine(r: NumberedRecord): string | undefined {
-  if (r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG) {
+  if (r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok) {
     return `L${String(r.line)} 诊断（模型工作区，未经守卫）：${r.record.content ?? ''}`;
   }
   if (
