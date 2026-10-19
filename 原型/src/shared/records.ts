@@ -1,7 +1,6 @@
 // 会话正本（JSONL）里每一行的形状。正本只追加、永不改写：行号就是引用地址。
 // 加新类型只能加，不改旧类型的字段含义；读到不认识的类型要原样保留。
 import type {
-  RegressionNote,
   ReminderAdded,
   ReminderClosed,
   ResumeOrigin,
@@ -24,11 +23,11 @@ export type * from './records-cross.ts';
 export type * from './records-practice.ts';
 
 /**
- * main 主对话 · talk 畅谈对话 · loop 闭环对话 · guard 闭环守卫 · m09 写形成记录 · m05 出选择卡
+ * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 守卫 · m05 出选择卡（导航）
  * · m15 整理学习者状态 · m10 记教法效果 · output 写产出（M14 任务对话）
  */
 export type ConversationKind =
-  'main' | 'talk' | 'loop' | 'guard' | 'm09' | 'm05' | 'm15' | 'm10' | 'output';
+  'main' | 'talk' | 'loop' | 'guard' | 'm05' | 'm15' | 'm10' | 'output';
 
 /** 出发点的来源：学过的记录 / 自述 / 假定（只是来源标注，不是证据）。 */
 export const START_SOURCES = ['学过的记录', '自述', '假定'] as const;
@@ -180,13 +179,11 @@ export interface TurnFailed {
   reason: string;
 }
 
-/** 闭环对话的诊断记录：给后续推理与审计用，不给学习者看，守卫不读。 */
+/** 学习对话的诊断记录：给后续推理与审计用，不给学习者看，守卫不读。 */
 export interface LoopNote {
   type: 'loop_note';
   at: string;
   text: string;
-  /** 结构化条目：“以前会的现在答不出”（批 6）；text 是教学侧对这一条的说明。 */
-  regression?: RegressionNote;
   /** 这一轮的教法强度（M10 的四项参数 + 偏向）；模型没填就没有这个字段。 */
   intensity?: Intensity;
 }
@@ -240,6 +237,24 @@ export interface CloseRequested {
   reason: string;
 }
 
+/** 一条证据的独立程度：独立完成 / 提示后完成 / 答案暴露后。 */
+export const INDEPENDENCE = ['独立', '提示后', '答案暴露后'] as const;
+/** 一条证据的持久程度：仅当场 / 含变式 / 含延迟。 */
+export const DURABILITY = ['仅当场', '含变式', '含延迟'] as const;
+
+/**
+ * 学习者实际表现出的理解（守卫判定顺带写下，记录/学过的记录.md「守卫判定」）：
+ * 可与单子的预期理解不同；指回学习者的行，并注明证据强度（独立程度 + 持久程度）。
+ */
+export interface Understanding {
+  /** 学习者实际表现出的理解，一句到几句。 */
+  text: string;
+  /** 学习对话里学习者的行，≥ 1 条。 */
+  lines: number[];
+  independence: (typeof INDEPENDENCE)[number];
+  durability: (typeof DURABILITY)[number];
+}
+
 /** 守卫判定，程序已核对引用行。 */
 export interface GuardVerdict {
   type: 'guard_verdict';
@@ -247,13 +262,17 @@ export interface GuardVerdict {
   guardSessionId: string;
   closed: boolean;
   basis: string;
-  /** 守卫引用的闭环对话行号。 */
+  /** 守卫引用的学习对话行号。 */
   lines: number[];
+  /** 学习者实际表现出的理解：判合上时必有且 ≥ 1 条；判没合上时可有可无。 */
+  understanding?: Understanding[];
+  /** 守卫这一轮实际执行的模型（不是别名）。 */
+  model?: string;
   /** 程序核对不过时写明原因；有这一项时 closed 一律为 false。 */
   problem?: string;
 }
 
-/** 闭环结束：合上（学习者确认）或没合上就结束。 */
+/** 一次学习结束：合上（学习者确认）或没合上就结束。 */
 export interface LoopEnded {
   type: 'loop_ended';
   at: string;
@@ -262,11 +281,11 @@ export interface LoopEnded {
   note: string;
 }
 
-/** 合上之后 / 没合上就结束之后，各步的进度（写 M09、出选择卡）。 */
+/** 合上之后 / 没合上就结束之后，各步的进度（只有出选择卡一步）。 */
 export interface AfterLoopStep {
   type: 'after_loop_step';
   at: string;
-  step: 'm09_written' | 'card_ready' | 'failed' | 'parked' | 'returned';
+  step: 'card_ready' | 'failed';
   detail: string;
 }
 
@@ -524,10 +543,10 @@ export type LogRecord =
   | PracticeDone
   | PracticeSummary;
 
-/** 学习者异议指向什么：守卫的一次判定（闭环 + 判定所在行），或 M09 / M10 / M15 的一条记录（记录 id）。 */
+/** 学习者异议指向什么：守卫的一次判定（学习会话 + 判定所在行），或 M10 / M15 的一条记录（记录 id）。 */
 export type ObjectionTarget =
   | { kind: 'guard_verdict'; loopSessionId: string; line: number }
-  | { kind: 'm09' | 'm10' | 'm15'; recordId: string };
+  | { kind: 'm10' | 'm15'; recordId: string };
 
 /**
  * 学习者异议：只追加的一条独立记录，指向原记录，不改原记录（异议按自述来源记录，不覆盖可观察事实）。

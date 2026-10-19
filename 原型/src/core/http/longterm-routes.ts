@@ -1,19 +1,15 @@
-// 跨闭环长期功能的接口（批 6）：M09 当前视图 / 时间版本 / 重新分析、提醒与“今天该做的”、路线偏差、
-// 接着学、阶段复盘。认出路径就回答并返回真；BadRequestError 由 server.ts 按 400 回。
+// 长期功能的接口：提醒与“今天该做的”、路线偏差、接着学、阶段复盘。
+// 认出路径就回答并返回真；BadRequestError 由 server.ts 按 400 回。
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type {
   AddReminderRequest,
   CloseReminderRequest,
   ContinueLoopResponse,
   DeviationsResponse,
-  PointViewDetailResponse,
-  PointViewResponse,
-  ReanalyzeRequest,
   RemindersResponse,
   ReviewRequest,
   ReviewResponse,
   ReviewsResponse,
-  TimelineResponse,
   TodayView,
 } from '../../shared/protocol.ts';
 import { REMINDER_KINDS } from '../../shared/records-longterm.ts';
@@ -32,40 +28,6 @@ export async function longtermRoute(
   const [, a, b, c, d] = parts;
   const n = parts.length;
 
-  if (a === 'm09' && b === 'view' && method === 'GET') {
-    if (n === 3) {
-      const entries = lt.pointView({
-        ...(q.get('q') !== null ? { q: q.get('q') ?? '' } : {}),
-        ...(q.get('status') !== null ? { status: q.get('status') ?? '' } : {}),
-      });
-      if (q.get('sort') === 'oldest') entries.reverse();
-      send(res, 200, {
-        generatedAt: lt.nowIso(),
-        entries,
-      } satisfies PointViewResponse);
-      return true;
-    }
-    if (n === 4 && c !== undefined) {
-      send(res, 200, lt.pointDetail(decodeURIComponent(c)) satisfies PointViewDetailResponse);
-      return true;
-    }
-  }
-  if (a === 'm09' && b === 'timeline' && n === 3 && method === 'GET') {
-    send(res, 200, {
-      records: lt.timelineViews(q.get('point') ?? undefined),
-    } satisfies TimelineResponse);
-    return true;
-  }
-  if (a === 'm09' && b === 'reanalyze' && n === 3 && method === 'POST') {
-    const body = (await readJson(req)) as Partial<ReanalyzeRequest>;
-    if (typeof body.loop !== 'string')
-      throw new BadRequestError('loop 要是字符串（闭环对话的会话 id）');
-    const loop = body.loop;
-    await studium.assertReanalyzable(loop);
-    studium.background('M09 重新分析', () => studium.reanalyzeLoop(loop));
-    send(res, 202, {});
-    return true;
-  }
   if (a === 'm05' && b === 'deviations' && n === 3 && method === 'GET') {
     send(res, 200, {
       records: lt.deviationViews(q.get('project') ?? undefined),

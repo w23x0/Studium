@@ -111,12 +111,7 @@ export const W = {
   page: (book: string, page?: number) => (page !== undefined ? `${book} · 第 ${page} 页` : book),
 
   // ── 记录 ──
-  learned: '我学会的', // M09 形成记录
-  learnedEmpty: '还没有学会的记录。学完一部分并确认后会记在这里。',
-  understanding: '你怎么理解的',
-  process: '怎么学会的',
-  unmet: '还没做到的',
-  strength: '证据有多强',
+  learned: '我学会的',
   myState: '我的状态', // M15
   myStateEmpty: '还没整理过。',
   currentState: '现在的状态',
@@ -141,7 +136,6 @@ export const W = {
 
   // ── 出处种类 ──
   sourceKind: {
-    m09_record: '你之前学会的',
     loop_line: '之前对话里的话',
     book_line: '书里的一处',
     unknown: '查不到的出处',
@@ -747,60 +741,8 @@ export const W = {
   reviewEnded: '复盘好了，交回项目了。',
   reviewEndedLine: (summary: string) => `复盘交回项目了：${summary}`,
   reviewTask: '一起复盘这段时间',
-  // 我学会的：现在的样子
-  viewSearch: '搜知识点、摘要、关键词…',
-  viewAll: '全部',
-  viewStatus: {
-    闭环证据: '学会了',
-    提取失败: '一时没想起来',
-    降档: '退了一档',
-    重新掌握: '又掌握了',
-    仅外部导入: '还没核实',
-  } as const,
-  viewSort: { recent: '最近碰过的在前', oldest: '最久没碰的在前' } as const,
-  viewNone: '没有对得上的。',
-  viewCount: (n: number) => `${String(n)} 个知识点`,
-  daysSince: (n: number) => (n === 0 ? '今天碰过' : `${String(n)} 天没碰了`),
-  lastEvidence: '最近一次',
-  asBase: '在别的学习里当作已会的用上了',
-  summaryAsBase: '（在别的学习里当作已会的用过）',
-  levelLabel: '现在的程度',
-  levels: {
-    认出: '认得出',
-    复现: '能自己复现',
-    结构: '理得清来龙去脉',
-    迁移: '能用到新情境',
-  } as Record<string, string>,
-  backToList: '全部知识点',
-  pointHistory: '这个知识点的经过',
-  pointHistoryHint: '学会、一时没想起来或退了一档、又掌握了，每一步都指回那段学习。',
-  historyEvent: {
-    learned: '学会了',
-    复习: '复习过',
-    复检: '复检过',
-    base: '在别的学习里用上了',
-    提取失败: '一时没想起来',
-    降档: '退了一档',
-    重新掌握: '又掌握了',
-  } as const,
-  stateRuledOut: '为什么不是状态不好',
-  levelAfter: '之后的程度',
-  seeThatLearning: '看那段学习',
-  externalCount: (n: number) => `另有 ${String(n)} 条还没核实的`,
-  analyses: '每段学习的分析',
-  analysesHint: '一段学习学完后写的分析可以用现在的模型重做；新的一版和旧的并存，旧的不会被改掉。',
-  reanalyze: '用现在的模型重新分析一遍',
-  reanalyzing: '在重新分析，好了会多出一版…',
-  // 以前会的、这次没答出来
-  regressions: '以前会的、这次没答出来',
-  regressionsHint: '老师在这段学习里注意到的；学完后才决定要不要记进“我学会的”。',
-  regressionLine: (name: string) => `以前会的「${name}」，这次没答出来`,
-  suspicion: {
-    遗忘: '老师觉得：可能忘了',
-    提取失败: '老师觉得：可能一时没想起来',
-    状态原因: '老师觉得：可能是状态不好（累了之类），不算忘',
-  } as const,
-  regressionAgainst: '看以前的记录',
+  // 我学会的（W2 起先留空壳，W6 做按学习列）
+  learnedPlaceholder: '这里以后按每次学习列出来（学会了什么、学成什么样），还没做。',
   // 没按推荐走的时候
   deviations: '没按推荐走的时候',
   deviationsHint: '只记下事实，给你自己回头看；不代表学得好不好。',
@@ -813,6 +755,7 @@ export const W = {
   devDetour: (rec: string, chosen: string) =>
     `学到一半问要不要先停一下：推荐「${rec}」，你选了「${chosen}」`,
   devDetourSame: (chosen: string) => `学到一半问要不要先停一下：你照推荐选了「${chosen}」`,
+  seeThatLearning: '看那段学习',
 
   // ── 通用 ──
   loading: '正在读…',

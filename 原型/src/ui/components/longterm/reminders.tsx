@@ -175,8 +175,6 @@ function ReminderForm(props: {
 }) {
   const { overview: o } = props;
   const hasDeadline = o.deadline !== undefined;
-  const view = useLoad('m09:view', () => api.pointView());
-  const points = (view.data?.entries ?? []).filter((e) => e.status !== '仅外部导入');
   const loops = [...o.groups.unclosed, ...(o.groups.shelved ?? [])].filter(
     (l) => (l.resumedBy ?? []).length === 0,
   );
@@ -191,8 +189,7 @@ function ReminderForm(props: {
 
   const suggested = (w: What, id: string): string => {
     if (w === 'recheck') {
-      const name = points.find((p) => p.point.id === id)?.point.name;
-      return name !== undefined ? W.reminderTextRecheck(name) : '';
+      return id.trim() === '' ? '' : W.reminderTextRecheck(id.trim());
     }
     if (w === 'resume') {
       const title = loops.find((l) => l.sessionId === id)?.title;
@@ -253,28 +250,16 @@ function ReminderForm(props: {
           ))}
         </select>
       </label>
-      {what === 'recheck' &&
-        (points.length === 0 ? (
-          <div className="text-muted-foreground text-xs">
-            {view.data ? W.reminderNoPoints : W.loading}
-          </div>
-        ) : (
-          <label className="flex flex-col gap-1">
-            <span className="text-muted-foreground text-xs">{W.reminderPickPoint}</span>
-            <select
-              className={SELECT}
-              value={pick}
-              onChange={(e) => choose('recheck', e.target.value)}
-            >
-              <option value="">{W.reminderPick}</option>
-              {points.map((p) => (
-                <option key={p.point.id} value={p.point.id}>
-                  {p.point.name}（{W.daysSince(p.daysSince)}）
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
+      {what === 'recheck' && (
+        <label className="flex flex-col gap-1">
+          <span className="text-muted-foreground text-xs">{W.reminderPickPoint}</span>
+          <input
+            className={SELECT}
+            value={pick}
+            onChange={(e) => choose('recheck', e.target.value)}
+          />
+        </label>
+      )}
       {what === 'resume' &&
         (loops.length === 0 ? (
           <div className="text-muted-foreground text-xs">{W.reminderNoLoops}</div>

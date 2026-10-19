@@ -1,4 +1,4 @@
-// 依据可见（批 1a）：把守卫判定、诊断、单子与出处、M09 / M10 / M15 记录整理成界面能直接读的只读视图。
+// 依据可见：把守卫判定、诊断、单子与出处、M10 / M15 记录整理成界面能直接读的只读视图。
 // 只读：不写任何记录；异议的写入在 studium.ts。
 import {
   CONVERSATION_KIND_LABELS,
@@ -14,8 +14,6 @@ import {
   type LoopRelationView,
   type ParkingView,
   type RouteSignalView,
-  type ExternalRecordView,
-  type FormationView,
   type GuardVerdictView,
   type LoopBrief,
   type LoopEvidence,
@@ -47,7 +45,6 @@ import { locate } from './locate.ts';
 /** 批 8 起新增的会话类：外发披露里单列在 laterSessions。 */
 const LATER_KINDS: ConversationKind[] = ['output'];
 import { foldLoop, LOAD_HEAVY, PARKING_PILE, type LoopFlags } from './loop-state.ts';
-import type { M09 } from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { M15 } from './knowledge/m15.ts';
 import type { Objections } from './knowledge/objections.ts';
@@ -58,7 +55,6 @@ import { BadRequestError, foldDeadline, foldMaterials } from './studium.ts';
 
 export interface EvidenceDeps {
   hub: Hub;
-  m09: M09;
   m10: M10;
   m15: M15;
   objections: Objections;
@@ -97,6 +93,7 @@ export class Evidence {
         ...(v.problem !== undefined ? { problem: v.problem } : {}),
         guardSessionId: v.guardSessionId,
         model: await this.d.hub.modelInfo(v.guardSessionId),
+        ...(v.understanding !== undefined ? { understanding: v.understanding } : {}),
         quotes: quotesOf(recs, v.lines),
         ...(request?.record.type === 'close_requested'
           ? {
@@ -132,19 +129,6 @@ export class Evidence {
                 line: r.line,
                 at: r.record.at,
                 text: r.record.text,
-                ...(r.record.regression !== undefined
-                  ? {
-                      regression: {
-                        line: r.line,
-                        at: r.record.at,
-                        point: { id: r.record.regression.point, name: r.record.regression.point },
-                        basisLines: r.record.regression.basisLines,
-                        suspicion: r.record.regression.suspicion,
-                        against: r.record.regression.against,
-                        text: r.record.text,
-                      },
-                    }
-                  : {}),
                 ...(r.record.intensity ? { intensity: r.record.intensity } : {}),
               },
             ]
@@ -418,17 +402,6 @@ export class Evidence {
    */
   private async source(raw: string): Promise<SourceView> {
     const id = raw.trim();
-    const f = this.d.m09.record(id);
-    if (f !== undefined) {
-      return {
-        raw,
-        kind: 'm09_record',
-        resolved: true,
-        label: `形成记录 ${f.id}（学习 ${f.loopSessionId}）`,
-        detail: f.understanding,
-        sessionId: f.loopSessionId,
-      };
-    }
     const at = await locate(raw, { hub: this.d.hub, sources: this.d.sources });
     if (at.kind === 'book') {
       const cited = await this.bookSource(raw);
@@ -534,9 +507,12 @@ export class Evidence {
       } else if (brief.status === 'closed') groups.closed.push(brief);
       else groups.unclosed.push(brief);
     }
-    const knownPoints = new Set(this.d.m09.knownPoints());
+    // 积压 = 没合上、且之后没有新点文字相同的一次合上的学习
+    const closedPoints = new Set(
+      groups.closed.flatMap((b) => (b.newPoint !== undefined ? [b.newPoint.id] : [])),
+    );
     const parked = groups.unclosed.filter(
-      (b) => b.newPoint === undefined || !knownPoints.has(b.newPoint.id),
+      (b) => b.newPoint === undefined || !closedPoints.has(b.newPoint.id),
     ).length;
     const counts = {
       inProgress: groups.inProgress.length,
@@ -619,48 +595,7 @@ export class Evidence {
     };
   }
 
-  // ───────────── M09 / M10 / M15 ─────────────
-
-  async formations(loopId?: string): Promise<FormationView[]> {
-    const out: FormationView[] = [];
-    for (const r of this.d.m09
-      .all()
-      .filter((x) => loopId === undefined || x.loopSessionId === loopId)) {
-      out.push({
-        id: r.id,
-        at: r.at,
-        loopSessionId: r.loopSessionId,
-        newPoint: this.pointRef(r.newPoint),
-        clause: r.clause,
-        startPoints: r.startPoints.map((p) => this.pointRef(p)),
-        understanding: r.understanding,
-        process: r.process,
-        unmet: r.unmet,
-        evidenceStrength: r.evidenceStrength,
-        ...(r.evidence !== undefined
-          ? {
-              evidence: {
-                newPoint: { ...r.evidence.newPoint },
-                startPoints: r.evidence.startPoints.map((s) => ({ ...s })),
-              },
-            }
-          : {}),
-        evidenceLines: r.evidenceLines,
-        quotes: await this.quotes(r.loopSessionId, r.evidenceLines),
-        model: modelInfoOf(r.model),
-        objections: this.d.objections.forRecord('m09', r.id).map(storedView),
-        version: r.version ?? 1,
-        latest: this.d.m09.forLoop(r.loopSessionId).at(-1) === r,
-        ...(r.level !== undefined ? { level: r.level } : {}),
-        ...(r.summary !== undefined ? { summary: r.summary } : {}),
-        ...(r.keywords !== undefined ? { keywords: r.keywords } : {}),
-        ...(r.revisit !== undefined
-          ? { revisit: { kind: r.revisit.kind, formationIds: r.revisit.formationIds } }
-          : {}),
-      });
-    }
-    return out;
-  }
+  // ───────────── M10 / M15 ─────────────
 
   async strategies(loopId?: string): Promise<StrategyView[]> {
     const out: StrategyView[] = [];
@@ -774,23 +709,6 @@ export class Evidence {
         (o) => recordId === undefined || ('recordId' in o.target && o.target.recordId === recordId),
       )
       .map(storedView);
-  }
-
-  /** 外部导入进 M09 的记录（自述 / 笔记，未验证），新的在后。 */
-  externals(): ExternalRecordView[] {
-    return this.d.m09.externals().map((r) => ({
-      id: r.id,
-      at: r.at,
-      source: r.source,
-      status: r.status,
-      claim: r.claim,
-      ...(r.point !== undefined ? { point: { id: r.point, name: r.point } } : {}),
-      basis: r.basis,
-      ...(r.grade !== undefined ? { grade: r.grade } : {}),
-      ...(r.talk !== undefined ? { talk: r.talk } : {}),
-      ...(r.note !== undefined ? { note: r.note } : {}),
-      model: r.model,
-    }));
   }
 
   /** 单子里的一个点：不再查知识点库，名字就等于它自己（工单 §4.5）。 */

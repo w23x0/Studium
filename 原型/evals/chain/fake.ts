@@ -59,7 +59,8 @@ function system(leak: boolean) {
       };
     }
     if (has('submit_choice_card')) {
-      const option = text.includes('已合上过的新点（学过的记录）：位移') ? AVG : DISP;
+      // 开场里学过的记录已经有一条合上的学习时，下一张卡改推平均速度
+      const option = /- \S+「[^」]*」合上/.test(text) ? AVG : DISP;
       return {
         calls: [
           {
@@ -81,6 +82,14 @@ function system(leak: boolean) {
                     closed: true,
                     basis: `L${String(line)} 学习者自己说清了`,
                     evidence_lines: [line],
+                    understanding: [
+                      {
+                        text: '位移只看起点终点，与路径无关',
+                        lines: [line],
+                        independence: '独立',
+                        durability: '仅当场',
+                      },
+                    ],
                   }
                 : { closed: false, basis: '还没说清', evidence_lines: [] },
           },

@@ -38,7 +38,7 @@ export interface DetourDeps {
   /** M05 通用开场（方向、期限、资料、M09、闭环状态与数量、停车场）。 */
   m05Opening(trigger: string, mainId: string): Promise<string>;
   /** 闭环开场（单子 + 知识片段 + “现在开始”）。 */
-  loopOpening(t: Ticket): string;
+  loopOpening(t: Ticket): Promise<string>;
   /** M05 会话共用的只读工具。 */
   m05ReadTools(sessionId: string): ToolSpec[];
 }
@@ -384,7 +384,7 @@ export class Detours {
         `返回条件：${fork.returnCondition}。`,
         `范围：${fork.scope ?? '补到父闭环够用为止，不要扩成一大块'}。`,
         '',
-        this.d.loopOpening(ticket),
+        await this.d.loopOpening(ticket),
       ].join('\n'),
     });
     return { choice: 'fork', forkLoopSessionId: child.sessionId };
@@ -610,14 +610,6 @@ export class Detours {
         });
       }
       throw err;
-    }
-    if (job.reason === 'ended_unclosed') {
-      await this.d.hub().record(job.loopId, {
-        type: 'after_loop_step',
-        at: this.d.iso(),
-        step: 'parked',
-        detail: '停车记录已写入（重启后补做）',
-      });
     }
   }
 

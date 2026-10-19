@@ -15,8 +15,6 @@ import type {
   ListProjectsResponse,
   ProjectResponse,
   CardResponse,
-  ExternalRecordsResponse,
-  NoteExtractRequest,
   NoteImportRequest,
   NoteImportResponse,
   NotesResponse,
@@ -25,7 +23,8 @@ import type {
   ProjectMaterialsRequest,
   ProjectMaterialsResponse,
   DisclosureResponse,
-  FormationsResponse,
+  LearnedResponse,
+  LearningResponse,
   LoopEvidenceResponse,
   ConfirmationResponse,
   ObjectionResponse,
@@ -229,8 +228,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return;
     if (method === 'POST' && parts[1] === 'objections' && parts.length === 2) {
       const body = (await readJson(req)) as Partial<RecordObjectionRequest>;
-      if (body.kind !== 'm09' && body.kind !== 'm10' && body.kind !== 'm15') {
-        throw new BadRequest('kind 要是 m09、m10 或 m15');
+      if (body.kind !== 'm10' && body.kind !== 'm15') {
+        throw new BadRequest('kind 要是 m10 或 m15');
       }
       if (typeof body.recordId !== 'string' || typeof body.text !== 'string') {
         throw new BadRequest('recordId 与 text 要是字符串');
@@ -305,10 +304,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         );
         return;
       }
-    }
-    if (parts[1] === 'm09' && parts[2] === 'external' && parts.length === 3 && method === 'GET') {
-      send(res, 200, { records: evidence.externals() } satisfies ExternalRecordsResponse);
-      return;
     }
     if (parts[1] === 'projects' && parts.length === 2) {
       if (method === 'GET') {
@@ -582,20 +577,9 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         throw new BadRequest('title 要是字符串');
       }
       const note = await opts.notes.import(body.path, body.title);
+      // 外部导入：程序写一条原样指针（指向那份笔记），标未验证；导入失败就不写
+      await opts.studium.learned.addImport({ channel: '笔记', ref: { note: note.id } });
       send(res, 201, { note } satisfies NoteImportResponse);
-      return true;
-    }
-    if (method === 'POST' && what === 'notes/extract') {
-      const body = (await readJson(req)) as Partial<NoteExtractRequest>;
-      if (typeof body.book !== 'string') throw new BadRequest('book 要是字符串');
-      const info = await opts.notes.list();
-      if (!info.some((n) => n.id === body.book))
-        throw new NotFoundError(`没有这份笔记：${body.book}`);
-      const book = body.book;
-      const projectId = typeof body.projectId === 'string' ? body.projectId : undefined;
-      if (projectId !== undefined) await opts.hub.opened(projectId);
-      background('从笔记里提点', () => studium.extractNotePoints(book, projectId));
-      send(res, 202, {});
       return true;
     }
     if (method === 'POST' && what === 'reports') {
@@ -640,9 +624,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         }
       }
       send(res, 200, { overview } satisfies ProjectOverviewResponse);
-    } else if (a === 'm09' && b === 'records' && n === 3) {
-      const records = await ev.formations(q.get('loop') ?? undefined);
-      send(res, 200, { records } satisfies FormationsResponse);
+    } else if (a === 'learned' && n === 2) {
+      // 学过的记录：不给 project 就是全部（按人，不按项目划界）
+      send(
+        res,
+        200,
+        (await opts.studium.learned.list(q.get('project') ?? undefined)) satisfies LearnedResponse,
+      );
+    } else if (a === 'learned' && n === 3 && b !== undefined) {
+      send(res, 200, {
+        learning: await opts.studium.learned.one(decodeURIComponent(b)),
+      } satisfies LearningResponse);
     } else if (a === 'm10' && b === 'records' && n === 3) {
       const records = await ev.strategies(q.get('loop') ?? undefined);
       send(res, 200, { records } satisfies StrategiesResponse);

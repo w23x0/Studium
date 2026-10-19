@@ -138,20 +138,17 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
   return { problems, turns: used, actions: actions.length };
 }
 
-/** 本地服务放后台做的动作（出选择卡、申请收口、从笔记里提点、重新分析），回放也放后台。 */
-const IN_BACKGROUND: readonly ActionName[] = [
-  'requestCard',
-  'requestClose',
-  'extractNotePoints',
-  'reanalyzeLoop',
-];
+/** 本地服务放后台做的动作（出选择卡、申请收口），回放也放后台。 */
+const IN_BACKGROUND: readonly ActionName[] = ['requestCard', 'requestClose'];
 
-/** 旧录带里可能有、现在已经没有的动作（工单 W1 §4.8）。 */
+/** 旧录带里可能有、现在已经没有的动作（工单 W1 §4.8、W2 §3）。 */
 const REMOVED_ACTIONS = new Set<string>([
   'outputs.markCandidate',
   'm08review.suggest',
   'm08review.audit',
   'm08review.correct',
+  'extractNotePoints',
+  'reanalyzeLoop',
 ]);
 
 /** 重做一个学习者动作：“longterm.” / “practice.” / “outputs.” / “notes.” 开头的找对应的对象，别的是 Studium 的方法。 */

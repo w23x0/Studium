@@ -1,14 +1,16 @@
 // 跨闭环的长期功能（批 6）新增的正本记录类型与记录里的小结构。只加，不改旧字段的意思。
 // records.ts 把这里的类型接进 Ticket / SessionOpened / LoopNote / TalkEnded / LogRecord。
 
-/** 复习 / 复检：这张单子是回头去看以前合上过的点（M05:24-25）。 */
+/** 复习 / 复检：这张单子是回头去看以前那次学习（记录/单子与路线.md、会话/导航.md「二级功能」）。 */
 export const REVISIT_KINDS = ['复习', '复检'] as const;
 export type RevisitKind = (typeof REVISIT_KINDS)[number];
 
 export interface Revisit {
   kind: RevisitKind;
-  /** 回头看的是哪几条以前的形成记录（M09 记录 id）；它们的新点就是单子的新点。 */
-  formationIds: string[];
+  /** 回看的是哪次学习（学习会话 id）。 */
+  ofLoop: string;
+  /** 那次学习里守卫判定所在的行号；没给 = 只看那次的单子与判定，不点具体某一行。 */
+  verdictLine?: number;
 }
 
 /** 接着没合上的原闭环学：新闭环续接原闭环（原闭环的正本不改）。 */
@@ -39,24 +41,6 @@ export function parseReviewReturned(
   const m = /^阶段复盘的对话（([A-Za-z0-9_-]+)）交回了：([\s\S]*)$/.exec(text);
   if (m?.[1] === undefined || m[2] === undefined) return undefined;
   return { reviewSessionId: m[1], summary: m[2] };
-}
-
-/** 教学侧怀疑“以前会的现在答不出”是什么原因：遗忘 · 提取失败 · 状态原因（疲劳等，不构成遗忘记录）。 */
-export const SUSPICIONS = ['遗忘', '提取失败', '状态原因'] as const;
-export type Suspicion = (typeof SUSPICIONS)[number];
-
-/**
- * 诊断里的结构化条目（M04:18,49）：闭环里发现“以前会的（含外部导入）现在答不出 / 表现不符”。
- * 进行中只是候选；写 M09 的会话只读这类条目，不读诊断全文；提交时才可能成为 M09 的“提取失败 / 降档”记录。
- */
-export interface RegressionNote {
-  /** 哪个点。 */
-  point: string;
-  /** 指回本闭环里学习者原话的行。 */
-  basisLines: number[];
-  suspicion: Suspicion;
-  /** 针对的旧记录（M09 形成记录 / 外部导入记录 id）；可空。 */
-  against: string[];
 }
 
 export const REMINDER_KINDS = ['recheck', 'resume', 'deadline', 'review', 'other'] as const;

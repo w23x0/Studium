@@ -1,18 +1,18 @@
 // 链路评测的判定：程序能查的先由程序查，要读原文才判得了的交判分器（一个判定开一个判分会话，互不相通）。
 // 每个不过都写归因：系统（程序 / 提示词 / 设计）、模拟学生、判分器、环境（登录 / 额度），拿不准写“不确定”。
-import { join } from 'node:path';
 import { z } from 'zod';
-import { M09 } from '../../src/core/knowledge/m09.ts';
 import type { ModelCapability } from '../../src/core/model/claude-agent-sdk.ts';
 import type { ModelAdapter } from '../../src/core/model/port.ts';
 import type { Profiles } from '../../src/core/model/profiles.ts';
 import { learnerLines, renderTranscript } from '../../src/core/transcript.ts';
-import type {
-  ChoiceCard,
-  ConversationKind,
-  GuardVerdict,
-  NumberedRecord,
-  ToolCall,
+import {
+  DURABILITY,
+  INDEPENDENCE,
+  type ChoiceCard,
+  type ConversationKind,
+  type GuardVerdict,
+  type NumberedRecord,
+  type ToolCall,
 } from '../../src/shared/records.ts';
 import { toUiMessages } from '../../src/ui/thread-model.ts';
 import { CASES } from '../cases.ts';
@@ -149,7 +149,6 @@ function chainComplete(run: ChainRun): CheckResult {
     ['M15 整理跑过', sessionsOf(run, 'm15').length > 0],
     ['M10 记录跑过', sessionsOf(run, 'm10').length > 0],
   ];
-  if (loopEnd(run)?.closed === true) stages.push(['写 M09', run.m09.length > 0]);
   const missing = stages.filter(([, ok]) => !ok).map(([n]) => n);
   const fails = turnFailures(run);
   const afterFailed = (session(run, run.loopId)?.records ?? []).filter(
@@ -194,9 +193,6 @@ function toolsCalled(run: ChainRun): CheckResult {
   }
   for (const s of sessionsOf(run, 'guard')) {
     if (!accepted(s, 'submit_verdict')) missing.push(`守卫 ${s.sessionId} 没交成判定`);
-  }
-  for (const s of sessionsOf(run, 'm09')) {
-    if (!accepted(s, 'write_formation_record')) missing.push(`写 M09 ${s.sessionId} 没写成`);
   }
   for (const s of sessionsOf(run, 'm10')) {
     if (!accepted(s, 'write_strategy_record')) missing.push(`M10 ${s.sessionId} 没写成记录`);
@@ -429,46 +425,85 @@ function guardLines(run: ChainRun): CheckResult {
   };
 }
 
-function m09Rule(run: ChainRun): CheckResult {
+function verdictRule(run: ChainRun): CheckResult {
   const end = loopEnd(run);
-  const mine = run.m09.filter((r) => r.loopSessionId === run.loopId);
-  if (!end) return { id: '没合上不写 M09', by: '程序', outcome: '未判', detail: '学习对话没结束' };
+  const vs = verdicts(run);
+  const id = '判定带实际理解';
+  if (!end) return { id, by: '程序', outcome: '未判', detail: '学习对话没结束' };
   if (!end.closed) {
-    return mine.length === 0
-      ? {
-          id: '没合上不写 M09',
-          by: '程序',
-          outcome: '过',
-          detail: '没合上就结束，M09 里没有这段的记录',
-        }
+    return vs.length === 0
+      ? { id, by: '程序', outcome: '过', detail: '没合上就结束，没开守卫、没有判定' }
       : {
-          id: '没合上不写 M09',
+          id,
           by: '程序',
           outcome: '不过',
-          detail: `没合上却写了 ${String(mine.length)} 条 M09`,
+          detail: `没合上却记了 ${String(vs.length)} 份判定`,
           attribution: '系统·程序',
-          why: '没合上的清单不该开写 M09 的会话',
+          why: '没合上的清单不该开守卫',
         };
+  }
+  const passed = vs.filter((v) => v.closed).at(-1);
+  if (passed === undefined) {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: '合上了却没有一份通过的判定',
+      attribution: '系统·程序',
+    };
+  }
+  const u = passed.understanding ?? [];
+  if (u.length === 0) {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: '合上的判定没写下学习者实际表现出的理解',
+      attribution: '系统·程序',
+      why: '判合上必须带 understanding（至少一条）',
+    };
   }
   const loop = session(run, run.loopId);
   const learner = learnerLines(loop?.records ?? []);
-  const bad = mine.flatMap((r) => r.evidenceLines.filter((l) => !learner.has(l)));
-  if (mine.length === 1 && bad.length === 0) {
-    const r = mine[0];
+  const bad = u.flatMap((x) => x.lines.filter((l) => !learner.has(l)));
+  const badTier = u.filter(
+    (x) => !INDEPENDENCE.includes(x.independence) || !DURABILITY.includes(x.durability),
+  );
+  if (bad.length > 0 || badTier.length > 0) {
     return {
-      id: '没合上不写 M09',
+      id,
       by: '程序',
-      outcome: '过',
-      detail: `合上了，写了 1 条 M09（证据行 ${r?.evidenceLines.join('、') ?? ''}；证据强度：${r?.evidenceStrength ?? ''}）`,
+      outcome: '不过',
+      detail: `${bad.length > 0 ? `理解引的第 ${bad.join('、')} 行不是学习者的话；` : ''}${badTier.length > 0 ? '有理解档位不在规定的几档里' : ''}`,
+      attribution: '系统·程序',
+      why: '程序本该在收判定时核对并退回',
     };
   }
   return {
-    id: '没合上不写 M09',
+    id,
     by: '程序',
-    outcome: '不过',
-    detail: `合上后 M09 有 ${String(mine.length)} 条${bad.length > 0 ? `，证据行 ${bad.join('、')} 不是学习者的话` : ''}`,
-    attribution: '系统·程序',
+    outcome: '过',
+    detail: `合上，判定带 ${String(u.length)} 条实际理解（证据行 ${passed.lines.join('、')}；模型 ${passed.model ?? '（未记）'}）`,
   };
+}
+
+/** 合上的那次学习的新点（从单子文字里取）。 */
+function ticketNewPoint(run: ChainRun): string {
+  return /新点\s*([^\n；]*)/.exec(run.ticketText ?? '')?.[1]?.trim() ?? '';
+}
+
+/** 这次学习的结果：单子 + 通过的判定（上层与中层）。 */
+function resultLine(run: ChainRun): string {
+  const end = loopEnd(run);
+  if (!end) return '（没结束）';
+  const passed = verdicts(run)
+    .filter((v) => v.closed)
+    .at(-1);
+  if (!end.closed) return `没合上就结束（${end.note}）；上层只有单子`;
+  const u = (passed?.understanding ?? [])
+    .map((x) => `${x.text}（${x.independence}、${x.durability}）`)
+    .join('；');
+  return `合上；单子新点 ${ticketNewPoint(run)}；实际表现出的理解：${u || '（判定没写）'}`;
 }
 
 function nextCardNotLearned(run: ChainRun): CheckResult {
@@ -482,7 +517,10 @@ function nextCardNotLearned(run: ChainRun): CheckResult {
       attribution: run.error !== undefined ? '不确定' : '系统·程序',
     };
   }
-  const known = new Set(run.m09.map((r) => r.newPoint));
+  // 已学会 = 合上的那次的单子新点（W2 起不存分析层，学过的记录按层读）
+  const known = new Set(
+    loopEnd(run)?.closed === true && run.ticketText !== undefined ? [ticketNewPoint(run)] : [],
+  );
   const bad = next.options.filter((o) => known.has(o.ticket.newPoint));
   const list = next.options
     .map((o, i) => `${String(i)}.${o.ticket.newPoint}${i === next.recommended ? '（推荐）' : ''}`)
@@ -618,7 +656,7 @@ export async function programChecks(run: ChainRun, probe: ProbeResult): Promise<
     noInternalWords(run),
     guardExpectation(run),
     guardLines(run),
-    m09Rule(run),
+    verdictRule(run),
     nextCardNotLearned(run),
     effortAccepted(run, probe),
     backgroundModules(run),
@@ -701,10 +739,9 @@ function personaText(run: ChainRun): string {
   return `模拟学习者（${s.name}）的设定——教学与守卫都看不到：\n人设：${s.persona}\n真实知识状态：${s.knowledge}\n按人设该怎么收尾：${s.expectedEnding}`;
 }
 
-async function cardMaterial(run: ChainRun): Promise<string | undefined> {
+function cardMaterial(run: ChainRun): string | undefined {
   const { first, next } = cards(run);
   if (!next) return undefined;
-  const m09 = await M09.load(join(run.dataRoot, 'knowledge', 'm09'));
   const goal = session(run, run.mainId)
     ?.records.map((r) => r.record)
     .filter((r) => r.type === 'project_goal')
@@ -725,12 +762,7 @@ async function cardMaterial(run: ChainRun): Promise<string | undefined> {
     `刚学的那段：${run.ticketText ?? '（无）'}`,
     `结果：${end ? (end.closed ? '合上（学习者确认）' : `没合上就结束（${end.note}）`) : '没结束'}`,
     `守卫判定：${vs.map((v) => `${v.closed ? '合上' : '未合上'}：${v.basis}`).join('｜') || '（无）'}`,
-    `已学会（形成记录）：\n${
-      m09
-        .all()
-        .map((r) => m09.describe(r))
-        .join('\n') || '（无）'
-    }`,
+    `这次学的结果（上层单子 + 中层判定）：\n${resultLine(run)}`,
     '',
     `下一张选项卡（要判的）：\n${describe(next)}`,
   ].join('\n');
@@ -796,7 +828,7 @@ export async function modelChecks(run: ChainRun, judge: ModelAdapter): Promise<C
     `${personaText(run)}\n\n${talk ? `畅谈原文：\n${renderTranscript(talk.records)}\n\n` : ''}${transcript}`,
     '模拟学生',
   );
-  const material = await cardMaterial(run);
+  const material = cardMaterial(run);
   if (material !== undefined) {
     await add(
       '下一张卡合理',

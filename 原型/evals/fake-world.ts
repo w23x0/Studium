@@ -55,27 +55,16 @@ function system(bad: boolean) {
                     closed: true,
                     basis: `L${String(evidence)} 学习者自己说清了`,
                     evidence_lines: [evidence],
+                    understanding: [
+                      {
+                        text: '位移只看起点终点，与路径无关',
+                        lines: [evidence],
+                        independence: '独立',
+                        durability: '仅当场',
+                      },
+                    ],
                   }
                 : { closed: false, basis: '学习者只说懂了，说不出所以然', evidence_lines: [] },
-          },
-        ],
-      };
-    }
-    if (has(ctx, 'write_formation_record')) {
-      return {
-        calls: [
-          {
-            name: 'write_formation_record',
-            args: {
-              new_point: 'p-displacement',
-              clause: 'c-disp-from-pos',
-              start_points: ['p-position'],
-              understanding: '位移只看起点终点',
-              process: '自己说出',
-              unmet: '',
-              evidence_strength: '当场、独立',
-              evidence_lines: [evidence],
-            },
           },
         ],
       };

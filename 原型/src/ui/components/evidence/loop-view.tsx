@@ -106,8 +106,6 @@ export function LoopView(props: {
 
       <LoopDetours loop={loop} />
 
-      <Regressions loop={loop} />
-
       <LoopPractice loopId={loop.sessionId} />
 
       <Section title={W.judgements}>
@@ -171,60 +169,6 @@ export function LoopView(props: {
         </Section>
       )}
     </div>
-  );
-}
-
-/** 老师记下的“以前会的、这次没答出来”：哪个知识点、老师觉得是什么原因、依据的原话、以前的记录。 */
-function Regressions(props: { loop: LoopEvidence }) {
-  const { loop } = props;
-  const panel = usePanel();
-  const items = loop.diagnoses.flatMap((d) => (d.regression !== undefined ? [d.regression] : []));
-  if (items.length === 0) return null;
-  return (
-    <Section title={W.regressions} hint={W.regressionsHint}>
-      <div data-testid="regressions" className="flex flex-col gap-2">
-        {items.map((g) => (
-          <Card key={g.line} className="flex flex-col gap-2">
-            <div className="flex items-start justify-between gap-2">
-              <span>{W.regressionLine(g.point.name)}</span>
-              <Time at={g.at} />
-            </div>
-            <Badge tone={g.suspicion === '状态原因' ? 'neutral' : 'warn'}>
-              {W.suspicion[g.suspicion]}
-            </Badge>
-            <span className="flex flex-wrap gap-3 text-xs">
-              {g.basisLines.length > 0 && (
-                <button
-                  type="button"
-                  className="text-primary hover:underline"
-                  onClick={() => panel.jump(loop.sessionId, g.basisLines)}
-                >
-                  {W.jumpTo}
-                </button>
-              )}
-              {g.against.map((id, i) => (
-                <button
-                  key={id}
-                  type="button"
-                  className="text-primary hover:underline"
-                  onClick={() => panel.show({ kind: 'learned', recordId: id })}
-                >
-                  {W.regressionAgainst}
-                  {g.against.length > 1 ? ` ${String(i + 1)}` : ''}
-                </button>
-              ))}
-              <button
-                type="button"
-                className="text-primary hover:underline"
-                onClick={() => panel.show({ kind: 'learned', point: g.point.id })}
-              >
-                {W.pointHistory}
-              </button>
-            </span>
-          </Card>
-        ))}
-      </div>
-    </Section>
   );
 }
 

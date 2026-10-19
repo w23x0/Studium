@@ -36,8 +36,6 @@ export function sourceText(s: SourceView): SourceText {
   const kind = W.sourceKind[s.kind];
   const detail = s.detail !== undefined ? { detail: s.detail } : {};
   switch (s.kind) {
-    case 'm09_record':
-      return { kind, title: s.detail ?? kind };
     case 'loop_line':
       return {
         kind,

@@ -74,12 +74,10 @@ function SourceItem(props: { source: SourceView }) {
   const open: (() => void) | undefined =
     book !== undefined
       ? () => panel.show(book)
-      : s.kind === 'm09_record' && s.resolved
-        ? () => panel.show({ kind: 'learned', recordId: s.raw.trim() })
-        : s.kind === 'loop_line' && s.sessionId !== undefined && s.line !== undefined
-          ? () =>
-              s.sessionId !== undefined && s.line !== undefined && panel.jump(s.sessionId, [s.line])
-          : undefined;
+      : s.kind === 'loop_line' && s.sessionId !== undefined && s.line !== undefined
+        ? () =>
+            s.sessionId !== undefined && s.line !== undefined && panel.jump(s.sessionId, [s.line])
+        : undefined;
   const body = (
     <>
       <span className="text-muted-foreground flex items-center gap-2 text-xs">
