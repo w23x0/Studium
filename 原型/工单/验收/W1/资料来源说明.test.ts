@@ -40,9 +40,7 @@ describe('验收：资料来源说明', () => {
     expect(n.kind).toBe('book');
     expect(n.subject).toBe('大学物理/力学');
     expect(n.quality.reports).toBe(0);
-    // 这套 M08 涉及好几本书：审核报告对不上哪一本，不乱算
-    expect(n.quality.suspected).toBeUndefined();
-    expect(n.quality.text).toContain('没有审核数据');
+    expect(n.quality, '不再有知识点审核的疑似转录错误数').not.toHaveProperty('suspected');
     expect(n.quality.text).toContain('不等于没有别的错');
     expect(n.summary).toContain('类型没说明');
     // 没有综合分数这类字段

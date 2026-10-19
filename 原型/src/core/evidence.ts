@@ -448,7 +448,8 @@ export class Evidence {
       return unknownSource(raw);
     }
     if (at.sessionId !== undefined && at.line !== undefined) {
-      const recs = await this.d.hub.records(at.sessionId).catch(() => []);
+      // 会话不存在时 locate 已标 ok: false，这里不再读
+      const recs = at.ok ? await this.d.hub.records(at.sessionId) : [];
       const hit = recs.find((r) => r.line === at.line);
       const text =
         hit?.record.type === 'user_message' || hit?.record.type === 'assistant_message'
@@ -457,7 +458,7 @@ export class Evidence {
       return {
         raw,
         kind: 'loop_line',
-        resolved: text !== undefined,
+        resolved: at.ok,
         label: `对话 ${at.sessionId} 第 ${String(at.line)} 行`,
         ...(text !== undefined ? { detail: text } : {}),
         sessionId: at.sessionId,
