@@ -121,7 +121,7 @@ export class Evidence {
       verdicts,
       // 诊断 = 模型在工作区里写的 诊断.md（沙盒动作，程序按路径打标签）
       diagnoses: recs.flatMap((r) =>
-        r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG
+        r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok
           ? [{ line: r.line, at: r.record.at, text: r.record.content ?? '' }]
           : [],
       ),

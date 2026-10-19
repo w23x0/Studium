@@ -3,7 +3,7 @@
 // 按 04-实现选型：关掉内置工具、不读 CLAUDE.md 与设置、用我们自己的系统提示；
 // 登录走产品负责人本机的 Claude 订阅（先在本机用 `claude` 登录一次）。
 import { randomUUID } from 'node:crypto';
-import { dirname, resolve } from 'node:path';
+import { dirname, isAbsolute, resolve } from 'node:path';
 import {
   createSdkMcpServer,
   query,
@@ -90,6 +90,7 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
             allowUnsandboxedCommands: false,
             filesystem: {
               allowWrite: [sb.workdir],
+              denyWrite: sb.readOnly.map((e) => e.path),
               denyRead: o.cwd !== undefined ? [o.cwd] : [],
               allowRead: [sb.workdir, ...sb.readOnly.map((e) => e.path)],
             },
@@ -139,6 +140,12 @@ function decide(
     case 'Grep': {
       const abs = input.path === undefined ? resolve(sb.workdir) : pathOf(sb, input.path);
       if (abs === undefined || !canRead(sb, abs)) return deny(`${shown(sb, abs, input)} 读不到`);
+      // 文件匹配式（Glob 的 pattern、Grep 的 glob）自己带绝对路径或 `..` 也会跑到范围外
+      const k = toolName === 'Glob' ? 'pattern' : 'glob';
+      const v = input[k];
+      if (typeof v === 'string' && (isAbsolute(v) || v.split(/[\\/]/).includes('..'))) {
+        return deny(`${k} 只写相对 path 的匹配式，不带绝对路径或 ..`);
+      }
       return allow(input);
     }
     case 'Write':
