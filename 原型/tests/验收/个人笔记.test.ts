@@ -1,4 +1,4 @@
-// 验收：个人笔记进 M07——导入一份或一个目录的 Markdown 笔记，按标题切成小节，存到数据目录下自己的 M07 区；
+// 验收（W4 新版，取代旧版；只把“模型读得到笔记”改用守卫的资料工具，学习对话改在沙盒里读）：个人笔记进资料——导入一份或一个目录的 Markdown 笔记，按标题切成小节，存到数据目录下自己的 M07 区；
 // 标作者 = 学习者、来源 = 个人笔记、原路径；之后和书一样可浏览、检索、引用。不改书库、不改笔记原件。只经 HTTP 验证。
 import { readdir, readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -106,8 +106,8 @@ describe('验收：个人笔记进 M07', () => {
     ).json()) as ResolveCitationsResponse;
     expect(cited.citations[0]).toMatchObject({ resolved: true, book: note.id });
 
-    // 模型的 read_source / search_textbook 同样读得到笔记
-    const tools = app.studium.kind('loop').tools('x');
+    // 模型的 read_source / search_textbook 同样读得到笔记（W4 起学习对话在沙盒里读，这里用守卫的工具）
+    const tools = app.studium.kind('guard').tools('x');
     const found = await tools.find((t) => t.name === 'search_textbook')?.run({ query: '线性组合' });
     expect(found?.text).toContain(note.id);
   });
