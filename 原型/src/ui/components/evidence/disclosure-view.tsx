@@ -2,7 +2,7 @@
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { W } from '../../wording.ts';
-import { Card, Field, Loading, Section } from './parts.tsx';
+import { Badge, Card, Field, Loading, Section } from './parts.tsx';
 
 export function DisclosureView() {
   const r = useLoad('disclosure', () => api.disclosure(), false);
@@ -45,6 +45,20 @@ export function DisclosureView() {
           </table>
         </div>
         <p className="text-muted-foreground text-xs leading-relaxed">{d.note}</p>
+      </Section>
+      <Section title={W.disclosureWebSearch}>
+        {d.webSearch === undefined || d.webSearch.sessions.length === 0 ? (
+          <div className="text-muted-foreground text-sm">{W.disclosureWebSearchNone}</div>
+        ) : (
+          <div className="flex flex-col gap-1.5">
+            {d.webSearch.sessions.map((s) => (
+              <Badge key={s.kind}>{s.label}</Badge>
+            ))}
+          </div>
+        )}
+        {d.webSearch?.note !== undefined && (
+          <p className="text-muted-foreground text-xs leading-relaxed">{d.webSearch.note}</p>
+        )}
       </Section>
       {d.inputs.length > 0 && (
         <Section title={W.disclosureInputs}>

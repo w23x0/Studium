@@ -6,6 +6,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type {
   ChooseRequest,
   ChooseResponse,
+  TicketEditRequest,
   LoopRelationsResponse,
   ShelveRequest,
   CreateSessionResponse,
@@ -354,7 +355,12 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         return;
       }
       if (method === 'POST') {
-        const body = (await readJson(req)) as { text?: unknown; note?: unknown; images?: unknown };
+        // 请求体是 JSON null 时当作什么都没给（各动作自己报缺什么）
+        const body = ((await readJson(req)) ?? {}) as {
+          text?: unknown;
+          note?: unknown;
+          images?: unknown;
+        };
         const note = typeof body.note === 'string' ? body.note : '学习者在界面上点了按钮';
         switch (action) {
           case 'messages': {
@@ -384,6 +390,12 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
                 ...(r.line !== undefined ? { line: r.line } : {}),
               },
             } satisfies ObjectionResponse);
+            return;
+          }
+          case 'ticket-edit': {
+            // 学习者改这次学习的单子（工单 W6 §4.1）：合格回改后的整张单子
+            const b = body as Partial<TicketEditRequest>;
+            send(res, 200, await studium.editTicket(id, b));
             return;
           }
           case 'confirm-close':

@@ -1,4 +1,4 @@
-// 批 10b 界面的纯转换（可单测）：来源说明的显示行、检索筛选的查询串、状态时间轴的着色 / 分天 / 阶段变化、跨领域标记。
+// 界面的纯转换（可单测）：来源说明的显示行、状态时间轴的着色 / 分天 / 阶段变化、跨领域标记。
 import type {
   CrossDomainView,
   NoteItem,
@@ -17,24 +17,6 @@ export interface NoteRow {
 /** 来源说明里的五项，按固定顺序；没有的 item 为空（界面写“还没说明”，不编）。 */
 export function noteRows(n: SourceNoteView): NoteRow[] {
   return SOURCE_NOTE_FIELDS.map((field) => ({ field, item: n[field] }));
-}
-
-/** 检索筛选的查询串：空的条件不带。 */
-export function filterParams(f: {
-  type?: string | undefined;
-  point?: string | undefined;
-  inBook?: string | undefined;
-}): Record<string, string> {
-  const out: Record<string, string> = {};
-  if (f.type !== undefined && f.type !== '') out.type = f.type;
-  if (f.point !== undefined && f.point !== '') out.point = f.point;
-  if (f.inBook !== undefined && f.inBook !== '') out.inBook = f.inBook;
-  return out;
-}
-
-/** 有几个筛选条件在起作用。 */
-export function activeFilters(f: Parameters<typeof filterParams>[0]): number {
-  return Object.keys(filterParams(f)).length;
 }
 
 // ───────────── 状态时间轴 ─────────────

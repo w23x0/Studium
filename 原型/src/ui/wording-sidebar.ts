@@ -44,7 +44,7 @@ export const WS = {
   logout: '退出登录',
   notYet: '还没做',
   devMode: '开发者模式',
-  devModeHint: '打开后，右上角可以打开旁边的面板，看资料、知识点、记录、教法和外发内容。',
+  devModeHint: '打开后，右上角可以打开旁边的面板，看资料、记录、教法和外发内容。',
   // ── 项目页里的全部对话 ──
   projectChats: '这个项目里的对话',
 } as const;

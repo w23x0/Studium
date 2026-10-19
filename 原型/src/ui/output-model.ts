@@ -173,7 +173,7 @@ export function splitAuthors(s: string): string[] {
 
 // ───────────── 编辑位置（存在浏览器本地） ─────────────
 
-/** 上次编辑停在哪：光标 / 选区起止、文本框滚到哪（M14“恢复位置”）。 */
+/** 上次编辑停在哪：光标 / 选区起止、文本框滚到哪（知识产出的“恢复位置”）。 */
 export interface EditPosition {
   start: number;
   end: number;

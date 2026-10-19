@@ -19,7 +19,8 @@ import { W } from '../../wording.ts';
 import { CardEvidence } from './card-view.tsx';
 import { DisclosureView } from './disclosure-view.tsx';
 import { LoopView } from './loop-view.tsx';
-import { LearnedView, StateView, TeachingView } from './records-view.tsx';
+import { StateView, TeachingView } from './records-view.tsx';
+import { LearnedView } from '../longterm/learned.tsx';
 import { ToolsView } from './tools-view.tsx';
 import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
 import { SourceView } from '../sources/source-view.tsx';
@@ -71,12 +72,13 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
           loopId={t.loopId}
           verdictLine={t.verdictLine}
           noteLine={t.noteLine}
+          editTicket={t.editTicket}
         />
       );
     case 'card':
       return <CardEvidence key={t.cardId} cardId={t.cardId} option={t.option} />;
     case 'learned':
-      return <LearnedView key={`${t.point ?? ''}:${t.recordId ?? ''}`} />;
+      return <LearnedView key={t.loopId ?? ''} loopId={t.loopId} />;
     case 'state':
       return <StateView />;
     case 'teaching':

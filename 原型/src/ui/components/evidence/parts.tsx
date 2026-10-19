@@ -1,18 +1,13 @@
 // 依据面板里反复用到的小块：小节、标签、模型、点的名字、原话、不同看法。
 import { useState, type ReactNode } from 'react';
 import { CornerDownRightIcon, MessageSquareQuoteIcon } from 'lucide-react';
-import type {
-  ModelInfo,
-  ObjectionView,
-  PointRef,
-  QuoteView,
-  TicketView,
-} from '../../../shared/protocol.ts';
+import type { ModelInfo, ObjectionView, QuoteView } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { segmentLines, shortTime, splitLineRefs } from '../../evidence-model.ts';
 import { usePanel } from '../../panel.ts';
 import { citationPieces } from '../../source-model.ts';
+import type { TicketRow } from '../../ticket-model.ts';
 import { CitationChip, CitationsProvider } from '../sources/citation.tsx';
 import { W } from '../../wording.ts';
 
@@ -102,60 +97,37 @@ export function ModelLine(props: { model: ModelInfo; label?: string }) {
   );
 }
 
-/** 一个点的名字（不再查知识点库，就是它自己）。 */
-export function PointLink(props: { point: PointRef }) {
-  return <span>{props.point.name}</span>;
-}
-
-/** 一次学习开场时的安排：要学什么、预期理解、从哪出发、对资料核的结果。 */
-export function TicketBlock(props: { ticket: TicketView }) {
-  const { ticket } = props;
+/** 单子按文字排成几行：每行一个栏名、正文、来源标注；有链接的点开原文或跳到那一句。 */
+export function TicketRowList(props: { rows: readonly TicketRow[]; className?: string }) {
+  const panel = usePanel();
   return (
-    <div className="flex flex-col gap-3">
-      <Field label={W.newPoint}>
-        <span>{ticket.newPoint}</span>
-      </Field>
-      <Field label={W.clause}>
-        <span>{ticket.clause}</span>
-      </Field>
-      {ticket.startPoints.length > 0 && (
-        <Field label={W.startPoints}>
-          <ul className="flex flex-col gap-1">
-            {ticket.startPoints.map((s, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-2">
-                <CornerDownRightIcon className="text-muted-foreground size-3.5" />
-                <span>{s.point}</span>
-                <Badge>{W.startSource[s.source]}</Badge>
-                {s.ref !== undefined && (
-                  <span className="text-muted-foreground text-xs">{s.ref}</span>
-                )}
-              </li>
-            ))}
-          </ul>
+    <div className={cn('flex flex-col gap-3', props.className)}>
+      {props.rows.map((r, i) => (
+        <Field key={i} label={r.label}>
+          <span className="flex flex-wrap items-center gap-2">
+            <span>{r.text}</span>
+            {r.note !== undefined && (
+              <Badge tone={r.modelAdded === true ? 'warn' : 'neutral'}>{r.note}</Badge>
+            )}
+            {r.link !== undefined && (
+              <button
+                type="button"
+                className="text-primary flex items-center gap-1 text-xs hover:underline"
+                onClick={() =>
+                  r.link?.kind === 'panel'
+                    ? panel.show(r.link.target)
+                    : r.link?.kind === 'jump'
+                      ? panel.jump(r.link.sessionId, r.link.lines)
+                      : undefined
+                }
+              >
+                <CornerDownRightIcon className="size-3.5" />
+                {r.link.kind === 'panel' ? W.openThere : W.jumpTo}
+              </button>
+            )}
+          </span>
         </Field>
-      )}
-      {ticket.sourceCheck.length > 0 && (
-        <Field label={W.sourceCheck}>
-          <ul className="flex flex-col gap-1">
-            {ticket.sourceCheck.map((c, i) => (
-              <li key={i} className="flex flex-wrap items-center gap-2">
-                <span>{c.claim}</span>
-                {c.at !== undefined && (
-                  <span className="text-muted-foreground text-xs">{c.at}</span>
-                )}
-                {c.modelAdded === true && <Badge tone="warn">{W.modelAdded}</Badge>}
-              </li>
-            ))}
-          </ul>
-        </Field>
-      )}
-      {ticket.routeAction !== '' && <Field label={W.routeAction}>{ticket.routeAction}</Field>}
-      {ticket.revisit !== undefined && (
-        <div className="flex items-center gap-2 text-xs">
-          <Badge tone="accent">{W.revisitKind[ticket.revisit.kind]}</Badge>
-          <span className="text-muted-foreground">{W.revisitHint[ticket.revisit.kind]}</span>
-        </div>
-      )}
+      ))}
     </div>
   );
 }

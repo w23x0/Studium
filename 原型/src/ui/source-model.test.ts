@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CitationView, SourceReport } from '../shared/protocol.ts';
 import {
-  asBBox,
   bookLineTarget,
   boxStyle,
   citationIndex,
@@ -123,8 +122,6 @@ describe('原件位置框', () => {
         [5, 25, 50, 35],
       ]),
     ).toEqual([5, 20, 50, 40]);
-    expect(asBBox([1, 2, 3])).toBeUndefined();
-    expect(asBBox([1, 2, 3, 4])).toEqual([1, 2, 3, 4]);
   });
 });
 

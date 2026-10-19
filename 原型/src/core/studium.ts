@@ -50,9 +50,13 @@ import { locate, type LocateDeps } from './locate.ts';
 import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
+import { currentTicket } from './ticket.ts';
 import { guardView, learnerLines, renderTranscript } from './transcript.ts';
 
 export class BadRequestError extends Error {}
+
+/** 出发点的来源（学过的记录 / 自述 / 假定）。 */
+type StartSource = (typeof START_SOURCES)[number];
 
 /** 学习者离开多久算“隔了一阵回来”，回来时程序追加离开多久。 */
 const AWAY_MS = 30 * 60 * 1000;
@@ -500,7 +504,7 @@ export class Studium {
     });
     await this.hub.idle(m05.sessionId);
     const card = this.cards.get(m05.sessionId);
-    if (!card) throw new Error('M05 没有提交选择卡（见该会话记录）');
+    if (!card) throw new Error('导航没有提交选择卡（见该会话记录）');
     // 每次出卡先写一条路线决定，紧接着写卡（记录/单子与路线.md「路线决定与理由」）；
     // 同一主对话的几次出卡排队写，决定与卡才相邻、取代链不断
     return this.inRouteOrder(mainId, async () => {
@@ -593,6 +597,102 @@ export class Studium {
       text: await this.loopOpening(picked.ticket, loop.sessionId),
     });
     return loop.sessionId;
+  }
+
+  // ───────────── 改单子（学习者侧）─────────────
+
+  /**
+   * 学习者改这次学习的单子（工单 W6 §4.1；记录/单子与路线.md「单子」规矩“可见可改”）：
+   * 合格就追加一条 `ticket_edited`（改前、改后、时间），把改动告诉学习对话，回改后的整张单子；
+   * 不合格什么都不写。开学习那行与卡上那张都不改（只追加）。
+   */
+  async editTicket(
+    loopId: string,
+    raw: { newPoint?: unknown; clause?: unknown; startPoints?: unknown } | null | undefined,
+  ): Promise<{ line: number; ticket: Ticket }> {
+    const body = raw ?? {};
+    const opened = await this.hub.opened(loopId).catch((err: unknown) => {
+      if (err instanceof NotFoundError) throw new NotFoundError(`没有这个会话：${loopId}`);
+      throw err;
+    });
+    if (opened.kind !== 'loop') throw new BadRequestError('只能改一次学习的单子。');
+    const records = await this.hub.records(loopId);
+    if (records.some((r) => r.record.type === 'loop_ended')) {
+      throw new BadRequestError('这次学习已经结束了，单子不能再改。');
+    }
+    const before = currentTicket(records);
+    if (before === undefined) throw new BadRequestError('这次学习没有单子，改不了。');
+    const after: Ticket = { ...before };
+    let given = 0;
+    if (body.newPoint !== undefined) {
+      after.newPoint = ticketText('要学的', body.newPoint);
+      given += 1;
+    }
+    if (body.clause !== undefined) {
+      after.clause = ticketText('学完应该能', body.clause);
+      given += 1;
+    }
+    if (body.startPoints !== undefined) {
+      after.startPoints = await this.checkedStartPoints(body.startPoints);
+      given += 1;
+    }
+    if (given === 0)
+      throw new BadRequestError('没有给要改的项：可以改要学的、学完应该能、从哪些已有的出发。');
+    if (JSON.stringify(before) === JSON.stringify(after)) {
+      throw new BadRequestError('和现在的单子一样，没有改动。');
+    }
+    const line = await this.hub.record(loopId, {
+      type: 'ticket_edited',
+      at: this.iso(),
+      by: 'learner',
+      before,
+      after,
+    });
+    await this.hub.send(loopId, {
+      role: 'program',
+      text: [
+        `学习者改了这次的单子（第 ${String(line)} 行），之后按改后的来。`,
+        `改前：${this.describeTicket(before)}`,
+        `改后：${this.describeTicket(after)}`,
+      ].join('\n'),
+    });
+    return { line, ticket: after };
+  }
+
+  /** 出发点数组的核对：至少一项；每项写清是什么、从哪来；给了依据要能定位（同选择卡的规则）。 */
+  private async checkedStartPoints(v: unknown): Promise<Ticket['startPoints']> {
+    if (!Array.isArray(v) || v.length === 0) {
+      throw new BadRequestError('从哪些已有的出发要给一项以上，每项写清是什么、从哪来。');
+    }
+    const out: Ticket['startPoints'] = [];
+    for (const [i, one] of v.entries()) {
+      const where = `第 ${String(i + 1)} 个出发点`;
+      if (typeof one !== 'object' || one === null)
+        throw new BadRequestError(`${where}没写清是什么。`);
+      const x = one as { point?: unknown; source?: unknown; ref?: unknown };
+      if (typeof x.point !== 'string' || x.point.trim() === '') {
+        throw new BadRequestError(`${where}没写清是什么。`);
+      }
+      const source = x.source as StartSource | undefined;
+      if (typeof source !== 'string' || !START_SOURCES.includes(source)) {
+        throw new BadRequestError(
+          `${where}的“从哪来”只能是 ${START_SOURCES.join(' / ')} 里的一个。`,
+        );
+      }
+      if (x.ref !== undefined && typeof x.ref !== 'string') {
+        throw new BadRequestError(`${where}的依据要写成文字。`);
+      }
+      if (typeof x.ref === 'string') {
+        const at = await locate(x.ref, this.locateDeps());
+        if (!at.ok) throw new BadRequestError(`${where}的依据「${x.ref}」查不到，改一下或去掉。`);
+      }
+      out.push({
+        point: x.point.trim(),
+        source: source,
+        ...(typeof x.ref === 'string' ? { ref: x.ref } : {}),
+      });
+    }
+    return out;
   }
 
   /** 申请收口：开守卫、核对引用行、记判定。学习者申请时把结论作为事实追加回闭环对话。 */
@@ -830,7 +930,7 @@ export class Studium {
       });
     }
     this.organizeStateLater(`一段学习（${loopId}）结束了`, loopId);
-    this.background('M10 记录', () => this.recordStrategy(loopId));
+    this.background('教法记录整理', () => this.recordStrategy(loopId));
   }
 
   /** 触发原因（工单 §4.4）：补前置合上 / 合上 / 没合上，各带那次学习的标题与 id。 */
@@ -851,15 +951,18 @@ export class Studium {
   private readonly verdicts = new Map<string, Omit<GuardVerdict, 'type' | 'at'>>();
 
   private async runGuard(loopId: string): Promise<GuardVerdict> {
-    const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
-    const guard = await this.hub.createSession('guard', { title: '守卫', parent: loopId });
+    const guard = await this.hub.createSession('guard', {
+      title: '检查这次学会没有',
+      parent: loopId,
+    });
     this.guardTarget.set(guard.sessionId, records);
-    const ticket = opened.ticket;
+    // 守卫按收口那一刻的单子判：学习者改过就用改后的（工单 W6 §9）
+    const ticket = currentTicket(records);
     await this.hub.send(guard.sessionId, {
       role: 'program',
       text: [
-        '要判的闭环单子：',
+        '要判的这次学习的单子：',
         ticket ? this.describeTicket(ticket) : '（缺单子）',
         '',
         '这次学习的对话（L 后是行号；只放双方对话；程序事实、模型一侧的诊断与沙盒动作不给）：',
@@ -1150,7 +1253,7 @@ export class Studium {
         .boolean()
         .optional()
         .describe(
-          '阶段验收：这个闭环是一次阶段验收（练习都按验收算、默认不给提示），不是学新内容或日常练习时填真；守卫照常判',
+          '阶段验收：这次学习是一次阶段验收（练习都按验收算、默认不给提示），不是学新内容或日常练习时填真；守卫照常判',
         ),
       return_to: z
         .string()
@@ -1186,7 +1289,7 @@ export class Studium {
         .array(z.string().min(1))
         .min(1)
         .describe(
-          '这个选项从哪来，每条可回查：闭环原文“会话 id:行号”、书里“书名/文件:行号”（书名、文件照教材查询工具给的写）',
+          '这个选项从哪来，每条可回查：学习对话原文“会话 id:行号”、书里“书名/文件:行号”（书名、文件照教材查询工具给的写）',
         ),
     });
     return {
@@ -1712,7 +1815,7 @@ export class Studium {
       },
       {
         name: 'request_card',
-        description: '请 M05 出下一闭环的选择卡；出好后贴在主对话里，由学习者选。',
+        description: '请导航出下一次学习的选择卡；出好后贴在主对话里，由学习者选。',
         input: { reason: z.string() },
         run: async (a) => {
           const card = await this.requestCard(
@@ -1728,7 +1831,7 @@ export class Studium {
       {
         name: 'point_to_conversation',
         description:
-          '学习者要接着某个已有的对话（比如一个还在进行的闭环）时调用：在主对话里放一个回到那里的入口。',
+          '学习者要接着某个已有的对话（比如一次还在进行的学习）时调用：在主对话里放一个回到那里的入口。',
         input: { session: z.string().describe('会话 id（list_learned 里有）') },
         run: async (a) => {
           const id = a.session as string;
@@ -2084,7 +2187,7 @@ export class Studium {
     const run = this.stateChain.then(() => this.organizeState(trigger, from, force));
     // 链上只管排队：这次失败不挡下一次；失败本身由 background 写进核心日志
     this.stateChain = run.catch(() => undefined);
-    this.background('M15 整理', () => run);
+    this.background('状态整理', () => run);
   }
 
   private async organizeState(trigger: string, from: string | undefined, force: boolean) {
@@ -2240,7 +2343,7 @@ export class Studium {
     return {
       name: 'query_state',
       description:
-        '查学习者的非知识状态与条件（M15）：先看“当前状态”页；detail 为真时列出全部状态记录（每条标承载读数 / 解释候选、来源、时间范围、依据行号）。解释候选须经 M04 裁决才能当行动依据。',
+        '查学习者的非知识状态与条件（状态记录）：先看“当前状态”页；detail 为真时列出全部状态记录（每条标承载读数 / 解释候选、来源、时间范围、依据行号）。解释候选须经一次独立判断才能当行动依据。',
       input: { detail: z.boolean().optional() },
       run: (a) => {
         const rows = this.o.m15.allRecords();
@@ -2266,7 +2369,7 @@ export class Studium {
       this.readSessionTool(),
       {
         name: 'read_state_records',
-        description: '读 M15 自己的底层状态记录（全部）与当前状态页。',
+        description: '读状态记录自己的底层记录（全部）与当前状态页。',
         input: {},
         run: () =>
           ok(
@@ -2395,6 +2498,8 @@ export class Studium {
   private async recordStrategy(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
+    // 学习者改过单子就按改后的记（工单 W6 §4.1：凡“现在的单子”都走 currentTicket）
+    const now = currentTicket(records);
     const notes = records.flatMap((r) =>
       r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok
         ? [`L${String(r.line)} ${r.record.content ?? ''}`]
@@ -2428,7 +2533,7 @@ export class Studium {
       role: 'program',
       text: [
         `一次学习：${loopId}「${opened.title}」`,
-        `单子：${opened.ticket ? this.describeTicket(opened.ticket) : '（缺）'}`,
+        `单子：${now !== undefined ? this.describeTicket(now) : '（缺）'}`,
         `结束：${ended?.record.type === 'loop_ended' ? (ended.record.closed ? '合上（学习者已确认）' : '没合上就结束') : '（缺）'}`,
         '',
         `守卫判定：\n${verdicts.join('\n') || '（没申请过收口）'}`,
@@ -2455,7 +2560,7 @@ export class Studium {
     return {
       name: 'write_strategy_record',
       description:
-        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这个闭环的行号。单次记录不证明因果。',
+        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这次学习的行号。单次记录不证明因果。',
       input: {
         conditions: z.string(),
         strategies: z.string(),
@@ -2468,7 +2573,7 @@ export class Studium {
       },
       run: async (a) => {
         const target = this.strategyTargets.get(m10Id);
-        if (!target) return err('找不到要记的闭环');
+        if (!target) return err('找不到要记的那次学习');
         const selfCheck = typeof a.self_check === 'string' ? a.self_check.trim() : '';
         if (target.annotatedStateIds.length > 0 && selfCheck === '') {
           return err(
@@ -2477,7 +2582,7 @@ export class Studium {
         }
         const lines = a.evidence_lines as number[];
         const bad = lines.filter((l) => !target.lines.has(l));
-        if (bad.length > 0) return err(`第 ${bad.join('、')} 行不在这个闭环的记录里`);
+        if (bad.length > 0) return err(`第 ${bad.join('、')} 行不在这次学习的记录里`);
         await this.o.m10.add({
           id: this.newId('sr'),
           at: this.iso(),
@@ -2550,7 +2655,7 @@ export class Studium {
       {
         name: 'textbook_index',
         description:
-          '不给书名：列出项目选用的资料（书和个人笔记，按学科分组；项目没选就是整个书库），all=true 列整个书库；给书名：读这本书的 M07 目录。',
+          '不给书名：列出项目选用的资料（书和个人笔记，按学科分组；项目没选就是整个书库），all=true 列整个书库；给书名：读这本书的目录。',
         input: { book: z.string().optional(), all: allParam },
         run: async (a) => {
           const book = a.book as string | undefined;
@@ -2585,7 +2690,7 @@ export class Studium {
       {
         name: 'read_source',
         description:
-          '读 M07 一个小节文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
+          '读资料里一个小节文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
         input: {
           book: z.string(),
           file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md'),
@@ -2647,6 +2752,14 @@ export class Studium {
   }
 }
 
+/** 单子里的一栏：要是文字、去掉空白后不能是空的（改单子的核对）。 */
+function ticketText(label: string, v: unknown): string {
+  if (typeof v !== 'string') throw new BadRequestError(`${label}要写成文字。`);
+  const t = v.trim();
+  if (t === '') throw new BadRequestError(`${label}不能是空的。`);
+  return t;
+}
+
 /** 教学行只取开头一段（M15 用作紧邻前序事件）。 */
 function excerpt(r: NumberedRecord): string {
   const t = renderTranscript([r]);
@@ -2656,7 +2769,7 @@ function excerpt(r: NumberedRecord): string {
 function verdictFact(v: GuardVerdict): string {
   if (v.problem !== undefined) return `守卫判定：未合上（${v.problem}）。接着教。`;
   return v.closed
-    ? `守卫判定：合上。依据：${v.basis}\n请学习者确认结束；学习者在界面上确认后闭环结束。`
+    ? `守卫判定：合上。依据：${v.basis}\n请学习者确认结束；学习者在界面上确认后这次学习结束。`
     : `守卫判定：未合上。依据：${v.basis}\n接着教。`;
 }
 

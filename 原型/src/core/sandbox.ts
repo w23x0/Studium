@@ -115,7 +115,7 @@ export class Sandboxes {
 
   // ───────────── 只读区的内容 ─────────────
 
-  /** 每本可用的书一项：`资料/<书 id>` → 这本书的 M07 目录。 */
+  /** 每本可用的书一项：`资料/<书 id>` → 这本书的切分目录。 */
   private async bookEntries(sessionId: string): Promise<{ name: string; path: string }[]> {
     const scope = await this.o.scopeOf(sessionId);
     const books = scope ?? (await this.o.m07.books());

@@ -84,6 +84,9 @@ export function toUiMessages(
       case 'loop_ended':
         push({ id, role: 'system', text: r.closed ? '这部分学完了。' : '先学到这里。', line });
         break;
+      case 'ticket_edited':
+        push({ id, role: 'system', text: W.ticketEdited, line });
+        break;
       case 'project_goal':
         push({ id, role: 'system', text: `记下了你的方向：${r.text}`, line });
         break;
@@ -171,7 +174,7 @@ export type LoopState =
   | { kind: 'awaiting_confirm'; basis: string }
   | { kind: 'ended'; closed: boolean };
 
-/** 闭环对话现在在哪一步：进行中 / 守卫判合上等学习者确认 / 已结束。 */
+/** 学习对话现在在哪一步：进行中 / 判定合上、等学习者确认 / 已结束。 */
 export function loopState(records: NumberedRecord[]): LoopState {
   let state: LoopState = { kind: 'open', closeRequested: false };
   for (const { record: r } of records) {

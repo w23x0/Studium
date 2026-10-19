@@ -47,7 +47,7 @@ describe('toUiMessages', () => {
 
   it('程序事实不显示；选定后显示去那个任务的入口', () => {
     const rs: NumberedRecord[] = [
-      { line: 1, record: { type: 'program_fact', at, text: '本闭环的单子' } },
+      { line: 1, record: { type: 'program_fact', at, text: '这次学习的单子' } },
       {
         line: 2,
         record: {
@@ -85,6 +85,27 @@ describe('toUiMessages', () => {
         line: 3,
         link: { sessionId: 'L', label: '开始学：位移' },
       },
+    ]);
+  });
+});
+
+describe('改单子', () => {
+  it('学习者改单子在对话里显示成一句提示', () => {
+    const ticket = {
+      newPoint: '位移',
+      clause: '从坐标相减出发',
+      startPoints: [],
+      routeAction: '继续主线',
+      sourceCheck: [],
+    };
+    const rs: NumberedRecord[] = [
+      {
+        line: 5,
+        record: { type: 'ticket_edited', at, by: 'learner', before: ticket, after: ticket },
+      },
+    ];
+    expect(toUiMessages(rs, '')).toEqual([
+      { id: 'l5', role: 'system', text: '你改了这次要学的内容。', line: 5 },
     ]);
   });
 });

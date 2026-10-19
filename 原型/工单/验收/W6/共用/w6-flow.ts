@@ -72,12 +72,12 @@ export function newFlow(): Flow {
   return { evidenceLine: 0 };
 }
 
-/** 带沙盒动作的一步（W4 起 FakeStep 才有 sandbox 字段）。 */
+/** 带沙盒动作的一步（沙盒动作写在工作区的 诊断.md 里）。 */
 function withSandbox(
   sandbox: { op: 'append'; path: string; content: string }[],
   text: string,
 ): FakeStep {
-  return { sandbox, text } as FakeStep;
+  return { sandbox, text };
 }
 
 export function responder(flow: Flow) {
