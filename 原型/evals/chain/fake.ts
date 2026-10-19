@@ -52,7 +52,10 @@ function system(leak: boolean) {
         calls: [
           {
             name: 'settle_goal',
-            args: { goal: '学力学基础，能自己推导常见问题', project_name: '力学基础' },
+            args: {
+              title: '力学基础',
+              abilities: [{ ability: '学力学基础，能自己推导常见问题', reason: '想自己推导' }],
+            },
           },
         ],
         text: '就这么定了。',

@@ -173,6 +173,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     sources,
     inputs,
     teaching,
+    webSearchKinds: () => studium.webSearchKinds(),
   });
   const server = await startServer({
     hub,

@@ -457,6 +457,11 @@ export interface DisclosureResponse {
   adapter: string;
   /** 会送出去的内容。 */
   sends: string[];
+  /** 会联网搜索的会话种类与说明（畅谈、导航；来自程序实际放开的名单）。 */
+  webSearch?: {
+    sessions: { kind: ConversationKind; label: string }[];
+    note?: string;
+  };
   /** 各类会话配的模型与强度；model 为空 = 没单独指定（用服务默认，实际执行的模型记在每条记录里）。 */
   sessions: {
     kind: ConversationKind;

@@ -15,7 +15,7 @@ import {
   type SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 import {
-  formatProgramFact,
+  modelText,
   type ConversationSpec,
   type ImageData,
   type ImageTranscriber,
@@ -67,12 +67,14 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
   const effort = profile?.effort ?? o.effort;
   const sb = spec.sandbox;
   const cwd = sb !== undefined ? sb.workdir : o.cwd;
+  // 只放联网搜索与网页抓取两个内置工具；没有会话同时带沙盒与 webSearch（工单 W5 §4.6）
+  const webTools = spec.webSearch === true ? ['WebSearch', 'WebFetch'] : [];
   return {
     systemPrompt: spec.systemPrompt,
-    tools: sb !== undefined ? SANDBOX_TOOLS : [],
+    tools: [...(sb !== undefined ? SANDBOX_TOOLS : []), ...webTools],
     settingSources: [],
     mcpServers: { [SERVER]: server },
-    allowedTools: spec.tools.map((t) => `mcp__${SERVER}__${t.name}`),
+    allowedTools: [...spec.tools.map((t) => `mcp__${SERVER}__${t.name}`), ...webTools],
     strictMcpConfig: true,
     includePartialMessages: true,
     ...(spec.resumeToken !== undefined ? { resume: spec.resumeToken } : {}),
@@ -301,7 +303,7 @@ class SdkConversation implements ModelConversation {
       type: 'user',
       message: {
         role: 'user',
-        content: input.role === 'program' ? formatProgramFact(input.text) : input.text,
+        content: modelText(input),
       },
       parent_tool_use_id: null,
       uuid,

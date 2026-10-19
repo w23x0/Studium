@@ -4,7 +4,7 @@ import { mkdir, readFile, writeFile, appendFile } from 'node:fs/promises';
 import { dirname } from 'node:path';
 import { canRead, canWrite, resolveSandboxPath, virtualPath } from './sandbox-paths.ts';
 import {
-  formatProgramFact,
+  modelText,
   type ConversationSpec,
   type ImageData,
   type ImageTranscriber,
@@ -269,7 +269,7 @@ async function runSandboxOp(
 }
 
 function seenText(input: TurnInput): string {
-  return input.role === 'program' ? formatProgramFact(input.text) : input.text;
+  return modelText(input);
 }
 
 function chunks(s: string): string[] {

@@ -3,6 +3,7 @@
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
+import { CONVERSATION_KIND_LABELS } from '../shared/protocol.ts';
 import type {
   ProjectDeadlineResponse,
   ProjectMaterialsResponse,
@@ -20,6 +21,7 @@ import {
   type ChoiceCard,
   type ChoiceOption,
   type ConversationKind,
+  type GoalAbility,
   type GuardVerdict,
   type ImageInput,
   type LearnerObjection,
@@ -30,6 +32,7 @@ import {
   type Understanding,
 } from '../shared/records.ts';
 import type { Crosslinks } from './crosslinks.ts';
+import { currentGoal, describeGoal, goalText } from './goal.ts';
 import { Learned } from './learned.ts';
 import type { Learning } from '../shared/protocol-learned.ts';
 import { LongTerm } from './longterm.ts';
@@ -187,6 +190,13 @@ export class Studium {
 
   kind = (kind: ConversationKind): KindConfig => ({
     systemPrompt: this.o.prompts[kind],
+    ...(kind === 'main'
+      ? {
+          rebuild: (sessionId: string, inputLine: number) => this.mainPreface(sessionId, inputLine),
+        }
+      : {}),
+    // 畅谈与导航可联网搜索；其余会话不放开（工单 W5 §4.6）
+    ...(kind === 'talk' || kind === 'm05' ? { webSearch: true } : {}),
     ...(kind === 'loop'
       ? {
           sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
@@ -204,6 +214,7 @@ export class Studium {
           // 同一类会话两种活：谈方向；阶段复盘（finish_review 只在复盘会话里可用）
           return [
             ...this.readTools(sessionId),
+            this.listLearnedTool(sessionId),
             this.settleGoalTool(sessionId),
             ...this.longterm.reviewTools(sessionId),
           ];
@@ -241,6 +252,13 @@ export class Studium {
     },
   });
 
+  /** 会联网搜索的会话种类；外发披露只从这里取，不另写一份名单（工单 W5 §4.6）。 */
+  webSearchKinds(): ConversationKind[] {
+    return (Object.keys(CONVERSATION_KIND_LABELS) as ConversationKind[]).filter(
+      (k) => this.kind(k).webSearch === true,
+    );
+  }
+
   // ───────────── 事件 ─────────────
 
   /** 一个项目一条主对话；没有就开一条。 */
@@ -263,8 +281,9 @@ export class Studium {
   > {
     const out: { mainSessionId: string; title: string; goal?: string; deadline?: string }[] = [];
     for (const m of this.hub.listSessions().filter((s) => s.kind === 'main')) {
-      const recs = (await this.hub.records(m.sessionId)).map((r) => r.record);
-      const goal = recs.filter((r) => r.type === 'project_goal').at(-1);
+      const numbered = await this.hub.records(m.sessionId);
+      const recs = numbered.map((r) => r.record);
+      const goal = currentGoal(numbered);
       const title = recs.filter((r) => r.type === 'project_title').at(-1);
       const opened = recs[0];
       out.push({
@@ -275,7 +294,7 @@ export class Studium {
             : opened?.type === 'session_opened'
               ? opened.title
               : m.title,
-        ...(goal?.type === 'project_goal' ? { goal: goal.text } : {}),
+        ...(goal !== undefined ? { goal: goal.goal.text } : {}),
         ...(foldDeadline(recs).deadline !== undefined
           ? { deadline: foldDeadline(recs).deadline }
           : {}),
@@ -957,7 +976,7 @@ export class Studium {
   private async m05Opening(trigger: string, mainId: string): Promise<string> {
     const records = await this.hub.records(mainId);
     const main = records.map((r) => r.record);
-    const goal = main.filter((r) => r.type === 'project_goal').at(-1);
+    const goal = currentGoal(records);
     const learned = await this.learned.list(mainId);
     const parked = await this.learned.parked(mainId);
     const devs = (await routeDeviations(this.hub, mainId)).slice(-5);
@@ -1040,7 +1059,9 @@ export class Studium {
     return [
       `触发原因：${trigger}`,
       '',
-      `方向目标：${goal?.type === 'project_goal' ? goal.text : '（还没有；按默认先验——高中以上、脱离应试——出临时选项，标“临时”）'}`,
+      goal !== undefined
+        ? describeGoal(goal.goal)
+        : '方向目标：（还没有；按默认先验——高中以上、脱离应试——出临时选项，标“临时”）',
       '',
       `期限：${deadline !== undefined ? this.deadlineText(foldDeadline(main)) : '没有记'}`,
       '',
@@ -1553,6 +1574,96 @@ export class Studium {
 
   // ───────────── 主对话 ─────────────
 
+  /**
+   * 主对话与畅谈共用的只读工具（工单 W5 §4.5）：方向目标一段，学过的记录每次一行（上层单子 +
+   * 中层判定里的实际理解），外部导入单列标未验证。主对话问进度、畅谈看已储备什么都用它。
+   */
+  private listLearnedTool(sessionId: string): ToolSpec {
+    return {
+      name: 'list_learned',
+      description:
+        '列出这个项目里学过的记录：方向目标；每次学习一行（合上的带守卫写下的实际理解与证据强度，没合上的带结束原话与当时的路线决定），以及外部导入（未验证）。',
+      input: {},
+      run: async () => {
+        const mainId = await this.projectOf(sessionId);
+        if (mainId === undefined) return err('找不到这个对话所属的项目');
+        const goal = currentGoal(await this.hub.records(mainId));
+        const body = await this.learned.list(mainId);
+        const rows = body.learnings.map((l) => `- ${this.learned.line(l)}`);
+        const imports = body.imports.map(
+          (x) =>
+            `- ${x.channel}：${'session' in x.ref ? `${x.ref.session} 第 ${x.ref.lines.join('、')} 行` : `笔记 ${x.ref.note}`}（未验证，不算学会）`,
+        );
+        return ok(
+          [
+            goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
+            '',
+            `学过的记录（每次学习一行）：\n${rows.join('\n') || '（还没有）'}`,
+            ...(imports.length > 0
+              ? ['', `外部导入（学习者自述 / 笔记，未验证，不算学会）：\n${imports.join('\n')}`]
+              : []),
+          ].join('\n'),
+        );
+      },
+    };
+  }
+
+  /**
+   * 主对话每轮的开场（工单 W5 §4.4）：从记录重建，不靠长上下文。方向目标、期限、最近 12 条消息、
+   * 最新路线决定与最近 3 张卡；这一轮需要的就这些，其余经 list_learned 按需读。
+   */
+  private async mainPreface(mainId: string, inputLine: number): Promise<string> {
+    const records = await this.hub.records(mainId);
+    const goal = currentGoal(records);
+    const deadline = foldDeadline(records.map((r) => r.record));
+    const messages: string[] = [];
+    for (const { line, record } of records) {
+      if (line >= inputLine) continue;
+      if (
+        record.type !== 'user_message' &&
+        record.type !== 'assistant_message' &&
+        record.type !== 'program_fact'
+      ) {
+        continue;
+      }
+      const who =
+        record.type === 'user_message'
+          ? '学习者'
+          : record.type === 'assistant_message'
+            ? '你'
+            : '程序';
+      const text = record.text.length > 300 ? `${record.text.slice(0, 300)}…` : record.text;
+      messages.push(`L${String(line)} ${who}：${text}`);
+    }
+    const recent = messages.slice(-12);
+    const decision = records.filter((r) => r.record.type === 'route_decision').at(-1);
+    const cards = records.filter((r) => r.record.type === 'choice_card').slice(-3);
+    const cardLines = cards.map(({ line, record }) => {
+      if (record.type !== 'choice_card') return '';
+      const made = records.find(
+        (r) => r.record.type === 'choice_made' && r.record.cardId === record.cardId,
+      );
+      const chosen =
+        made?.record.type === 'choice_made'
+          ? `学习者选了第 ${String(made.record.option + 1)} 项 → 学习 ${made.record.loopSessionId}`
+          : '还没选';
+      const options = record.options.map((o, i) => `${String(i + 1)}「${o.title}」`).join('、');
+      return `- 卡 ${record.cardId}（L${String(line)}）：${options}，推荐第 ${String(record.recommended + 1)} 项；${chosen}`;
+    });
+    return [
+      '主对话开场（程序每轮从记录重给；以这里为准，前面的轮次你看不到）',
+      goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
+      `期限：${deadline.deadline !== undefined ? this.deadlineText(deadline) : '没有记'}`,
+      '── 最近的消息 ──',
+      recent.join('\n') || '（还没有）',
+      '── 路线记录 ──',
+      decision?.record.type === 'route_decision'
+        ? `最新路线决定 L${String(decision.line)}：${decision.record.decision}（理由：${decision.record.reason}）`
+        : '还没有路线决定',
+      ...cardLines,
+    ].join('\n');
+  }
+
   private mainTools(mainId: string): ToolSpec[] {
     return [
       ...this.longterm.mainTools(mainId),
@@ -1565,10 +1676,8 @@ export class Studium {
           const recs = await this.hub.records(mainId);
           const asked = recs.filter((r) => r.record.type === 'user_message').at(-1);
           if (asked?.record.type !== 'user_message') return err('主对话里还没有学习者的话');
-          const goal = recs
-            .map((r) => r.record)
-            .filter((r) => r.type === 'project_goal')
-            .at(-1);
+          const goal = currentGoal(recs);
+          const deadline = foldDeadline(recs.map((r) => r.record)).deadline;
           const title = '谈方向';
           const talk = await this.hub.createSession('talk', {
             title,
@@ -1579,7 +1688,13 @@ export class Studium {
             role: 'program',
             text: [
               `学习者在主对话里说（主对话第 ${String(asked.line)} 行）：${asked.record.text}`,
-              ...(goal?.type === 'project_goal' ? [`已有方向目标：${goal.text}`] : []),
+              ...(goal !== undefined
+                ? [
+                    `已有方向目标（主对话 L${String(goal.line)}）：`,
+                    describeGoal(goal.goal),
+                    ...(deadline !== undefined ? [`期限：${deadline}`] : []),
+                  ]
+                : []),
               '',
               '接着学习者这句话谈。',
             ].join('\n'),
@@ -1609,23 +1724,7 @@ export class Studium {
           );
         },
       },
-      {
-        name: 'list_learned',
-        description:
-          '列出这个项目里学过的记录：每次学习一行（合上的带守卫写下的实际理解与证据强度，没合上的带结束原话与当时的路线决定），以及外部导入（未验证）。',
-        input: {},
-        run: async () => {
-          const body = await this.learned.list(mainId);
-          const rows = body.learnings.map((l) => `- ${this.learned.line(l)}`);
-          const imports = body.imports.map(
-            (x) =>
-              `- ${x.channel}：${'session' in x.ref ? `${x.ref.session} 第 ${x.ref.lines.join('、')} 行` : `笔记 ${x.ref.note}`}（未验证，不算学会）`,
-          );
-          return ok(
-            `学过的记录（每次学习一行）：\n${rows.join('\n') || '（还没有）'}${imports.length > 0 ? `\n\n外部导入（学习者自述 / 笔记，未验证，不算学会）：\n${imports.join('\n')}` : ''}`,
-          );
-        },
-      },
+      this.listLearnedTool(mainId),
       {
         name: 'point_to_conversation',
         description:
@@ -1661,10 +1760,28 @@ export class Studium {
     return {
       name: 'settle_goal',
       description:
-        '方向谈清了（学什么、学到什么程度、为什么学）时调用：把方向目标交回项目，本对话随之结束。只调一次。',
+        '方向谈清了（学成后能做什么、每块为什么学、学习者认可的理由）时调用：把方向目标交回项目，本对话随之结束。只调一次。',
       input: {
-        goal: z.string().describe('一两句：学什么、学到什么程度、为什么学'),
-        project_name: z.string().describe('项目名：几个字，学习者一眼认得出'),
+        title: z.string().describe('方向目标短名：几个字，同时作项目名'),
+        abilities: z
+          .array(
+            z.object({
+              ability: z.string().describe('学成后能做什么，一句话'),
+              reason: z.string().describe('这块为什么学，一句话'),
+              confirmed_reason: z
+                .string()
+                .optional()
+                .describe('学习者自己说了认可这个方向的理由才填；不替他编'),
+            }),
+          )
+          .min(1)
+          .describe('目标能力与每块理由，至少一块；可以先粗、逐步补齐'),
+        order_hint: z.string().optional().describe('谈到的先后，只作参考；没谈不填'),
+        deadline: z.string().optional().describe('学习者说了期限才填，YYYY-MM-DD；没说不填'),
+        provisional: z
+          .boolean()
+          .optional()
+          .describe('没有已有方向目标、学习者一时说不清时的冷启动临时版，填 true'),
         known: z
           .array(
             z.object({
@@ -1676,7 +1793,6 @@ export class Studium {
           .describe(
             '学习者亲口说自己已经会的东西（自述，未验证）：一句话 + 他说这话的行号；不猜、不对照知识点；没说就不填',
           ),
-        deadline: z.string().optional().describe('学习者说了期限才填，YYYY-MM-DD；没说不填'),
       },
       run: async (a) => {
         const recs = await this.hub.records(talkId);
@@ -1684,10 +1800,55 @@ export class Studium {
         const opened = await this.hub.opened(talkId);
         const mainId = opened.parent;
         if (mainId === undefined) return err('找不到这个对话所属的项目');
-        const goal = (a.goal as string).trim();
-        if (goal === '') return err('方向目标不能是空的');
-        const title = (a.project_name as string).trim() || shortTitle(goal);
-        const deadline = (a.deadline as string | undefined)?.trim();
+
+        // 参数核对：假模型不过 zod，这里再做一遍；全部先核再写，任何一条不过整次退回、什么都不写
+        const title = typeof a.title === 'string' ? a.title.trim() : '';
+        if (title === '') {
+          return err(
+            '要给 title（方向目标的短名，几个字，同时作项目名）。参数形状是 { title, abilities: [{ ability, reason }] }；旧的“一句话方向 + 项目名”两个参数不再用。',
+          );
+        }
+        const rawAbilities = a.abilities;
+        if (!Array.isArray(rawAbilities) || rawAbilities.length === 0) {
+          return err('abilities 要给至少一块目标能力，每块写 { ability, reason }。');
+        }
+        const list: unknown[] = rawAbilities;
+        const abilities: GoalAbility[] = [];
+        for (let i = 0; i < list.length; i++) {
+          const raw = list[i];
+          if (raw === null || typeof raw !== 'object') {
+            return err(`第 ${String(i + 1)} 块要写成 { ability, reason }。`);
+          }
+          const x = raw as Record<string, unknown>;
+          const ability = typeof x.ability === 'string' ? x.ability.trim() : '';
+          if (ability === '') return err(`第 ${String(i + 1)} 块缺 ability：学成后能做什么。`);
+          const reason = typeof x.reason === 'string' ? x.reason.trim() : '';
+          if (reason === '') return err(`第 ${String(i + 1)} 块缺 reason：这块为什么学。`);
+          const confirmed = x.confirmed_reason;
+          if (confirmed !== undefined && typeof confirmed !== 'string') {
+            return err(`第 ${String(i + 1)} 块的 confirmed_reason 要写成字符串。`);
+          }
+          const confirmedReason = typeof confirmed === 'string' ? confirmed.trim() : '';
+          abilities.push({
+            ability,
+            reason,
+            ...(confirmedReason !== '' ? { confirmedReason } : {}),
+          });
+        }
+        const orderRaw = a.order_hint;
+        if (orderRaw !== undefined && typeof orderRaw !== 'string') {
+          return err('order_hint 要写成字符串；没谈先后就不填。');
+        }
+        const orderHint = typeof orderRaw === 'string' ? orderRaw.trim() : '';
+        if (a.provisional !== undefined && typeof a.provisional !== 'boolean') {
+          return err('provisional 要写成布尔值；只在冷启动临时版填 true。');
+        }
+        const provisional = a.provisional === true;
+        const deadlineRaw = a.deadline;
+        if (deadlineRaw !== undefined && typeof deadlineRaw !== 'string') {
+          return err('deadline 要写成 YYYY-MM-DD 的真实日期；学习者没说期限就不填');
+        }
+        const deadline = deadlineRaw?.trim();
         if (deadline !== undefined && deadline !== '' && !validDate(deadline)) {
           return err('deadline 要写成 YYYY-MM-DD 的真实日期；学习者没说期限就不填');
         }
@@ -1702,8 +1863,22 @@ export class Studium {
             return err(`known 里引的第 ${bad.join('、')} 行不是学习者说的话；只引学习者的行`);
           }
         }
+
+        const text = goalText(abilities);
         const at = this.iso();
-        await this.hub.record(mainId, { type: 'project_goal', at, text: goal });
+        const previous = currentGoal(await this.hub.records(mainId));
+        await this.hub.record(mainId, {
+          type: 'project_goal',
+          at,
+          text,
+          title,
+          abilities,
+          ...(orderHint !== '' ? { orderHint } : {}),
+          ...(deadline !== undefined && deadline !== '' ? { deadline } : {}),
+          ...(provisional ? { provisional: true } : {}),
+          talkSessionId: talkId,
+          ...(previous !== undefined ? { supersedes: previous.line } : {}),
+        });
         await this.hub.record(mainId, { type: 'project_title', at, title, source: 'goal' });
         if (deadline !== undefined && deadline !== '') {
           await this.hub.record(mainId, { type: 'project_deadline', at, deadline });
@@ -1715,10 +1890,10 @@ export class Studium {
             ref: { session: talkId, lines: k.lines },
           });
         }
-        await this.hub.record(talkId, { type: 'talk_ended', at, goal, title });
+        await this.hub.record(talkId, { type: 'talk_ended', at, goal: text, title });
         await this.hub.send(mainId, {
           role: 'program',
-          text: `谈方向的对话（${talkId}）交回了：方向目标是“${goal}”，项目名改为“${title}”。`,
+          text: `谈方向的对话（${talkId}）交回了：方向目标是“${text}”，项目名改为“${title}”。`,
         });
         this.organizeStateLater(`畅谈对话（${talkId}）结束了`, talkId);
         return ok('方向已交回项目，本对话结束。和学习者简短说一句就好。');
@@ -2493,12 +2668,6 @@ function ok(text: string): Promise<ToolResult> {
 
 function err(text: string): Promise<ToolResult> {
   return Promise.resolve({ text, isError: true });
-}
-
-/** 模型没给项目名时，从方向目标里取开头一小段。 */
-function shortTitle(goal: string): string {
-  const head = goal.split(/[，,。；;：:]/)[0] ?? goal;
-  return head.length > 12 ? `${head.slice(0, 12)}…` : head;
 }
 
 function formatDuration(ms: number): string {

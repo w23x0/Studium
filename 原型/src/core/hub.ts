@@ -42,6 +42,13 @@ export interface KindConfig {
   sandbox?(sessionId: string): Promise<SandboxSpec | undefined>;
   /** 每轮发给模型之前调用（插话不调）：刷新沙盒里那些每轮重渲染的只读文件。 */
   beforeTurn?(sessionId: string): Promise<void>;
+  /**
+   * 每轮从记录重建的开场（主对话用）：给了就不再续接模型会话，每轮新开一个、先记一条 turn_context，
+   * 本轮结束（成或败）关掉。inputLine = 这条输入在正本里的行号。
+   */
+  rebuild?(sessionId: string, inputLine: number): Promise<string>;
+  /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
+  webSearch?: boolean;
 }
 
 export interface HubOptions {
@@ -56,7 +63,7 @@ interface Live {
   log: SessionLog;
   kind: ConversationKind;
   conversation: ModelConversation | undefined;
-  queue: { input: TurnInput; resolve: () => void }[];
+  queue: { input: TurnInput; line: number; resolve: () => void }[];
   running: boolean;
   idle: (() => void)[];
   /** 本轮收下的中途插话，在本轮跑完时兑现。 */
@@ -211,7 +218,7 @@ export class Hub {
       live.turnWaiters.push(resolve);
       return { line, done };
     }
-    live.queue.push({ input: delivered, resolve });
+    live.queue.push({ input: delivered, line, resolve });
     if (!live.running) void this.drain(sessionId, live);
     return { line, done };
   }
@@ -252,7 +259,7 @@ export class Hub {
     live.running = true;
     this.emit({ type: 'running', sessionId, running: true });
     for (let item = live.queue.shift(); item; item = live.queue.shift()) {
-      await this.runTurn(sessionId, live, item.input);
+      await this.runTurn(sessionId, live, item.input, item.line);
       item.resolve();
       for (const r of live.turnWaiters.splice(0)) r();
     }
@@ -261,14 +268,34 @@ export class Hub {
     for (const r of live.idle.splice(0)) r();
   }
 
-  private async runTurn(sessionId: string, live: Live, input: TurnInput): Promise<void> {
+  private async runTurn(
+    sessionId: string,
+    live: Live,
+    input: TurnInput,
+    inputLine: number,
+  ): Promise<void> {
     const adapter = this.opts.model.name;
+    const cfg = this.opts.kinds(live.kind);
     try {
-      const cfg = this.opts.kinds(live.kind);
       // 沙盒里每轮重渲染的只读文件（如本次对话）在这里刷新；插话不走这里（工单 W4 §5.3）
       await cfg.beforeTurn?.(sessionId);
-      live.conversation ??= await this.openConversation(sessionId, live.kind, cfg);
-      for await (const ev of live.conversation.send(input)) {
+      let delivered = input;
+      if (cfg.rebuild !== undefined) {
+        // 主对话：每轮从记录重建开场，新开模型对话、不续接（工单 W5 §4.4）
+        const text = await cfg.rebuild(sessionId, inputLine);
+        await this.append(sessionId, {
+          type: 'turn_context',
+          at: this.iso(),
+          forLine: inputLine,
+          text,
+        });
+        await live.conversation?.close();
+        live.conversation = await this.openConversation(sessionId, live.kind, cfg, true);
+        delivered = { ...input, preface: text };
+      } else {
+        live.conversation ??= await this.openConversation(sessionId, live.kind, cfg);
+      }
+      for await (const ev of live.conversation.send(delivered)) {
         switch (ev.kind) {
           case 'text_delta':
             this.emit({ type: 'delta', sessionId, text: ev.text });
@@ -341,6 +368,12 @@ export class Hub {
       // 模型侧对话可能已坏：丢掉，下一轮按正本里的续接凭据重开
       await live.conversation?.close();
       live.conversation = undefined;
+    } finally {
+      // 每轮重建的种类（主对话）本轮结束就丢掉模型对话，下一轮重新从记录给开场
+      if (cfg.rebuild !== undefined) {
+        await live.conversation?.close();
+        live.conversation = undefined;
+      }
     }
   }
 
@@ -348,19 +381,23 @@ export class Hub {
     sessionId: string,
     kind: ConversationKind,
     cfg: KindConfig,
+    fresh = false,
   ): Promise<ModelConversation> {
     const records = await this.records(sessionId);
     const adapter = this.opts.model.name;
-    const resume = records
-      .map((r) => r.record)
-      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
-      .at(-1);
+    const resume = fresh
+      ? undefined
+      : records
+          .map((r) => r.record)
+          .filter((r) => r.type === 'model_session' && r.adapter === adapter)
+          .at(-1);
     const sandbox = await cfg.sandbox?.(sessionId);
     return this.opts.model.open({
       systemPrompt: cfg.systemPrompt,
       tools: cfg.tools(sessionId).map((t) => this.logged(sessionId, t)),
       session: { id: sessionId, kind },
       ...(sandbox !== undefined ? { sandbox } : {}),
+      ...(cfg.webSearch === true ? { webSearch: true } : {}),
       ...(resume?.type === 'model_session' ? { resumeToken: resume.token } : {}),
     });
   }

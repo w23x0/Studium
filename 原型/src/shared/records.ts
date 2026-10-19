@@ -223,10 +223,41 @@ export interface AfterLoopStep {
   detail: string;
 }
 
+/** 方向目标的一块：学成后能做什么、为什么学、学习者确认时自己给的理由。 */
+export interface GoalAbility {
+  ability: string;
+  reason: string;
+  confirmedReason?: string;
+}
+
 /** 方向目标（主对话里谈定；畅谈对话的输出契约暂缓，D-10）。 */
 export interface ProjectGoal {
   type: 'project_goal';
   at: string;
+  /** 旧字段，意思不变（方向目标一句话）；新记录 = abilities[].ability 用“；”连起来（程序拼）。 */
+  text: string;
+  /** 方向目标短名，同时作项目名。 */
+  title?: string;
+  /** 目标能力与每块理由；旧形状没有。 */
+  abilities?: GoalAbility[];
+  /** 顺序参考，只作参考。 */
+  orderHint?: string;
+  /** YYYY-MM-DD（同时照旧另写 project_deadline）。 */
+  deadline?: string;
+  /** 冷启动临时版；只在 true 时带。 */
+  provisional?: boolean;
+  /** 哪个畅谈交回的。 */
+  talkSessionId?: string;
+  /** 主对话里上一条 project_goal 的行号；第一条不带。 */
+  supersedes?: number;
+}
+
+/** 本轮给模型的开场（主对话每轮从记录重建），可回查。 */
+export interface TurnContext {
+  type: 'turn_context';
+  at: string;
+  /** 这条开场是为哪条输入重建的（主对话里那条输入的行号）。 */
+  forLine: number;
   text: string;
 }
 
@@ -366,6 +397,7 @@ export type LogRecord =
   | LoopEnded
   | AfterLoopStep
   | ProjectGoal
+  | TurnContext
   | ChoiceCard
   | RouteDecision
   | ChoiceMade
