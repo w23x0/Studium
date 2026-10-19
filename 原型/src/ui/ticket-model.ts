@@ -145,3 +145,13 @@ export function ticketRows(t: Ticket, refs?: readonly SourceView[]): TicketRow[]
 export function ticketRowsOf(t: TicketView): TicketRow[] {
   return ticketRows(t, t.refs);
 }
+
+/** 一次改单子改了哪几栏（给学习者看的栏名）；只比学习者能改的三栏。 */
+export function editedFields(before: Ticket, after: Ticket): string[] {
+  const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+  const out: string[] = [];
+  if (before.newPoint !== after.newPoint) out.push(W.newPoint);
+  if (before.clause !== after.clause) out.push(W.clause);
+  if (!same(before.startPoints, after.startPoints)) out.push(W.startPoints);
+  return out;
+}

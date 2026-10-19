@@ -16,8 +16,6 @@ export const W = {
   goalMissing: '还没谈定。在项目对话里说说你想学什么。',
   backToChat: '回到项目对话',
   nextStep: '下一步学什么',
-  learnTasks: '学习', // 学习对话列表
-  talkTasks: '谈话', // 畅谈对话
   noneYet: '还没有',
   groups: {
     inProgress: '进行中',
@@ -33,8 +31,6 @@ export const W = {
     unclosed: '没学完就先停下的，以后可以再接着学',
     shelved: '暂时放下的，点“接着学”或在里面说句话就能接上',
   },
-  openConversation: '打开对话',
-  lastJudgement: (closed: boolean) => (closed ? '上次判断：已经掌握' : '上次判断：还差一点'),
 
   // ── 选项 ──
   pickOne: '接下来学哪个？挑一个开始',
@@ -59,7 +55,6 @@ export const W = {
     unclosed: '先放下了',
   } satisfies Record<LoopStatus, string>,
   plan: '这次学什么', // 开场单子
-  point: '哪个点',
   newPoint: '要学的', // 新点
   clause: '学完应该能', // 预期理解
   startPoints: '从这些已有的出发', // 出发点
@@ -85,6 +80,7 @@ export const W = {
   askedBy: (by: 'model' | 'learner') =>
     by === 'learner' ? '你说“我觉得懂了”' : '老师提出可以看看',
   jumpTo: '在对话里看',
+  openThere: '打开看看', // 打开书里原文或那次学习
   // 引用的是记录里的行号，和对话里看到的第几句对不上，所以不写数字，点了跳过去看
   lineRef: '（那句原话）',
   lineRangeRef: '（那几句原话）',
@@ -113,10 +109,6 @@ export const W = {
   stage: '所处阶段',
   basisSpan: '依据的时间段',
   stateRecords: '整理时依据的观察',
-  stateSource: { 自述: '你说的', 观察: '看到的', 推断: '推测的' } satisfies Record<
-    StateRecordView['source'],
-    string
-  >,
   stateOutput: { 承载读数: '当前读数', 解释候选: '一种可能的解释' } satisfies Record<
     StateRecordView['output'],
     string
@@ -152,7 +144,6 @@ export const W = {
 
   // ── 书里的原文与原件（资料） ──
   library: '资料', // 资料浏览
-  libraryHint: '书的目录、原文和原件页面',
   libraryEmpty: '书库里还没有书。',
   books: '书',
   bookSections: (n: number) => `${String(n)} 节`,
@@ -182,7 +173,6 @@ export const W = {
   notLocated: '这一段在原件上没比对出位置，先显示本节的第一页。',
   imageFailed: '原件页面没显示出来。',
   readText: '看转录的原文',
-  backToToc: '这本书的目录',
   quoteOnPage: '书里的原句',
 
   // ── 回复里的书里出处 ──
@@ -308,7 +298,6 @@ export const W = {
   noteFrom: { 程序: '自动得到', 资料: '资料自带', 学习者: '你补的', 模型: '老师补的' } as const,
   noteUnset: '还没说明',
   noteQuality: '转写质量',
-  noteSections: (n: number) => `${String(n)} 节`,
   noteAdd: '补一句',
   notePlaceholder: '写一句话…',
   noteSave: '记下',
@@ -320,7 +309,6 @@ export const W = {
     对比链接型: '另一个领域里有相似的内容，你已经会了，把两边对着看。',
   } as const,
   crossSides: (other: string) => `另一边：${other}`,
-  crossProblem: '起因',
   stateTimeline: '按时间回看',
   stateList: '列表',
   stateTimelineHint: '每次整理出的记录按时间排开；颜色可以按所处阶段或按来源看。',
@@ -354,16 +342,15 @@ export const W = {
   ticketEdited: '你改了这次要学的内容。',
   ticketEdits: '改过的',
   ticketEditSee: '看那一行',
+  ticketEditedFields: (fields: string) => `改了：${fields || '（没变）'}`,
   ticketEdit: '改一改',
   ticketEditOpen: '改一改再开始',
   ticketEditTitle: '改这次要学的',
   ticketEditHint: '改过之后，这次就按改后的来；原来记下的不改。',
   ticketEditSave: '保存改动',
   ticketEditCancel: '算了',
-  ticketEditDone: '改好了，这次按改后的来。',
   ticketEditAddStart: '再加一个',
   ticketEditRemoveStart: '去掉',
-  ticketEditEmpty: '要写点什么。',
 
   // ── 判定里的实际理解与证据强度（W6） ──
   understanding: '学到的样子',
@@ -388,8 +375,6 @@ export const W = {
   // ── 我学会的：按学习列（W6） ──
   learnedEmpty: '还没有学过。',
   learnedStatus: { 进行中: '还在学', 合上: '学会了', 没合上: '先放下了' } as const,
-  learnedOpen: '看看这次',
-  learnedClose: '收起',
   learnedUpper: '这次打算学什么',
   learnedMiddle: '学成什么样',
   learnedTranscript: '看这次的对话原文',
@@ -436,9 +421,7 @@ export const W = {
   // 学习之间的关系（从哪来）
   relations: '学习之间的来龙去脉',
   relationsHint: '每段学习从哪来、接着的是哪一段',
-  origin: '从哪来',
   originCard: '从“下一步学什么”里选的',
-  originUnknown: '记不清从哪来',
 
   // ── 教法：老师可以取用的教学方法、每轮的教法强度、状态确认（批 7） ──
   tools: '教学方法库', // 教学工具库（通用策略知识层）
@@ -465,7 +448,6 @@ export const W = {
   stageCheckHint: '看你自己能做到哪；默认不给提示',
   stageCheckBanner: '这次是阶段验收，默认不给提示。做完不等于学完，学没学会照常看你讲得怎么样。',
   selfCheck: '老师先查了自己的教法',
-  selfCheckHint: '你的状态里有出现在某段教学之后的，老师先查是不是自己的教法引起的：',
   selfCheckStates: (n: number) => `对照了你的 ${String(n)} 条状态`,
   // 我的状态：来源与确认
   sourceLevel: {
@@ -501,7 +483,6 @@ export const W = {
   outputCreating: '正在建…',
   outputNeedTitle: '要写个标题。',
   versionN: (n: number) => `第 ${String(n)} 版`,
-  versionsCount: (n: number) => `${String(n)} 版`,
   noVersionYet: '还没有内容',
   author: { 学习者: '你写的', 模型协助: '老师协助写的' } as const,
   writingChats: '一起写的对话',

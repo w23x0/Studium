@@ -666,8 +666,10 @@ export class Studium {
     }
     const out: Ticket['startPoints'] = [];
     for (const [i, one] of v.entries()) {
-      const x = one as { point?: unknown; source?: unknown; ref?: unknown };
       const where = `第 ${String(i + 1)} 个出发点`;
+      if (typeof one !== 'object' || one === null)
+        throw new BadRequestError(`${where}没写清是什么。`);
+      const x = one as { point?: unknown; source?: unknown; ref?: unknown };
       if (typeof x.point !== 'string' || x.point.trim() === '') {
         throw new BadRequestError(`${where}没写清是什么。`);
       }
@@ -2688,7 +2690,7 @@ export class Studium {
       {
         name: 'read_source',
         description:
-          '读 M07 一个小节文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
+          '读资料里一个小节文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
         input: {
           book: z.string(),
           file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md'),

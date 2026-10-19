@@ -1,13 +1,13 @@
 // 依据面板里反复用到的小块：小节、标签、模型、点的名字、原话、不同看法。
 import { useState, type ReactNode } from 'react';
 import { CornerDownRightIcon, MessageSquareQuoteIcon } from 'lucide-react';
-import type { ModelInfo, ObjectionView, QuoteView, TicketView } from '../../../shared/protocol.ts';
+import type { ModelInfo, ObjectionView, QuoteView } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { segmentLines, shortTime, splitLineRefs } from '../../evidence-model.ts';
 import { usePanel } from '../../panel.ts';
 import { citationPieces } from '../../source-model.ts';
-import { ticketRowsOf, type TicketRow } from '../../ticket-model.ts';
+import type { TicketRow } from '../../ticket-model.ts';
 import { CitationChip, CitationsProvider } from '../sources/citation.tsx';
 import { W } from '../../wording.ts';
 
@@ -122,7 +122,7 @@ export function TicketRowList(props: { rows: readonly TicketRow[]; className?: s
                 }
               >
                 <CornerDownRightIcon className="size-3.5" />
-                {r.link.kind === 'panel' ? W.jumpTo : W.ticketEditSee}
+                {r.link.kind === 'panel' ? W.openThere : W.jumpTo}
               </button>
             )}
           </span>
@@ -130,11 +130,6 @@ export function TicketRowList(props: { rows: readonly TicketRow[]; className?: s
       ))}
     </div>
   );
-}
-
-/** 平铺的单子视图（带 refs）：照 `ticketRows` 显示。 */
-export function TicketBlock(props: { ticket: TicketView }) {
-  return <TicketRowList rows={ticketRowsOf(props.ticket)} />;
 }
 
 /** 一句原话，可跳回对话里那一句。 */

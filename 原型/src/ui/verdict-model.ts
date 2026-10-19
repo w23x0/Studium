@@ -1,6 +1,6 @@
 // 守卫判定在界面上怎么显示（会话/守卫.md §4–§5；记录/学过的记录.md「守卫判定」）：
 // 学习者实际表现出的理解逐条列出，每条带证据强度（独立程度 × 持久程度）与依据行的原话。纯函数，单测覆盖。
-import type { QuoteView, UnderstandingView } from '../shared/protocol.ts';
+import type { QuoteView } from '../shared/protocol.ts';
 import type { Understanding } from '../shared/records.ts';
 import { W } from './wording.ts';
 
@@ -32,5 +32,3 @@ export function understandingRows(v: {
     return { text: u.text, strength: strengthLabel(u), lines, quotes };
   });
 }
-
-export type { UnderstandingView };

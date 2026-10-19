@@ -6,6 +6,7 @@ import { api } from '../api.ts';
 /** 这些记录写进来时，依据面板与项目页上的内容可能变了。 */
 const RELOAD_ON = new Set([
   'session_opened',
+  'ticket_edited',
   'guard_verdict',
   'close_requested',
   'loop_ended',

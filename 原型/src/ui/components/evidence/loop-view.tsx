@@ -12,7 +12,7 @@ import { START_SOURCES } from '../../../shared/records.ts';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
-import { refLink, ticketRowsOf } from '../../ticket-model.ts';
+import { editedFields, refLink, ticketRowsOf } from '../../ticket-model.ts';
 import { understandingRows } from '../../verdict-model.ts';
 import { W } from '../../wording.ts';
 import { toolCounts } from '../../teaching-model.ts';
@@ -238,7 +238,9 @@ function Edits(props: { loopId: string; edits: TicketEditView[] }) {
       <span className="flex flex-col gap-1">
         {props.edits.map((e) => (
           <span key={e.line} className="flex flex-wrap items-center gap-2">
-            <span className="text-muted-foreground text-xs">{e.after.newPoint}</span>
+            <span className="text-muted-foreground text-xs">
+              {W.ticketEditedFields(editedFields(e.before, e.after).join('、'))}
+            </span>
             <Time at={e.at} />
             <JumpLine loopId={props.loopId} line={e.line} label={W.ticketEditSee} />
           </span>

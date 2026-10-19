@@ -215,11 +215,6 @@ export function unionBox(boxes: BBox[]): BBox | undefined {
   ];
 }
 
-/** 一个数组是不是合法位置框（内容块位置框是 number[]）。 */
-export function asBBox(v: number[] | undefined): BBox | undefined {
-  return v?.length === 4 && v.every((x) => Number.isFinite(x)) ? (v as BBox) : undefined;
-}
-
 // ───────────── 检索 ─────────────
 
 /** 检索结果摘录里把检索词标出来（不分大小写）。 */
