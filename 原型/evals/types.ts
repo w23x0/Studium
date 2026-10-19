@@ -2,7 +2,7 @@
 // 不进每次提交的门禁（npm run eval 单独跑）；模拟学生与判分都经模型接口（port.ts），现在只接假模型。
 import type { GuardVerdict, NumberedRecord } from '../src/shared/records.ts';
 
-/** 一次评测运行留下的东西：闭环对话与主对话的正本、最后一次守卫判定。 */
+/** 一次评测运行留下的东西：学习对话与主对话的正本、最后一次守卫判定。 */
 export interface EvalRun {
   loop: NumberedRecord[];
   main: NumberedRecord[];

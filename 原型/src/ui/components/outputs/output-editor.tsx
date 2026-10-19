@@ -3,7 +3,7 @@
 // 重新打开编辑时回到上次的光标与滚动位置（存在浏览器本地，按产出物）。
 import { useEffect, useRef, useState } from 'react';
 import { TriangleAlertIcon } from 'lucide-react';
-import type { OutputView, SaveVersionRequest } from '../../../shared/m14.ts';
+import type { OutputView, SaveVersionRequest } from '../../../shared/output.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';

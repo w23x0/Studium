@@ -1,4 +1,4 @@
-// M07：书库里每本书的切分结果（书库处理/ 产出：<书>/m07/index.md + 各小节文件）。只读。
+// 资料：书库里每本书的切分结果（`书库处理/` 的产出：<书>/<切分结果目录>/index.md + 各小节文件）。只读。
 // 目录（index.md 的表）两种格式都认：旧的 6 列（编号 类型 标题 页 文件 节内例题）和带 PDF 页的 10 列。
 import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, normalize } from 'node:path';
@@ -40,7 +40,7 @@ interface BookCache {
   files?: IndexedFile[];
 }
 
-/** 个人笔记导入时写在笔记目录里的 meta.json（M07 区，不在书库里）。 */
+/** 个人笔记导入时写在笔记目录里的 meta.json（数据目录自己的区，不在书库里）。 */
 export interface NoteMeta {
   id: string;
   title: string;
@@ -57,7 +57,7 @@ export interface NoteMeta {
 /** 书库里认出来的一本书（或一份个人笔记）。 */
 export interface BookInfo {
   id: string;
-  /** 书目录（其下 m07/index.md）。 */
+  /** 书目录（其下是切分结果目录）。 */
   dir: string;
   /** 学科目录（相对书库根，/ 隔开）；平铺的书为空。 */
   subject: string;
@@ -69,16 +69,18 @@ export interface BookInfo {
 const MAX_SUBJECT_DEPTH = 4;
 /** 扫描结果缓存多久（毫秒）；导入笔记会主动清掉。 */
 const SCAN_TTL_MS = 2000;
-/** 不往里找的目录：处理产物与页段。 */
-const SKIP_DIR = /^(\.|node_modules$|m07$|m08$|p\d+-\d+$)/;
+/** 切分结果所在的子目录名：`书库处理/` 的产出格式，真书库与样例书库都是这样。 */
+export const BOOK_DIR = 'm07';
+/** 不往里找的目录：切分结果目录与页段。（原来还跳过 `m08`；知识点已取消、不再有这种目录，一并去掉。） */
+const SKIP_DIR = new RegExp(`^(\\.|node_modules$|${BOOK_DIR}$|p\\d+-\\d+$)`);
 
 export class Library {
   private readonly cache = new Map<string, BookCache>();
   private scanned: { at: number; map: Map<string, BookInfo> } | undefined;
 
   /**
-   * root = 书库根：下面可以有学科目录再到书，“书”= 有 m07/index.md 的那一层。
-   * notesRoot = 个人笔记的 M07 区（<id>/m07/index.md + meta.json），在数据目录里，和书库分开。
+   * root = 书库根：下面可以有学科目录再到书，“书”= 有切分结果 index.md 的那一层。
+   * notesRoot = 个人笔记的区（<id>/<切分结果目录>/index.md + meta.json），在数据目录里，和书库分开。
    */
   constructor(
     readonly root: string,
@@ -379,7 +381,7 @@ export class Library {
     ) {
       throw new Error(`路径越界：${book} / ${file}`);
     }
-    return join(await this.bookDir(book), 'm07', rel);
+    return join(await this.bookDir(book), BOOK_DIR, rel);
   }
 
   /** 书目录（<书>/）的绝对路径；原件页面从这里找。认不出的书按书库根下的直接子目录算（读不到就是“没有这本书”）。 */
@@ -399,7 +401,7 @@ export class Library {
 
 async function hasIndex(dir: string): Promise<boolean> {
   try {
-    await readFile(join(dir, 'm07', 'index.md'));
+    await readFile(join(dir, BOOK_DIR, 'index.md'));
     return true;
   } catch (err) {
     if (isNotFound(err) || (err as NodeJS.ErrnoException).code === 'ENOTDIR') return false;
@@ -440,8 +442,16 @@ function snippet(line: string, lower: string, term: string): string {
 
 const NUMS = /^\d+(?:–|-)\d+$/;
 
+/** 索引文件的标题格式（`书库处理/` 的产出格式）：`# M07 索引：书名`。 */
+const INDEX_TITLE = /^#\s*M07 索引[:：]\s*(.+?)\s*$/m;
+
+/** 写索引文件时用的标题行（个人笔记的切分结果也照这个格式）。 */
+export function indexTitle(name: string): string {
+  return `# M07 索引：${name}`;
+}
+
 function parseIndex(text: string): BookCache {
-  const title = (/^#\s*M07 索引[:：]\s*(.+?)\s*$/m.exec(text)?.[1] ?? '').replace(/\s*\.pdf$/i, '');
+  const title = (INDEX_TITLE.exec(text)?.[1] ?? '').replace(/\s*\.pdf$/i, '');
   let header: string[] | undefined;
   const entries: TocEntry[] = [];
   for (const raw of text.split('\n')) {

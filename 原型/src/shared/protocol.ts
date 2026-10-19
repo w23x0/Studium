@@ -170,7 +170,7 @@ export interface CardView {
   at: string;
   trigger: string;
   recommended: number;
-  m05SessionId: string;
+  navSessionId: string;
   model: ModelInfo;
   chosen?: { option: number; loopSessionId: string };
   /** 这次出卡的路线决定（写在主对话里，紧挨着卡的前一行）；旧卡没有。 */
@@ -384,7 +384,7 @@ export interface StrategyView {
   toolsUsed: string[];
   /** 每次取用：哪份、在那份正本的哪一行；旧记录没有。 */
   toolUses?: TeachingToolUseView[];
-  /** 记录时有“出现在 X 之后”标注的状态时，M10 对自己教法是否为成因的自查。 */
+  /** 记录时有“出现在 X 之后”标注的状态时，教法记录整理对自己教法是否为成因的自查。 */
   selfCheck?: { stateIds: string[]; note: string };
   model: ModelInfo;
   objections: ObjectionView[];
@@ -398,7 +398,7 @@ export interface ConfirmationView {
   note?: string;
 }
 
-/** 学习者对一条 M15 状态记录确认（confirm）/ 否认（deny）；只追加。 */
+/** 学习者对一条状态记录确认（confirm）/ 否认（deny）；只追加。 */
 export interface RecordConfirmationRequest {
   recordId: string;
   verdict: 'confirm' | 'deny';
@@ -454,7 +454,7 @@ export interface StateRecordView {
   confirmations: ConfirmationView[];
   /** 学习者最近一次表态；没表过态为空。 */
   learnerVerdict?: '确认' | '否认';
-  m15SessionId: string;
+  stateSessionId: string;
   model: ModelInfo;
   objections: ObjectionView[];
 }
@@ -464,7 +464,7 @@ export interface CurrentStateView {
   text: string;
   stage: string;
   basisSpan: string;
-  m15SessionId: string;
+  stateSessionId: string;
   model: ModelInfo;
 }
 
@@ -492,9 +492,9 @@ export interface VerdictObjectionRequest {
   text: string;
 }
 
-/** 对 M10 / M15 的一条记录提异议。 */
+/** 对一条教法记录 / 状态记录提异议。 */
 export interface RecordObjectionRequest {
-  kind: 'm10' | 'm15';
+  kind: 'pedagogy' | 'state';
   recordId: string;
   text: string;
 }
@@ -552,14 +552,14 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   talk: '谈方向',
   loop: '学习对话',
   guard: '判断学没学会',
-  m05: '出下一步选项',
+  nav: '导航',
   retrieve: '检索子代理',
-  m15: '整理“我的状态”',
-  m10: '记教法效果',
+  state: '状态整理',
+  pedagogy: '教法记录整理',
   output: '写产出',
 };
 
-export * from './m14.ts';
+export * from './output.ts';
 
 export type { ObjectionTarget };
 
@@ -595,7 +595,7 @@ export interface BookSummary {
   hasOriginal: boolean;
   /** 在书库里的学科目录（相对书库根，如 大学物理/力学）；个人笔记是“个人笔记”；平铺的书没有。 */
   subject?: string;
-  /** book = 书库里的书 · note = 学习者的个人笔记（导入到 M07 自己的区）。 */
+  /** book = 书库里的书 · note = 学习者的个人笔记（导入到数据目录自己的区）。 */
   kind?: 'book' | 'note';
   /** 个人笔记：作者（学习者）、来源（个人笔记）、导入时的原路径。 */
   author?: string;
@@ -618,7 +618,7 @@ export interface TocEntry {
   title: string;
   /** 书上印的页码（“p.2–10”）。 */
   pages?: string;
-  /** 小节文件，相对于这本书的 m07/ 目录。 */
+  /** 小节文件，相对于这本书的切分结果目录。 */
   file?: string;
   /** 所在章（章目录名，如 ch03；没有文件的条目按编号推）。 */
   chapter: string;

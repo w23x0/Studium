@@ -1,7 +1,7 @@
-// M07 的原件：书的 PDF 原件页面（渲染成图）与页面上的内容块位置（MinerU content_list）。只读书库；渲染出的图缓存在数据目录。
+// 资料的原件：书的 PDF 原件页面（渲染成图）与页面上的内容块位置（MinerU content_list）。只读书库；渲染出的图缓存在数据目录。
 // 原件从哪找：<书>/source.json 列出页段（p1-200 …，每段目录里有 MinerU 留的 *_origin.pdf 与 *_content_list.json，
 // 页码 = first_page + page_idx）；没有 source.json 就按 p<起>-<止> 目录名认；都没有再看整本 PDF（source.json 的 file 字段）。
-// 页码一律是原 PDF 页（1 起），与 M07 目录的“PDF 页”同一套。
+// 页码一律是原 PDF 页（1 起），与切分结果目录的“PDF 页”同一套。
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, stat } from 'node:fs/promises';
@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { BBox, LineLocation, PageBlock } from '../../shared/protocol.ts';
 import { isNotFound } from '../log/session-log.ts';
-import type { Library } from './m07.ts';
+import type { Library } from './library.ts';
 
 const run = promisify(execFile);
 

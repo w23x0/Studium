@@ -1,4 +1,4 @@
-// M14 产出物的接口（批 8）：项目下的产出物、版本链与比较、相关文献。
+// 产出物的接口（批 8）：项目下的产出物、版本链与比较、相关文献。
 // 写入的都是学习者自己写的（作者记“学习者”）；模型协助写入走“写产出”对话里的工具。
 // POST /api/outputs/:id/tasks：学习者从产出物页直接开一个“写产出”对话（批 8b）。
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -11,13 +11,13 @@ import type {
   OutputResponse,
   VersionResponse,
   VersionsResponse,
-} from '../../shared/m14.ts';
+} from '../../shared/output.ts';
 import type { Outputs } from '../outputs.ts';
 import { BadRequestError } from '../studium.ts';
 
 const MAX_BODY = 4 << 20;
 
-/** 认出 /api/projects/:id/outputs、/api/outputs/…、/api/m14/… 就回答并返回真。 */
+/** 认出 /api/projects/:id/outputs、/api/outputs/… 就回答并返回真。 */
 export async function outputsRoute(
   req: IncomingMessage,
   res: ServerResponse,

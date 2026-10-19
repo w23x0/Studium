@@ -1,8 +1,18 @@
 // 假模型按会话种类应答时共用：从工具名认出是哪种会话；从带行号的原文里找学习者的某一行。
 import type { FakeContext } from '../../src/core/model/fake.ts';
 
-// 'm09' 已经没有对应的会话（W2 取消分析层）；留着这个取值只为老验收测试里的 case 还能通过类型检查。
-export type Role = 'main' | 'talk' | 'loop' | 'guard' | 'nav' | 'state' | 'pedagogy' | 'm09' | 'unknown';
+// 'm09' 已经没有对应的会话（分析层已取消）；留着这个取值只为老验收测试里的 case 还能通过类型检查。
+export type Role =
+  | 'main'
+  | 'talk'
+  | 'loop'
+  | 'guard'
+  | 'nav'
+  | 'retrieve'
+  | 'state'
+  | 'pedagogy'
+  | 'm09'
+  | 'unknown';
 
 const MARKERS: [string, Role][] = [
   ['submit_verdict', 'guard'],
@@ -10,6 +20,7 @@ const MARKERS: [string, Role][] = [
   ['write_state_record', 'state'],
   ['write_strategy_record', 'pedagogy'],
   ['request_close', 'loop'],
+  ['submit_findings', 'retrieve'],
   ['settle_goal', 'talk'],
   ['open_goal_talk', 'main'],
 ];

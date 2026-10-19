@@ -3,8 +3,8 @@ import { mkdir, open, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path';
 import { isNotFound } from './session-log.ts';
 
-/** 当前数据目录的版本（工单 W1「数据版本」）；单子与记录的形状变了就加一，旧目录不能直接开。 */
-export const DATA_VERSION = '2';
+/** 当前数据目录的版本（`原型/CLAUDE.md`「存放处」）；单子与记录的形状变了就加一，旧目录不能直接开。 */
+export const DATA_VERSION = '3';
 
 async function sessionFileNames(root: string): Promise<string[]> {
   try {

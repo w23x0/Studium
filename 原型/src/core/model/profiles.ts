@@ -1,5 +1,5 @@
-// 模型与思考强度按会话类分开配（03「总览」）：配置项，不全局一个。
-import type { ConversationKind } from '../../shared/records.ts';
+// 模型与思考强度按会话类分开配：配置项，不全局一个（`docs/设计/实现选型.md`）。
+import { CONVERSATION_KINDS, type ConversationKind } from '../../shared/records.ts';
 
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 
@@ -12,16 +12,16 @@ export interface Profile {
 
 export type Profiles = Partial<Record<ConversationKind, Profile>>;
 
-/** 默认：主对话低强度；畅谈、学习对话、守卫、M05、检索子代理、M15 高强度；M10 没规定，不设。 */
+/** 默认：主对话低强度；畅谈、学习对话、守卫、导航、检索子代理、状态整理高强度；教法记录整理没规定，不设。 */
 export const DEFAULT_PROFILES: Profiles = {
   main: { effort: 'low' },
   talk: { effort: 'high' },
   loop: { effort: 'high' },
   output: { effort: 'high' },
   guard: { effort: 'high' },
-  m05: { effort: 'high' },
+  nav: { effort: 'high' },
   retrieve: { effort: 'high' },
-  m15: { effort: 'high' },
+  state: { effort: 'high' },
 };
 
 const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -34,13 +34,10 @@ export function mergeProfiles(overrides: unknown, base: Profiles = DEFAULT_PROFI
   }
   const out: Profiles = { ...base };
   for (const [kind, raw] of Object.entries(overrides)) {
-    if (
-      !(
-        kind in
-        { main: 1, talk: 1, loop: 1, guard: 1, m05: 1, retrieve: 1, m15: 1, m10: 1, output: 1 }
-      )
-    ) {
-      throw new Error(`STUDIUM_PROFILES 里没有这种会话类：${kind}`);
+    if (!(CONVERSATION_KINDS as readonly string[]).includes(kind)) {
+      throw new Error(
+        `STUDIUM_PROFILES 里没有这种会话类：${kind}（可用：${CONVERSATION_KINDS.join(' / ')}）`,
+      );
     }
     const p = raw as Profile;
     if (p.effort !== undefined && !EFFORTS.includes(p.effort)) {

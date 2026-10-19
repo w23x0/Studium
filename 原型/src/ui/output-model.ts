@@ -5,7 +5,7 @@ import type {
   OutputAuthor,
   SaveVersionRequest,
   VersionView,
-} from '../shared/m14.ts';
+} from '../shared/output.ts';
 import { linkCitations } from './source-model.ts';
 import { W } from './wording.ts';
 

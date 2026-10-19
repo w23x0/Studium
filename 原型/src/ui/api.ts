@@ -64,7 +64,7 @@ import type {
   OutputResponse,
   SaveVersionRequest,
   VersionResponse,
-} from '../shared/m14.ts';
+} from '../shared/output.ts';
 import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
 import { SHELVE_NO_NOTE } from './thread-model.ts';
 
@@ -179,8 +179,8 @@ export const api = {
   overview: (mainId: string) => call<ProjectOverviewResponse>(`/projects/${mainId}/overview`),
   loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),
   card: (cardId: string) => call<CardResponse>(`/cards/${cardId}`),
-  strategies: () => call<StrategiesResponse>('/m10/records'),
-  state: () => call<StateResponse>('/m15/state'),
+  strategies: () => call<StrategiesResponse>('/pedagogy/records'),
+  state: () => call<StateResponse>('/state/records'),
   // ── 批 10b：来源说明、状态回看 ──
   sourceNotes: () => call<SourceNotesResponse>('/library/source-notes'),
   sourceNote: (book: string) => call<SourceNoteResponse>(`/library/source-notes?${qs({ book })}`),
@@ -189,9 +189,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ book, field, text }),
     }),
-  stateTimeline: () => call<StateTimelineResponse>('/m15/timeline'),
+  stateTimeline: () => call<StateTimelineResponse>('/state/timeline'),
   addExplanation: (recordId: string, text: string) =>
-    call<AddExplanationResponse>(`/m15/records/${encodeURIComponent(recordId)}/explanations`, {
+    call<AddExplanationResponse>(`/state/records/${encodeURIComponent(recordId)}/explanations`, {
       method: 'POST',
       body: JSON.stringify({ text }),
     }),
@@ -209,7 +209,7 @@ export const api = {
   teachingTool: (name: string) =>
     call<TeachingToolResponse>(`/teaching-tools/${encodeURIComponent(name)}`),
   confirmState: (recordId: string, verdict: 'confirm' | 'deny', note?: string) =>
-    call<ConfirmationResponse>('/m15/confirmations', {
+    call<ConfirmationResponse>('/state/confirmations', {
       method: 'POST',
       body: JSON.stringify(
         note !== undefined && note.trim() !== ''

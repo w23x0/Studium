@@ -3,7 +3,7 @@
 import type { CrossKind } from './records-cross.ts';
 import type { StateRecordView } from './protocol.ts';
 
-// ───────────── 来源可靠性与适用性说明（M07:19） ─────────────
+// ───────────── 来源可靠性与适用性说明（`docs/设计/记录/资料.md`） ─────────────
 
 export const SOURCE_NOTE_FIELDS = ['type', 'level', 'author', 'scope', 'remark'] as const;
 export type SourceNoteField = (typeof SOURCE_NOTE_FIELDS)[number];
@@ -70,7 +70,7 @@ export interface AddSourceNoteRequest {
   text: string;
 }
 
-// ───────────── 跨领域闭环：单子的显示 ─────────────
+// ───────────── 跨领域学习：单子的显示 ─────────────
 
 export interface CrossDomainView {
   kind: CrossKind;
@@ -79,7 +79,7 @@ export interface CrossDomainView {
   problem: string;
 }
 
-// ───────────── 状态回看与学习者解释（M15:42） ─────────────
+// ───────────── 状态回看与学习者解释（`docs/设计/记录/状态记录.md`） ─────────────
 
 export interface StateExplanationView {
   id: string;

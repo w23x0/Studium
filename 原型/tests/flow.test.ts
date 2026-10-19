@@ -100,7 +100,7 @@ function responder(guardLine: { line: number }) {
   };
 }
 
-describe('闭环主路径（假模型）', () => {
+describe('一次学习的主路径（假模型）', () => {
   it('从选择卡走到合上、出下一张卡', async () => {
     const guardLine = { line: 0 };
     const app = await createApp({
@@ -147,7 +147,7 @@ describe('闭环主路径（假模型）', () => {
   });
 });
 
-describe('M15 / M10 的读写范围与触发', () => {
+describe('状态整理 / 教法记录整理的读写范围与触发', () => {
   async function boot(): Promise<App> {
     const app = await createApp({
       dataRoot: await tempDir(),
@@ -159,30 +159,30 @@ describe('M15 / M10 的读写范围与触发', () => {
     return app;
   }
 
-  it('M15 只拿读对话与写自己两层的工具；M10 不读资料原文', async () => {
+  it('状态整理只拿读对话与写自己两层的工具；教法记录整理不读资料原文', async () => {
     const app = await boot();
-    const m15 = app.studium
+    const state = app.studium
       .kind('state')
       .tools('x')
       .map((t) => t.name);
-    expect(m15.sort()).toEqual(
+    expect(state.sort()).toEqual(
       ['read_session', 'read_state_records', 'write_current_state', 'write_state_record'].sort(),
     );
-    const m10 = app.studium
+    const pedagogy = app.studium
       .kind('pedagogy')
       .tools('x')
       .map((t) => t.name);
-    expect(m10).not.toContain('read_source');
-    expect(m10).toContain('write_strategy_record');
+    expect(pedagogy).not.toContain('read_source');
+    expect(pedagogy).toContain('write_strategy_record');
   });
 
-  it('没有新的学习者的话不整理；M04 请求重新确认时照样整理', async () => {
+  it('没有新的学习者的话不整理；守卫请求重新确认时照样整理', async () => {
     const app = await boot();
     const count = () => app.hub.listSessions().filter((s) => s.kind === 'state').length;
     app.studium.organizeStateLater('测试');
     await app.studium.settled();
     expect(count()).toBe(0);
-    app.studium.organizeStateLater('M04 请求重新确认', undefined, true);
+    app.studium.organizeStateLater('守卫请求重新确认', undefined, true);
     await app.studium.settled();
     expect(count()).toBe(1);
   });

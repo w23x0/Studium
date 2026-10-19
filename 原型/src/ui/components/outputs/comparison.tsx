@@ -1,7 +1,7 @@
 // 方法比较：用表看、用表改（不改由表生成的正文）。每列一个方法；行是适用边界、各个比较的方面、证据与出处。
 import type { ReactNode } from 'react';
 import { PlusIcon, XIcon } from 'lucide-react';
-import type { MethodComparison } from '../../../shared/m14.ts';
+import type { MethodComparison } from '../../../shared/output.ts';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';

@@ -222,7 +222,9 @@ describe('验收：状态回看与学习者解释', () => {
     await tiredAndEnd(app, loop3);
     expect(await m15Opening(app, 3)).not.toContain(EXPLAIN);
 
-    expect((await post(app, `/state/records/${id}/explanations`, { text: '   ' })).status).toBe(400);
+    expect((await post(app, `/state/records/${id}/explanations`, { text: '   ' })).status).toBe(
+      400,
+    );
     expect((await post(app, `/state/records/${id}/explanations`, {})).status).toBe(400);
     expect((await post(app, '/state/records/st-不存在/explanations', { text: 'x' })).status).toBe(
       400,
@@ -275,7 +277,9 @@ describe('验收：状态回看与学习者解释', () => {
     const loop1 = await openLoop(a, mainId, 1);
     await tiredAndEnd(a, loop1);
     const id = (await getJson<StateResponse>(a, '/state/records')).records[0]?.id ?? '';
-    expect((await post(a, `/state/records/${id}/explanations`, { text: EXPLAIN })).status).toBe(201);
+    expect((await post(a, `/state/records/${id}/explanations`, { text: EXPLAIN })).status).toBe(
+      201,
+    );
     expect(
       (
         await post(a, '/library/source-notes', {

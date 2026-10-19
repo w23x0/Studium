@@ -3,7 +3,7 @@
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import type { ConversationKind } from '../shared/records.ts';
+import { CONVERSATION_KINDS, type ConversationKind } from '../shared/records.ts';
 import { Crosslinks } from './crosslinks.ts';
 import { Evidence } from './evidence.ts';
 import { Hub } from './hub.ts';
@@ -11,13 +11,13 @@ import { Inputs } from './inputs.ts';
 import { Lookback } from './lookback.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
-import { Library } from './knowledge/m07.ts';
-import { Notes } from './knowledge/m07-notes.ts';
-import { Originals } from './knowledge/m07-originals.ts';
-import { SourceReports } from './knowledge/m07-reports.ts';
-import { M10 } from './knowledge/m10.ts';
-import { M14 } from './knowledge/m14.ts';
-import { M15 } from './knowledge/m15.ts';
+import { Library } from './knowledge/library.ts';
+import { Notes } from './knowledge/notes.ts';
+import { Originals } from './knowledge/originals.ts';
+import { SourceReports } from './knowledge/source-reports.ts';
+import { PedagogyStore } from './knowledge/pedagogy.ts';
+import { OutputStore } from './knowledge/output.ts';
+import { StateStore } from './knowledge/state.ts';
 import { Objections } from './knowledge/objections.ts';
 import { SourceNotes } from './knowledge/source-notes.ts';
 import { Outputs } from './outputs.ts';
@@ -38,7 +38,7 @@ export interface AppOptions {
   token: string;
   port: number;
   uiDir?: string;
-  /** M07 书库根目录（每本书 <书>/m07/index.md）；默认用样例教材。 */
+  /** 书库根目录（每本书下是切分结果）；默认用样例教材。 */
   library?: string;
   /** 时钟（测试与回放用）；记录时间、离开多久都按它算。 */
   now?: () => Date;
@@ -51,7 +51,7 @@ export interface AppOptions {
 export interface App {
   server: RunningServer;
   hub: Hub;
-  /** M14 产出物与个人笔记（回放重做学习者在这两处的动作用）。 */
+  /** 知识产出物与个人笔记（回放重做学习者在这两处的动作用）。 */
   outputs: Outputs;
   notes: Notes;
   studium: Studium;
@@ -59,17 +59,8 @@ export interface App {
   close(): Promise<void>;
 }
 
-const KINDS: ConversationKind[] = [
-  'main',
-  'talk',
-  'loop',
-  'guard',
-  'm05',
-  'retrieve',
-  'm15',
-  'm10',
-  'output',
-];
+/** 全部会话种类（提示词一个种类一份，按这个名单装载）。 */
+const KINDS: readonly ConversationKind[] = CONVERSATION_KINDS;
 
 /** 用同一套证据标准的会话：提示词后面接 prompts/evidence.md（只写一处）。 */
 const EVIDENCE_KINDS: ConversationKind[] = ['guard', 'loop'];
@@ -90,15 +81,15 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const dataDir = await DataDir.acquire(opts.dataRoot);
   await writeDataVersion(dataDir.root);
   const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
-  const m10 = await M10.load(join(dataDir.root, 'knowledge', 'm10'));
-  const m15 = await M15.load(join(dataDir.root, 'knowledge', 'm15'));
+  const pedagogy = await PedagogyStore.load(join(dataDir.root, 'knowledge', 'pedagogy'));
+  const state = await StateStore.load(join(dataDir.root, 'knowledge', 'state'));
   const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
   const library = new Library(
     opts.library ?? join(SAMPLE_DIR, '书库'),
-    join(dataDir.root, 'knowledge', 'm07-notes'),
+    join(dataDir.root, 'knowledge', 'notes'),
   );
   const notes = new Notes(
-    join(dataDir.root, 'knowledge', 'm07-notes'),
+    join(dataDir.root, 'knowledge', 'notes'),
     library,
     opts.now ?? (() => new Date()),
   );
@@ -118,7 +109,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const outputs = new Outputs({
-    store: await M14.load(join(dataDir.root, 'knowledge', 'm14')),
+    store: await OutputStore.load(join(dataDir.root, 'knowledge', 'output')),
     sources,
     library,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
@@ -126,11 +117,11 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
   const studium = new Studium({
     prompts: await loadPrompts(),
-    m07: library,
+    library,
     sources,
     dataDir: dataDir.root,
-    m10,
-    m15,
+    pedagogy,
+    state,
     objections,
     teaching,
     outputs,
@@ -167,8 +158,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const evidence = new Evidence({
     hub,
     learned: studium.learned,
-    m10,
-    m15,
+    pedagogy,
+    state,
     objections,
     sources,
     inputs,
@@ -185,7 +176,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
       links: cross,
       lookback: new Lookback({
         evidence,
-        m15,
+        state,
         ...(opts.now !== undefined ? { now: opts.now } : {}),
       }),
     },
@@ -205,7 +196,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     dataDir,
     close: async () => {
       await server.close();
-      // 后台清单（合上之后、M15 整理、M10 记录）跑完再关，免得写到一半
+      // 后台清单（合上之后、状态整理、教法记录整理）跑完再关，免得写到一半
       await studium.settled();
       await hub.close();
       index.close();

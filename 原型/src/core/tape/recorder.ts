@@ -17,7 +17,7 @@ import { IdTokens } from './ids.ts';
 
 /**
  * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
- * “outputs.” 是 M14 产出物的、“notes.” 是个人笔记的（本地服务拿到的都是录带包过的那一份）。
+ * “outputs.” 是知识产出物的、“notes.” 是个人笔记的（本地服务拿到的都是录带包过的那一份）。
  */
 export const ACTIONS = [
   'createProject',
@@ -57,7 +57,8 @@ export type ActionName = (typeof ACTIONS)[number];
 export type TapeLine =
   | {
       t: 'header';
-      v: 1;
+      /** 录带格式版本：会话种类改名（工单 W7 §4.5）后是 2，旧版不回放。 */
+      v: 2;
       at: string;
       adapter: string;
       /** 开录时数据目录里已有的会话数；不为 0 时回放会有偏差（回放从空目录开始）。 */
@@ -126,7 +127,7 @@ export class Recorder {
     this.ids.attach(hub, studium);
     this.write({
       t: 'header',
-      v: 1,
+      v: 2,
       at: this.at(),
       adapter,
       preexisting,

@@ -198,7 +198,7 @@ export async function requestClose(app: App, loopId: string, nth: number): Promi
   await settled(app, loopId);
 }
 
-/** 确认合上，并等后台（下一张卡、M15、M10）都跑完。 */
+/** 确认合上，并等后台（下一张卡、状态整理、教法记录整理）都跑完。 */
 export async function confirmAndSettle(app: App, loopId: string): Promise<void> {
   expect((await post(app, `/sessions/${loopId}/confirm-close`)).status).toBe(202);
   await app.studium.settled();

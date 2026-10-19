@@ -1,12 +1,12 @@
-// M07 个人笔记（M07:33,38）：把学习者写的 Markdown 笔记按标题切成小节，存进数据目录下自己的 M07 区
-// （<数据>/knowledge/m07-notes/<id>/m07/…，格式同书的切分结果），之后和书一样可浏览、检索、引用。
+// 个人笔记（`docs/设计/记录/资料.md`）：把学习者写的 Markdown 笔记按标题切成小节，存进数据目录下自己的区
+// （<数据>/knowledge/notes/<id>/ 下，格式同书的切分结果），之后和书一样可浏览、检索、引用。
 // 不改书库、不改笔记原件；标作者 = 学习者、来源 = 个人笔记、原路径。笔记里的图片 / 嵌入引用原样留在文字里。
 import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
 import { basename, dirname, extname, join, resolve } from 'node:path';
 import type { NoteSummary } from '../../shared/protocol.ts';
 import { isNotFound } from '../log/session-log.ts';
 import { BadRequestError } from '../studium.ts';
-import type { Library, NoteMeta } from './m07.ts';
+import { BOOK_DIR, indexTitle, type Library, type NoteMeta } from './library.ts';
 
 /** 笔记标题级别 ≤ 这个的标题都切成小节；更深的留在小节里。 */
 const SPLIT_LEVEL = 3;
@@ -88,8 +88,8 @@ export class Notes {
       );
       for (const [k, sec] of sections.entries()) {
         const rel = `${chapter}/sec-${String(i + 1)}.${String(k + 1)}.md`;
-        await mkdir(join(dir, 'm07', chapter), { recursive: true });
-        await writeFile(join(dir, 'm07', rel), sec.lines.join('\n') + '\n', 'utf8');
+        await mkdir(join(dir, BOOK_DIR, chapter), { recursive: true });
+        await writeFile(join(dir, BOOK_DIR, rel), sec.lines.join('\n') + '\n', 'utf8');
         rows.push(
           `| ${String(i + 1)}.${String(k + 1)} | sec | ${cell(sec.title || fileTitle)} |  | \`${rel}\` | 2 |  |  |  | 原文件第 ${String(sec.from)}–${String(sec.to)} 行 |`,
         );
@@ -114,11 +114,11 @@ export class Notes {
     const importedAt = this.now().toISOString();
     const author = '学习者';
     const source = '个人笔记';
-    await mkdir(join(dir, 'm07'), { recursive: true });
+    await mkdir(join(dir, BOOK_DIR), { recursive: true });
     await writeFile(
-      join(dir, 'm07', 'index.md'),
+      join(dir, BOOK_DIR, 'index.md'),
       [
-        `# M07 索引：${noteTitle}`,
+        indexTitle(noteTitle),
         '',
         `> 个人笔记。作者：${author}；来源：${source}；原路径：${abs}；导入于 ${importedAt}。不是通用权威知识：引用时说明是学习者自己的笔记。`,
         '',

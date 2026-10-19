@@ -1,4 +1,4 @@
-// M14 产出物验收测试共用：起一个用样例书库的核心（假模型），经 HTTP 建产出物、存版本。
+// 产出物验收测试共用：起一个用样例书库的核心（假模型），经 HTTP 建产出物、存版本。
 import { expect } from 'vitest';
 import { createApp, SAMPLE_DIR, type App } from '../../src/core/app.ts';
 import { FakeModel, type FakeOptions } from '../../src/core/model/fake.ts';

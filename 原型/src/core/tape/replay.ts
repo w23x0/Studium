@@ -46,6 +46,11 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
     .map((l) => JSON.parse(l) as TapeLine);
   const header = lines[0];
   if (header?.t !== 'header') throw new Error(`${path} 不是录带（缺开头）`);
+  // 录带格式版本：改名后是 2；读到别的值一律当旧版（类型上只写当前版本，这里按 number 看）
+  const tapeVersion: number = header.v;
+  if (tapeVersion !== 2) {
+    throw new Error(`${path} 是旧版录带（v${String(tapeVersion)}），改名后不能回放；请重新录一份`);
+  }
   const problems: string[] = [];
   if (header.preexisting > 0) {
     problems.push(

@@ -1,4 +1,4 @@
-// 跨闭环的长期功能（批 6）新增的正本记录类型与记录里的小结构。只加，不改旧字段的意思。
+// 跨多次学习的长期功能（批 6）新增的正本记录类型与记录里的小结构。只加，不改旧字段的意思。
 // records.ts 把这里的类型接进 Ticket / SessionOpened / TalkEnded / LogRecord。
 
 /** 复习 / 复检：这张单子是回头去看以前那次学习（记录/单子与路线.md、会话/导航.md「二级功能」）。 */
@@ -13,10 +13,10 @@ export interface Revisit {
   verdictLine?: number;
 }
 
-/** 接着没合上的原闭环学：新闭环续接原闭环（原闭环的正本不改）。 */
+/** 接着没合上的那次学：新的一次续接原来那次（原来那次的正本不改）。 */
 export interface ResumeOrigin {
   fromLoop: string;
-  /** 原闭环结束的时间。 */
+  /** 原来那次结束的时间。 */
   endedAt: string;
 }
 
@@ -46,7 +46,7 @@ export function parseReviewReturned(
 export const REMINDER_KINDS = ['recheck', 'resume', 'deadline', 'review', 'other'] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
 
-/** 应用内提醒（M05:30）：什么时候、做什么。只追加；记在项目主对话的正本里。 */
+/** 应用内提醒（`docs/设计/会话/导航.md`「二级功能」计划、日程与提醒）：什么时候、做什么。只追加；记在项目主对话的正本里。 */
 export interface ReminderAdded {
   type: 'reminder_added';
   at: string;
@@ -58,8 +58,8 @@ export interface ReminderAdded {
   text: string;
   /** recheck：复检以前哪次学习；resume：接着哪次没合上的学习（学习会话 id）。 */
   loopSessionId?: string;
-  by: 'm05' | 'learner';
-  m05SessionId?: string;
+  by: 'nav' | 'learner';
+  navSessionId?: string;
 }
 
 /** 提醒办完 / 不要了（另起一条记录，原提醒不改）。 */

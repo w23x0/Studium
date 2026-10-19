@@ -19,7 +19,7 @@ export interface EvalModels {
   judge: ModelAdapter;
 }
 
-const JUDGE_PROMPT = `你是 Studium 行为评测的判分者。给你一个失败模式的判法和一段闭环对话原文（带行号），判这段对话过还是不过。
+const JUDGE_PROMPT = `你是 Studium 行为评测的判分者。给你一个失败模式的判法和一段学习对话原文（带行号），判这段对话过还是不过。
 只按给的判法判，不加别的标准。用 submit_judgement 交回：过不过、一句理由、相关行号。只交一次。`;
 
 export async function runEvals(opts: {
@@ -129,7 +129,7 @@ async function judgeWithModel(
     const text = [
       `判法：${judge.rubric}`,
       '',
-      '闭环对话原文（L 后是行号）：',
+      '学习对话原文（L 后是行号）：',
       renderTranscript(run.loop),
     ].join('\n');
     for await (const ev of conv.send({ role: 'program', text })) {

@@ -187,7 +187,7 @@ export class Learned {
       (r) => r.record.type === 'choice_card' && r.record.cardId === cardId,
     )?.record;
     if (card?.type !== 'choice_card') return undefined;
-    const nav = card.m05SessionId;
+    const nav = card.navSessionId;
     const rd = main.find(
       (r) => r.record.type === 'route_decision' && r.record.navSessionId === nav,
     );

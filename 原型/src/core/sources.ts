@@ -1,4 +1,4 @@
-// 原文与出处（批 2a）：把 M07 的书、目录、小节、全文检索、原件页面、教材出处标记、资料报错整理成界面和模型能直接用的视图。
+// 原文与出处（批 2a）：把书库的书、目录、小节、全文检索、原件页面、教材出处标记、资料报错整理成界面和模型能直接用的视图。
 // 只读书库；唯一会写的是资料报错存放处（只追加）。
 import { randomBytes } from 'node:crypto';
 import { parseBookLineRef, parseCitations, type CitationRef } from '../shared/citation.ts';
@@ -19,9 +19,9 @@ import type {
   TocResponse,
 } from '../shared/protocol.ts';
 import { NotFoundError } from './hub.ts';
-import type { Library } from './knowledge/m07.ts';
-import type { Originals } from './knowledge/m07-originals.ts';
-import type { SourceReports } from './knowledge/m07-reports.ts';
+import type { Library } from './knowledge/library.ts';
+import type { Originals } from './knowledge/originals.ts';
+import type { SourceReports } from './knowledge/source-reports.ts';
 import { isNotFound } from './log/session-log.ts';
 import { BadRequestError } from './studium.ts';
 

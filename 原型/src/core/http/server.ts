@@ -54,8 +54,8 @@ import type {
 } from '../../shared/protocol.ts';
 import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
-import { NoOriginalError, NoRendererError } from '../knowledge/m07-originals.ts';
-import type { Notes } from '../knowledge/m07-notes.ts';
+import { NoOriginalError, NoRendererError } from '../knowledge/originals.ts';
+import type { Notes } from '../knowledge/notes.ts';
 import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 import { InputError, type Inputs } from '../inputs.ts';
@@ -76,9 +76,9 @@ export interface ServerOptions {
   sources: Sources;
   /** 输入（批 4）：图片原样保存与转写。 */
   inputs: Inputs;
-  /** 个人笔记导入 M07。 */
+  /** 个人笔记导入资料区。 */
   notes: Notes;
-  /** M14 知识产出物（批 8）。 */
+  /** 知识产出物（批 8）。 */
   outputs: Outputs;
   /** 资料的来源说明、状态回看（批 10b）。 */
   cross: CrossServices;
@@ -215,8 +215,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return;
     if (method === 'POST' && parts[1] === 'objections' && parts.length === 2) {
       const body = (await readJson(req)) as Partial<RecordObjectionRequest>;
-      if (body.kind !== 'm10' && body.kind !== 'm15') {
-        throw new BadRequest('kind 要是 m10 或 m15');
+      if (body.kind !== 'pedagogy' && body.kind !== 'state') {
+        throw new BadRequest('kind 要是 state 或 pedagogy');
       }
       if (typeof body.recordId !== 'string' || typeof body.text !== 'string') {
         throw new BadRequest('recordId 与 text 要是字符串');
@@ -227,7 +227,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     }
     if (
       method === 'POST' &&
-      parts[1] === 'm15' &&
+      parts[1] === 'state' &&
       parts[2] === 'confirmations' &&
       parts.length === 3
     ) {
@@ -595,7 +595,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         relations: await ev.loopRelations(b),
       } satisfies LoopRelationsResponse);
     } else if (a === 'projects' && c === 'overview' && n === 4 && b !== undefined) {
-      // 批 6：项目概览带“今天该做的”，没合上的闭环带谁在接着学
+      // 批 6：项目概览带“今天该做的”，没合上的那次带谁在接着学
       const overview = await ev.overview(b);
       overview.today = await opts.studium.longterm.todayView(b);
       for (const brief of overview.groups.unclosed) {
@@ -620,15 +620,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, {
         learning: await opts.studium.learned.one(decodeURIComponent(b)),
       } satisfies LearningResponse);
-    } else if (a === 'm10' && b === 'records' && n === 3) {
+    } else if (a === 'pedagogy' && b === 'records' && n === 3) {
       const records = await ev.strategies(q.get('loop') ?? undefined);
       send(res, 200, { records } satisfies StrategiesResponse);
-    } else if (a === 'm15' && b === 'state' && n === 3) {
+    } else if (a === 'state' && b === 'records' && n === 3) {
       send(res, 200, (await ev.state()) satisfies StateResponse);
     } else if (a === 'objections' && n === 2) {
-      // 只认这三种指向；别的（比如已经没有的 m09）回 400，不悄悄给空列表
+      // 只认这三种指向；别的回 400，不悄悄给空列表
       const kind = q.get('kind') ?? undefined;
-      if (kind !== undefined && !['guard_verdict', 'm10', 'm15'].includes(kind)) {
+      if (kind !== undefined && !['guard_verdict', 'pedagogy', 'state'].includes(kind)) {
         throw new BadRequest(`异议指向的种类没有 ${kind}`);
       }
       const objections = ev.objections(kind, q.get('record') ?? undefined);

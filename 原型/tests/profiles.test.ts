@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { DEFAULT_PROFILES, mergeProfiles } from '../src/core/model/profiles.ts';
 
 describe('按会话类配模型与强度', () => {
-  it('默认：主对话低，闭环 / 守卫 / M05 高', () => {
+  it('默认：主对话低，畅谈 / 学习对话 / 守卫 / 导航 / 状态整理高', () => {
     expect(DEFAULT_PROFILES.main?.effort).toBe('low');
     for (const k of ['talk', 'loop', 'guard', 'nav', 'state'] as const) {
       expect(DEFAULT_PROFILES[k]?.effort).toBe('high');

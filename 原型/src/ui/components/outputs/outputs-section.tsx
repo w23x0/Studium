@@ -2,7 +2,7 @@
 // 点开在右侧宽面板里看与改。写产出的对话底部一行：在写哪一份、点了打开它。
 import { useState } from 'react';
 import { FileTextIcon, MessageSquareIcon, PlusIcon } from 'lucide-react';
-import { OUTPUT_KINDS, type OutputKind, type OutputSummary } from '../../../shared/m14.ts';
+import { OUTPUT_KINDS, type OutputKind, type OutputSummary } from '../../../shared/output.ts';
 import { Button } from '@/components/ui/button';
 import { api } from '../../api.ts';
 import { shortTime } from '../../evidence-model.ts';

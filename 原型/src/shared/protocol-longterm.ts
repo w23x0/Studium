@@ -15,7 +15,7 @@ export interface ReminderView {
   kind: ReminderKind;
   text: string;
   loopSessionId?: string;
-  by: 'm05' | 'learner';
+  by: 'nav' | 'learner';
   addedAt: string;
   /** 办完 / 不要了；还开着就没有。 */
   closed?: { at: string; outcome: 'done' | 'dismissed'; by: 'learner' | 'program'; note?: string };

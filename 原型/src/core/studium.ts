@@ -1,5 +1,5 @@
-// Studium 的闭环外：按事件跑清单（03「闭环外：事件与清单」「收口与闭环守卫」）。
-// 每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（03「读写权限」）。
+// Studium：按事件跑清单（`docs/设计/01-流程.md`；一次学习之外的流程见 `docs/设计/会话/` 各页，收口与守卫见 `会话/守卫.md`）。
+// 每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（`docs/设计/记录/读写权限.md`）。
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
@@ -40,11 +40,11 @@ import { routeDeviations } from './route-deviations.ts';
 import { REVISIT_KINDS } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { foldLoop } from './loop-state.ts';
-import type { Library } from './knowledge/m07.ts';
+import type { Library } from './knowledge/library.ts';
 import type { Sources } from './sources.ts';
-import type { M10 } from './knowledge/m10.ts';
+import type { PedagogyStore } from './knowledge/pedagogy.ts';
 import type { Objections } from './knowledge/objections.ts';
-import { STAGES, type M15, type StateConfirmation } from './knowledge/m15.ts';
+import { STAGES, type StateStore, type StateConfirmation } from './knowledge/state.ts';
 import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { locate, type LocateDeps } from './locate.ts';
 import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
@@ -60,25 +60,25 @@ type StartSource = (typeof START_SOURCES)[number];
 
 /** 学习者离开多久算“隔了一阵回来”，回来时程序追加离开多久。 */
 const AWAY_MS = 30 * 60 * 1000;
-/** 隔多久回来算“隔很久”，M15 顺带整理一次（03「M15」何时整理；阈值属实现细节，先定 12 小时）。 */
+/** 隔多久回来算“隔很久”，状态整理顺带跑一次（`docs/设计/会话/后台整理.md`；阈值属实现细节，先定 12 小时）。 */
 const LONG_AWAY_MS = 12 * 3600 * 1000;
-/** M15 开场里教学行只放开头一段（作紧邻前序事件），全文用 read_session 查。 */
+/** 状态整理开场里教学行只放开头一段（作紧邻前序事件），全文用 read_session 查。 */
 const TEACHING_EXCERPT = 160;
 
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
-  m07: Library;
+  library: Library;
   /** 数据目录（学过的记录的导入存放处在其下）。 */
   dataDir: string;
-  m10: M10;
-  m15: M15;
+  pedagogy: PedagogyStore;
+  state: StateStore;
   /** 学习者异议存放处。 */
   objections: Objections;
-  /** 原文与出处（M07 检索、教材出处核对）。 */
+  /** 原文与出处（资料检索、教材出处核对）。 */
   sources: Sources;
   /** 教学工具（官方 + 学习者自己的）。 */
   teaching: TeachingTools;
-  /** M14 知识产出物（批 8）。 */
+  /** 知识产出物（批 8）。 */
   outputs: Outputs;
   /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
   cross: Crosslinks;
@@ -88,9 +88,9 @@ export interface StudiumOptions {
 export class Studium {
   private hubRef: Hub | undefined;
   private readonly now: () => Date;
-  /** 后台跑着的清单（合上之后、M15 整理、M10 记录……），回放与测试用来等它们跑完。 */
+  /** 后台跑着的清单（合上之后、状态整理、教法记录整理……），回放与测试用来等它们跑完。 */
   private readonly tasks = new Set<Promise<unknown>>();
-  /** M15 整理一次只跑一个，后到的排在后面。 */
+  /** 状态整理一次只跑一个，后到的排在后面。 */
   private stateChain: Promise<void> = Promise.resolve();
   /** 每个主对话一条：路线决定与卡排队写。 */
   private readonly routeChains = new Map<string, Promise<unknown>>();
@@ -115,9 +115,9 @@ export class Studium {
     this.sandboxes = new Sandboxes({
       hub: () => this.hub,
       learned: this.learned,
-      m07: o.m07,
-      m10: o.m10,
-      m15: o.m15,
+      library: o.library,
+      pedagogy: o.pedagogy,
+      state: o.state,
       objections: o.objections,
       teaching: o.teaching,
       dataDir: o.dataDir,
@@ -126,7 +126,7 @@ export class Studium {
     this.longterm = new LongTerm({
       hub: () => this.hub,
       learned: this.learned,
-      m15: o.m15,
+      state: o.state,
       now: () => this.now(),
       iso: () => this.iso(),
       newId: (prefix) => this.newId(prefix),
@@ -145,7 +145,7 @@ export class Studium {
 
   private readonly idListeners = new Set<(prefix: string, id: string) => void>();
 
-  /** 程序生成的编号（选择卡、M15 / M10 记录等）；录带按生成顺序给它们稳定记号。 */
+  /** 程序生成的编号（选择卡、状态记录 / 教法记录等）；录带按生成顺序给它们稳定记号。 */
   private newId(prefix: string): string {
     const id = `${prefix}-${randomBytes(4).toString('hex')}`;
     for (const fn of this.idListeners) fn(prefix, id);
@@ -200,7 +200,7 @@ export class Studium {
         }
       : {}),
     // 畅谈与导航可联网搜索；其余会话不放开（工单 W5 §4.6）
-    ...(kind === 'talk' || kind === 'm05' ? { webSearch: true } : {}),
+    ...(kind === 'talk' || kind === 'nav' ? { webSearch: true } : {}),
     ...(kind === 'loop'
       ? {
           sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
@@ -227,7 +227,7 @@ export class Studium {
           return this.loopTools(sessionId);
         case 'guard':
           return [...this.readTools(sessionId), this.verdictTool(sessionId)];
-        case 'm05':
+        case 'nav':
           // 导航：出下一次学习的选择卡（会话/导航.md「能读什么 · 工具」）
           return [
             ...this.readTools(sessionId),
@@ -241,12 +241,12 @@ export class Studium {
         case 'retrieve':
           // 检索子代理：在只读沙盒里自己读，只挂交回结果这一个工具（工单 README §2.7）
           return [this.findingsTool(sessionId)];
-        case 'm15':
+        case 'state':
           return this.stateTools(sessionId);
-        case 'm10':
+        case 'pedagogy':
           return [this.stateQueryTool(), this.strategyTool(sessionId)];
         case 'output':
-          // M14 只读 M07；写产出新版本的工具由 Outputs 给
+          // 写产出对话只读资料；写产出新版本的工具由 Outputs 给
           return [...this.readTools(sessionId), ...this.o.outputs.sessionTools(sessionId)];
       }
     },
@@ -303,7 +303,7 @@ export class Studium {
     return out;
   }
 
-  // ───────────── 项目资料与期限（M01:15,36 · M07:13）─────────────
+  // ───────────── 项目资料与期限（`docs/设计/记录/资料.md`、`docs/设计/记录/方向目标.md`）─────────────
 
   /** 会话所属的项目（主对话 id）：沿 parent 往上找到 main；不属于任何项目返回空。 */
   async projectOf(sessionId: string): Promise<string | undefined> {
@@ -340,10 +340,10 @@ export class Studium {
     const chosen = foldMaterials(recs);
     const views: ProjectMaterialView[] = [];
     for (const c of chosen) {
-      const info = await this.o.m07.info(c.book);
+      const info = await this.o.library.info(c.book);
       views.push({
         book: c.book,
-        title: info !== undefined ? await this.o.m07.title(c.book) : c.book,
+        title: info !== undefined ? await this.o.library.title(c.book) : c.book,
         kind: info?.kind ?? 'book',
         ...(info !== undefined && info.subject !== '' ? { subject: info.subject } : {}),
         addedAt: c.addedAt,
@@ -367,7 +367,7 @@ export class Studium {
   ): Promise<ProjectMaterialsResponse> {
     const recs = await this.requireProject(mainId);
     const have = new Set(foldMaterials(recs).map((m) => m.book));
-    const lib = await this.o.m07.books();
+    const lib = await this.o.library.books();
     const resolve = (name: string): string | undefined =>
       lib.includes(name) ? name : lib.find((b) => b.trim() === name.trim());
     const adds: string[] = [];
@@ -402,7 +402,7 @@ export class Studium {
     if (main === undefined) return undefined;
     const chosen = await this.selectedBooks(main);
     if (chosen.length === 0) return undefined;
-    const lib = new Set(await this.o.m07.books());
+    const lib = new Set(await this.o.library.books());
     const still = chosen.map((c) => c.book).filter((b) => lib.has(b));
     return still.length > 0 ? still : undefined;
   }
@@ -464,7 +464,7 @@ export class Studium {
     return Math.round((Date.parse(date) - Date.parse(today)) / 86_400_000);
   }
 
-  /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（03「闭环外」暂停）。images = 附图的来历（批 4，文字已并进 text）。 */
+  /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（`docs/设计/01-流程.md`「暂停」）。images = 附图的来历（批 4，文字已并进 text）。 */
   async learnerSays(sessionId: string, text: string, images?: ImageInput[]): Promise<void> {
     const meta = { ...(images !== undefined && images.length > 0 ? { images } : {}) };
     const recs = await this.hub.records(sessionId);
@@ -494,16 +494,16 @@ export class Studium {
     await this.hub.send(sessionId, { role: 'learner', text }, meta);
   }
 
-  /** M05 出选择卡，贴进主对话。trigger 写明为什么要卡。 */
+  /** 导航出选择卡，贴进主对话。trigger 写明为什么要卡。 */
   async requestCard(trigger: string, projectId?: string): Promise<ChoiceCard> {
     const mainId = projectId ?? (await this.ensureMain());
-    const m05 = await this.hub.createSession('m05', { title: '出选择卡', parent: mainId });
-    await this.hub.send(m05.sessionId, {
+    const nav = await this.hub.createSession('nav', { title: '出选择卡', parent: mainId });
+    await this.hub.send(nav.sessionId, {
       role: 'program',
-      text: await this.m05Opening(trigger, mainId),
+      text: await this.navOpening(trigger, mainId),
     });
-    await this.hub.idle(m05.sessionId);
-    const card = this.cards.get(m05.sessionId);
+    await this.hub.idle(nav.sessionId);
+    const card = this.cards.get(nav.sessionId);
     if (!card) throw new Error('导航没有提交选择卡（见该会话记录）');
     // 每次出卡先写一条路线决定，紧接着写卡（记录/单子与路线.md「路线决定与理由」）；
     // 同一主对话的几次出卡排队写，决定与卡才相邻、取代链不断
@@ -513,7 +513,7 @@ export class Studium {
       const decision: RouteDecision = {
         type: 'route_decision',
         at: this.iso(),
-        navSessionId: m05.sessionId,
+        navSessionId: nav.sessionId,
         trigger,
         decision: card.routeDecision.decision,
         reason: card.routeDecision.reason,
@@ -525,7 +525,7 @@ export class Studium {
         type: 'choice_card',
         at: this.iso(),
         cardId: this.newId('card'),
-        m05SessionId: m05.sessionId,
+        navSessionId: nav.sessionId,
         options: card.options,
         recommended: card.recommended,
         trigger,
@@ -544,7 +544,7 @@ export class Studium {
     return run;
   }
 
-  /** 学习者在选择卡上选定：存路线事实，开闭环对话，交开场。 */
+  /** 学习者在选择卡上选定：存路线事实，开学习对话，交开场。 */
   async choose(cardId: string, option: number): Promise<string> {
     let mainId = '';
     let recs: LogRecord[] = [];
@@ -695,7 +695,7 @@ export class Studium {
     return out;
   }
 
-  /** 申请收口：开守卫、核对引用行、记判定。学习者申请时把结论作为事实追加回闭环对话。 */
+  /** 申请收口：开守卫、核对引用行、记判定。学习者申请时把结论作为事实追加回学习对话。 */
   async requestClose(
     loopId: string,
     by: 'model' | 'learner',
@@ -782,8 +782,8 @@ export class Studium {
   // ───────────── 异议（学习者纠正系统的判断；只追加，不改原记录）─────────────
 
   /**
-   * 对守卫的一次判定提异议。闭环还开着：作为学习者原话（带标记）追加进该闭环，之后学习者可再申请收口；
-   * 闭环已结束：记进异议存放处，不改闭环正本里的判定。
+   * 对守卫的一次判定提异议。这次学习还开着：作为学习者原话（带标记）追加进那次学习，之后学习者可再申请收口；
+   * 那次已结束：记进异议存放处，不改正本里的判定。
    */
   async objectToVerdict(
     loopId: string,
@@ -821,15 +821,16 @@ export class Studium {
     };
   }
 
-  /** 对 M10 / M15 的一条记录提异议：只追加一条异议记录，不改原记录；下次整理 / 出卡时被读到。 */
+  /** 对一条教法记录 / 状态记录提异议：只追加一条异议记录，不改原记录；下次整理 / 出卡时被读到。 */
   async objectToRecord(
-    kind: 'm10' | 'm15',
+    kind: 'pedagogy' | 'state',
     recordId: string,
     text: string,
   ): Promise<LearnerObjection> {
     const body = text.trim();
     if (body === '') throw new BadRequestError('异议不能是空的。');
-    const exists = kind === 'm10' ? this.o.m10.record(recordId) : this.o.m15.record(recordId);
+    const exists =
+      kind === 'pedagogy' ? this.o.pedagogy.record(recordId) : this.o.state.record(recordId);
     if (exists === undefined) throw new BadRequestError(`找不到这条记录：${recordId}。`);
     const objection: LearnerObjection = {
       id: this.newId('obj'),
@@ -841,13 +842,13 @@ export class Studium {
     return objection;
   }
 
-  /** 学习者对一条 M15 状态记录确认 / 否认（界面上点的）：只追加一条，不改原记录；下次整理时被读到。 */
+  /** 学习者对一条状态记录确认 / 否认（界面上点的）：只追加一条，不改原记录；下次整理时被读到。 */
   async confirmRecord(
     recordId: string,
     verdict: 'confirm' | 'deny',
     note?: string,
   ): Promise<StateConfirmation> {
-    if (this.o.m15.record(recordId) === undefined) {
+    if (this.o.state.record(recordId) === undefined) {
       throw new BadRequestError(`找不到这条状态记录：${recordId}。`);
     }
     const text = note?.trim();
@@ -858,7 +859,7 @@ export class Studium {
       verdict: verdict === 'confirm' ? '确认' : '否认',
       ...(text ? { note: text } : {}),
     };
-    await this.o.m15.addConfirmation(c);
+    await this.o.state.addConfirmation(c);
     return c;
   }
 
@@ -890,8 +891,8 @@ export class Studium {
     return { loopSessionId: id, line, text: note };
   }
 
-  /** 附在一条 M10 / M15 记录描述后面的学习者异议（交给模型读；没有就是空串）。 */
-  private objectionNotes(kind: 'm10' | 'm15', recordId: string): string {
+  /** 附在一条教法记录 / 状态记录描述后面的学习者异议（交给模型读；没有就是空串）。 */
+  private objectionNotes(kind: 'pedagogy' | 'state', recordId: string): string {
     const rows = this.o.objections.forRecord(kind, recordId);
     return rows.map((o) => `\n  学习者异议（自述，原记录没改）：${o.text}`).join('');
   }
@@ -1059,7 +1060,7 @@ export class Studium {
     };
   }
 
-  // ───────────── M05 ─────────────
+  // ───────────── 导航 ─────────────
 
   private readonly cards = new Map<
     string,
@@ -1075,7 +1076,7 @@ export class Studium {
    * 路线事实（最近 5 张卡与路线决定）、停车场、学过的记录上 / 中层、其他。
    * 没合上触发时附那次完整对话；补前置合上触发时附原学习的上层。
    */
-  private async m05Opening(trigger: string, mainId: string): Promise<string> {
+  private async navOpening(trigger: string, mainId: string): Promise<string> {
     const records = await this.hub.records(mainId);
     const main = records.map((r) => r.record);
     const goal = currentGoal(records);
@@ -1094,7 +1095,7 @@ export class Studium {
       .slice(-5)) {
       if (record.type !== 'choice_card') continue;
       const rd = records.find(
-        (r) => r.record.type === 'route_decision' && r.record.navSessionId === record.m05SessionId,
+        (r) => r.record.type === 'route_decision' && r.record.navSessionId === record.navSessionId,
       );
       const made = records.find(
         (r) => r.record.type === 'choice_made' && r.record.cardId === record.cardId,
@@ -1493,13 +1494,13 @@ export class Studium {
 
   /** 学习者给一条状态记录补“我的解释”：只追加，不改原记录；下次整理时当自述读到。 */
   async addStateExplanation(recordId: string, text: string): Promise<StateExplanationView> {
-    if (this.o.m15.record(recordId) === undefined) {
+    if (this.o.state.record(recordId) === undefined) {
       throw new BadRequestError(`找不到这条状态记录：${recordId}。`);
     }
     const t = text.trim();
     if (t === '') throw new BadRequestError('解释不能是空的。');
     const e = { id: this.newId('ex'), at: this.iso(), recordId, text: t };
-    await this.o.m15.addExplanation(e);
+    await this.o.state.addExplanation(e);
     return e;
   }
 
@@ -2004,7 +2005,7 @@ export class Studium {
     };
   }
 
-  // ───────────── 闭环对话 ─────────────
+  // ───────────── 学习对话 ─────────────
 
   /**
    * 学习对话的工具：只有两个命令（工单 W4 §5.5）。资料、学过的记录、状态、教法记录与教学工具
@@ -2180,9 +2181,9 @@ export class Studium {
     return undefined;
   }
 
-  // ───────────── M15 学习者状态（存放处 + 后台整理）─────────────
+  // ───────────── 状态记录（存放处 + 后台整理）─────────────
 
-  /** 排一次 M15 整理（03「M15」何时整理）；force = M04 重新确认请求，没有新记录也跑。 */
+  /** 排一次状态整理（`docs/设计/会话/后台整理.md`）；force = 守卫重新确认请求，没有新记录也跑。 */
   organizeStateLater(trigger: string, from?: string, force = false): void {
     const run = this.stateChain.then(() => this.organizeState(trigger, from, force));
     // 链上只管排队：这次失败不挡下一次；失败本身由 background 写进核心日志
@@ -2191,22 +2192,22 @@ export class Studium {
   }
 
   private async organizeState(trigger: string, from: string | undefined, force: boolean) {
-    const covered = this.o.m15.covered();
+    const covered = this.o.state.covered();
     const facts = await this.stateFacts(covered);
     // 学习者对状态记录提的异议，上次整理之后新来的也算新记录
-    const lastRun = this.o.m15.lastRunAt();
+    const lastRun = this.o.state.lastRunAt();
     const fresh = this.o.objections
       .all()
-      .filter((o) => o.target.kind === 'm15' && (lastRun === undefined || o.at > lastRun));
+      .filter((o) => o.target.kind === 'state' && (lastRun === undefined || o.at > lastRun));
     // 学习者在界面上对状态记录的确认 / 否认，也算上次整理之后的新记录
-    const freshConfirmations = this.o.m15
+    const freshConfirmations = this.o.state
       .allConfirmations()
       .filter((c) => lastRun === undefined || c.at > lastRun);
     // 学习者给状态记录补的“我的解释”，同样算上次整理之后的新记录
-    const freshExplanations = this.o.m15
+    const freshExplanations = this.o.state
       .allExplanations()
       .filter((e) => lastRun === undefined || e.at > lastRun);
-    // 没有新记录不整理（03「M15」）
+    // 没有新记录不整理
     if (
       facts.newLearnerLines === 0 &&
       fresh.length === 0 &&
@@ -2216,8 +2217,8 @@ export class Studium {
     ) {
       return;
     }
-    const objections = this.o.objections.all().filter((o) => o.target.kind === 'm15');
-    const s = await this.hub.createSession('m15', {
+    const objections = this.o.objections.all().filter((o) => o.target.kind === 'state');
+    const s = await this.hub.createSession('state', {
       title: '整理学习者状态',
       ...(from !== undefined ? { parent: from } : {}),
     });
@@ -2226,7 +2227,7 @@ export class Studium {
       text: [
         `触发原因：${trigger}`,
         '',
-        this.o.m15.describeCurrent(),
+        this.o.state.describeCurrent(),
         '',
         ...(objections.length > 0
           ? [
@@ -2254,17 +2255,17 @@ export class Studium {
       (r) => r.record.type === 'turn_failed',
     );
     if (!failed) {
-      await this.o.m15.addRun({
+      await this.o.state.addRun({
         at: this.iso(),
         trigger,
-        m15SessionId: s.sessionId,
+        stateSessionId: s.sessionId,
         covered: facts.covered,
       });
     }
   }
 
   /**
-   * 交给 M15 的 M01 事实：与 M04 取不同的字段（03「M15」读什么）——时间、间隔、停顿、中断与停下的地方、
+   * 交给状态整理的事实（与守卫取不同的字段，`docs/设计/会话/后台整理.md`）——时间、间隔、停顿、中断与停下的地方、
    * 学习者的话（含紧邻的前一句教学作前序事件）。不给诊断记录、守卫判定，也不给“合上没有”。
    */
   private async stateFacts(covered: Record<string, number>) {
@@ -2346,16 +2347,16 @@ export class Studium {
         '查学习者的非知识状态与条件（状态记录）：先看“当前状态”页；detail 为真时列出全部状态记录（每条标承载读数 / 解释候选、来源、时间范围、依据行号）。解释候选须经一次独立判断才能当行动依据。',
       input: { detail: z.boolean().optional() },
       run: (a) => {
-        const rows = this.o.m15.allRecords();
-        if (rows.length === 0 && !this.o.m15.current()) {
+        const rows = this.o.state.allRecords();
+        if (rows.length === 0 && !this.o.state.current()) {
           return ok('还没有状态记录（按无状态约束）');
         }
-        const parts = [this.o.m15.describeCurrent()];
-        if (a.detail === true || !this.o.m15.current()) {
+        const parts = [this.o.state.describeCurrent()];
+        if (a.detail === true || !this.o.state.current()) {
           parts.push(
             '',
             '状态记录：',
-            ...rows.map((r) => this.o.m15.describeRecord(r) + this.objectionNotes('m15', r.id)),
+            ...rows.map((r) => this.o.state.describeRecord(r) + this.objectionNotes('state', r.id)),
           );
         }
         return ok(parts.join('\n'));
@@ -2363,8 +2364,8 @@ export class Studium {
     };
   }
 
-  /** M15 会话的工具：读 M01 对话（不含诊断与判定）、读自己的底层，只写自己的两层。 */
-  private stateTools(m15Id: string): ToolSpec[] {
+  /** 状态整理会话的工具：读学习对话（不含诊断与判定）、读自己的底层，只写自己的两层。 */
+  private stateTools(stateId: string): ToolSpec[] {
     return [
       this.readSessionTool(),
       {
@@ -2374,11 +2375,11 @@ export class Studium {
         run: () =>
           ok(
             [
-              this.o.m15.describeCurrent(),
+              this.o.state.describeCurrent(),
               '',
-              ...this.o.m15
+              ...this.o.state
                 .allRecords()
-                .map((r) => this.o.m15.describeRecord(r) + this.objectionNotes('m15', r.id)),
+                .map((r) => this.o.state.describeRecord(r) + this.objectionNotes('state', r.id)),
             ].join('\n'),
           ),
       },
@@ -2433,7 +2434,7 @@ export class Studium {
             if (ref.lines.some((l) => learner.has(l))) learnerRef = true;
           }
           if (source === '自述' && !learnerRef) return err('自述须引至少一行学习者自己的话');
-          await this.o.m15.addRecord({
+          await this.o.state.addRecord({
             id: this.newId('st'),
             at: this.iso(),
             text: a.text as string,
@@ -2450,8 +2451,8 @@ export class Studium {
                   },
                 }
               : {}),
-            m15SessionId: m15Id,
-            model: await this.hub.executedModel(m15Id),
+            stateSessionId: stateId,
+            model: await this.hub.executedModel(stateId),
           });
           return ok('已记');
         },
@@ -2466,13 +2467,13 @@ export class Studium {
           basis_span: z.string().describe('阶段判断依据的时间跨度'),
         },
         run: async (a) => {
-          await this.o.m15.setCurrent({
+          await this.o.state.setCurrent({
             at: this.iso(),
             text: a.text as string,
             stage: a.stage as (typeof STAGES)[number],
             basisSpan: a.basis_span as string,
-            m15SessionId: m15Id,
-            model: await this.hub.executedModel(m15Id),
+            stateSessionId: stateId,
+            model: await this.hub.executedModel(stateId),
           });
           return ok('当前状态页已更新');
         },
@@ -2480,7 +2481,7 @@ export class Studium {
     ];
   }
 
-  // ───────────── M10 教法效果（后台记录）─────────────
+  // ───────────── 教法记录（后台记录）─────────────
 
   private readonly strategyTargets = new Map<
     string,
@@ -2513,15 +2514,15 @@ export class Studium {
         : [],
     );
     const ended = records.find((r) => r.record.type === 'loop_ended');
-    // 用了哪份教学工具由程序从工具调用里读（03「教学工具怎么落」），不靠模型自报
+    // 用了哪份教学工具由程序从工具调用里读（`docs/设计/记录/教法记录与教学工具.md`），不靠模型自报
     const toolUses = toolUsesOf(records);
     const toolsUsed = [...new Set(toolUses.map((u) => u.name))];
     // 教法记录整理对状态成因的自查：状态记录里有“出现在某段教学之后”标注的，先查自己的教法是不是成因
-    const annotated = this.o.m15
+    const annotated = this.o.state
       .allRecords()
       .filter((r) => r.afterTeaching !== undefined)
       .slice(-5);
-    const s = await this.hub.createSession('m10', { title: '记教法效果', parent: loopId });
+    const s = await this.hub.createSession('pedagogy', { title: '记教法效果', parent: loopId });
     this.strategyTargets.set(s.sessionId, {
       loopId,
       lines: new Set(records.map((r) => r.line)),
@@ -2544,7 +2545,7 @@ export class Studium {
         '',
         ...(annotated.length > 0
           ? [
-              `状态记录里带“出现在 X 之后”标注的（先自查：自己的教法是不是这些状态的成因，不要直接当作学习者固有的状态；提交时 self_check 里写自查）：\n${annotated.map((r) => this.o.m15.describeRecord(r)).join('\n')}`,
+              `状态记录里带“出现在 X 之后”标注的（先自查：自己的教法是不是这些状态的成因，不要直接当作学习者固有的状态；提交时 self_check 里写自查）：\n${annotated.map((r) => this.o.state.describeRecord(r)).join('\n')}`,
               '',
             ]
           : []),
@@ -2556,7 +2557,7 @@ export class Studium {
     this.strategyTargets.delete(s.sessionId);
   }
 
-  private strategyTool(m10Id: string): ToolSpec {
+  private strategyTool(pedagogyId: string): ToolSpec {
     return {
       name: 'write_strategy_record',
       description:
@@ -2572,7 +2573,7 @@ export class Studium {
           .describe('开场列了带“出现在 X 之后”标注的状态记录时必填：自查自己的教法是不是成因'),
       },
       run: async (a) => {
-        const target = this.strategyTargets.get(m10Id);
+        const target = this.strategyTargets.get(pedagogyId);
         if (!target) return err('找不到要记的那次学习');
         const selfCheck = typeof a.self_check === 'string' ? a.self_check.trim() : '';
         if (target.annotatedStateIds.length > 0 && selfCheck === '') {
@@ -2583,7 +2584,7 @@ export class Studium {
         const lines = a.evidence_lines as number[];
         const bad = lines.filter((l) => !target.lines.has(l));
         if (bad.length > 0) return err(`第 ${bad.join('、')} 行不在这次学习的记录里`);
-        await this.o.m10.add({
+        await this.o.pedagogy.add({
           id: this.newId('sr'),
           at: this.iso(),
           loopSessionId: target.loopId,
@@ -2596,8 +2597,8 @@ export class Studium {
           ...(selfCheck !== ''
             ? { selfCheck: { stateIds: target.annotatedStateIds, note: selfCheck } }
             : {}),
-          m10SessionId: m10Id,
-          model: await this.hub.executedModel(m10Id),
+          pedagogySessionId: pedagogyId,
+          model: await this.hub.executedModel(pedagogyId),
         });
         return ok('已记');
       },
@@ -2617,13 +2618,13 @@ export class Studium {
     return `新点 ${t.newPoint}；预期理解 ${t.clause}；出发点 ${starts || '（无）'}；路线动作：${t.routeAction}${cross}`;
   }
 
-  /** 闭环还开着、且不是搁置着（要收口 / 确认合上）。 */
+  /** 这次学习还开着、且不是搁置着（要收口 / 确认合上）。 */
   private async assertActiveLoop(loopId: string): Promise<void> {
     await this.assertOpenLoop(loopId);
     await this.assertNotShelved(loopId);
   }
 
-  /** 搁置着的闭环不能收口 / 确认合上：先恢复。 */
+  /** 搁置着的那次不能收口 / 确认合上：先恢复。 */
   async assertNotShelved(loopId: string): Promise<void> {
     if (foldLoop(await this.hub.records(loopId)).shelved !== undefined) {
       throw new BadRequestError('这部分搁置着，先点“接着学”再往下。');
@@ -2660,13 +2661,13 @@ export class Studium {
         run: async (a) => {
           const book = a.book as string | undefined;
           if (book === undefined || book === '') {
-            const lib = await this.o.m07.books();
+            const lib = await this.o.library.books();
             if (lib.length === 0) return ok('书库是空的（缺资料依据）');
             const scope = await this.scopeOf(sessionId, a.all === true);
             const shown = scope ?? lib;
             const groups = new Map<string, string[]>();
             for (const id of shown) {
-              const subject = (await this.o.m07.info(id))?.subject ?? '';
+              const subject = (await this.o.library.info(id))?.subject ?? '';
               groups.set(subject, [...(groups.get(subject) ?? []), id]);
             }
             const lines: string[] = [];
@@ -2684,7 +2685,7 @@ export class Studium {
                   : ''),
             );
           }
-          return ok((await this.o.m07.index(book)) + (await this.o.cross.noteLines([book])));
+          return ok((await this.o.library.index(book)) + (await this.o.cross.noteLines([book])));
         },
       },
       {
@@ -2700,7 +2701,7 @@ export class Studium {
         run: async (a) => {
           const book = a.book as string;
           const file = a.file as string;
-          const r = await this.o.m07.lines(
+          const r = await this.o.library.lines(
             book,
             file,
             (a.from_line as number | undefined) ?? 1,
@@ -2760,7 +2761,7 @@ function ticketText(label: string, v: unknown): string {
   return t;
 }
 
-/** 教学行只取开头一段（M15 用作紧邻前序事件）。 */
+/** 教学行只取开头一段（状态整理用作紧邻前序事件）。 */
 function excerpt(r: NumberedRecord): string {
   const t = renderTranscript([r]);
   return t.length > TEACHING_EXCERPT ? `${t.slice(0, TEACHING_EXCERPT)}…` : t;
