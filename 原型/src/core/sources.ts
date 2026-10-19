@@ -189,6 +189,7 @@ export class Sources {
       throw err;
     }
     const b = { ...base, book: id };
+    if (ref.from < 1) return view(b, { problem: '行号从 1 数' });
     if (ref.from > total) return view(b, { problem: `行号超出文件末尾（共 ${String(total)} 行）` });
     const entry = await this.d.library.entryOf(id, ref.file);
     const loc = (await this.d.originals.hasOriginal(id))

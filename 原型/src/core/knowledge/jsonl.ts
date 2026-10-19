@@ -27,10 +27,3 @@ export async function appendJsonl(path: string, row: object): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await appendFile(path, JSON.stringify(row) + '\n', 'utf8');
 }
-
-/** 按 id 取最新一版。 */
-export function latestById<T extends { id: string }>(rows: T[]): Map<string, T> {
-  const m = new Map<string, T>();
-  for (const r of rows) m.set(r.id, r);
-  return m;
-}

@@ -40,7 +40,7 @@ describe('产出物引用', () => {
     expect(refs?.sources[1]).toMatchObject({ resolved: false });
     expect(refs?.sources[1]?.problem).toBeTruthy();
 
-    expect(refs?.objects ?? []).toEqual([]);
+    expect(refs, '不再有知识点对象引用').not.toHaveProperty('objects');
     expect(refs?.unresolved).toBe(1);
   });
 

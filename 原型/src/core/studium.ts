@@ -997,17 +997,6 @@ export class Studium {
 
   private readonly m09Target = new Map<string, { loopId: string; records: NumberedRecord[] }>();
 
-  /** 写 M09 的会话提候选用的上下文：它写的是哪个闭环、哪些行是学习者说的、实际执行的模型。 */
-  private m09CandidateContext(sessionId: string) {
-    const target = this.m09Target.get(sessionId);
-    if (!target) return undefined;
-    return {
-      loopId: target.loopId,
-      learnerLines: learnerLines(target.records),
-      model: () => this.hub.executedModel(sessionId),
-    };
-  }
-
   private formationTool(sessionId: string): ToolSpec {
     const strengthShape = z.object({
       time: z.enum(EVIDENCE_TIMES),
@@ -1298,6 +1287,8 @@ export class Studium {
           { decision?: string; reason?: string; basis?: string[] } | undefined;
         const problems: string[] = [];
         const blank = (s: unknown): boolean => typeof s !== 'string' || s.trim() === '';
+        // 选项数 2–4 由上面的参数形状管（真模型经它）；这里只挡缺参数，免得下面读空
+        if (!Array.isArray(raw)) return err('缺 options（2–4 个候选单子）');
 
         // 路线决定：必有，决定与理由非空，依据至少一条且每条都能定位
         const basis = Array.isArray(decision?.basis) ? decision.basis : [];
@@ -1349,7 +1340,9 @@ export class Studium {
             if (blank(c.claim)) problems.push(`${n}的对资料核的结果缺 claim（核过的那条说法）`);
             if (c.at !== undefined && c.at.trim() !== '') {
               const at = await locate(c.at, this.locateDeps());
-              if (!at.ok) problems.push(`${n}的出处 ${c.at} 定位不了`);
+              if (at.kind !== 'book')
+                problems.push(`${n}的出处 ${c.at} 不是书里的一行（要写 书/文件:行号）`);
+              else if (!at.ok) problems.push(`${n}的出处 ${c.at} 定位不了`);
             }
             sourceCheck.push({
               claim: c.claim ?? '',
@@ -1397,7 +1390,9 @@ export class Studium {
           });
         }
         const recommended = a.recommended as number;
-        if (recommended >= raw.length) problems.push('推荐的序号超出选项范围');
+        if (!Number.isInteger(recommended) || recommended < 0 || recommended >= raw.length) {
+          problems.push('推荐的序号超出选项范围（从 0 数）');
+        }
         if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
         this.cards.set(sessionId, {
           options,

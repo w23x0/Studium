@@ -588,9 +588,6 @@ export const W = {
   refsCount: (n: number) => `引用了 ${String(n)} 处`,
   refsBad: (n: number) => `${String(n)} 处对不上`,
   refsBadHint: '对不上的引用显示成灰色；点开或悬停能看到原因。',
-  refBad: '这个引用对不上',
-  refWritten: '正文里写的是',
-  refUnchecked: '存了以后才核对',
   // 方法比较
   cmpMethod: '方法',
   cmpBoundary: '适用边界',

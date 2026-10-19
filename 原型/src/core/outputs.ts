@@ -358,11 +358,6 @@ export class Outputs {
         : { ...e, citation: c, problem: c.problem ?? '对不上' };
   }
 
-  /** 产出物的名字（依据视图列产出物时用）。 */
-  titleOf(output: string): string | undefined {
-    return this.d.store.output(output)?.title;
-  }
-
   // ───────────── 会话：主对话开“写产出”任务对话，任务对话里的工具 ─────────────
 
   /** 主对话的工具：在学习者刚才那条消息下开一个“写产出”对话。 */
