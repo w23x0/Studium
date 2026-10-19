@@ -1,4 +1,4 @@
-// 关于学习者的记录：我学会的、我的状态、教法记录。每条带依据原话与模型，可提不同看法。
+// 关于学习者的记录：我的状态、教法记录。每条带依据原话与模型，可提不同看法。
 import { useState } from 'react';
 import { CheckIcon, HistoryIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -10,8 +10,7 @@ import type {
 } from '../../../shared/protocol.ts';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
-import { usePanel, useProject } from '../../panel.ts';
-import { DeviationsSection, LearnedPlaceholder } from '../longterm/learned.tsx';
+import { usePanel } from '../../panel.ts';
 import { toolCounts, verdictText } from '../../teaching-model.ts';
 import { W } from '../../wording.ts';
 import {
@@ -78,23 +77,6 @@ function OpenLoop(props: { sessionId: string }) {
     >
       {W.loopBasis}
     </button>
-  );
-}
-
-// ───────────── 我学会的 ─────────────
-
-/**
- * W2 起分析层与当前视图取消：这里只留空壳（W6 做新的“我学会的”：按学习列），
- * 加“没按推荐走的时候”（路线偏差，只读）。
- */
-export function LearnedView() {
-  const project = useProject();
-  return (
-    <div className="flex flex-col gap-5" data-testid="learned-view">
-      <h2 className="font-serif text-lg">{W.learned}</h2>
-      <LearnedPlaceholder />
-      <DeviationsSection projectId={project} />
-    </div>
   );
 }
 

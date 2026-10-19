@@ -1,5 +1,5 @@
 // 项目概览旁栏的“提醒”（批 6）：还开着的提醒（哪天、做什么），可标做完了 / 不要了；办过的可展开看（已办 / 已跳过）；
-// 加一条：做什么（复检一个学过的知识点 / 接着一段没学完的 / 为期限做准备 / 别的事）、什么时候（某一天 / 期限前几天）。
+// 加一条：做什么（复检以前学过的一块 / 接着一段没学完的 / 为期限做准备 / 别的事）、什么时候（某一天 / 期限前几天）。
 import { useState } from 'react';
 import { BellIcon, CheckIcon, ChevronDownIcon, ChevronRightIcon, XIcon } from 'lucide-react';
 import type {

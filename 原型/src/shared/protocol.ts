@@ -1,4 +1,5 @@
 // 核心与界面之间的 HTTP / SSE 协议。界面只认这里的类型，不碰核心实现。
+import { START_SOURCES } from './records.ts';
 import type {
   ConversationKind,
   LearnerObjection,
@@ -56,6 +57,20 @@ export interface ChooseResponse {
   loopSessionId: string;
 }
 
+/** 学习者改这次学习的单子（记录/单子与路线.md「单子」规矩“可见可改”）：至少给一项。 */
+export interface TicketEditRequest {
+  newPoint?: string;
+  clause?: string;
+  startPoints?: { point: string; source: (typeof START_SOURCES)[number]; ref?: string }[];
+}
+
+export interface TicketEditResponse {
+  /** 新记录 `ticket_edited` 在学习正本里的行号。 */
+  line: number;
+  /** 改后的整张单子。 */
+  ticket: Ticket;
+}
+
 export interface ListSessionsResponse {
   sessions: SessionSummary[];
 }
@@ -104,8 +119,19 @@ export interface PointRef {
   name: string;
 }
 
-/** 依据视图里的单子：就是单子本身（文字），跨领域只三项。 */
-export type TicketView = Ticket;
+/** 依据视图里的一次改动：改前、改后、时间（工单 W6 §4.2）。 */
+export interface TicketEditView {
+  line: number;
+  at: string;
+  before: Ticket;
+  after: Ticket;
+}
+
+/**
+ * 依据视图里的单子：平铺 —— `Ticket` 各字段照给（现在的这张；卡选项上是卡上原样），
+ * `refs` = 单子里每个依据串回查的结果（去重、按出现顺序），`edits` = 本次学习的改动（按行号升序）。
+ */
+export type TicketView = Ticket & { refs: SourceView[]; edits: TicketEditView[] };
 
 /** 选项出处里的一条，已尽量回查。resolved 为假 = 查不到（原样给出 raw）。 */
 export interface SourceView {
@@ -148,7 +174,7 @@ export interface CardView {
   model: ModelInfo;
   chosen?: { option: number; loopSessionId: string };
   /** 这次出卡的路线决定（写在主对话里，紧挨着卡的前一行）；旧卡没有。 */
-  routeDecision?: { line: number; decision: string; reason: string; basis: SourceView[] };
+  routeDecision?: RouteDecisionView;
   options: CardOptionView[];
 }
 
@@ -169,6 +195,25 @@ export interface QuoteView {
   text?: string;
 }
 
+/** 一条实际理解带它引用的那几行的原话（工单 W6 §4.2）。 */
+export type UnderstandingView = Understanding & { quotes: QuoteView[] };
+
+/**
+ * 这次出卡 / 这次学习中途改线时导航作出的路线决定与理由（记录/单子与路线.md「路线决定与理由」）。
+ * `superseded` = 同一处之后还有别的路线决定（旧决定留着，标“已被取代”）。
+ */
+export interface RouteDecisionView {
+  line: number;
+  at: string;
+  navSessionId: string;
+  /** 为什么出卡 / 改线：合上 / 没合上 / 学习者要求 / 补前置合上 …… */
+  trigger: string;
+  decision: string;
+  reason: string;
+  basis: SourceView[];
+  superseded: boolean;
+}
+
 export interface GuardVerdictView {
   /** 判定在闭环正本里的行号（异议指向它）。 */
   line: number;
@@ -178,9 +223,10 @@ export interface GuardVerdictView {
   /** 程序核对不过时的原因。 */
   problem?: string;
   guardSessionId: string;
+  /** 判定记录里记的实际执行模型；没有才退回会话模型。 */
   model: ModelInfo;
-  /** 学习者实际表现出的理解与证据强度；判没合上时写的也照存（旧数据没有这一栏）。 */
-  understanding?: Understanding[];
+  /** 学习者实际表现出的理解与证据强度，逐条带依据行的原话；没写就是空数组。 */
+  understanding: UnderstandingView[];
   /** 守卫引用的学习行与那几行的原文。 */
   quotes: QuoteView[];
   /** 触发这次判定的收口申请。 */
@@ -210,8 +256,10 @@ export interface LoopEvidence {
   status: LoopStatus;
   endedAt?: string;
   endNote?: string;
-  /** 开场单子（M05 给的）。 */
+  /** 单子：现在的这张（学习者改过就是改后的）。 */
   ticket?: TicketView;
+  /** 没合上就结束：导航读那次对话出下一张卡时写的路线决定与理由。 */
+  routeDecision?: RouteDecisionView;
   /** 闭环对话（教学侧）用的模型；诊断记录由它写。 */
   model: ModelInfo;
   verdicts: GuardVerdictView[];
@@ -260,11 +308,28 @@ export interface LoopLoad {
   parkingPile: boolean;
 }
 
+/**
+ * 方向目标的完整形状（记录/方向目标.md「内容」）：`line` = 那条记录在项目对话里的行号。
+ * 旧记录只有一句话时就只有 `line at text`；`provisional` 只在临时版为真。
+ */
+export interface GoalView {
+  line: number;
+  at: string;
+  text: string;
+  title?: string;
+  abilities?: { ability: string; reason: string; confirmedReason?: string }[];
+  orderHint?: string;
+  deadline?: string;
+  provisional?: true;
+}
+
 /** 项目页：本项目下的闭环按状态分组。 */
 export interface ProjectOverview {
   mainSessionId: string;
   title: string;
   goal?: string;
+  /** 当前方向目标的完整形状（最后一条为准）；还没有方向目标就不带。 */
+  goalView?: GoalView;
   /** 期限（YYYY-MM-DD）与备注；没记就没有。 */
   deadline?: string;
   deadlineNote?: string;

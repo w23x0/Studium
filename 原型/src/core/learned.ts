@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import type { Import, LearnedResponse, Learning } from '../shared/protocol-learned.ts';
 import type { NumberedRecord, Ticket } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
+import { currentTicket, ticketEdits } from './ticket.ts';
 
 export interface LearnedDeps {
   hub: () => Hub;
@@ -121,12 +122,14 @@ export class Learned {
     const ticket = await this.ticketOf(loopId, records);
     const status: Learning['status'] =
       ended?.record.type !== 'loop_ended' ? '进行中' : ended.record.closed ? '合上' : '没合上';
+    const edits = ticketEdits(records);
     const out: Learning = {
       loopId,
       title,
       openedAt,
       status,
       ticket,
+      ...(edits.length > 0 ? { ticketEdits: edits } : {}),
       ...(ended?.record.type === 'loop_ended' ? { endedAt: ended.record.at } : {}),
     };
     if (ended?.record.type === 'loop_ended') {
@@ -155,13 +158,12 @@ export class Learned {
     return out;
   }
 
-  /** 单子：session_opened 里那张。 */
+  /** 单子：现在的这张（改过就是改后的）；正本里没有就退回会话元信息，再没有给空单子。 */
   private async ticketOf(loopId: string, records: NumberedRecord[]): Promise<Ticket> {
+    const now = currentTicket(records);
+    if (now !== undefined) return now;
     const opened = await this.o.hub().opened(loopId);
     if (opened.ticket !== undefined) return opened.ticket;
-    // 旧数据可能只有记录里的那一份
-    const fromLog = records.find((r) => r.record.type === 'session_opened')?.record;
-    if (fromLog?.type === 'session_opened' && fromLog.ticket !== undefined) return fromLog.ticket;
     return { newPoint: '', clause: '', startPoints: [], routeAction: '', sourceCheck: [] };
   }
 

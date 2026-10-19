@@ -1,38 +1,38 @@
-// 项目概览（照 Claude 项目的 Overview：按状态分组）：想学的方向与期限；学习按 等你选 · 进行中 ·
-// 先放一放的 · 学完了 · 先放下的（没学完）分组；同时开着太多时顶部提醒；
-// 接着学的与原来那段互相指（缩进列在“学习之间的来龙去脉”里）；“我的产出”列出自己写的东西（批 8b）。
-// 旁边一栏是项目资料（照 Claude 项目的“项目知识”）。批 6：顶部“今天该做的”；复习 / 复检标出；旁栏加提醒与阶段复盘。
+// 项目概览（照 Claude 项目的 Overview）：方向目标（逐块带理由与确认理由，临时版标“临时”）与期限；
+// 学习按 等你选 · 进行中 · 学完了 · 先放下的（没合上）分组（从 /api/learned 按学习列，没合上的带
+// 结束原话与当时的路线决定）；同时开着太多时顶部提醒；“我的产出”列出自己写的东西。
+// 旁边一栏是项目资料。顶部“今天该做的”；旁栏加提醒与阶段复盘。
 import { type ReactNode } from 'react';
 import {
   BookCheckIcon,
   CircleCheckIcon,
   CircleDotIcon,
   CircleParkingIcon,
-  CirclePauseIcon,
   ClipboardListIcon,
   CornerDownRightIcon,
-  InfoIcon,
   GaugeIcon,
+  InfoIcon,
   LibraryIcon,
   MessageCircleIcon,
   ShieldCheckIcon,
   SparklesIcon,
 } from 'lucide-react';
 import type {
-  LoopBrief,
+  CardView,
   LoopLoad,
   LoopStatus,
   ProjectOverview,
   SessionSummary,
 } from '../../shared/protocol.ts';
+import type { Learning } from '../../shared/protocol-learned.ts';
 import { Button } from '@/components/ui/button';
 import { api } from '../api.ts';
-import { shortTime } from '../evidence-model.ts';
+import { goalRows } from '../goal-model.ts';
 import { useLoad } from '../hooks/use-load.ts';
+import { projectGroups, type LearnedRow, type UnclosedRow } from '../learned-model.ts';
 import { useOpenSession } from '../open-session.ts';
 import { usePanel } from '../panel.ts';
 import { hasResumes, relationRows } from '../relations-model.ts';
-import { learnerShelveNote } from '../thread-model.ts';
 import { W } from '../wording.ts';
 import { crossOf } from '../cross-model.ts';
 import { ChoiceCardBox, revisitOf } from './choice-card.tsx';
@@ -83,7 +83,7 @@ export function ProjectHome(props: {
                 <div className="flex min-w-0 flex-col gap-8">
                   <LoadNotice load={o.load} />
                   <ProjectChats projectId={props.projectId} tasks={props.tasks} />
-                  <Groups overview={o} onError={props.onError} />
+                  <Groups projectId={props.projectId} overview={o} onError={props.onError} />
                   <OutputsSection projectId={props.projectId} />
                   <Relations projectId={props.projectId} />
                   {/* 资料、记录、教法这些入口：开发者模式关掉时不显示 */}
@@ -107,6 +107,7 @@ export function ProjectHome(props: {
   );
 }
 
+/** 方向目标：结构化时逐块显示（能力、为什么学、你确认时的理由、顺序参考、临时版）；期限照旧。 */
 function Head(props: {
   overview: ProjectOverview;
   projectId: string;
@@ -114,13 +115,35 @@ function Head(props: {
   onError: (e: unknown) => void;
 }) {
   const o = props.overview;
+  const rows = goalRows(o.goalView);
   return (
     <div className="flex flex-col gap-4">
       <h1 className="font-serif text-3xl tracking-tight">{o.title}</h1>
       <div className="bg-card flex flex-col gap-3 rounded-2xl border p-4 shadow-xs">
         <div>
           <div className="text-muted-foreground mb-1 text-xs">{W.goal}</div>
-          <div className="font-serif text-[1.05rem] leading-relaxed">{o.goal ?? W.goalMissing}</div>
+          {rows.length === 0 ? (
+            <div className="font-serif text-[1.05rem] leading-relaxed">{W.goalMissing}</div>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {rows.map((row, i) => (
+                <div key={i} className="flex flex-col gap-0.5">
+                  <span className="text-muted-foreground text-xs">{row.label}</span>
+                  <span className="font-serif text-[1.05rem] leading-relaxed">
+                    {row.text}
+                    {row.kind === 'ability' && row.reason !== undefined && (
+                      <span className="text-muted-foreground text-sm"> · {row.reason}</span>
+                    )}
+                  </span>
+                  {row.confirmedReason !== undefined && (
+                    <span className="text-muted-foreground text-xs">
+                      {W.goalConfirmedReason(row.confirmedReason)}
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <div className="border-t pt-3">
           <DeadlineLine projectId={props.projectId} onError={props.onError} />
@@ -151,84 +174,82 @@ function LoadNotice(props: { load: LoopLoad }) {
   );
 }
 
-function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => void }) {
-  const g = props.overview.groups;
-  // 各组里出现的学习的名字（“从哪岔出来”“在那边”用）
-  const titles = new Map(
-    [...g.inProgress, ...g.closed, ...g.unclosed, ...(g.shelved ?? [])].map((l) => [
-      l.sessionId,
-      l.title,
-    ]),
-  );
+/**
+ * 学习按 等你选 · 进行中 · 学完了 · 先放下的（没合上）分组：前两处照概览，后面按 /api/learned
+ * 的每次学习列（没合上的 = 停车场，带上层：结束原话 + 当时的路线决定）。
+ */
+function Groups(props: {
+  projectId: string;
+  overview: ProjectOverview;
+  onError: (e: unknown) => void;
+}) {
+  const r = useLoad(`learned:${props.projectId}`, () => api.learned(props.projectId));
+  const learnings = r.data?.learnings ?? [];
+  const shelvedIds = (props.overview.groups.shelved ?? []).map((l) => l.sessionId);
+  const g = projectGroups(learnings, shelvedIds);
+  const byId = new Map(learnings.map((l) => [l.loopId, l]));
+  const cards = props.overview.groups.awaitingChoice;
   return (
     <div className="flex flex-col gap-6">
       <Group
         icon={<SparklesIcon className="text-primary" />}
         title={W.groups.awaitingChoice}
         hint={W.groupHints.awaitingChoice}
-        count={g.awaitingChoice.length}
+        count={cards.length}
         testId="group-awaiting"
       >
-        {g.awaitingChoice.map((c) => (
+        {cards.map((c) => (
           <ChoiceCardBox
             key={c.cardId}
             cardId={c.cardId}
             recommended={c.recommended}
-            options={c.options.map((o) => ({
-              title: o.title,
-              reason: o.reason,
-              revisit: revisitOf(o),
-              cross: crossOf(o),
-              stageCheck: o.ticket.stageCheck === true,
-            }))}
+            options={cardOptions(c)}
             onError={props.onError}
           />
         ))}
       </Group>
-      <LoopGroup
-        icon={<CircleDotIcon className="text-primary" />}
-        title={W.groups.inProgress}
-        hint={W.groupHints.inProgress}
-        loops={g.inProgress}
-        titles={titles}
-        overview={props.overview}
-        onError={props.onError}
-        testId="group-in-progress"
-      />
-      {g.shelved !== undefined && g.shelved.length > 0 && (
-        <LoopGroup
-          icon={<CirclePauseIcon className="text-amber-600" />}
-          title={W.groups.shelved}
-          hint={W.groupHints.shelved}
-          loops={g.shelved}
-          titles={titles}
-          overview={props.overview}
-          onError={props.onError}
-          testId="group-shelved"
-        />
+      {!r.data ? (
+        <Loading error={r.error} />
+      ) : (
+        <>
+          <LearnedGroup
+            icon={<CircleDotIcon className="text-primary" />}
+            title={W.groups.inProgress}
+            hint={W.groupHints.inProgress}
+            rows={g.inProgress}
+            learnings={byId}
+            testId="group-in-progress"
+          />
+          <LearnedGroup
+            icon={<CircleCheckIcon className="text-emerald-600" />}
+            title={W.groups.closed}
+            hint={W.groupHints.closed}
+            rows={g.closed}
+            learnings={byId}
+            testId="group-closed"
+          />
+          <LearnedGroup
+            icon={<CircleParkingIcon className="text-amber-600" />}
+            title={W.groups.unclosed}
+            hint={W.groupHints.unclosed}
+            rows={g.unclosed}
+            learnings={byId}
+            testId="group-unclosed"
+          />
+        </>
       )}
-      <LoopGroup
-        icon={<CircleCheckIcon className="text-emerald-600" />}
-        title={W.groups.closed}
-        hint={W.groupHints.closed}
-        loops={g.closed}
-        titles={titles}
-        overview={props.overview}
-        onError={props.onError}
-        testId="group-closed"
-      />
-      <LoopGroup
-        icon={<CircleParkingIcon className="text-amber-600" />}
-        title={W.groups.unclosed}
-        hint={W.groupHints.unclosed}
-        loops={g.unclosed}
-        titles={titles}
-        overview={props.overview}
-        onError={props.onError}
-        testId="group-unclosed"
-      />
     </div>
   );
+}
+
+function cardOptions(c: CardView) {
+  return c.options.map((o) => ({
+    title: o.title,
+    reason: o.reason,
+    revisit: revisitOf(o),
+    cross: crossOf(o),
+    stageCheck: o.ticket.stageCheck === true,
+  }));
 }
 
 function Group(props: {
@@ -256,106 +277,93 @@ function Group(props: {
   );
 }
 
-function LoopGroup(props: {
+function LearnedGroup(props: {
   icon: ReactNode;
   title: string;
   hint: string;
-  loops: LoopBrief[];
-  titles: Map<string, string>;
-  overview: ProjectOverview;
-  onError: (e: unknown) => void;
+  rows: (LearnedRow | UnclosedRow)[];
+  learnings: Map<string, Learning>;
   testId: string;
 }) {
-  const loops = [...props.loops].sort((a, b) => b.openedAt.localeCompare(a.openedAt));
   return (
     <Group
       icon={props.icon}
       title={props.title}
       hint={props.hint}
-      count={loops.length}
+      count={props.rows.length}
       testId={props.testId}
     >
-      {loops.map((l) => (
-        <LoopRow
-          key={l.sessionId}
-          loop={l}
-          titles={props.titles}
-          overview={props.overview}
-          onError={props.onError}
-        />
+      {props.rows.map((row) => (
+        <LearnedRowItem key={row.loopId} row={row} learning={props.learnings.get(row.loopId)} />
       ))}
     </Group>
   );
 }
 
-function LoopRow(props: {
-  loop: LoopBrief;
-  titles: Map<string, string>;
-  overview: ProjectOverview;
-  onError: (e: unknown) => void;
-}) {
+function LearnedRowItem(props: { row: LearnedRow | UnclosedRow; learning: Learning | undefined }) {
   const open = useOpenSession();
   const panel = usePanel();
-  const l = props.loop;
-  const resumedBy = l.resumedBy ?? [];
-  const shelvedNote = l.shelved !== undefined ? learnerShelveNote(l.shelved.note) : undefined;
+  const { row } = props;
+  const ticket = props.learning?.ticket;
+  const rd = 'routeDecision' in row ? row.routeDecision : undefined;
+  const endNote = 'endNote' in row ? row.endNote : undefined;
   return (
     <div className="bg-card hover:border-foreground/20 group flex items-stretch rounded-xl border shadow-xs transition-colors">
       <button
         type="button"
         className="flex flex-1 flex-col gap-0.5 px-4 py-2.5 text-left"
-        onClick={() => open(l.sessionId)}
+        onClick={() => open(row.loopId)}
       >
         <span className="flex flex-wrap items-center gap-1.5">
-          <span className="font-medium">{l.title}</span>
-          {l.revisit !== undefined && (
-            <Badge tone="accent" title={W.revisitHint[l.revisit]}>
-              {W.revisitKind[l.revisit]}
+          <span className="font-medium">{row.title}</span>
+          <Badge
+            tone={row.status === '合上' ? 'good' : row.status === '没合上' ? 'warn' : 'accent'}
+          >
+            {row.statusLabel}
+          </Badge>
+          {row.shelved && <Badge tone="warn">{W.shelvedBadge}</Badge>}
+          {ticket?.revisit !== undefined && (
+            <Badge tone="accent" title={W.revisitHint[ticket.revisit.kind]}>
+              {W.revisitKind[ticket.revisit.kind]}
             </Badge>
           )}
-          {l.stageCheck === true && (
+          {ticket?.stageCheck === true && (
             <Badge tone="warn" title={W.stageCheckHint}>
               {W.stageCheck}
             </Badge>
           )}
         </span>
-        {l.resumeOf !== undefined && (
+        {ticket?.resumeOf !== undefined && (
           <span className="text-muted-foreground flex items-center gap-1 text-xs">
             <CornerDownRightIcon className="size-3" />
-            {W.resumeOfLine(
-              l.resumeOf.title ?? props.titles.get(l.resumeOf.loopSessionId) ?? W.thatPart,
-            )}
+            {W.ticketResumeOfText}
           </span>
         )}
-        {shelvedNote !== undefined && (
+        {endNote !== undefined && (
           <span className="text-muted-foreground text-xs">
-            {W.shelvedNote}：{shelvedNote}
+            {W.unclosedLine}：{endNote}
           </span>
         )}
-        {resumedBy.map((x) => (
-          <span key={x.loopSessionId} className="text-primary text-xs">
-            {W.resumedByLine(x.title ?? props.titles.get(x.loopSessionId) ?? W.thatPart)}
+        {rd !== undefined && (
+          <span className="text-muted-foreground text-xs">
+            {W.routeDecision}：{rd.decision}（{rd.reason}）
           </span>
-        ))}
+        )}
         <span className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
-          {l.newPoint !== undefined && l.newPoint.name !== l.title && (
+          {row.newPoint !== '' && row.newPoint !== row.title && (
             <span>
-              {W.newPoint}：{l.newPoint.name}
+              {W.newPoint}：{row.newPoint}
             </span>
           )}
-          <span>
-            {shortTime(l.openedAt)}
-            {l.endedAt !== undefined && ` → ${shortTime(l.endedAt)}`}
-          </span>
-          {l.lastVerdict !== undefined && <span>{W.lastJudgement(l.lastVerdict.closed)}</span>}
+          <span>{row.time}</span>
         </span>
       </button>
       <button
         type="button"
         title={W.loopBasis}
-        aria-label={`${l.title}：${W.loopBasis}`}
+        aria-label={`${row.title}：${W.loopBasis}`}
         className="text-muted-foreground hover:text-foreground hover:bg-accent/60 flex items-center rounded-e-xl border-s px-3"
-        onClick={() => panel.show({ kind: 'loop', loopId: l.sessionId })}
+        onClick={() => panel.show({ kind: 'loop', loopId: row.loopId })}
       >
         <ShieldCheckIcon className="size-4" />
       </button>

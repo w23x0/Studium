@@ -51,6 +51,8 @@ import type {
   SourceNoteResponse,
   SourceNotesResponse,
   StateTimelineResponse,
+  TicketEditRequest,
+  TicketEditResponse,
 } from '../shared/protocol.ts';
 import type {
   AddLiteratureRequest,
@@ -144,6 +146,12 @@ export const api = {
   loopRelations: (mainId: string) =>
     call<LoopRelationsResponse>(`/projects/${mainId}/loop-relations`),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
+  /** 改这次学习的单子（记录/单子与路线.md「单子」：可见可改）。 */
+  editTicket: (id: string, body: TicketEditRequest) =>
+    call<TicketEditResponse>(`/sessions/${id}/ticket-edit`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
   send: (id: string, text: string, images?: MessageImageInput[]) =>
     call<object>(`/sessions/${id}/messages`, {
       method: 'POST',

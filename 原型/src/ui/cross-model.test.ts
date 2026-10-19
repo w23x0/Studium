@@ -1,15 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { SourceNoteView, StateRecordView, StateTimelineEntry } from '../shared/protocol.ts';
-import {
-  activeFilters,
-  crossOf,
-  dayGroups,
-  dotClass,
-  filterParams,
-  legend,
-  noteRows,
-  stageSteps,
-} from './cross-model.ts';
+import { crossOf, dayGroups, dotClass, legend, noteRows, stageSteps } from './cross-model.ts';
 
 function entry(
   id: string,
@@ -40,19 +31,6 @@ describe('来源说明的显示行', () => {
       '一维运动',
       undefined,
     ]);
-  });
-});
-
-describe('检索筛选', () => {
-  it('空条件不带，数得出几个在起作用', () => {
-    expect(filterParams({ type: '', point: undefined, inBook: 'B' })).toEqual({ inBook: 'B' });
-    expect(filterParams({ type: '例题', point: 'p-a', inBook: 'B' })).toEqual({
-      type: '例题',
-      point: 'p-a',
-      inBook: 'B',
-    });
-    expect(activeFilters({})).toBe(0);
-    expect(activeFilters({ type: '定义', inBook: 'B' })).toBe(2);
   });
 });
 

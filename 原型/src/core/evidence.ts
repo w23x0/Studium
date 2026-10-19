@@ -7,6 +7,7 @@ import {
   type CardView,
   type CurrentStateView,
   type DisclosureResponse,
+  type GoalView,
   type LoopLoad,
   type LoopRelationView,
   type GuardVerdictView,
@@ -17,11 +18,13 @@ import {
   type PointRef,
   type ProjectOverview,
   type QuoteView,
+  type RouteDecisionView,
   type SourceView,
   type StateRecordView,
   type StrategyView,
   type TeachingToolResponse,
   type TeachingToolsResponse,
+  type TicketEditView,
   type TicketView,
 } from '../shared/protocol.ts';
 import {
@@ -31,12 +34,15 @@ import {
   type ConversationKind,
   type LearnerObjection,
   type NumberedRecord,
+  type ProjectGoal,
+  type RouteDecision,
   type Ticket,
 } from '../shared/records.ts';
 import { currentGoal } from './goal.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import type { Learned } from './learned.ts';
 import { locate } from './locate.ts';
+import { currentTicket } from './ticket.ts';
 
 /** 批 8 起新增的会话类：外发披露里单列在 laterSessions。 */
 const LATER_KINDS: ConversationKind[] = ['output', 'retrieve'];
@@ -69,7 +75,7 @@ export interface EvidenceDeps {
 export class Evidence {
   constructor(private readonly d: EvidenceDeps) {}
 
-  // ───────────── 闭环：守卫判定、诊断、单子 ─────────────
+  // ───────────── 一次学习：守卫判定、诊断、单子 ─────────────
 
   async loop(loopId: string): Promise<LoopEvidence> {
     const opened = await this.d.hub.opened(loopId);
@@ -77,6 +83,12 @@ export class Evidence {
     const recs = await this.d.hub.records(loopId);
     const flags = foldLoop(recs);
     const ended = recs.find((r) => r.record.type === 'loop_ended');
+    const now = currentTicket(recs);
+    // 没合上那次的上层之一：导航读那次完整对话出下一张卡时写的路线决定
+    const unclosedDecision =
+      ended?.record.type === 'loop_ended' && !ended.record.closed && opened.parent !== undefined
+        ? await this.loopRouteDecision(recs, opened.parent)
+        : undefined;
     const objections = this.loopObjections(loopId, recs);
     const verdicts: GuardVerdictView[] = [];
     for (const r of recs) {
@@ -92,8 +104,15 @@ export class Evidence {
         basis: v.basis,
         ...(v.problem !== undefined ? { problem: v.problem } : {}),
         guardSessionId: v.guardSessionId,
-        model: await this.d.hub.modelInfo(v.guardSessionId),
-        ...(v.understanding !== undefined ? { understanding: v.understanding } : {}),
+        // 判定记了实际执行的模型就用它；旧判定没记才退回会话模型
+        model:
+          v.model !== undefined
+            ? modelInfoOf(v.model)
+            : await this.d.hub.modelInfo(v.guardSessionId),
+        understanding: (v.understanding ?? []).map((u) => ({
+          ...u,
+          quotes: quotesOf(recs, u.lines),
+        })),
         quotes: quotesOf(recs, v.lines),
         ...(request?.record.type === 'close_requested'
           ? {
@@ -119,7 +138,8 @@ export class Evidence {
       ...(ended?.record.type === 'loop_ended'
         ? { endedAt: ended.record.at, endNote: ended.record.note }
         : {}),
-      ...(opened.ticket !== undefined ? { ticket: this.ticket(opened.ticket) } : {}),
+      ...(now !== undefined ? { ticket: await this.ticketView(now, this.editViews(recs)) } : {}),
+      ...(unclosedDecision !== undefined ? { routeDecision: unclosedDecision } : {}),
       model: await this.d.hub.modelInfo(loopId),
       verdicts,
       // 诊断 = 模型在工作区里写的 诊断.md（沙盒动作，程序按路径打标签）
@@ -201,8 +221,78 @@ export class Evidence {
 
   // ───────────── 单子与选择卡 ─────────────
 
-  ticket(t: Ticket): TicketView {
-    return t;
+  /** 单子平铺给界面：各字段原样 + `refs`（依据串回查，去重、按出现顺序）+ `edits`（本次的改动）。 */
+  async ticketView(t: Ticket, edits: TicketEditView[]): Promise<TicketView> {
+    const raws: string[] = [];
+    for (const s of t.startPoints) if (s.ref !== undefined) raws.push(s.ref);
+    for (const c of t.sourceCheck) if (c.at !== undefined) raws.push(c.at);
+    const seen = new Set<string>();
+    const refs: SourceView[] = [];
+    for (const raw of raws) {
+      const key = raw.trim();
+      if (seen.has(key)) continue;
+      seen.add(key);
+      refs.push(await this.source(raw));
+    }
+    return { ...t, refs, edits };
+  }
+
+  /**
+   * 一条路线决定 → 视图：`trigger` 取同一导航会话那张卡的触发原因；
+   * `superseded` = 主对话里在它之后还有别的路线决定（不看 `supersedes` 字段）。
+   */
+  private async routeDecisionView(
+    mainRecs: NumberedRecord[],
+    line: number,
+    rd: RouteDecision,
+  ): Promise<RouteDecisionView> {
+    const card = mainRecs.find(
+      (r) => r.record.type === 'choice_card' && r.record.m05SessionId === rd.navSessionId,
+    )?.record;
+    return {
+      line,
+      at: rd.at,
+      navSessionId: rd.navSessionId,
+      trigger: card?.type === 'choice_card' ? card.trigger : rd.trigger,
+      decision: rd.decision,
+      reason: rd.reason,
+      basis: await Promise.all(rd.basis.map((b) => this.source(b))),
+      superseded: mainRecs.some((r) => r.record.type === 'route_decision' && r.line > line),
+    };
+  }
+
+  /**
+   * 没合上那次的路线决定：那次学习里 `card_ready` 的卡号 → 项目主对话里那张卡 → 同一导航会话的路线决定。
+   * 找不到就不给这一栏。
+   */
+  private async loopRouteDecision(
+    recs: NumberedRecord[],
+    mainId: string,
+  ): Promise<RouteDecisionView | undefined> {
+    const cardId = recs
+      .filter((r) => r.record.type === 'after_loop_step' && r.record.step === 'card_ready')
+      .map((r) => (r.record.type === 'after_loop_step' ? r.record.detail : ''))
+      .at(-1);
+    if (cardId === undefined || cardId === '') return undefined;
+    const mainRecs = await this.d.hub.records(mainId);
+    const card = mainRecs.find(
+      (r) => r.record.type === 'choice_card' && r.record.cardId === cardId,
+    )?.record;
+    if (card?.type !== 'choice_card') return undefined;
+    const rd = mainRecs.find(
+      (r) => r.record.type === 'route_decision' && r.record.navSessionId === card.m05SessionId,
+    );
+    if (rd?.record.type !== 'route_decision') return undefined;
+    return this.routeDecisionView(mainRecs, rd.line, rd.record);
+  }
+
+  /** 学习者改单子的记录 → 改动视图（按行号升序）。 */
+  private editViews(recs: NumberedRecord[]): TicketEditView[] {
+    return recs.flatMap((r) =>
+      r.record.type === 'ticket_edited'
+        ? [{ line: r.line, at: r.record.at, before: r.record.before, after: r.record.after }]
+        : [],
+    );
   }
 
   /** 找到一张选择卡（遍历各项目的主对话）。 */
@@ -234,7 +324,8 @@ export class Evidence {
         reason: o.reason,
         recommended: i === card.recommended,
         chosen: made?.option === i,
-        ticket: this.ticket(o.ticket),
+        // 卡上的单子是导航当时写的原样；改动记录只属于开出来的那次学习
+        ticket: await this.ticketView(o.ticket, []),
         ...(o.sources !== undefined
           ? { sources: await Promise.all(o.sources.map((s) => this.source(s))) }
           : {}),
@@ -251,14 +342,7 @@ export class Evidence {
       at: card.at,
       trigger: card.trigger,
       ...(decision !== undefined && decisionAt !== undefined
-        ? {
-            routeDecision: {
-              line: decisionAt.line,
-              decision: decision.decision,
-              reason: decision.reason,
-              basis: await Promise.all(decision.basis.map((b) => this.source(b))),
-            },
-          }
+        ? { routeDecision: await this.routeDecisionView(recs, decisionAt.line, decision) }
         : {}),
       recommended: card.recommended,
       m05SessionId: card.m05SessionId,
@@ -398,7 +482,7 @@ export class Evidence {
     return {
       mainSessionId: mainId,
       title: title?.type === 'project_title' ? title.title : main.title,
-      ...(goal !== undefined ? { goal: goal.goal.text } : {}),
+      ...(goal !== undefined ? { goal: goal.goal.text, goalView: goalViewOf(goal) } : {}),
       ...(dl.deadline !== undefined ? { deadline: dl.deadline } : {}),
       ...(dl.note !== undefined ? { deadlineNote: dl.note } : {}),
       materialCount: foldMaterials(mainLog).length,
@@ -630,6 +714,21 @@ function statusOf(recs: NumberedRecord[]): LoopStatus {
 
 function storedView(o: LearnerObjection): ObjectionView {
   return { ...o, inLoop: false };
+}
+
+/** 方向目标记录 → 完整形状（旧记录只有一句话时就只有 line / at / text）。 */
+function goalViewOf(x: { line: number; goal: ProjectGoal }): GoalView {
+  const g = x.goal;
+  return {
+    line: x.line,
+    at: g.at,
+    text: g.text,
+    ...(g.title !== undefined ? { title: g.title } : {}),
+    ...(g.abilities !== undefined ? { abilities: g.abilities } : {}),
+    ...(g.orderHint !== undefined ? { orderHint: g.orderHint } : {}),
+    ...(g.deadline !== undefined ? { deadline: g.deadline } : {}),
+    ...(g.provisional === true ? { provisional: true as const } : {}),
+  };
 }
 
 function unknownSource(raw: string): SourceView {
