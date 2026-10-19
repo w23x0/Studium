@@ -109,9 +109,13 @@ export class Evidence {
           v.model !== undefined
             ? modelInfoOf(v.model)
             : await this.d.hub.modelInfo(v.guardSessionId),
+        // 每条理解带它引的那几行的原话，按行号升序（工单 §4.2）
         understanding: (v.understanding ?? []).map((u) => ({
           ...u,
-          quotes: quotesOf(recs, u.lines),
+          quotes: quotesOf(
+            recs,
+            [...u.lines].sort((a, b) => a - b),
+          ),
         })),
         quotes: quotesOf(recs, v.lines),
         ...(request?.record.type === 'close_requested'

@@ -43,7 +43,7 @@ export function CardEvidence(props: { cardId: string; option?: number | undefine
           cardId={cardId}
           option={o}
           active={o.index === option}
-          chosenLoopId={card.chosen?.option === o.index ? card.chosen.loopSessionId : undefined}
+          canEdit={card.chosen === undefined}
         />
       ))}
     </div>
@@ -80,7 +80,8 @@ function OptionBlock(props: {
   cardId: string;
   option: CardOptionView;
   active: boolean;
-  chosenLoopId: string | undefined;
+  /** 这组选项还没选过：选过以后不能再选，也就不给“改一改再开始”。 */
+  canEdit: boolean;
 }) {
   const o = props.option;
   const open = useOpenSession();
@@ -120,7 +121,7 @@ function OptionBlock(props: {
           </ul>
         )}
       </Section>
-      {props.chosenLoopId === undefined && (
+      {props.canEdit && (
         <div className="flex flex-wrap items-center gap-2">
           <button
             type="button"

@@ -182,7 +182,7 @@ export interface CardResponse {
   card: CardView;
 }
 
-/** 学习者异议的视图：inLoop = 已作为学习者原话进了闭环（line 是它在闭环正本里的行）。 */
+/** 学习者异议的视图：inLoop = 已作为学习者原话进了这次学习（line 是它在那份正本里的行）。 */
 export interface ObjectionView extends LearnerObjection {
   inLoop: boolean;
   line?: number;
@@ -215,7 +215,7 @@ export interface RouteDecisionView {
 }
 
 export interface GuardVerdictView {
-  /** 判定在闭环正本里的行号（异议指向它）。 */
+  /** 判定在那次学习正本里的行号（异议指向它）。 */
   line: number;
   at: string;
   closed: boolean;
@@ -240,7 +240,7 @@ export interface DiagnosisView {
   text: string;
 }
 
-/** 闭环里取用的一份教学工具：哪份、在闭环正本的哪一行（程序从工具调用里记的）。 */
+/** 一次学习里取用的一份教学工具：哪份、在那份正本的哪一行（程序从工具调用里记的）。 */
 export interface TeachingToolUseView {
   name: string;
   line: number;
@@ -260,15 +260,15 @@ export interface LoopEvidence {
   ticket?: TicketView;
   /** 没合上就结束：导航读那次对话出下一张卡时写的路线决定与理由。 */
   routeDecision?: RouteDecisionView;
-  /** 闭环对话（教学侧）用的模型；诊断记录由它写。 */
+  /** 学习对话（教学侧）用的模型；诊断记录由它写。 */
   model: ModelInfo;
   verdicts: GuardVerdictView[];
   diagnoses: DiagnosisView[];
-  /** 这个闭环取用过的教学工具（按取用顺序，含重复取用）。 */
+  /** 这次学习取用过的教学工具（按取用顺序，含重复取用）。 */
   teachingToolsUsed: TeachingToolUseView[];
-  /** 这个闭环里的全部异议（含已结束闭环上记在异议存放处的）。 */
+  /** 这次学习里的全部异议（含已结束后记在异议存放处的）。 */
   objections: ObjectionView[];
-  /** 搁置着（可恢复）；与 status 无关：搁置的闭环 status 仍是 in_progress。 */
+  /** 搁置着（可恢复）；与 status 无关：搁置的那次 status 仍是 in_progress。 */
   shelved?: { at: string; note: string };
 }
 
@@ -283,13 +283,13 @@ export interface LoopBrief {
   lastVerdict?: { closed: boolean; line: number };
   /** 搁置着（status 仍是 in_progress）。 */
   shelved?: { at: string; note: string };
-  /** 是接着一个没合上的闭环学的（批 6）。 */
+  /** 是接着一次没合上的学习学的（批 6）。 */
   resumeOf?: { loopSessionId: string; title?: string };
-  /** 没合上的闭环：有哪些续接它的新闭环（批 6）。 */
+  /** 没合上的那次：有哪些续接它的新学习（批 6）。 */
   resumedBy?: { loopSessionId: string; title?: string; status: LoopStatus }[];
-  /** 这是复习 / 复检闭环（批 6）。 */
+  /** 这次是复习 / 复检（批 6）。 */
   revisit?: '复习' | '复检';
-  /** 这是阶段验收闭环（批 9）。 */
+  /** 这次是阶段验收（批 9）。 */
   stageCheck?: boolean;
 }
 
@@ -302,7 +302,7 @@ export interface LoopLoad {
   parked: number;
   /** 进行中 + 搁置。 */
   unfinished: number;
-  /** 没收尾的闭环不少了，该提示别再开新的。 */
+  /** 没收尾的学习不少了，该提示别再开新的。 */
   heavy: boolean;
   /** 停车场堆积了，该降载、优先收尾。 */
   parkingPile: boolean;
@@ -323,7 +323,7 @@ export interface GoalView {
   provisional?: true;
 }
 
-/** 项目页：本项目下的闭环按状态分组。 */
+/** 项目页：本项目下的学习按状态分组。 */
 export interface ProjectOverview {
   mainSessionId: string;
   title: string;
@@ -346,13 +346,13 @@ export interface ProjectOverview {
     closed: LoopBrief[];
     /** 没合上（停车场）。 */
     unclosed: LoopBrief[];
-    /** 搁置着的闭环（可恢复）。没有就没有这一项。 */
+    /** 搁置着的那几次（可恢复）。没有就没有这一项。 */
     shelved?: LoopBrief[];
   };
   load: LoopLoad;
 }
 
-/** 闭环之间的关系（M01:18 来源）。 */
+/** 学习之间的关系（从哪来）。 */
 export interface LoopRelationView {
   loopSessionId: string;
   title: string;
@@ -382,7 +382,7 @@ export interface StrategyView {
   evidenceLines: number[];
   quotes: QuoteView[];
   toolsUsed: string[];
-  /** 每次取用：哪份、在闭环正本的哪一行；旧记录没有。 */
+  /** 每次取用：哪份、在那份正本的哪一行；旧记录没有。 */
   toolUses?: TeachingToolUseView[];
   /** 记录时有“出现在 X 之后”标注的状态时，M10 对自己教法是否为成因的自查。 */
   selfCheck?: { stateIds: string[]; note: string };
@@ -486,7 +486,7 @@ export interface ProjectOverviewResponse {
   overview: ProjectOverview;
 }
 
-/** 对守卫判定提异议：line = 判定在闭环正本里的行号。 */
+/** 对守卫判定提异议：line = 判定在那次学习正本里的行号。 */
 export interface VerdictObjectionRequest {
   line: number;
   text: string;
@@ -504,7 +504,7 @@ export interface ObjectionResponse {
 }
 
 export interface ObjectionsResponse {
-  /** 异议存放处里的异议（不含还开着的闭环里作为原话追加的那种）。 */
+  /** 异议存放处里的异议（不含还在进行的学习里作为原话追加的那种）。 */
   objections: ObjectionView[];
 }
 
@@ -848,7 +848,7 @@ export interface ProjectMaterialView {
 export interface ProjectMaterialsResponse {
   mainSessionId: string;
   materials: ProjectMaterialView[];
-  /** true = 项目选了资料，闭环 / M05 / 学习者检索默认只在这些里查；false = 没选任何资料，查全库。 */
+  /** true = 项目选了资料，学习 / 导航 / 学习者检索默认只在这些里查；false = 没选任何资料，查全库。 */
   restricted: boolean;
   deadline?: string;
   deadlineNote?: string;

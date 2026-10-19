@@ -3,6 +3,7 @@
 // 可跳到那次对话的原文；外部导入单列、标“未验证”。另有“没按推荐走的时候”（路线偏差）。
 import { useState } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
+import { modelInfoOf } from '../../../shared/protocol.ts';
 import type { Learning } from '../../../shared/protocol-learned.ts';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
@@ -145,9 +146,7 @@ function LearnedDetailView(props: { learning: Learning; projectId: string | unde
               )}
             </div>
           ))}
-          {d.middle.model !== undefined && (
-            <ModelLine model={{ name: d.middle.model, known: true }} />
-          )}
+          {d.middle.model !== undefined && <ModelLine model={modelInfoOf(d.middle.model)} />}
         </Section>
       )}
       <OpenTranscript sessionId={d.transcript.sessionId} />

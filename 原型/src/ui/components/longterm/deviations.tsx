@@ -7,6 +7,15 @@ import { usePanel } from '../../panel.ts';
 import { W } from '../../wording.ts';
 import { Card, Loading, Section, Time } from '../evidence/parts.tsx';
 
+/** 依据串（`会话 id:行号`）拆成能跳转的一处；认不出就不给。 */
+function refOf(ref: string): { sessionId: string; line: number } | undefined {
+  const at = ref.lastIndexOf(':');
+  if (at <= 0) return undefined;
+  const line = Number(ref.slice(at + 1));
+  if (!Number.isInteger(line) || line <= 0) return undefined;
+  return { sessionId: ref.slice(0, at), line };
+}
+
 export function DeviationsSection(props: { projectId?: string | undefined }) {
   const projectId = props.projectId;
   const r = useLoad(`deviations:${projectId ?? ''}`, () =>
@@ -40,6 +49,19 @@ export function DeviationsSection(props: { projectId?: string | undefined }) {
                     {W.seeThatLearning}
                   </button>
                 )}
+                {d.refs.map((ref, i) => (
+                  <button
+                    key={i}
+                    type="button"
+                    className="text-primary text-xs hover:underline"
+                    onClick={() => {
+                      const at = refOf(ref);
+                      if (at !== undefined) panel.jump(at.sessionId, [at.line]);
+                    }}
+                  >
+                    {W.jumpTo}
+                  </button>
+                ))}
               </span>
             </Card>
           ))

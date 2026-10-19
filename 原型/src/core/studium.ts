@@ -55,10 +55,10 @@ import { guardView, learnerLines, renderTranscript } from './transcript.ts';
 
 export class BadRequestError extends Error {}
 
-/** 学习者离开多久算“隔了一阵回来”，回来时程序追加离开多久。 */
 /** 出发点的来源（学过的记录 / 自述 / 假定）。 */
 type StartSource = (typeof START_SOURCES)[number];
 
+/** 学习者离开多久算“隔了一阵回来”，回来时程序追加离开多久。 */
 const AWAY_MS = 30 * 60 * 1000;
 /** 隔多久回来算“隔很久”，M15 顺带整理一次（03「M15」何时整理；阈值属实现细节，先定 12 小时）。 */
 const LONG_AWAY_MS = 12 * 3600 * 1000;
@@ -609,8 +609,9 @@ export class Studium {
    */
   async editTicket(
     loopId: string,
-    body: { newPoint?: unknown; clause?: unknown; startPoints?: unknown },
+    raw: { newPoint?: unknown; clause?: unknown; startPoints?: unknown } | null | undefined,
   ): Promise<{ line: number; ticket: Ticket }> {
+    const body = raw ?? {};
     const opened = await this.hub.opened(loopId).catch((err: unknown) => {
       if (err instanceof NotFoundError) throw new NotFoundError(`没有这个会话：${loopId}`);
       throw err;
@@ -651,7 +652,7 @@ export class Studium {
     await this.hub.send(loopId, {
       role: 'program',
       text: [
-        `学习者改了这次要学的内容（第 ${String(line)} 行），之后按改后的来。`,
+        `学习者改了这次的单子（第 ${String(line)} 行），之后按改后的来。`,
         `改前：${this.describeTicket(before)}`,
         `改后：${this.describeTicket(after)}`,
       ].join('\n'),
@@ -950,7 +951,10 @@ export class Studium {
 
   private async runGuard(loopId: string): Promise<GuardVerdict> {
     const records = await this.hub.records(loopId);
-    const guard = await this.hub.createSession('guard', { title: '守卫', parent: loopId });
+    const guard = await this.hub.createSession('guard', {
+      title: '检查这次学会没有',
+      parent: loopId,
+    });
     this.guardTarget.set(guard.sessionId, records);
     // 守卫按收口那一刻的单子判：学习者改过就用改后的（工单 W6 §9）
     const ticket = currentTicket(records);
@@ -2492,6 +2496,8 @@ export class Studium {
   private async recordStrategy(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
+    // 学习者改过单子就按改后的记（工单 W6 §4.1：凡“现在的单子”都走 currentTicket）
+    const now = currentTicket(records);
     const notes = records.flatMap((r) =>
       r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG
         ? [`L${String(r.line)} ${r.record.content ?? ''}`]
@@ -2525,7 +2531,7 @@ export class Studium {
       role: 'program',
       text: [
         `一次学习：${loopId}「${opened.title}」`,
-        `单子：${opened.ticket ? this.describeTicket(opened.ticket) : '（缺）'}`,
+        `单子：${now !== undefined ? this.describeTicket(now) : '（缺）'}`,
         `结束：${ended?.record.type === 'loop_ended' ? (ended.record.closed ? '合上（学习者已确认）' : '没合上就结束') : '（缺）'}`,
         '',
         `守卫判定：\n${verdicts.join('\n') || '（没申请过收口）'}`,
