@@ -133,8 +133,10 @@ export class TeachingTools {
     };
   }
 
-  async get(name: string): Promise<TeachingTool | undefined> {
-    return (await this.loadAll()).tools.find((t) => t.name === name);
+  /** 按名字取一份；名字只是识别用的，界面里的“用过哪份”记的是文件名，两种都认。 */
+  async get(nameOrFile: string): Promise<TeachingTool | undefined> {
+    const all = (await this.loadAll()).tools;
+    return all.find((t) => t.name === nameOrFile) ?? all.find((t) => t.file === nameOrFile);
   }
 }
 
