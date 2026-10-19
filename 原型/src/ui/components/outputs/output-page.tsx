@@ -18,7 +18,6 @@ import { Badge, Loading } from '../evidence/parts.tsx';
 import { ComparisonTable } from './comparison.tsx';
 import { OutputEditor } from './output-editor.tsx';
 import { OutputText } from './output-body.tsx';
-import { GeneralTab } from './general.tsx';
 import { LiteratureTab } from './literature.tsx';
 import { VersionsTab } from './versions.tsx';
 
@@ -47,11 +46,7 @@ export function OutputPage(props: { target: OutputTarget }) {
       <Head output={o} editing={t.edit === true} onEdit={() => go({ edit: true })} />
       <Tabs
         tab={tab}
-        counts={{
-          versions: o.history.length,
-          literature: o.literature.length,
-          general: o.candidates.length,
-        }}
+        counts={{ versions: o.history.length, literature: o.literature.length }}
         onTab={(x) => go(x === 'text' ? {} : { tab: x })}
       />
       {tab === 'text' &&
@@ -94,7 +89,6 @@ export function OutputPage(props: { target: OutputTarget }) {
         />
       )}
       {tab === 'literature' && <LiteratureTab output={o} onAdded={bumpLive} />}
-      {tab === 'general' && <GeneralTab output={o} onAdded={bumpLive} />}
     </div>
   );
 }
@@ -207,10 +201,10 @@ function Chats(props: { output: OutputView }) {
 
 function Tabs(props: {
   tab: OutputTab;
-  counts: { versions: number; literature: number; general: number };
+  counts: { versions: number; literature: number };
   onTab: (t: OutputTab) => void;
 }) {
-  const tabs: OutputTab[] = ['text', 'versions', 'literature', 'general'];
+  const tabs: OutputTab[] = ['text', 'versions', 'literature'];
   return (
     <div className="bg-muted flex flex-wrap gap-0.5 self-start rounded-lg p-0.5 text-sm">
       {tabs.map((x) => (
@@ -319,7 +313,7 @@ function OldVersionBar(props: {
 export function VersionBody(props: { kind: OutputView['kind']; version: VersionView }) {
   const v = props.version;
   const refs = v.references;
-  const total = refs.sources.length + refs.objects.length;
+  const total = refs.sources.length;
   return (
     <div className="flex flex-col gap-3">
       <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
@@ -339,9 +333,9 @@ export function VersionBody(props: { kind: OutputView['kind']; version: VersionV
       </div>
       <Paper>
         {props.kind === '方法比较' && v.comparison !== undefined ? (
-          <ComparisonTable comparison={v.comparison} refs={refs.objects} />
+          <ComparisonTable comparison={v.comparison} />
         ) : (
-          <OutputText text={v.text} refs={refs.objects} />
+          <OutputText text={v.text} />
         )}
       </Paper>
     </div>

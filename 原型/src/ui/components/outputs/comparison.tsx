@@ -1,7 +1,7 @@
 // 方法比较：用表看、用表改（不改由表生成的正文）。每列一个方法；行是适用边界、各个比较的方面、证据与出处。
 import type { ReactNode } from 'react';
 import { PlusIcon, XIcon } from 'lucide-react';
-import type { MethodComparison, ObjectRefView } from '../../../shared/m14.ts';
+import type { MethodComparison } from '../../../shared/m14.ts';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -19,16 +19,13 @@ const TH =
   'bg-muted/60 text-muted-foreground border px-2.5 py-1.5 text-left text-xs font-medium align-top';
 const TD = 'border px-2.5 py-1.5 align-top';
 
-export function ComparisonTable(props: {
-  comparison: MethodComparison;
-  refs?: readonly ObjectRefView[] | undefined;
-}) {
+export function ComparisonTable(props: { comparison: MethodComparison }) {
   const c = props.comparison;
   const cell = (text: string | undefined) =>
     text === undefined || text === '' ? (
       <span className="text-muted-foreground">—</span>
     ) : (
-      <OutputText text={text} refs={props.refs} compact />
+      <OutputText text={text} compact />
     );
   return (
     <div className="flex flex-col gap-4" data-testid="comparison-table">
@@ -73,7 +70,7 @@ export function ComparisonTable(props: {
                     <ul className="flex flex-col gap-1">
                       {m.evidence.map((e, i) => (
                         <li key={i}>
-                          <OutputText text={e} refs={props.refs} compact />
+                          <OutputText text={e} compact />
                         </li>
                       ))}
                     </ul>
@@ -87,7 +84,7 @@ export function ComparisonTable(props: {
       {c.tentative !== undefined && (
         <div className="flex flex-col gap-1 rounded-xl border border-dashed px-3 py-2">
           <div className="text-muted-foreground text-xs">{W.cmpTentative}</div>
-          <OutputText text={c.tentative} refs={props.refs} compact />
+          <OutputText text={c.tentative} compact />
         </div>
       )}
     </div>

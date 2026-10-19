@@ -1,14 +1,7 @@
-// 依据面板里反复用到的小块：小节、标签、模型、书里的位置、知识点链接、原话、不同看法。
+// 依据面板里反复用到的小块：小节、标签、模型、点的名字、原话、不同看法。
 import { useState, type ReactNode } from 'react';
-import {
-  BookOpenIcon,
-  ChevronRightIcon,
-  CornerDownRightIcon,
-  MessageSquareQuoteIcon,
-} from 'lucide-react';
+import { CornerDownRightIcon, MessageSquareQuoteIcon } from 'lucide-react';
 import type {
-  AnchorView,
-  M08Source,
   ModelInfo,
   ObjectionView,
   PointRef,
@@ -17,11 +10,9 @@ import type {
 } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
-import { api } from '../../api.ts';
 import { segmentLines, shortTime, splitLineRefs } from '../../evidence-model.ts';
-import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
-import { asBBox, citationPieces } from '../../source-model.ts';
+import { citationPieces } from '../../source-model.ts';
 import { CitationChip, CitationsProvider } from '../sources/citation.tsx';
 import { W } from '../../wording.ts';
 
@@ -111,132 +102,21 @@ export function ModelLine(props: { model: ModelInfo; label?: string }) {
   );
 }
 
-export function SourceBadge(props: { source: M08Source; note?: string }) {
-  const tone: Tone =
-    props.source === '书给的' ? 'good' : props.source === '模型补的' ? 'warn' : 'neutral';
-  return (
-    <Badge tone={tone} {...(props.note !== undefined ? { title: props.note } : {})}>
-      {W.m08Source[props.source]}
-    </Badge>
-  );
-}
-
-export function Anchors(props: { anchors: AnchorView[] }) {
-  const panel = usePanel();
-  // 显示书名；书目还没取到时先用编号
-  const books = useLoad('library:books', () => api.books(), false);
-  const titleOf = (id: string) => books.data?.books.find((b) => b.id === id)?.title ?? id;
-  if (props.anchors.length === 0) return null;
-  /** 有页码就看原件那一页（标出位置框），没有就看转录的原文那一行。 */
-  const open = (a: AnchorView): (() => void) | undefined => {
-    const bbox = asBBox(a.bbox);
-    if (a.page !== undefined) {
-      const page = a.page;
-      return () =>
-        panel.show({
-          kind: 'page',
-          book: a.book,
-          page,
-          quote: a.quote,
-          ...(bbox !== undefined ? { bbox } : {}),
-          ...(a.file !== '' ? { file: a.file } : {}),
-          ...(a.line !== undefined ? { line: a.line } : {}),
-        });
-    }
-    if (a.file === '') return undefined;
-    return () =>
-      panel.show({
-        kind: 'source',
-        book: a.book,
-        file: a.file,
-        ...(a.line !== undefined ? { from: a.line, to: a.line } : {}),
-      });
-  };
-  return (
-    <ul className="flex flex-col gap-2">
-      {props.anchors.map((a, i) => {
-        const go = open(a);
-        const body = (
-          <>
-            <div className="text-muted-foreground flex items-center gap-1.5 text-xs">
-              <BookOpenIcon className="size-3.5" />
-              {W.page(titleOf(a.book), a.page)}
-              {go !== undefined && <ChevronRightIcon className="size-3.5" />}
-            </div>
-            {a.quote !== '' && (
-              <blockquote className="border-primary/40 font-serif border-s-2 ps-3 text-[0.9rem]">
-                {a.quote}
-              </blockquote>
-            )}
-          </>
-        );
-        return (
-          <li key={i}>
-            {go !== undefined ? (
-              <button
-                type="button"
-                className="hover:bg-accent/60 -mx-1 flex w-full flex-col gap-1 rounded-md px-1 py-1 text-left"
-                onClick={go}
-              >
-                {body}
-              </button>
-            ) : (
-              <div className="flex flex-col gap-1">{body}</div>
-            )}
-          </li>
-        );
-      })}
-    </ul>
-  );
-}
-
-/** 知识点名字；M08 里查得到时可点开。 */
+/** 一个点的名字（不再查知识点库，就是它自己）。 */
 export function PointLink(props: { point: PointRef }) {
-  const panel = usePanel();
-  const { point } = props;
-  if (!point.found) return <span>{point.name}</span>;
-  return (
-    <button
-      type="button"
-      className="decoration-primary/40 hover:decoration-primary text-left font-medium underline underline-offset-4"
-      onClick={() => panel.show({ kind: 'point', id: point.id })}
-    >
-      {point.name}
-    </button>
-  );
+  return <span>{props.point.name}</span>;
 }
 
-/** 一次学习开场时的安排：要学的、怎么连上、从哪出发。 */
+/** 一次学习开场时的安排：要学什么、预期理解、从哪出发、对资料核的结果。 */
 export function TicketBlock(props: { ticket: TicketView }) {
-  const panel = usePanel();
   const { ticket } = props;
   return (
     <div className="flex flex-col gap-3">
       <Field label={W.newPoint}>
-        <span className="flex flex-wrap items-center gap-2">
-          <PointLink point={ticket.newPoint} />
-          {ticket.newPoint.source !== undefined && <SourceBadge source={ticket.newPoint.source} />}
-        </span>
-        {ticket.newPoint.sentence !== undefined && (
-          <span className="text-muted-foreground block">{ticket.newPoint.sentence}</span>
-        )}
+        <span>{ticket.newPoint}</span>
       </Field>
       <Field label={W.clause}>
-        {ticket.clause !== undefined ? (
-          <button
-            type="button"
-            className="hover:bg-accent/60 -mx-1 flex w-full flex-col gap-1 rounded-md px-1 py-0.5 text-left"
-            onClick={() => ticket.clause && panel.show({ kind: 'clause', id: ticket.clause.id })}
-          >
-            <span className="text-muted-foreground flex flex-wrap items-center gap-1.5 text-xs">
-              {ticket.clause.from.map((f) => f.name).join(' + ')} → {ticket.clause.to.name}
-              <SourceBadge source={ticket.clause.source} note={ticket.clause.sourceNote} />
-            </span>
-            <span>{ticket.clause.text}</span>
-          </button>
-        ) : (
-          <span className="text-muted-foreground">{W.sourceNotResolved}</span>
-        )}
+        <span>{ticket.clause}</span>
       </Field>
       {ticket.startPoints.length > 0 && (
         <Field label={W.startPoints}>
@@ -244,8 +124,26 @@ export function TicketBlock(props: { ticket: TicketView }) {
             {ticket.startPoints.map((s, i) => (
               <li key={i} className="flex flex-wrap items-center gap-2">
                 <CornerDownRightIcon className="text-muted-foreground size-3.5" />
-                <PointLink point={s.point} />
+                <span>{s.point}</span>
                 <Badge>{W.startSource[s.source]}</Badge>
+                {s.ref !== undefined && (
+                  <span className="text-muted-foreground text-xs">{s.ref}</span>
+                )}
+              </li>
+            ))}
+          </ul>
+        </Field>
+      )}
+      {ticket.sourceCheck.length > 0 && (
+        <Field label={W.sourceCheck}>
+          <ul className="flex flex-col gap-1">
+            {ticket.sourceCheck.map((c, i) => (
+              <li key={i} className="flex flex-wrap items-center gap-2">
+                <span>{c.claim}</span>
+                {c.at !== undefined && (
+                  <span className="text-muted-foreground text-xs">{c.at}</span>
+                )}
+                {c.modelAdded === true && <Badge tone="warn">{W.modelAdded}</Badge>}
               </li>
             ))}
           </ul>

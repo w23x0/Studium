@@ -1,12 +1,10 @@
+// （W1 新版，取代旧的同名测试：页面上不再挂知识点锚点；不再传 m08Dir。）
 // 验收：闭环 / 学习者需要时调出原件页面和要标出的位置框（M02:32、M07:16,27、待确认项 B8）。只经 HTTP 验证。
 // 原件用测试里造的三页最小 PDF；渲染用本机的 pdftoppm（没有就跳过渲染那几条，只验页面信息）。
-import { mkdir, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import type { LocateResponse, PageResponse } from '../../src/shared/protocol.ts';
 import type { App } from '../../src/core/app.ts';
 import { call, getJson } from '../helpers/http.ts';
-import { tempDir } from '../helpers/tmp.ts';
 import {
   LOCATED_BBOX,
   SAMPLE_BOOK,
@@ -30,37 +28,8 @@ function pngSize(b: Buffer): { w: number; h: number } {
 }
 
 describe('原件页面', () => {
-  it('页面信息：有原件的页给图的地址、内容块位置框、M08 锚点；位置框是千分比', async () => {
-    // M08：一个点的锚点落在第 2 页，带位置框
-    const m08Dir = await tempDir();
-    await mkdir(m08Dir, { recursive: true });
-    await writeFile(
-      join(m08Dir, 'points.jsonl'),
-      `${JSON.stringify({
-        id: 'p-avg-velocity',
-        name: '平均速度',
-        sentence: '位移除以时间',
-        anchors: [
-          {
-            book: SAMPLE_BOOK,
-            file: 'ch01/sec-1.2.md',
-            quote: '得到平均速度',
-            page: 2,
-            bbox: LOCATED_BBOX,
-          },
-          {
-            book: SAMPLE_BOOK,
-            file: 'ch01/sec-1.2.md',
-            quote: '别页的',
-            page: 3,
-            bbox: [1, 2, 3, 4],
-          },
-        ],
-        source: '书给的',
-      })}\n`,
-    );
-    await writeFile(join(m08Dir, 'clauses.jsonl'), '');
-    const { app } = await startLibraryApp({ m08Dir });
+  it('页面信息：有原件的页给图的地址、内容块位置框；位置框是千分比；不再挂知识点锚点', async () => {
+    const { app } = await startLibraryApp();
     apps.push(app);
 
     const p = await getJson<PageResponse>(app, `/library/page?book=${q(SAMPLE_BOOK)}&page=2`);
@@ -70,28 +39,21 @@ describe('原件页面', () => {
       ['equation', [300, 300, 700, 380]],
     ]);
     expect(p.blocks[0]?.text).toContain('位移告诉我们');
-    expect(p.anchors).toEqual([
-      {
-        pointId: 'p-avg-velocity',
-        pointName: '平均速度',
-        quote: '得到平均速度',
-        bbox: LOCATED_BBOX,
-      },
-    ]);
+    expect(p, '页面上不再挂知识点锚点').not.toHaveProperty('anchors');
     expect(p.canRender).toBe(render);
     if (render) expect(p.imageUrl).toBe(`/api/library/page/image?book=${q(SAMPLE_BOOK)}&page=2`);
     else expect(p.imageUrl).toBeUndefined();
     // 第 1 页有块、没有锚点
     const p1 = await getJson<PageResponse>(app, `/library/page?book=${q(SAMPLE_BOOK)}&page=1`);
     expect(p1.blocks).toHaveLength(1);
-    expect(p1.anchors).toEqual([]);
+    expect(p1).not.toHaveProperty('anchors');
   });
 
   it('没有原件的书 / 超出已转换页段的页：available:false 并说明，不报错', async () => {
     const { app } = await startLibraryApp();
     apps.push(app);
     const none = await getJson<PageResponse>(app, `/library/page?book=${q(SECOND_BOOK)}&page=3`);
-    expect(none).toMatchObject({ available: false, blocks: [], anchors: [] });
+    expect(none).toMatchObject({ available: false, blocks: [] });
     expect(none.note).toContain('没有 PDF 原件');
     expect(none.imageUrl).toBeUndefined();
     const beyond = await getJson<PageResponse>(app, `/library/page?book=${q(SAMPLE_BOOK)}&page=4`);

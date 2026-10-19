@@ -23,7 +23,6 @@ import {
 } from '../shared/records-practice.ts';
 import type { Hub } from './hub.ts';
 import type { Library } from './knowledge/m07.ts';
-import type { M08 } from './knowledge/m08.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import { foldPractice, labelKey, learnerTexts } from './practice-fold.ts';
 import { learnerLines } from './transcript.ts';
@@ -44,7 +43,6 @@ const OCCURRENCE_LINES = 4;
 export interface PracticeDeps {
   hub(): Hub;
   m07: Library;
-  m08: M08;
   iso(): string;
   newId(prefix: string): string;
   /** 资料范围（项目选的书）；undefined = 全库。 */
@@ -83,10 +81,6 @@ export class Practice {
     return this.d.hub();
   }
 
-  private name(id: string): string {
-    return this.d.m08.name(id);
-  }
-
   // ───────────── 折叠与查询 ─────────────
 
   private async loopRecords(
@@ -98,7 +92,7 @@ export class Practice {
   }
 
   private fold(loopId: string, recs: NumberedRecord[]): PracticeTaskView[] {
-    return foldPractice(loopId, recs, { pointName: (id) => this.name(id) });
+    return foldPractice(loopId, recs, { pointName: (id) => id });
   }
 
   async tasks(loopId: string): Promise<PracticeTaskView[]> {
@@ -123,15 +117,11 @@ export class Practice {
     return undefined;
   }
 
-  /** 任务对应的点：布置时给的点 + 子句两端。 */
+  /** 任务对应的点：布置时给的点（子句只是文字，不再拆两端）。 */
   private taskPoints(points: string[], clause: string | undefined): string[] {
-    const out = new Set(points);
-    const c = clause !== undefined ? this.d.m08.clauses.get(clause) : undefined;
-    if (c !== undefined) {
-      out.add(c.to);
-      for (const f of c.from) out.add(f);
-    }
-    return [...out];
+    return [
+      ...new Set([...points, ...(clause !== undefined && clause.trim() !== '' ? [clause] : [])]),
+    ];
   }
 
   private ticketPoints(t: Ticket | undefined): Set<string> {
@@ -412,7 +402,7 @@ export class Practice {
           at: o.at,
           detail: o.detail,
           lines: o.lines.map((line) => ({ line, text: texts.get(line) ?? '' })),
-          points: o.points.map((id) => ({ id, name: this.name(id) })),
+          points: o.points.map((id) => ({ id, name: id })),
         });
       }
       const view: ErrorPatternView = {
@@ -592,8 +582,8 @@ export class Practice {
           '布置一道正式练习（生命周期由程序管：布置 → 学习者作答 → 你给反馈 → 完成 / 放弃）。题目来源二选一：textbook（书里的习题，给书名、小节文件、行号，题面由程序读出，带出处）或 generated_prompt（你出的题，标“生成”）。布置后把题面和要交什么用日常话讲给学习者，然后停在等作答的地方。',
         input: {
           focus: z.string().describe('练什么：一句日常话'),
-          points: z.array(z.string()).optional().describe('对应的 M08 点 id'),
-          clause: z.string().optional().describe('对应的 M08 子句 id'),
+          points: z.array(z.string()).optional().describe('对应的点（文字）'),
+          clause: z.string().optional().describe('对应的预期理解（文字）'),
           textbook: z
             .object({
               book: z.string(),
@@ -640,11 +630,6 @@ export class Practice {
           }
           let points = (a.points as string[] | undefined) ?? [];
           let clause = a.clause as string | undefined;
-          const unknownPoints = points.filter((p) => !this.d.m08.points.has(p));
-          if (unknownPoints.length > 0) return fail(`M08 里没有点 ${unknownPoints.join('、')}。`);
-          if (clause !== undefined && !this.d.m08.clauses.has(clause)) {
-            return fail(`M08 里没有子句 ${clause}。`);
-          }
           let defaulted = false;
           if (points.length === 0 && clause === undefined) {
             // 练习对应单子里的点 / 子句：没指定就落在本闭环的单子上

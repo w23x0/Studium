@@ -7,12 +7,12 @@ import { getJson, post, records } from './http.ts';
 import { settled } from './evidence-flow.ts';
 import { hasTool, newLong, startLong, type LongState } from './longterm-flow.ts';
 import { openLoop } from './detour-flow.ts';
-import { DISPLACEMENT_OPTION } from './roles.ts';
+import { DISPLACEMENT_OPTION, navRoute } from './roles.ts';
 
 export const AVG_VELOCITY_OPTION = {
   new_point: 'p-avg-velocity',
   clause: 'c-avgv-from-disp',
-  start_points: [{ point: 'p-displacement', source: 'M09' }],
+  start_points: [{ point: 'p-displacement', source: '学过的记录' }],
   route_action: '继续主线',
   title: '平均速度',
   reason: '位移会了，接着学平均速度',
@@ -53,6 +53,7 @@ export function newPractice(): PracticeState {
             args: {
               options: st.cardOptions ?? [DISPLACEMENT_OPTION, AVG_VELOCITY_OPTION, NEWTON2_OPTION],
               recommended: 0,
+              route_decision: navRoute(ctx),
             },
           },
         ],

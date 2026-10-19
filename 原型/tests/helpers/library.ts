@@ -124,7 +124,6 @@ export async function startLibraryApp(
     library?: string;
     dataRoot?: string;
     fake?: FakeOptions;
-    m08Dir?: string;
   } = {},
 ): Promise<{ app: App; library: string; fake: FakeModel; dataRoot: string }> {
   const library = opts.library ?? (await makeLibrary());
@@ -136,7 +135,6 @@ export async function startLibraryApp(
     token: TOKEN,
     port: 0,
     library,
-    ...(opts.m08Dir !== undefined ? { m08Dir: opts.m08Dir } : {}),
   });
   return { app, library, fake, dataRoot };
 }

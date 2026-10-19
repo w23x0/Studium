@@ -1,6 +1,6 @@
 // 组装核心：数据目录锁 → 派生索引 → 知识层 → Studium + Hub → 本地服务。
 // main 与验收测试都从这里起，内部怎么拆不影响它们。
-import { cp, readFile, readdir } from 'node:fs/promises';
+import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { ConversationKind } from '../shared/records.ts';
@@ -15,9 +15,6 @@ import { Library } from './knowledge/m07.ts';
 import { Notes } from './knowledge/m07-notes.ts';
 import { Originals } from './knowledge/m07-originals.ts';
 import { SourceReports } from './knowledge/m07-reports.ts';
-import { M08 } from './knowledge/m08.ts';
-import { ReviewStore } from './knowledge/m08-review.ts';
-import { M08Review } from './m08-review.ts';
 import { M09 } from './knowledge/m09.ts';
 import { Deviations } from './knowledge/m05-deviations.ts';
 import { M10 } from './knowledge/m10.ts';
@@ -26,8 +23,7 @@ import { M15 } from './knowledge/m15.ts';
 import { Objections } from './knowledge/objections.ts';
 import { SourceNotes } from './knowledge/source-notes.ts';
 import { Outputs } from './outputs.ts';
-import { DataDir } from './log/data-dir.ts';
-import { isNotFound } from './log/session-log.ts';
+import { checkDataVersion, DataDir, writeDataVersion } from './log/data-dir.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
 import { SidebarStore } from './sidebar.ts';
@@ -46,11 +42,6 @@ export interface AppOptions {
   uiDir?: string;
   /** M07 书库根目录（每本书 <书>/m07/index.md）；默认用样例教材。 */
   library?: string;
-  /**
-   * M08 目录（points.jsonl / clauses.jsonl）；默认 <数据>/knowledge/m08，空时拷入样例。
-   * 可以给多个目录，或一个目录下按 <书>/<章>/ 摆的多套产出，合并读取（点 id 重复时加前缀，见 M08.loadAll）。
-   */
-  m08Dir?: string | string[];
   /** 时钟（测试与回放用）；记录时间、离开多久都按它算。 */
   now?: () => Date;
   /** 录带文件：给了就把这次运行的模型侧与学习者动作记进去，供离线回放（tape/）。 */
@@ -64,8 +55,6 @@ export interface App {
   hub: Hub;
   /** M14 产出物与个人笔记（回放重做学习者在这两处的动作用）。 */
   outputs: Outputs;
-  /** M08 候选区与更正（回放重做学习者在这里的动作用）。 */
-  m08Review: M08Review;
   notes: Notes;
   studium: Studium;
   dataDir: DataDir;
@@ -91,25 +80,11 @@ export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
   return Object.fromEntries(entries) as Record<ConversationKind, string>;
 }
 
-async function isEmptyDir(dir: string): Promise<boolean> {
-  try {
-    return (await readdir(dir)).length === 0;
-  } catch (err) {
-    if (isNotFound(err)) return true;
-    throw err;
-  }
-}
-
 export async function createApp(opts: AppOptions): Promise<App> {
+  await checkDataVersion(opts.dataRoot);
   const dataDir = await DataDir.acquire(opts.dataRoot);
+  await writeDataVersion(dataDir.root);
   const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
-  const ownM08 = join(dataDir.root, 'knowledge', 'm08');
-  if (opts.m08Dir === undefined && (await isEmptyDir(ownM08))) {
-    await cp(join(SAMPLE_DIR, 'm08'), ownM08, { recursive: true });
-  }
-  const m08 = await M08.loadAll(
-    opts.m08Dir === undefined ? [ownM08] : Array.isArray(opts.m08Dir) ? opts.m08Dir : [opts.m08Dir],
-  );
   const m09 = await M09.load(join(dataDir.root, 'knowledge', 'm09'));
   const m10 = await M10.load(join(dataDir.root, 'knowledge', 'm10'));
   const m15 = await M15.load(join(dataDir.root, 'knowledge', 'm15'));
@@ -129,13 +104,11 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const sources = new Sources({
     library,
     originals,
-    m08,
     reports,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const cross = new Crosslinks({
     library,
-    m08,
     reports,
     originals,
     notes: await SourceNotes.load(join(dataDir.root, 'knowledge', 'source-notes')),
@@ -145,14 +118,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     store: await M14.load(join(dataDir.root, 'knowledge', 'm14')),
     sources,
     library,
-    m08,
-    ...(opts.now !== undefined ? { now: opts.now } : {}),
-  });
-  const m08Review = M08Review.create({
-    store: await ReviewStore.load(join(dataDir.root, 'knowledge', 'm08-review')),
-    m08,
-    sources,
-    m14: { candidates: () => outputs.candidates(), outputTitle: (id) => outputs.titleOf(id) },
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
@@ -160,7 +125,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     prompts: await loadPrompts(),
     m07: library,
     sources,
-    m08,
     m09,
     m10,
     m15,
@@ -169,7 +133,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     teaching,
     outputs,
     cross,
-    m08Review,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const inner = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
@@ -178,7 +141,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
       ? new Recorder(opts.tape, {
           now: opts.now ?? (() => new Date()),
           ...(opts.library !== undefined ? { library: opts.library } : {}),
-          ...(opts.m08Dir !== undefined ? { m08Dir: opts.m08Dir } : {}),
         })
       : undefined;
   const model = recorder ? recorder.wrapModel(inner) : inner;
@@ -197,14 +159,12 @@ export async function createApp(opts: AppOptions): Promise<App> {
   });
   studium.attach(hub);
   outputs.attach(hub);
-  m08Review.attach(hub);
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
   await studium.ensureMain();
   await studium.recover();
   const evidence = new Evidence({
     hub,
-    m08,
     m09,
     m10,
     m15,
@@ -212,7 +172,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     sources,
     inputs,
     teaching,
-    m08Review,
   });
   const server = await startServer({
     hub,
@@ -230,7 +189,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     },
     inputs,
     outputs: recorder ? recorder.wrap(outputs, 'outputs.') : outputs,
-    m08Review: recorder ? recorder.wrap(m08Review, 'm08review.') : m08Review,
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,
     port: opts.port,
@@ -240,7 +198,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     server,
     hub,
     outputs,
-    m08Review,
     notes,
     studium,
     dataDir,

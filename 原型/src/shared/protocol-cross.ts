@@ -1,71 +1,7 @@
-// 批 10b 的接口类型：跨资料的检索标签与“别的书也讲这里”、资料的来源说明、跨领域单子的显示、状态回看与学习者解释。
+// 批 10b 的接口类型：资料的来源说明、跨领域单子的显示、状态回看与学习者解释。
 // protocol.ts 把它们 re-export，界面从 protocol.ts 取。
 import type { CrossKind } from './records-cross.ts';
-import type { PointRef, SearchHit, StateRecordView } from './protocol.ts';
-
-// ───────────── 跨资料：重复线索、检索标签 ─────────────
-
-/** 一处“别的书也讲这里”：另一本书里讲同一个点的小节，和怎么连上的。 */
-export interface SectionLink {
-  book: string;
-  bookTitle: string;
-  file: string;
-  num: string;
-  title: string;
-  pdfPage?: number;
-  /** 连上它的点（本节与那一节各有一份锚点的点，或名字 / 检索词相同的点）。 */
-  points: { id: string; name: string }[];
-  /** anchor = 同一个点在两本书里都挂了锚点；same_name = 另一套 M08 里名字相同的点；same_key = 检索词相同。 */
-  via: 'anchor' | 'same_name' | 'same_key';
-}
-
-export interface SectionLinksResponse {
-  book: string;
-  file: string;
-  /** 本节讲到的点（M08 锚点落在本节的）。 */
-  points: { id: string; name: string }[];
-  /** 别的书里讲同一处的小节，按书排。没有就是空数组（不编）。 */
-  others: SectionLink[];
-}
-
-/** 一条重复线索：同一知识点在几本书里各讲在哪里。 */
-export interface ClueView {
-  id: string;
-  /** 线索的名字：点名（几个点同名取最常见的）。 */
-  label: string;
-  points: { id: string; name: string }[];
-  sections: { book: string; bookTitle: string; file: string; num: string; title: string }[];
-}
-
-export interface CluesResponse {
-  clues: ClueView[];
-}
-
-export const CONTENT_TYPES = ['定义', '例题', '习题'] as const;
-export type ContentType = (typeof CONTENT_TYPES)[number];
-
-/** 一条检索结果所在小节的标签：点名、内容类型（有依据才有，没有不编）。 */
-export interface HitTags {
-  points: { id: string; name: string }[];
-  types: ContentType[];
-}
-
-export interface TaggedHit extends SearchHit {
-  tags: HitTags;
-}
-
-export interface TaggedSearchResponse {
-  query: string;
-  hits: TaggedHit[];
-  /** 筛之前命中的段落总数。 */
-  total: number;
-  /** 可用来筛的标签与各自的条数（按筛之前的命中算，换一个条件时不跟着缩）。 */
-  facets: {
-    books: { book: string; bookTitle: string; count: number }[];
-    types: { type: ContentType; count: number }[];
-    points: { id: string; name: string; count: number }[];
-  };
-}
+import type { StateRecordView } from './protocol.ts';
 
 // ───────────── 来源可靠性与适用性说明（M07:19） ─────────────
 
@@ -112,10 +48,6 @@ export interface SourceNoteView {
   quality: {
     /** 学习者报的错条数（报了还没有“修正”这一步，全部算还开着）。 */
     reports: number;
-    /** 知识点抽取审核时报的疑似转录错误数；读不到审核报告为空。 */
-    suspected?: number;
-    /** 疑似转录错误数的出处（哪一套的审核报告）。 */
-    suspectedFrom?: string;
     text: string;
   };
   /** 全部补充，按时间；前面几项取其中最新的。 */
@@ -142,11 +74,8 @@ export interface AddSourceNoteRequest {
 
 export interface CrossDomainView {
   kind: CrossKind;
-  /** 新点所在的领域。 */
-  domain: string;
-  /** 另一边的点所在的领域。 */
-  otherDomain: string;
-  otherPoint: PointRef;
+  /** 另一边的点，一句话。 */
+  otherPoint: string;
   problem: string;
 }
 

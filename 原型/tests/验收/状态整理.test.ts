@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡补 route_decision。）
 // 验收：M15 是存放处，在后台整理（03「M15」「闭环外：事件与清单」）。
 // - 一段学习结束后，后台开整理会话：开场给学习者的话与会话事实，不给诊断记录（不读知识结论）；
 // - 整理会话写下的状态记录，别的会话（出下一步选项）能用查询工具查到；
@@ -10,6 +11,7 @@ import { FakeModel, type FakeContext, type FakeStep } from '../../src/core/model
 import { getJson, post, records, TOKEN, waitFor } from '../helpers/http.ts';
 import { DISPLACEMENT_OPTION, learnerLine, roleOf } from '../helpers/roles.ts';
 import { tempDir } from '../helpers/tmp.ts';
+import { navRoute } from './共用/w1-card.ts';
 
 const DIAGNOSIS = '诊断：位移概念还没说清';
 const STATE = '学习者说今天有点累';
@@ -28,7 +30,11 @@ function responder(ids: { loop: string }) {
             { name: 'query_state', args: {} },
             {
               name: 'submit_choice_card',
-              args: { options: [DISPLACEMENT_OPTION], recommended: 0 },
+              args: {
+                options: [DISPLACEMENT_OPTION],
+                recommended: 0,
+                route_decision: navRoute(ctx),
+              },
             },
           ],
         };

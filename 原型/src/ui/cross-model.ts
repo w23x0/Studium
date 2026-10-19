@@ -111,12 +111,10 @@ export function stageSteps(
 
 // ───────────── 跨领域 ─────────────
 
-/** 选项上的跨领域标记（单子里带的）。 */
+/** 选项上的跨领域标记（单子里带的）：只带类型与另一边是什么。 */
 export function crossOf(o: {
-  ticket: { crossDomain?: { kind: CrossDomainView['kind']; domain: string; otherDomain: string } };
-}): { kind: CrossDomainView['kind']; domain: string; otherDomain: string } | undefined {
+  ticket: { crossDomain?: { kind: CrossDomainView['kind']; otherPoint: string } };
+}): { kind: CrossDomainView['kind']; otherPoint: string } | undefined {
   const c = o.ticket.crossDomain;
-  return c === undefined
-    ? undefined
-    : { kind: c.kind, domain: c.domain, otherDomain: c.otherDomain };
+  return c === undefined ? undefined : { kind: c.kind, otherPoint: c.otherPoint };
 }

@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡补 route_decision。）
 // 验收：M15 的“已确认”档与“出现在 X 之后”标注，以及 M10 的自查。
 // - 学习者可对一条状态记录确认 / 否认（只追加，原记录不动）；确认过的记录来源档是“已确认”；
 // - 教法强度明显变化的位置由程序算出交给 M15；M15 写记录时可标“出现在 X 之后”（程序核对 X 真有）；
@@ -17,6 +18,7 @@ import { getJson, post, records, TOKEN, waitFor } from '../helpers/http.ts';
 import { settled } from '../helpers/evidence-flow.ts';
 import { DISPLACEMENT_OPTION, learnerLine, roleOf } from '../helpers/roles.ts';
 import { tempDir } from '../helpers/tmp.ts';
+import { navRoute } from './共用/w1-card.ts';
 
 const apps: App[] = [];
 afterEach(async () => {
@@ -32,7 +34,10 @@ function responder(ctx: FakeContext): FakeStep | undefined {
     case 'm05':
       return {
         calls: [
-          { name: 'submit_choice_card', args: { options: [DISPLACEMENT_OPTION], recommended: 0 } },
+          {
+            name: 'submit_choice_card',
+            args: { options: [DISPLACEMENT_OPTION], recommended: 0, route_decision: navRoute(ctx) },
+          },
         ],
       };
     case 'loop':

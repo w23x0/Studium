@@ -1,7 +1,6 @@
 // M14 高阶学习与知识产出：存放处的记录类型与接口类型（批 8）。核心与界面共用；protocol.ts 一并再导出。
 // 存放处都只追加：产出物只加不改，每次保存 = 新版本。
 import type { CitationView } from './protocol.ts';
-import type { ObjectRefKind } from './object-ref.ts';
 
 /** 产出物的类型：笔记整理 · 推导 · 小论文 · 方法比较（结构化）· 其他。 */
 export const OUTPUT_KINDS = ['笔记整理', '推导', '小论文', '方法比较', '其他'] as const;
@@ -17,7 +16,7 @@ export interface ComparedMethod {
   boundary: string;
   /** 各维度上的情况；键必须是 comparison.dimensions 里的维度。 */
   values: Record<string, string>;
-  /** 证据与出处：可写出处标记（【教材|…】【知识点|…】）和一句话说明。 */
+  /** 证据与出处：可写出处标记（【教材|…】）和一句话说明。 */
   evidence: string[];
 }
 
@@ -81,17 +80,6 @@ export interface LiteratureEntry {
   relationKind?: RelationKind;
 }
 
-/** “可作通用知识候选”的说明：只记在 M14 自己的存放处，不写 M08。 */
-export interface GeneralCandidate {
-  id: string;
-  output: string;
-  /** 标在哪一版上。 */
-  version: number;
-  at: string;
-  text: string;
-  status: '候选、未审';
-}
-
 /** “写产出”对话与产出物的绑定。 */
 export interface OutputTask {
   sessionId: string;
@@ -101,25 +89,9 @@ export interface OutputTask {
 
 // ───────────── 接口类型 ─────────────
 
-export interface ObjectRefView {
-  kind: ObjectRefKind;
-  id: string;
-  raw: string;
-  start: number;
-  end: number;
-  resolved: boolean;
-  problem?: string;
-  name?: string;
-  /** 点的一句话 / 子句的说明。 */
-  sentence?: string;
-  /** 来自哪套 M08 的标注（书给的 / 模型补的 / 未审）。 */
-  source?: string;
-}
-
-/** 一段文字引用的原文与 M08 对象（核对过；对不上的 resolved:false）。 */
+/** 一段文字引用的教材原文（核对过；对不上的 resolved:false）。 */
 export interface ReferencesView {
   sources: CitationView[];
-  objects: ObjectRefView[];
   /** 对不上的个数。 */
   unresolved: number;
 }
@@ -171,7 +143,6 @@ export interface OutputView extends OutputSummary {
   /** 版本列表（旧到新）。 */
   history: VersionSummary[];
   literature: LiteratureView[];
-  candidates: GeneralCandidate[];
   /** 在这个产出物上开过的“写产出”对话。 */
   tasks: OutputTask[];
 }
@@ -255,16 +226,6 @@ export interface LiteratureListResponse {
   literature: LiteratureView[];
 }
 
-export interface MarkCandidateRequest {
-  text: string;
-  /** 标在哪一版；不给就是最新版。 */
-  version?: number;
-}
-
-export interface CandidateResponse {
-  candidate: GeneralCandidate;
-}
-
 /** 学习者从产出物页直接开一个“写产出”对话。 */
 export interface OpenOutputTaskRequest {
   /** 想写 / 想改什么，一两句（可不填）。 */
@@ -273,8 +234,4 @@ export interface OpenOutputTaskRequest {
 
 export interface OpenOutputTaskResponse {
   sessionId: string;
-}
-
-export interface CandidatesResponse {
-  candidates: GeneralCandidate[];
 }

@@ -5,7 +5,7 @@ import { FakeModel, type FakeContext, type FakeStep } from '../../src/core/model
 import type { ModelAdapter } from '../../src/core/model/port.ts';
 import type { NumberedRecord } from '../../src/shared/records.ts';
 import { getJson, post, records, TOKEN, waitFor } from './http.ts';
-import { DISPLACEMENT_OPTION, learnerLine, roleOf } from './roles.ts';
+import { DISPLACEMENT_OPTION, learnerLine, navRoute, roleOf } from './roles.ts';
 import { tempDir } from './tmp.ts';
 
 export const DIAGNOSIS = '诊断：学习者用自己的话说清了位移';
@@ -40,7 +40,7 @@ export function responder(state: FlowState) {
                   {
                     new_point: 'p-avg-velocity',
                     clause: 'c-avgv-from-disp',
-                    start_points: [{ point: 'p-displacement', source: 'M09' }],
+                    start_points: [{ point: 'p-displacement', source: '学过的记录' }],
                     route_action: '继续主线',
                     title: '平均速度',
                     reason: '位移会了，接着学平均速度',
@@ -53,6 +53,7 @@ export function responder(state: FlowState) {
                   },
                 ],
                 recommended: 0,
+                route_decision: navRoute(ctx),
               },
             },
           ],

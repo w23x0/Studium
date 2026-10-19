@@ -9,7 +9,6 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { createApp, type App } from '../../src/core/app.ts';
-import { M08 } from '../../src/core/knowledge/m08.ts';
 import { M09, type FormationRecord } from '../../src/core/knowledge/m09.ts';
 import { M10, type StrategyRecord } from '../../src/core/knowledge/m10.ts';
 import { M15 } from '../../src/core/knowledge/m15.ts';
@@ -425,16 +424,7 @@ async function chain(d: Driver, run: ChainRun, http: Http, app: App): Promise<vo
   if (loopId === undefined) throw new Error('选项卡上一项都开不了');
   run.loopId = loopId;
   const opened = await app.hub.opened(loopId);
-  if (opened.ticket) {
-    const m08 = await M08.load(join(run.dataRoot, 'knowledge', 'm08'));
-    const point = m08.points.get(opened.ticket.newPoint);
-    const clause = m08.clauses.get(opened.ticket.clause);
-    run.ticketText = [
-      app.studium.describeTicket(opened.ticket),
-      point ? `新点：${m08.describePoint(point)}` : '',
-      clause ? `子句：${m08.describeClause(clause)}` : '',
-    ].join('\n');
-  }
+  if (opened.ticket) run.ticketText = app.studium.describeTicket(opened.ticket);
 
   // ⑤ 学习对话
   let note: string | undefined;

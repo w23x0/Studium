@@ -13,14 +13,12 @@ import type {
   CitationView,
   LibrarySearchResponse,
   LocateResponse,
-  PageAnchor,
   PageResponse,
   SectionResponse,
   SourceReportRequest,
   TocResponse,
 } from '../shared/protocol.ts';
 import { NotFoundError } from './hub.ts';
-import type { M08 } from './knowledge/m08.ts';
 import type { Library } from './knowledge/m07.ts';
 import type { Originals } from './knowledge/m07-originals.ts';
 import type { SourceReports } from './knowledge/m07-reports.ts';
@@ -30,7 +28,6 @@ import { BadRequestError } from './studium.ts';
 export interface SourcesDeps {
   library: Library;
   originals: Originals;
-  m08: M08;
   reports: SourceReports;
   now?: () => Date;
 }
@@ -112,19 +109,6 @@ export class Sources {
     this.checkPage(page);
     const canRender = await this.d.originals.canRender();
     const where = await this.d.originals.locatePdf(id, page);
-    const anchors: PageAnchor[] = [];
-    for (const p of this.d.m08.points.values()) {
-      for (const a of p.anchors) {
-        if (a.book === id && a.page === page) {
-          anchors.push({
-            pointId: p.id,
-            pointName: p.name,
-            quote: a.quote,
-            ...(isBBox(a.bbox) ? { bbox: a.bbox } : {}),
-          });
-        }
-      }
-    }
     return {
       book: id,
       page,
@@ -136,7 +120,6 @@ export class Sources {
           }
         : {}),
       blocks: where !== undefined ? await this.d.originals.blocks(id, page) : [],
-      anchors,
       ...(where === undefined
         ? { note: '这本书没有 PDF 原件（或这一页不在已转换的页段里），只能看转录的文字。' }
         : !canRender
@@ -312,8 +295,4 @@ function view(
   rest: Partial<CitationView> & { problem?: string },
 ): CitationView {
   return { raw: '', start: 0, end: 0, ...base, resolved: false, ...rest };
-}
-
-function isBBox(b: unknown): b is BBox {
-  return Array.isArray(b) && b.length === 4 && b.every((v) => typeof v === 'number');
 }

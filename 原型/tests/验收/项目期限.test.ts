@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡补 route_decision。）
 // 验收：项目可记期限（可不填、可清掉、可改）；记录只追加；M05 开场带上期限。只经 HTTP 验证（假模型）。
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
@@ -12,6 +13,7 @@ import type {
 import { call, getJson, post, records, TOKEN, waitFor } from '../helpers/http.ts';
 import { DISPLACEMENT_OPTION, roleOf } from '../helpers/roles.ts';
 import { tempDir } from '../helpers/tmp.ts';
+import { navRoute } from './共用/w1-card.ts';
 
 const apps: App[] = [];
 afterEach(async () => {
@@ -38,6 +40,7 @@ const responder = (ctx: FakeContext): FakeStep | undefined =>
                 },
               ],
               recommended: 0,
+              route_decision: navRoute(ctx),
             },
           },
         ],

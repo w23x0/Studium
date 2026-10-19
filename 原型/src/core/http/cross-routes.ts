@@ -1,16 +1,13 @@
-// 批 10b 的接口：跨资料的重复线索与检索标签、资料的来源说明、状态回看与学习者解释。
+// 批 10b 的接口：资料的来源说明、状态回看与学习者解释。
 // 认出路径就回答并返回真；BadRequestError / NotFoundError 由 server.ts 按 400 / 404 回。
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type {
   AddExplanationRequest,
   AddExplanationResponse,
   AddSourceNoteRequest,
-  CluesResponse,
-  SectionLinksResponse,
   SourceNoteResponse,
   SourceNotesResponse,
   StateTimelineResponse,
-  TaggedSearchResponse,
 } from '../../shared/protocol.ts';
 import type { Crosslinks } from '../crosslinks.ts';
 import type { Lookback } from '../lookback.ts';
@@ -31,53 +28,10 @@ export async function crossRoute(
   svc: CrossServices,
 ): Promise<boolean> {
   const q = url.searchParams;
-  const need = (name: string): string => {
-    const v = q.get(name);
-    if (v === null || v === '') throw new BadRequestError(`缺少参数 ${name}`);
-    return v;
-  };
   const [, a, b, c, d] = parts;
   const n = parts.length;
 
   if (a === 'library' && method === 'GET') {
-    if (b === 'links' && n === 3) {
-      send(
-        res,
-        200,
-        (await svc.links.linksFor(need('book'), need('file'))) satisfies SectionLinksResponse,
-      );
-      return true;
-    }
-    if (b === 'clues' && n === 3) {
-      send(res, 200, (await svc.links.clues()) satisfies CluesResponse);
-      return true;
-    }
-    if (b === 'tagged-search' && n === 3) {
-      // 同 /api/library/search：给了 project 默认只搜项目资料，all=1 或明确给 book 时不限
-      const project = q.get('project');
-      const book = q.get('book') ?? undefined;
-      const scope =
-        project !== null && project !== '' && (book === undefined || book === '')
-          ? await studium.scopeOf(project, q.get('all') === '1')
-          : undefined;
-      const limit = q.get('limit');
-      send(
-        res,
-        200,
-        (await svc.links.taggedSearch(need('q'), {
-          ...(book !== undefined && book !== ''
-            ? { book }
-            : scope !== undefined
-              ? { books: scope }
-              : {}),
-          ...(limit !== null && limit !== '' ? { limit: Number(limit) } : {}),
-          ...(q.get('inBook') !== null ? { filterBook: q.get('inBook') ?? '' } : {}),
-          ...(q.get('type') !== null ? { type: q.get('type') ?? '' } : {}),
-          ...(q.get('point') !== null ? { point: q.get('point') ?? '' } : {}),
-        })) satisfies TaggedSearchResponse,
-      );
-      return true;
-    }
     if (b === 'source-notes' && n === 3) {
       const book = q.get('book');
       if (book !== null && book !== '') {

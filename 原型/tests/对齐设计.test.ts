@@ -9,7 +9,7 @@ import type { FormationRecord } from '../src/core/knowledge/m09.ts';
 import { FakeModel, type FakeContext, type FakeStep } from '../src/core/model/fake.ts';
 import type { ModelAdapter } from '../src/core/model/port.ts';
 import { GOAL, goalTalkResponder } from './helpers/goal-talk.ts';
-import { DISPLACEMENT_OPTION, learnerLine, roleOf } from './helpers/roles.ts';
+import { DISPLACEMENT_OPTION, learnerLine, navRoute, roleOf } from './helpers/roles.ts';
 import { tempDir } from './helpers/tmp.ts';
 
 const apps: App[] = [];
@@ -28,6 +28,9 @@ const OPTION_B = {
 const SOURCED = { ...DISPLACEMENT_OPTION, sources: ['p-displacement', 'c-disp-from-pos'] };
 const SOURCED_B = { ...OPTION_B, sources: ['p-avg-velocity'] };
 
+/** 交卡必带的路线决定（这里只过 schema，不查定位）。 */
+const ROUTE = { decision: '维持主线', reason: '按推荐往下学', basis: ['main-1:1'] };
+
 const STRONG = { time: '含变式', independence: '独立' } as const;
 const WEAK = { time: '仅当场', independence: '提示后' } as const;
 
@@ -39,7 +42,11 @@ function responder(opts: { m09Args?: (line: number) => Record<string, unknown> }
           calls: [
             {
               name: 'submit_choice_card',
-              args: { options: [SOURCED, SOURCED_B], recommended: 0 },
+              args: {
+                options: [SOURCED, SOURCED_B],
+                recommended: 0,
+                route_decision: navRoute(ctx),
+              },
             },
           ],
         };
@@ -155,7 +162,8 @@ describe('M09 会话的读权限', () => {
       model.opened
         .filter((s) => s.session?.kind === role)
         .flatMap((s) => s.tools.map((t) => t.name));
-    expect(names('m09')).toContain('get_point');
+    expect(names('m09')).not.toContain('get_point');
+    expect(names('m09')).not.toContain('search_points');
     expect(names('m09')).not.toContain('textbook_index');
     expect(names('m09')).not.toContain('query_m09');
     expect(names('loop')).toContain('textbook_index');
@@ -176,17 +184,17 @@ describe('选择卡出处', () => {
 
   it('参数校验：2–4 项，每项必带非空出处', async () => {
     const { schema } = await cardTool();
-    const ok = { options: [SOURCED, SOURCED_B], recommended: 0 };
+    const ok = { options: [SOURCED, SOURCED_B], recommended: 0, route_decision: ROUTE };
     expect(schema.safeParse(ok).success).toBe(true);
-    expect(schema.safeParse({ options: [SOURCED], recommended: 0 }).success).toBe(false);
+    expect(schema.safeParse({ ...ok, options: [SOURCED] }).success).toBe(false);
     const five = Array.from({ length: 5 }, () => SOURCED);
-    expect(schema.safeParse({ options: five, recommended: 0 }).success).toBe(false);
+    expect(schema.safeParse({ ...ok, options: five }).success).toBe(false);
+    // 一项没有 sources 时整张卡不合格
     expect(
-      schema.safeParse({ options: [SOURCED, DISPLACEMENT_OPTION], recommended: 0 }).success,
+      schema.safeParse({ ...ok, options: [SOURCED, { ...SOURCED_B, sources: undefined }] }).success,
     ).toBe(false);
     expect(
-      schema.safeParse({ options: [SOURCED, { ...SOURCED_B, sources: [] }], recommended: 0 })
-        .success,
+      schema.safeParse({ ...ok, options: [SOURCED, { ...SOURCED_B, sources: [] }] }).success,
     ).toBe(false);
   });
 
@@ -209,6 +217,7 @@ describe('选择卡出处', () => {
                   args: {
                     options: [SOURCED, { ...SOURCED_B, sources: ['  '] }],
                     recommended: 0,
+                    route_decision: ROUTE,
                   },
                 },
               ],

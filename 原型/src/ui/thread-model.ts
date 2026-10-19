@@ -356,11 +356,11 @@ export function learnerShelveNote(note: string): string | undefined {
 }
 
 /**
- * 分叉来历里“补什么”的日常说法：核心写的原因形如“p-xxx「位移」，你说位移还不太会”，
- * 取书名号里的名字；对不上格式就用整句。
+ * 分叉来历里“补什么”的日常说法：核心写的原因形如“p-xxx，你说位移还不太会”，
+ * 取开头那一段（新点自己）；对不上格式就用整句。
  */
 export function forkWhat(reason: string): string {
-  const m = /^[^「\s]*「([^」]+)」/.exec(reason);
+  const m = /^([^\s，,]+)[，,]/.exec(reason);
   return m?.[1] ?? reason;
 }
 

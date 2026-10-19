@@ -70,7 +70,7 @@ export function firstFormationId(text: string): string | undefined {
 export const AVG_OPTION = {
   new_point: 'p-avg-velocity',
   clause: 'c-avgv-from-disp',
-  start_points: [{ point: 'p-displacement', source: 'M09' }],
+  start_points: [{ point: 'p-displacement', source: '学过的记录' }],
   route_action: '继续主线',
   title: '平均速度',
   reason: '位移会了，接着学平均速度',

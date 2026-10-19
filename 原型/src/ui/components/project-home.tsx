@@ -16,7 +16,6 @@ import {
   GaugeIcon,
   LayersIcon,
   LibraryIcon,
-  ListTreeIcon,
   MessageCircleIcon,
   ShieldCheckIcon,
   SparklesIcon,
@@ -92,7 +91,7 @@ export function ProjectHome(props: {
                   <OutputsSection projectId={props.projectId} />
                   <PracticeOverview />
                   <Relations projectId={props.projectId} />
-                  {/* 资料、知识点、记录、教法这些入口：开发者模式关掉时不显示 */}
+                  {/* 资料、记录、教法这些入口：开发者模式关掉时不显示 */}
                   {devMode && <AboutMe />}
                 </div>
                 <aside className="flex min-w-0 flex-col gap-6">
@@ -534,11 +533,6 @@ function AboutMe() {
   const panel = usePanel();
   const items: { icon: ReactNode; label: string; onClick: () => void }[] = [
     { icon: <LibraryIcon />, label: W.library, onClick: () => panel.show({ kind: 'library' }) },
-    {
-      icon: <ListTreeIcon />,
-      label: W.pointsBrowse,
-      onClick: () => panel.show({ kind: 'points' }),
-    },
     { icon: <BookCheckIcon />, label: W.learned, onClick: () => panel.show({ kind: 'learned' }) },
     {
       icon: <LayersIcon />,

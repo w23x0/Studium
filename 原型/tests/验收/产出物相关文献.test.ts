@@ -1,5 +1,6 @@
+// （W1 新版，取代旧的同名测试：去掉“不写 knowledge/m08”的断言（那个目录没了）。）
 // 验收：M14「研究问题相关的文献关系」——产出物登记相关文献（书库里的书 / 小节，或外部条目），带一句关系说明，只追加；
-// 书库条目回到 M07 来源并核对，对不上的拒绝；不写回 M08。只经 HTTP 验证。
+// 书库条目回到 M07 来源并核对，对不上的拒绝。只经 HTTP 验证。
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
@@ -95,14 +96,10 @@ describe('产出物相关文献', () => {
     ).toEqual([]);
   });
 
-  it('只追加；文献关系只记在 M14 自己的存放处，不写 M08', async () => {
+  it('只追加；文献关系只记在产出物自己的存放处', async () => {
     const { app, mainId } = await startOutputsApp();
     apps.push(app);
     const out = await createOutput(app, mainId, { title: 't', kind: '小论文', text: 'x' });
-    const m08Before = await readFile(
-      join(app.dataDir.root, 'knowledge', 'm08', 'clauses.jsonl'),
-      'utf8',
-    );
     await post(app, `/outputs/${out.id}/literature`, { title: 'a', relation: '1' });
     const file = join(app.dataDir.root, 'knowledge', 'm14', 'literature.jsonl');
     const one = (await readFile(file, 'utf8')).split('\n').filter(Boolean);
@@ -110,8 +107,5 @@ describe('产出物相关文献', () => {
     const two = (await readFile(file, 'utf8')).split('\n').filter(Boolean);
     expect(two.slice(0, 1)).toEqual(one);
     expect(two).toHaveLength(2);
-    expect(
-      await readFile(join(app.dataDir.root, 'knowledge', 'm08', 'clauses.jsonl'), 'utf8'),
-    ).toBe(m08Before);
   });
 });

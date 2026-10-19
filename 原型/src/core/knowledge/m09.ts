@@ -73,7 +73,7 @@ export interface TimelineRecord {
   id: string;
   at: string;
   kind: TimelineKind;
-  /** 哪个点（M08 点 id）。 */
+  /** 哪个点。 */
   point: string;
   /** 来自哪个闭环的提交（提取失败 / 降档来自后续闭环、重新掌握来自复检闭环）。 */
   loopSessionId: string;
@@ -101,7 +101,7 @@ export interface ExternalRecord {
   status: '未验证';
   /** 学习者会 / 写过的是什么（一句话）。 */
   claim: string;
-  /** 对得上 M08 的点时填点 id；对不上就空，claim 照记。 */
+  /** 对应的点（文字，可空）；claim 照记。 */
   point?: string;
   /** 判读依据：为什么这样分档（如“笔记里有完整推导与自己的解释”“只说了会，没展开”）。 */
   basis: string;

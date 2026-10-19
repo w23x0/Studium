@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡补 route_decision；守卫判合上带 understanding。）
 // 验收：真实运行录带 + 离线回放（04「质量」P1）。开着录带跑一遍主路径（含中途插话；这里用假模型代替真模型），
 // 再在一个空数据目录里只凭录带回放：不调模型，每轮交给模型的输入、工具结果都与录带一致（问题清单为空），
 // 回放出的各会话记录与原来一致（会话 id、时间、随机编号除外）。
@@ -12,6 +13,7 @@ import { goalTalkResponder } from '../helpers/goal-talk.ts';
 import { post, records, subscribe, TOKEN, waitFor, getJson } from '../helpers/http.ts';
 import { DISPLACEMENT_OPTION, learnerLine, roleOf } from '../helpers/roles.ts';
 import { tempDir } from '../helpers/tmp.ts';
+import { navRoute } from './共用/w1-card.ts';
 
 const apps: App[] = [];
 afterEach(async () => {
@@ -36,7 +38,10 @@ function responder(ctx: FakeContext): FakeStep | undefined {
       return {
         calls: [
           { name: 'query_state', args: {} },
-          { name: 'submit_choice_card', args: { options: [DISPLACEMENT_OPTION], recommended: 0 } },
+          {
+            name: 'submit_choice_card',
+            args: { options: [DISPLACEMENT_OPTION], recommended: 0, route_decision: navRoute(ctx) },
+          },
         ],
       };
     case 'loop':
@@ -48,7 +53,19 @@ function responder(ctx: FakeContext): FakeStep | undefined {
         calls: [
           {
             name: 'submit_verdict',
-            args: { closed: true, basis: '说清了', evidence_lines: [line] },
+            args: {
+              closed: true,
+              basis: '说清了',
+              evidence_lines: [line],
+              understanding: [
+                {
+                  text: '学习者自己说清了',
+                  lines: [line],
+                  independence: '独立',
+                  durability: '仅当场',
+                },
+              ],
+            },
           },
         ],
       };

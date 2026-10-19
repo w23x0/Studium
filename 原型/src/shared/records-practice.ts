@@ -31,9 +31,9 @@ export interface PracticeAssigned {
   id: string;
   /** 练什么：用日常话一句。 */
   focus: string;
-  /** 对应的 M08 点（可空）。 */
+  /** 对应的点（文字，可空）。 */
   points: string[];
-  /** 对应的 M08 子句（可空）。 */
+  /** 对应的预期理解（文字，可空）。 */
   clause?: string;
   source: PracticeSource;
   /** 题面：书里的习题 = 程序按出处读出的原文；生成题 = 模型写的。 */

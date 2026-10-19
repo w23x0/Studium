@@ -1,7 +1,7 @@
 // M07 的原件：书的 PDF 原件页面（渲染成图）与页面上的内容块位置（MinerU content_list）。只读书库；渲染出的图缓存在数据目录。
 // 原件从哪找：<书>/source.json 列出页段（p1-200 …，每段目录里有 MinerU 留的 *_origin.pdf 与 *_content_list.json，
 // 页码 = first_page + page_idx）；没有 source.json 就按 p<起>-<止> 目录名认；都没有再看整本 PDF（source.json 的 file 字段）。
-// 页码一律是原 PDF 页（1 起），与 M08 锚点的 page、M07 目录的“PDF 页”同一套。
+// 页码一律是原 PDF 页（1 起），与 M07 目录的“PDF 页”同一套。
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, stat } from 'node:fs/promises';
@@ -300,7 +300,7 @@ export class Originals {
 export class NoOriginalError extends Error {}
 export class NoRendererError extends Error {}
 
-/** 比对用：去标签、LaTeX 命令名、$ {} ^ _ \ 引号与空白，忽略大小写（与书库处理/ 的 M08 回扫同一套）。 */
+/** 比对用：去标签、LaTeX 命令名、$ {} ^ _ \ 引号与空白，忽略大小写。 */
 export function norm(t: string): string {
   return t
     .replace(/<[^>]+>/g, '')

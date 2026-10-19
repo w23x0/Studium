@@ -6,17 +6,14 @@ import type {
   LearnerObjection,
   NumberedRecord,
   ObjectionTarget,
+  Ticket,
   SourceReport,
   SourceReportKind,
 } from './records.ts';
 import type { RegressionView, TodayView } from './protocol-longterm.ts';
-import type { CrossDomainView } from './protocol-cross.ts';
-
-import type { CorrectionMark } from './m08-review.ts';
 
 export type * from './protocol-longterm.ts';
 export * from './protocol-cross.ts';
-export type * from './m08-review.ts';
 export type * from './protocol-practice.ts';
 
 export interface SessionSummary {
@@ -102,104 +99,19 @@ export function modelInfoOf(stored: string): ModelInfo {
   };
 }
 
-/** 书给的 = 原文有支撑；模型补的 = 书里找不到直接支撑（候选）；未审 = 不在处理过的范围里，没对原文审过。 */
-export type M08Source = '书给的' | '模型补的' | '未审';
-
-export const M08_SOURCE_NOTES: Record<M08Source, string> = {
-  书给的: '原文有支撑',
-  模型补的: '书里找不到直接支撑，是模型补的候选',
-  未审: '不在处理过的范围里，没对原文审过',
-};
-
-export interface AnchorView {
-  book: string;
-  file: string;
-  quote: string;
-  page?: number;
-  bbox?: number[];
-  line?: number;
-}
-
-export interface PointView {
-  id: string;
-  name: string;
-  sentence: string;
-  anchors: AnchorView[];
-  source: M08Source;
-  sourceNote: string;
-  threshold?: boolean;
-  scope?: '范围内' | '前置';
-  splitOf?: { id: string; name: string };
-  cautions: { text: string; anchors: AnchorView[] }[];
-  /** 多套 M08 合并时：来自哪一套（目录标签）；id 加了前缀时 originalId 是原来的 id。 */
-  origin?: string;
-  originalId?: string;
-  /** 更正过：几次、更正前资料里原本是什么（批 10a）。显示的 name / sentence 已是更正后的。 */
-  correction?: CorrectionMark;
-  /** 有几条候选涉及它（批 10a）。 */
-  candidates?: number;
-}
-
-export interface ClauseView {
-  id: string;
-  from: { id: string; name: string }[];
-  to: { id: string; name: string };
-  text: string;
-  anchors: AnchorView[];
-  source: M08Source;
-  sourceNote: string;
-  notes: string[];
-  origin?: string;
-  originalId?: string;
-  correction?: CorrectionMark;
-  candidates?: number;
-}
-
-export interface Points08Response {
-  points: PointView[];
-  /** M08 是否整个是空的（缺通用知识依据）。 */
-  empty: boolean;
-}
-
-export interface Point08Response {
-  point: PointView;
-  /** 进入这个点的子句 / 从这个点出发的子句。 */
-  into: ClauseView[];
-  from: ClauseView[];
-}
-
-export interface Clause08Response {
-  clause: ClauseView;
-}
-
-/** 单子里引用的 M08 点；found 为假 = M08 里查不到（name 退回 id）。 */
+/** 单子里引用的一个点：不再查知识点库，`name` 就等于 `id`。 */
 export interface PointRef {
   id: string;
   name: string;
-  found: boolean;
-  sentence?: string;
-  source?: M08Source;
 }
 
-export interface TicketView {
-  newPoint: PointRef;
-  /** M08 里查不到这条子句时为空。 */
-  clause?: ClauseView;
-  clauseId: string;
-  startPoints: { point: PointRef; source: 'M09' | '自述' | '假定' }[];
-  routeAction: string;
-  /** 复习 / 复检的单子（批 6）：回头看以前合上过的点；学新点时没有。 */
-  revisit?: { kind: '复习' | '复检'; formationIds: string[] };
-  /** 跨领域的单子（批 10b）：补习型 / 对比链接型，标两边的领域；同领域内的没有。 */
-  crossDomain?: CrossDomainView;
-  /** 阶段验收的单子（批 9）：闭环里的练习都标阶段验收、默认不给提示。 */
-  stageCheck?: boolean;
-}
+/** 依据视图里的单子：就是单子本身（文字），跨领域只三项。 */
+export type TicketView = Ticket;
 
 /** 选项出处里的一条，已尽量回查。resolved 为假 = 查不到（原样给出 raw）。 */
 export interface SourceView {
   raw: string;
-  kind: 'm08_point' | 'm08_clause' | 'm09_record' | 'loop_line' | 'book_line' | 'unknown';
+  kind: 'm09_record' | 'loop_line' | 'book_line' | 'unknown';
   resolved: boolean;
   label: string;
   /** 回查到的内容：点的一句话、形成记录的理解、闭环那一行的原话。 */
@@ -236,6 +148,8 @@ export interface CardView {
   m05SessionId: string;
   model: ModelInfo;
   chosen?: { option: number; loopSessionId: string };
+  /** 这次出卡的路线决定（写在主对话里，紧挨着卡的前一行）；旧卡没有。 */
+  routeDecision?: { line: number; decision: string; reason: string; basis: SourceView[] };
   options: CardOptionView[];
 }
 
@@ -749,7 +663,7 @@ export interface PageSpan {
 
 /**
  * 页面上的位置框：[x0, y0, x1, y1]，各取 0–1000，是占整页宽（x）、高（y）的千分比，原点在页面左上角
- * （MinerU content_list 的坐标，M08 锚点的 bbox 同此）。界面按渲染出的图的实际宽高乘 / 1000 就是像素位置，
+ * （MinerU content_list 的坐标）。界面按渲染出的图的实际宽高乘 / 1000 就是像素位置，
  * 与渲染分辨率无关。
  */
 export type BBox = [number, number, number, number];
@@ -853,14 +767,6 @@ export interface PageBlock {
   text?: string;
 }
 
-/** M08 的点挂在这一页上的原文锚点。 */
-export interface PageAnchor {
-  pointId: string;
-  pointName: string;
-  quote: string;
-  bbox?: BBox;
-}
-
 export interface PageResponse {
   book: string;
   page: number;
@@ -871,7 +777,6 @@ export interface PageResponse {
   /** 原件页面的图（PNG）；加 ?bbox=x0,y0,x1,y1（同上千分比）可只取这一块。带口令访问。 */
   imageUrl?: string;
   blocks: PageBlock[];
-  anchors: PageAnchor[];
   /** 没有原件时说明原因。 */
   note?: string;
 }
@@ -1016,7 +921,7 @@ export interface InputDisclosure {
   note: string;
 }
 
-// ───────────── 批 3a：资料范围（书库多层、项目资料、个人笔记、多套 M08、外部导入、期限）─────────────
+// ───────────── 批 3a：资料范围（书库多层、项目资料、个人笔记、外部导入、期限）─────────────
 
 /** 项目选用的一份资料。missing = 书库里现在找不到它了（被移走 / 改名）。 */
 export interface ProjectMaterialView {
@@ -1108,7 +1013,7 @@ export interface ExternalRecordView {
   /** 一律“未验证”：闭环证据永远优先。 */
   status: '未验证';
   claim: string;
-  point?: { id: string; name: string; found: boolean };
+  point?: { id: string; name: string };
   /** 判读依据（如“笔记里有完整推导与自己的解释”“只说了会，没展开”）。 */
   basis: string;
   grade?: string;
@@ -1120,28 +1025,4 @@ export interface ExternalRecordView {
 
 export interface ExternalRecordsResponse {
   records: ExternalRecordView[];
-}
-
-/** 多套 M08 合并后的每一套。 */
-export interface M08OriginView {
-  label: string;
-  dir: string;
-  points: number;
-  clauses: number;
-  /** 这一套的 id 因与别的套重复而加了“标签.”前缀。 */
-  prefixed: boolean;
-}
-
-export interface M08OverviewResponse {
-  sources: M08OriginView[];
-  /** 按书、按章数点（章 = 点的第一个锚点所在的章目录，如 ch03；没有锚点的归“（无锚点）”）。 */
-  books: {
-    book: string;
-    bookTitle?: string;
-    points: number;
-    clauses: number;
-    chapters: { chapter: string; points: number; clauses: number }[];
-  }[];
-  /** 带了 project 且项目选了资料：只算选用的书；all=1 查全部。 */
-  restricted: boolean;
 }

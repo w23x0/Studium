@@ -2,12 +2,10 @@
 import type {
   CardResponse,
   ChooseResponse,
-  Clause08Response,
   DisclosureResponse,
   FormationsResponse,
   LoopEvidenceResponse,
   ObjectionResponse,
-  Point08Response,
   ProjectOverviewResponse,
   RecordObjectionRequest,
   SessionModelResponse,
@@ -37,8 +35,6 @@ import type {
   NoteImportResponse,
   NotesResponse,
   ExternalRecordsResponse,
-  M08OverviewResponse,
-  Points08Response,
   DetourChooseResponse,
   LoopRelationsResponse,
   TeachingToolsResponse,
@@ -56,39 +52,22 @@ import type {
   TimelineResponse,
   TodayView,
   AddExplanationResponse,
-  CluesResponse,
-  SectionLinksResponse,
   SourceNoteField,
   SourceNoteResponse,
   SourceNotesResponse,
   StateTimelineResponse,
-  TaggedSearchResponse,
 } from '../shared/protocol.ts';
 import type {
   AddLiteratureRequest,
-  CandidateResponse,
   CompareResponse,
   CreateOutputRequest,
   ListOutputsResponse,
   LiteratureResponse,
-  MarkCandidateRequest,
   OpenOutputTaskResponse,
   OutputResponse,
   SaveVersionRequest,
   VersionResponse,
 } from '../shared/m14.ts';
-import type {
-  AuditRequest,
-  AuditResponse,
-  CorrectRequest,
-  CorrectionResponse,
-  CorrectionsResponse,
-  ReviewCandidatesResponse,
-  ReviewCandidateResponse,
-  SuggestRequest,
-  TargetRef,
-  TargetReviewResponse,
-} from '../shared/m08-review.ts';
 import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
 import { SHELVE_NO_NOTE } from './thread-model.ts';
 
@@ -202,39 +181,10 @@ export const api = {
   overview: (mainId: string) => call<ProjectOverviewResponse>(`/projects/${mainId}/overview`),
   loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),
   card: (cardId: string) => call<CardResponse>(`/cards/${cardId}`),
-  point: (id: string) => call<Point08Response>(`/m08/points/${encodeURIComponent(id)}`),
-  clause: (id: string) => call<Clause08Response>(`/m08/clauses/${encodeURIComponent(id)}`),
   formations: () => call<FormationsResponse>('/m09/records'),
   strategies: () => call<StrategiesResponse>('/m10/records'),
   state: () => call<StateResponse>('/m15/state'),
-  // ── 批 10b：别的书也讲这里、带标签的检索、来源说明、状态回看 ──
-  links: (book: string, file: string) =>
-    call<SectionLinksResponse>(`/library/links?${qs({ book, file })}`),
-  clues: () => call<CluesResponse>('/library/clues'),
-  taggedSearch: (
-    q: string,
-    opt: {
-      book?: string | undefined;
-      project?: string | undefined;
-      all?: boolean | undefined;
-      limit?: number | undefined;
-      type?: string | undefined;
-      point?: string | undefined;
-      inBook?: string | undefined;
-    } = {},
-  ) =>
-    call<TaggedSearchResponse>(
-      `/library/tagged-search?${qs({
-        q,
-        book: opt.book,
-        project: opt.project,
-        all: opt.all === true ? 1 : undefined,
-        limit: opt.limit,
-        type: opt.type,
-        point: opt.point,
-        inBook: opt.inBook,
-      })}`,
-    ),
+  // ── 批 10b：来源说明、状态回看 ──
   sourceNotes: () => call<SourceNotesResponse>('/library/source-notes'),
   sourceNote: (book: string) => call<SourceNoteResponse>(`/library/source-notes?${qs({ book })}`),
   addSourceNote: (book: string, field: SourceNoteField, text: string) =>
@@ -293,7 +243,7 @@ export const api = {
     call<SourceReportsResponse>(`/library/reports?${qs({ book, file })}`),
   report: (req: SourceReportRequest) =>
     call<SourceReportResponse>('/library/reports', { method: 'POST', body: JSON.stringify(req) }),
-  // ── 资料范围：项目资料、期限、个人笔记、外部导入、知识点概要 ──
+  // ── 资料范围：项目资料、期限、个人笔记、外部导入 ──
   materials: (projectId: string) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`),
   changeMaterials: (projectId: string, req: ProjectMaterialsRequest) =>
@@ -322,12 +272,6 @@ export const api = {
   noteAssetUrl: (book: string, ref: string) =>
     withToken(`/api/library/note-asset?${qs({ book, ref })}`),
   externals: () => call<ExternalRecordsResponse>('/m09/external'),
-  m08Overview: (project?: string, all?: boolean) =>
-    call<M08OverviewResponse>(
-      `/m08/overview?${qs({ project, all: all === true ? 1 : undefined })}`,
-    ),
-  pointsIn: (book: string, chapter: string) =>
-    call<Points08Response>(`/m08/points?${qs({ book, chapter })}`),
   // ── 我的产出（批 8b） ──
   outputs: (projectId: string) => call<ListOutputsResponse>(`/projects/${projectId}/outputs`),
   output: (id: string) => call<OutputResponse>(`/outputs/${encodeURIComponent(id)}`),
@@ -350,11 +294,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
-  markCandidate: (id: string, req: MarkCandidateRequest) =>
-    call<CandidateResponse>(`/outputs/${encodeURIComponent(id)}/candidates`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
   openOutputTask: (id: string, brief?: string) =>
     call<OpenOutputTaskResponse>(`/outputs/${encodeURIComponent(id)}/tasks`, {
       method: 'POST',
@@ -362,26 +301,8 @@ export const api = {
         brief !== undefined && brief.trim() !== '' ? { brief: brief.trim() } : {},
       ),
     }),
-  // ── 候选与更正（批 10a） ──
-  reviewCandidates: () => call<ReviewCandidatesResponse>('/m08/candidates'),
-  reviewCorrections: () => call<CorrectionsResponse>('/m08/corrections'),
-  /** 一个知识点 / 一步连接上的候选、更正历史、涉及它原文的资料报错。 */
-  targetReview: (t: TargetRef) =>
-    call<TargetReviewResponse>(`/m08/review?${qs({ target: `${t.kind}:${t.id}` })}`),
-  suggest: (req: SuggestRequest) =>
-    call<ReviewCandidateResponse>('/m08/suggestions', {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  auditCandidate: (id: string, req: AuditRequest) =>
-    call<AuditResponse>(`/m08/candidates/${encodeURIComponent(id)}/audits`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  correct: (req: CorrectRequest) =>
-    call<CorrectionResponse>('/m08/corrections', { method: 'POST', body: JSON.stringify(req) }),
   // ── 跨段学习的长期功能（批 6） ──
-  /** 我学会的：每个知识点现在的样子（派生，不存盘）。 */
+  /** 我学会的：现在掌握成什么样（派生，不存盘）。 */
   pointView: () => call<PointViewResponse>('/m09/view'),
   pointDetail: (point: string) =>
     call<PointViewDetailResponse>(`/m09/view/${encodeURIComponent(point)}`),

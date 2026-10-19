@@ -1,7 +1,7 @@
 // M14 高阶学习与知识产出（批 8）：学习者自己的产出物（笔记整理、推导、小论文、方法比较……）挂在项目下，
-// 只追加存版本，可列、可取任一版、可比较两版；正文里用出处标记引 M07 原文（【教材|…】）和 M08 对象（【知识点|…】【子句|…】），
+// 只追加存版本，可列、可取任一版、可比较两版；正文里用出处标记引 M07 原文（【教材|…】），
 // 核心能解析、核对、回查；相关文献只追加；方法比较是一种结构化产出；“写产出”任务对话让模型协助写。
-// 去个人化候选只记在 M14 自己的存放处（候选、未审），不写 M08。
+// 引用核对只认教材出处；旧的知识点 / 子句引用标记不再解析。
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import { formatCitation, parseCitations } from '../shared/citation.ts';
@@ -12,12 +12,9 @@ import {
   type CompareView,
   type ComparedMethod,
   type CreateOutputRequest,
-  type GeneralCandidate,
   type LiteratureEntry,
   type LiteratureView,
-  type MarkCandidateRequest,
   type MethodComparison,
-  type ObjectRefView,
   type OutputAuthor,
   type OutputKind,
   type OutputSummary,
@@ -28,11 +25,9 @@ import {
   type VersionSummary,
   type VersionView,
 } from '../shared/m14.ts';
-import { parseObjectRefs } from '../shared/object-ref.ts';
 import { diffLines } from './diff.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import type { Library } from './knowledge/m07.ts';
-import type { M08 } from './knowledge/m08.ts';
 import type { M14 } from './knowledge/m14.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import type { Sources } from './sources.ts';
@@ -42,7 +37,6 @@ export interface OutputsDeps {
   store: M14;
   sources: Sources;
   library: Library;
-  m08: M08;
   now?: () => Date;
 }
 
@@ -213,8 +207,7 @@ export class Outputs {
     if (a === undefined) throw new NotFoundError(`${output} 没有第 ${String(from)} 版`);
     if (b === undefined) throw new NotFoundError(`${output} 没有第 ${String(to)} 版`);
     const lines = diffLines(a.text, b.text);
-    const refsOf = (t: string): Set<string> =>
-      new Set([...parseCitations(t), ...parseObjectRefs(t)].map((r) => r.raw));
+    const refsOf = (t: string): Set<string> => new Set(parseCitations(t).map((r) => r.raw));
     const ra = refsOf(a.text);
     const rb = refsOf(b.text);
     return {
@@ -231,40 +224,10 @@ export class Outputs {
 
   // ───────────── 引用 ─────────────
 
-  /** 解析并核对一段文字里的教材出处和 M08 对象引用；对不上的标出，不编。 */
+  /** 解析并核对一段文字里的教材出处；对不上的标出，不编。 */
   async references(text: string): Promise<ReferencesView> {
     const sources = await this.d.sources.citations(text);
-    const objects: ObjectRefView[] = parseObjectRefs(text).map((r) => {
-      const base = { kind: r.kind, id: r.id, raw: r.raw, start: r.start, end: r.end };
-      if (r.kind === 'point') {
-        const p = this.d.m08.points.get(r.id);
-        return p
-          ? {
-              ...base,
-              resolved: true,
-              name: p.name,
-              sentence: p.sentence,
-              source: p.source,
-            }
-          : { ...base, resolved: false, problem: `M08 里没有这个点：${r.id}` };
-      }
-      const c = this.d.m08.clauses.get(r.id);
-      return c
-        ? {
-            ...base,
-            resolved: true,
-            name: `${c.from.map((f) => this.d.m08.name(f)).join(' + ')} → ${this.d.m08.name(c.to)}`,
-            sentence: c.text,
-            source: c.source,
-          }
-        : { ...base, resolved: false, problem: `M08 里没有这条子句：${r.id}` };
-    });
-    return {
-      sources,
-      objects,
-      unresolved:
-        sources.filter((s) => !s.resolved).length + objects.filter((o) => !o.resolved).length,
-    };
+    return { sources, unresolved: sources.filter((s) => !s.resolved).length };
   }
 
   private async versionView(v: OutputVersion): Promise<VersionView> {
@@ -289,7 +252,6 @@ export class Outputs {
       ...(last !== undefined ? { current: await this.versionView(last) } : {}),
       history: this.d.store.versionsOf(output).map(versionSummary),
       literature,
-      candidates: this.d.store.candidatesOf(output),
       tasks: this.d.store.tasksOf(output),
     };
   }
@@ -396,39 +358,7 @@ export class Outputs {
         : { ...e, citation: c, problem: c.problem ?? '对不上' };
   }
 
-  // ───────────── 去个人化候选 ─────────────
-
-  async markCandidate(
-    output: string,
-    req: Partial<MarkCandidateRequest>,
-  ): Promise<GeneralCandidate> {
-    this.require(output);
-    const text = typeof req.text === 'string' ? req.text.trim() : '';
-    if (text === '')
-      throw new BadRequestError('text 不能为空：说一下哪一部分去掉个人色彩后可以作通用知识');
-    const latest = this.d.store.latest(output)?.n;
-    if (latest === undefined) throw new BadRequestError('这个产出物还没有版本，没有什么可标的');
-    const version = req.version ?? latest;
-    if (this.d.store.version(output, version) === undefined) {
-      throw new NotFoundError(`${output} 没有第 ${String(version)} 版`);
-    }
-    const c: GeneralCandidate = {
-      id: this.id('cand'),
-      output,
-      version,
-      at: this.iso(),
-      text,
-      status: '候选、未审',
-    };
-    await this.d.store.addCandidate(c);
-    return c;
-  }
-
-  candidates(): GeneralCandidate[] {
-    return this.d.store.allCandidates();
-  }
-
-  /** 产出物的名字（候选区列 M14 的候选时用）。 */
+  /** 产出物的名字（依据视图列产出物时用）。 */
   titleOf(output: string): string | undefined {
     return this.d.store.output(output)?.title;
   }
@@ -531,7 +461,7 @@ export class Outputs {
     return sessionId;
   }
 
-  /** “写产出”对话里的工具（只读 M07 / M08 的工具由 Studium 另给）。写入时程序记“模型协助”和本对话。 */
+  /** “写产出”对话里的工具（只读资料的工具由 Studium 另给）。写入时程序记“模型协助”和本对话。 */
   sessionTools(sessionId: string): ToolSpec[] {
     const bound = (): string | undefined => this.d.store.taskOf(sessionId)?.output;
     return [
@@ -561,7 +491,7 @@ export class Outputs {
       {
         name: 'save_output_version',
         description:
-          '把你和学习者写好的内容存成产出物的新版本（每次保存都是新的一版，旧版本不动）。text 是整篇完整正文，不是只写改的部分。要引教材原文就在句后附出处标记（【教材|书名|小节文件|L起-止】，照 read_source 给的），引 M08 的点 / 子句就附【知识点|点 id】【子句|子句 id】。note 写这一版改了什么。方法比较类用 comparison，不用 text。',
+          '把你和学习者写好的内容存成产出物的新版本（每次保存都是新的一版，旧版本不动）。text 是整篇完整正文，不是只写改的部分。要引教材原文就在句后附出处标记（【教材|书名|小节文件|L起-止】，照 read_source 给的）。note 写这一版改了什么。方法比较类用 comparison，不用 text。',
         input: {
           text: z.string().optional(),
           note: z.string().describe('这一版改了什么，一句话'),
@@ -685,11 +615,10 @@ function err(text: string): Promise<ToolResult> {
 }
 
 function refProblems(refs: ReferencesView): string {
-  const bad = [
-    ...refs.sources.filter((s) => !s.resolved).map((s) => `${s.raw}：${s.problem ?? '对不上'}`),
-    ...refs.objects.filter((o) => !o.resolved).map((o) => `${o.raw}：${o.problem ?? '对不上'}`),
-  ];
-  const n = refs.sources.length + refs.objects.length;
+  const bad = refs.sources
+    .filter((s) => !s.resolved)
+    .map((s) => `${s.raw}：${s.problem ?? '对不上'}`);
+  const n = refs.sources.length;
   return bad.length === 0
     ? `引用 ${String(n)} 处，都对得上。`
     : `引用 ${String(n)} 处，${String(bad.length)} 处对不上（请核对后改正再存一版，别照着编）：\n${bad.join('\n')}`;

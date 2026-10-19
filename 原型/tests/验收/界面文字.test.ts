@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡补 route_decision 与 sources；守卫判合上带 understanding。）
 // 验收：学习者在界面上看到的程序文字（对话里的提示、入口、操作报错）一律日常话，
 // 不露“闭环 / 选择卡 / 守卫 / 出发点 / 子句”等内部词。走一遍完整主路径（假模型，模型的话也写成日常话），
 // 把三个对话的记录按界面的转换规则（thread-model）转成可见文字再查。
@@ -10,6 +11,7 @@ import { toUiMessages } from '../../src/ui/thread-model.ts';
 import { goalTalkResponder } from '../helpers/goal-talk.ts';
 import { getJson, post, records, TOKEN, waitFor } from '../helpers/http.ts';
 import { tempDir } from '../helpers/tmp.ts';
+import { navRoute } from './共用/w1-card.ts';
 
 const INTERNAL = [
   '闭环',
@@ -56,9 +58,11 @@ function responder(ctx: FakeContext): FakeStep | undefined {
                 route_action: '继续主线',
                 title: '位移',
                 reason: '接着你已经会的位置往下学',
+                sources: ['力学入门样例/ch01/sec-1.1.md:5'],
               },
             ],
             recommended: 0,
+            route_decision: navRoute(ctx),
           },
         },
       ],
@@ -70,7 +74,19 @@ function responder(ctx: FakeContext): FakeStep | undefined {
       calls: [
         {
           name: 'submit_verdict',
-          args: { closed: true, basis: `见 L${String(line)}`, evidence_lines: [line] },
+          args: {
+            closed: true,
+            basis: `见 L${String(line)}`,
+            evidence_lines: [line],
+            understanding: [
+              {
+                text: '学习者自己说清了',
+                lines: [line],
+                independence: '独立',
+                durability: '仅当场',
+              },
+            ],
+          },
         },
       ],
     };

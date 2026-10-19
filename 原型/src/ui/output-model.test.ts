@@ -8,12 +8,9 @@ import {
   editPositionKey,
   fromDraft,
   isStaleError,
-  linkObjectRefs,
   linkOutputText,
-  objectRefOf,
   orderPair,
   parseEditPosition,
-  refMap,
   removeDim,
   restoreRequest,
   splitAuthors,
@@ -21,29 +18,9 @@ import {
 } from './output-model.ts';
 
 describe('产出物正文里的引用', () => {
-  it('知识点与一步连接的引用换成链接，链接认得回是哪一个', () => {
-    const out = linkObjectRefs('位移【知识点|p-displacement】，推出【子句｜c-a(b)】。');
-    expect(out).toBe(
-      '位移[1](#studium-obj-point-p-displacement)，推出[2](#studium-obj-clause-c-a%28b%29)。',
-    );
-    expect(objectRefOf('#studium-obj-clause-c-a%28b%29')).toEqual({ kind: 'clause', id: 'c-a(b)' });
-    expect(objectRefOf('#studium-obj-point-p-x')).toEqual({ kind: 'point', id: 'p-x' });
-    expect(objectRefOf('#studium-obj-other-x')).toBeUndefined();
-    expect(objectRefOf('#studium-obj-point-%E0%A4%A')).toBeUndefined();
-    expect(objectRefOf(undefined)).toBeUndefined();
-  });
-
-  it('教材出处与知识点引用一起换', () => {
-    const t = '速度【教材|力学|ch01/a.md|L3-4】与【知识点|p-v】';
-    expect(linkOutputText(t)).toBe('速度[1](#studium-cite-0)与[1](#studium-obj-point-p-v)');
-  });
-
-  it('核对结果按种类和编号查', () => {
-    const m = refMap([
-      { kind: 'point', id: 'p-v', raw: '', start: 0, end: 0, resolved: true, name: '速度' },
-    ]);
-    expect(m.get('point:p-v')?.name).toBe('速度');
-    expect(m.get('clause:p-v')).toBeUndefined();
+  it('教材出处换成链接', () => {
+    const t = '速度【教材|力学|ch01/a.md|L3-4】，只看这一段。';
+    expect(linkOutputText(t)).toBe('速度[1](#studium-cite-0)，只看这一段。');
   });
 });
 

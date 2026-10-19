@@ -20,26 +20,7 @@ describe('splitLineRefs', () => {
 });
 
 describe('sourceText', () => {
-  it('知识点取名字，不露编号', () => {
-    const t = sourceText({
-      raw: 'p-x',
-      kind: 'm08_point',
-      resolved: true,
-      label: '点 p-x「位移」',
-      detail: '终点减起点',
-    });
-    expect(t).toEqual({ kind: '书里的知识点', title: '位移', detail: '终点减起点' });
-  });
-
-  it('连接取箭头那段；对话行查不到时写明', () => {
-    expect(
-      sourceText({
-        raw: 'c-1',
-        kind: 'm08_clause',
-        resolved: true,
-        label: '子句 c-1：位置 → 位移',
-      }).title,
-    ).toBe('位置 → 位移');
+  it('对话行查不到时写明', () => {
     expect(
       sourceText({ raw: 's:4', kind: 'loop_line', resolved: false, label: 'x', line: 4 }),
     ).toEqual({ kind: '之前对话里的话', title: '对话里的一句', detail: '查不到原文' });

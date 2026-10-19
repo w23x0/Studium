@@ -171,13 +171,7 @@ export function PointHistoryView(props: {
   return (
     <div data-testid="point-history" className="flex flex-col gap-5">
       <div className="flex flex-col gap-2">
-        <button
-          type="button"
-          className="decoration-primary/40 hover:decoration-primary self-start text-left font-serif text-lg underline underline-offset-4"
-          onClick={() => panel.show({ kind: 'point', id: point })}
-        >
-          {entry.point.name}
-        </button>
+        <span className="self-start text-left font-serif text-lg">{entry.point.name}</span>
         <div className="flex flex-wrap items-center gap-1.5">
           <StatusBadge status={entry.status} />
           {level !== undefined && (

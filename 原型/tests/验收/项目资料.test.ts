@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：去掉知识点工具；资料工具从导航 / 守卫取（学习对话 W4 起没有资料工具）。）
 // 验收：项目资料（像 Claude 项目的 project knowledge）——每个项目记选用了哪些书 / 笔记（只追加，可增可减）；
 // 闭环与 M05 的资料工具默认只在项目选的资料里查，明确要时可查全库；没选任何资料时同以前（全库）。只经 HTTP 验证。
 import { readFile } from 'node:fs/promises';
@@ -97,13 +98,12 @@ describe('验收：项目资料', () => {
 
   it('模型的资料工具：项目会话里默认限定，all=true 查全库；没选资料行为同以前', async () => {
     const { app, mainId } = await boot();
-    const run = async (kind: 'loop' | 'm05', name: string, args: Record<string, unknown>) =>
+    const run = async (kind: 'm05', name: string, args: Record<string, unknown>) =>
       (await toolOf(app, kind, mainId, name).run(args)).text;
 
     // 没选：全库
     expect(await run('m05', 'search_textbook', { query: '加速度' })).toContain('ch01/sec-1.3.md');
-    expect(await run('loop', 'textbook_index', {})).toContain(SAMPLE_BOOK);
-    expect(await run('loop', 'search_points', { keyword: '位移' })).toContain('p-displacement');
+    expect(await run('m05', 'textbook_index', {})).toContain(SAMPLE_BOOK);
 
     await post(app, `/projects/${mainId}/materials`, { add: [SECOND_BOOK] });
     const limited = await run('m05', 'search_textbook', { query: '加速度' });
@@ -116,15 +116,10 @@ describe('验收：项目资料', () => {
     expect(await run('m05', 'search_textbook', { query: '加速度', book: SAMPLE_BOOK })).toContain(
       'ch01/sec-1.3.md',
     );
-    const index = await run('loop', 'textbook_index', {});
+    const index = await run('m05', 'textbook_index', {});
     expect(index).toContain(SECOND_BOOK.trim());
     expect(index).not.toContain(SAMPLE_BOOK);
-    expect(await run('loop', 'textbook_index', { all: true })).toContain(SAMPLE_BOOK);
-    // M08 点也按书限定（样例点的锚点都在样例书里）
-    expect(await run('loop', 'search_points', { keyword: '位移' })).toContain('没找到');
-    expect(await run('loop', 'search_points', { keyword: '位移', all: true })).toContain(
-      'p-displacement',
-    );
+    expect(await run('m05', 'textbook_index', { all: true })).toContain(SAMPLE_BOOK);
   });
 
   it('闭环 / 守卫会话沿父子关系找到项目，用的是同一个资料范围', async () => {
@@ -143,7 +138,7 @@ describe('验收：项目资料', () => {
     const { loopId } = await startLoop(app, mainId);
     expect(await app.studium.projectOf(loopId)).toBe(mainId);
     expect(
-      (await toolOf(app, 'loop', loopId, 'search_textbook').run({ query: '加速度' })).text,
+      (await toolOf(app, 'guard', loopId, 'search_textbook').run({ query: '加速度' })).text,
     ).toContain('没找到');
     expect(
       (await toolOf(app, 'guard', loopId, 'search_textbook').run({ query: '加速度', all: true }))

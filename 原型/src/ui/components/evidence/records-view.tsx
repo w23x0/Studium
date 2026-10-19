@@ -169,11 +169,7 @@ function External(props: { record: ExternalRecordView }) {
         </span>
       </div>
       <div className="font-serif">{x.claim}</div>
-      {x.point !== undefined && (
-        <Field label={W.point}>
-          <PointLink point={x.point} />
-        </Field>
-      )}
+      {x.point !== undefined && <Field label={W.point}>{x.point.name}</Field>}
       {x.grade !== undefined && x.grade !== '' && <Field label={W.grade}>{x.grade}</Field>}
       {x.basis !== '' && <Field label={W.whyGraded}>{x.basis}</Field>}
       {x.talk !== undefined && (

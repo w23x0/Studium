@@ -1,13 +1,10 @@
-// 依据可见（批 1a）：把守卫判定、诊断、单子与出处、M09 / M10 / M15 记录、M08 点与子句整理成界面能直接读的只读视图。
+// 依据可见（批 1a）：把守卫判定、诊断、单子与出处、M09 / M10 / M15 记录整理成界面能直接读的只读视图。
 // 只读：不写任何记录；异议的写入在 studium.ts。
 import {
   CONVERSATION_KIND_LABELS,
-  M08_SOURCE_NOTES,
   modelInfoOf,
-  type AnchorView,
   type CardOptionView,
   type CardView,
-  type ClauseView,
   type CurrentStateView,
   type DetourCardView,
   type DisclosureResponse,
@@ -18,16 +15,13 @@ import {
   type ParkingView,
   type RouteSignalView,
   type ExternalRecordView,
-  type M08OverviewResponse,
   type FormationView,
   type GuardVerdictView,
   type LoopBrief,
   type LoopEvidence,
   type LoopStatus,
   type ObjectionView,
-  type Point08Response,
   type PointRef,
-  type PointView,
   type ProjectOverview,
   type QuoteView,
   type SourceView,
@@ -48,12 +42,11 @@ import type {
   Ticket,
 } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
+import { locate } from './locate.ts';
 
 /** 批 8 起新增的会话类：外发披露里单列在 laterSessions。 */
 const LATER_KINDS: ConversationKind[] = ['output'];
 import { foldLoop, LOAD_HEAVY, PARKING_PILE, type LoopFlags } from './loop-state.ts';
-import type { M08, Anchor, Clause, Point } from './knowledge/m08.ts';
-import type { M08Review } from './m08-review.ts';
 import type { M09 } from './knowledge/m09.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { M15 } from './knowledge/m15.ts';
@@ -65,7 +58,6 @@ import { BadRequestError, foldDeadline, foldMaterials } from './studium.ts';
 
 export interface EvidenceDeps {
   hub: Hub;
-  m08: M08;
   m09: M09;
   m10: M10;
   m15: M15;
@@ -76,8 +68,6 @@ export interface EvidenceDeps {
   inputs?: Inputs;
   /** 教学工具（批 7）。 */
   teaching: TeachingTools;
-  /** M08 候选与更正（批 10a）：知识点上的“有更正”“有候选”标记；不给就不标。 */
-  m08Review?: M08Review;
 }
 
 export class Evidence {
@@ -147,10 +137,7 @@ export class Evidence {
                       regression: {
                         line: r.line,
                         at: r.record.at,
-                        point: {
-                          id: r.record.regression.point,
-                          name: this.d.m08.name(r.record.regression.point),
-                        },
+                        point: { id: r.record.regression.point, name: r.record.regression.point },
                         basisLines: r.record.regression.basisLines,
                         suspicion: r.record.regression.suspicion,
                         against: r.record.regression.against,
@@ -357,29 +344,7 @@ export class Evidence {
   // ───────────── 单子与选择卡 ─────────────
 
   ticket(t: Ticket): TicketView {
-    const c = this.d.m08.clauses.get(t.clause);
-    return {
-      newPoint: this.pointRef(t.newPoint),
-      ...(c !== undefined ? { clause: this.clauseView(c) } : {}),
-      clauseId: t.clause,
-      startPoints: t.startPoints.map((s) => ({ point: this.pointRef(s.point), source: s.source })),
-      routeAction: t.routeAction,
-      ...(t.revisit !== undefined
-        ? { revisit: { kind: t.revisit.kind, formationIds: [...t.revisit.formationIds] } }
-        : {}),
-      ...(t.crossDomain !== undefined
-        ? {
-            crossDomain: {
-              kind: t.crossDomain.kind,
-              domain: t.crossDomain.domain,
-              otherDomain: t.crossDomain.otherDomain,
-              otherPoint: this.pointRef(t.crossDomain.otherPoint),
-              problem: t.crossDomain.problem,
-            },
-          }
-        : {}),
-      ...(t.stageCheck === true ? { stageCheck: true } : {}),
-    };
+    return t;
   }
 
   /** 找到一张选择卡（遍历各项目的主对话）。 */
@@ -417,12 +382,26 @@ export class Evidence {
           : {}),
       });
     }
+    const decisionAt = recs.find(
+      (r) => r.record.type === 'route_decision' && r.record.navSessionId === card.m05SessionId,
+    );
+    const decision = decisionAt?.record.type === 'route_decision' ? decisionAt.record : undefined;
     return {
       cardId: card.cardId,
       mainSessionId: mainId,
       line,
       at: card.at,
       trigger: card.trigger,
+      ...(decision !== undefined && decisionAt !== undefined
+        ? {
+            routeDecision: {
+              line: decisionAt.line,
+              decision: decision.decision,
+              reason: decision.reason,
+              basis: await Promise.all(decision.basis.map((b) => this.source(b))),
+            },
+          }
+        : {}),
       recommended: card.recommended,
       m05SessionId: card.m05SessionId,
       model: await this.d.hub.modelInfo(card.m05SessionId),
@@ -433,80 +412,61 @@ export class Evidence {
     };
   }
 
-  /** 把选项的一条出处回查成能给学习者看的内容；查不到原样给出。 */
+  /**
+   * 把一条依据串回查成能给学习者看的内容：书里那一行给原文、以前学过的记录给它的理解、
+   * 对话行给那一句；都认不出就原样给、标查不到（不编）。
+   */
   private async source(raw: string): Promise<SourceView> {
     const id = raw.trim();
-    const p = this.d.m08.points.get(id);
-    if (p !== undefined) {
-      return {
-        raw,
-        kind: 'm08_point',
-        resolved: true,
-        label: `点 ${p.id}「${p.name}」`,
-        detail: p.sentence,
-      };
-    }
-    const c = this.d.m08.clauses.get(id);
-    if (c !== undefined) {
-      const from = c.from.map((f) => this.d.m08.name(f)).join(' + ');
-      return {
-        raw,
-        kind: 'm08_clause',
-        resolved: true,
-        label: `子句 ${c.id}：${from} → ${this.d.m08.name(c.to)}`,
-        detail: c.text,
-      };
-    }
     const f = this.d.m09.record(id);
     if (f !== undefined) {
       return {
         raw,
         kind: 'm09_record',
         resolved: true,
-        label: `形成记录 ${f.id}（闭环 ${f.loopSessionId}）`,
+        label: `形成记录 ${f.id}（学习 ${f.loopSessionId}）`,
         detail: f.understanding,
         sessionId: f.loopSessionId,
       };
     }
-    const m = /^(.+):(\d+)(?:-\d+)?$/.exec(id);
-    if (m?.[1] !== undefined && m[2] !== undefined) {
-      const line = Number(m[2]);
-      if (this.d.hub.listSessions().some((s) => s.sessionId === m[1])) {
-        const recs = await this.d.hub.records(m[1]);
-        const hit = recs.find((r) => r.line === line);
-        const text =
-          hit?.record.type === 'user_message' || hit?.record.type === 'assistant_message'
-            ? hit.record.text
-            : undefined;
-        return {
-          raw,
-          kind: 'loop_line',
-          resolved: text !== undefined,
-          label: `对话 ${m[1]} 第 ${String(line)} 行`,
-          ...(text !== undefined ? { detail: text } : {}),
-          sessionId: m[1],
-          line,
-        };
-      }
-      // 书里的出处：“书名/文件:行号”回查成那几行原文；没有书名的“文件:行号”认不出是哪一本，只给定位
+    const at = await locate(raw, { hub: this.d.hub, sources: this.d.sources });
+    if (at.kind === 'book') {
       const cited = await this.bookSource(raw);
       if (cited !== undefined) return cited;
+      // 只写了文件名、没写书名：认不出是哪一本，照给位置、标查不到
+      const m = /^(.+):(\d+)(?:-\d+)?$/.exec(id);
+      if (m?.[1] !== undefined && m[2] !== undefined) {
+        return {
+          raw,
+          kind: 'book_line',
+          resolved: false,
+          label: `书里 ${m[1]} 第 ${m[2]} 行`,
+          file: m[1],
+          line: Number(m[2]),
+        };
+      }
+      return unknownSource(raw);
+    }
+    if (at.sessionId !== undefined && at.line !== undefined) {
+      const recs = await this.d.hub.records(at.sessionId).catch(() => []);
+      const hit = recs.find((r) => r.line === at.line);
+      const text =
+        hit?.record.type === 'user_message' || hit?.record.type === 'assistant_message'
+          ? hit.record.text
+          : undefined;
       return {
         raw,
-        kind: 'book_line',
-        resolved: false,
-        label: `书里 ${m[1]} 第 ${String(line)} 行`,
-        file: m[1],
-        line,
+        kind: 'loop_line',
+        resolved: text !== undefined,
+        label: `对话 ${at.sessionId} 第 ${String(at.line)} 行`,
+        ...(text !== undefined ? { detail: text } : {}),
+        sessionId: at.sessionId,
+        line: at.line,
       };
     }
-    // 整条就是一个教材出处标记
-    const marked = await this.bookSource(raw);
-    if (marked !== undefined) return marked;
-    return { raw, kind: 'unknown', resolved: false, label: raw };
+    return unknownSource(raw);
   }
 
-  /** 书里的一条出处（“书名/文件:行号”或教材出处标记）；认不出是书里的出处返回空。 */
   private async bookSource(raw: string): Promise<SourceView | undefined> {
     const cited = await this.d.sources.bookLine(raw);
     if (cited === undefined) return undefined;
@@ -815,29 +775,6 @@ export class Evidence {
       .map(storedView);
   }
 
-  // ───────────── M08 ─────────────
-
-  /** book / chapter 给了就只列那一本那一章的点（多本书、多套 M08 合并后按章浏览）。 */
-  points(q?: string, book?: string, chapter?: string): { points: PointView[]; empty: boolean } {
-    const m08 = this.d.m08;
-    let found = q === undefined || q.trim() === '' ? [...m08.points.values()] : m08.search(q);
-    if (book !== undefined && book !== '') {
-      const inBook = new Set(m08.inChapter(book, chapter).points.map((p) => p.id));
-      found = found.filter((p) => inBook.has(p.id));
-    }
-    return { points: found.map((p) => this.pointView(p)), empty: m08.empty };
-  }
-
-  /** M08 概要：每一套产出、按书按章的点 / 子句数；scope 给了只算这几本书。 */
-  m08Overview(scope?: string[]): M08OverviewResponse {
-    const m08 = this.d.m08;
-    return {
-      sources: m08.origins,
-      books: m08.counts(scope ? new Set(scope) : undefined),
-      restricted: scope !== undefined,
-    };
-  }
-
   /** 外部导入进 M09 的记录（自述 / 笔记，未验证），新的在后。 */
   externals(): ExternalRecordView[] {
     return this.d.m09.externals().map((r) => ({
@@ -846,15 +783,7 @@ export class Evidence {
       source: r.source,
       status: r.status,
       claim: r.claim,
-      ...(r.point !== undefined
-        ? {
-            point: {
-              id: r.point,
-              name: this.d.m08.name(r.point),
-              found: this.d.m08.points.has(r.point),
-            },
-          }
-        : {}),
+      ...(r.point !== undefined ? { point: { id: r.point, name: r.point } } : {}),
       basis: r.basis,
       ...(r.grade !== undefined ? { grade: r.grade } : {}),
       ...(r.talk !== undefined ? { talk: r.talk } : {}),
@@ -863,77 +792,9 @@ export class Evidence {
     }));
   }
 
-  point(id: string): Point08Response {
-    const p = this.d.m08.points.get(id);
-    if (p === undefined) throw new NotFoundError(`没有这个点：${id}`);
-    return {
-      point: this.pointView(p),
-      into: this.d.m08.clausesInto(id).map((c) => this.clauseView(c)),
-      from: this.d.m08.clausesFrom(id).map((c) => this.clauseView(c)),
-    };
-  }
-
-  clause(id: string): ClauseView {
-    const c = this.d.m08.clauses.get(id);
-    if (c === undefined) throw new NotFoundError(`没有这条子句：${id}`);
-    return this.clauseView(c);
-  }
-
+  /** 单子里的一个点：不再查知识点库，名字就等于它自己（工单 §4.5）。 */
   private pointRef(id: string): PointRef {
-    const p = this.d.m08.points.get(id);
-    if (p === undefined) return { id, name: id, found: false };
-    return { id, name: p.name, found: true, sentence: p.sentence, source: p.source };
-  }
-
-  private pointView(p: Point): PointView {
-    return {
-      id: p.id,
-      name: p.name,
-      sentence: p.sentence,
-      anchors: p.anchors.map(anchorView),
-      source: p.source,
-      sourceNote: M08_SOURCE_NOTES[p.source],
-      ...(p.threshold !== undefined ? { threshold: p.threshold } : {}),
-      ...(p.scope !== undefined ? { scope: p.scope } : {}),
-      ...(p.split_of !== undefined
-        ? { splitOf: { id: p.split_of, name: this.d.m08.name(p.split_of) } }
-        : {}),
-      cautions: (p.cautions ?? []).map((c) => ({
-        text: c.text,
-        anchors: c.anchors.map(anchorView),
-      })),
-      ...(p.origin !== undefined ? { origin: p.origin } : {}),
-      ...(p.originalId !== undefined ? { originalId: p.originalId } : {}),
-      ...this.reviewMarks({ kind: 'point', id: p.id }),
-    };
-  }
-
-  /** 知识点 / 子句上的“有更正”“有候选”标记。 */
-  private reviewMarks(t: { kind: 'point' | 'clause'; id: string }) {
-    const r = this.d.m08Review;
-    if (r === undefined) return {};
-    const correction = r.correctionMark(t);
-    const candidates = r.candidateCount(t);
-    return {
-      ...(correction !== undefined ? { correction } : {}),
-      ...(candidates > 0 ? { candidates } : {}),
-    };
-  }
-
-  private clauseView(c: Clause): ClauseView {
-    return {
-      id: c.id,
-      from: c.from.map((f) => ({ id: f, name: this.d.m08.name(f) })),
-      to: { id: c.to, name: this.d.m08.name(c.to) },
-      text: c.text,
-      anchors: c.anchors.map(anchorView),
-      source: c.source,
-      sourceNote: M08_SOURCE_NOTES[c.source],
-      notes: c.notes ?? [],
-      ...(c.origin !== undefined ? { origin: c.origin } : {}),
-      ...(c.originalId !== undefined ? { originalId: c.originalId } : {}),
-      ...this.reviewMarks({ kind: 'clause', id: c.id }),
-    };
+    return { id, name: id };
   }
 
   // ───────────── 外发披露 ─────────────
@@ -999,15 +860,8 @@ function storedView(o: LearnerObjection): ObjectionView {
   return { ...o, inLoop: false };
 }
 
-function anchorView(a: Anchor): AnchorView {
-  return {
-    book: a.book,
-    file: a.file,
-    quote: a.quote,
-    ...(a.page !== undefined ? { page: a.page } : {}),
-    ...(a.bbox !== undefined ? { bbox: a.bbox } : {}),
-    ...(a.line !== undefined ? { line: a.line } : {}),
-  };
+function unknownSource(raw: string): SourceView {
+  return { raw, kind: 'unknown', resolved: false, label: raw };
 }
 
 function lineSpan(from: number, to: number): string {

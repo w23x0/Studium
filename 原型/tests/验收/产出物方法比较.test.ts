@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：【知识点|】不再是引用。）
 // 验收：M14「方法比较与适用边界」——方法 × 维度表、各方法的适用边界与出处、暂时论证，是产出物的一种结构化类型；
 // 每次保存同样是新版本，正文由程序按结构渲染（引用照样能核对）；不合格式的拒绝。只经 HTTP 验证。
 import { afterEach, describe, expect, it } from 'vitest';
@@ -51,12 +52,9 @@ describe('产出物方法比较', () => {
     expect(text).toContain('## 图像法');
     expect(text).toContain('适用边界：适合一维、变化平缓的运动');
     expect(text).toContain('## 暂时论证（尚未定论）');
-    // 渲染出的正文里的出处和知识点引用能核对
+    // 渲染出的正文里的出处能核对；【知识点|…】不再算引用（W1）
     expect(out.current?.references.sources[0]).toMatchObject({ resolved: true, raw: cite });
-    expect(out.current?.references.objects[0]).toMatchObject({
-      id: 'p-avg-velocity',
-      resolved: true,
-    });
+    expect(out.current?.references.unresolved).toBe(0);
 
     const next = comparison();
     next.methods.push({

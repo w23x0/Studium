@@ -4,21 +4,32 @@ import { FakeModel, type FakeContext, type FakeStep } from '../../src/core/model
 import type { ChainModels } from './driver.ts';
 
 const DISP = {
-  new_point: 'p-displacement',
-  clause: 'c-disp-from-pos',
-  start_points: [{ point: 'p-position', source: '假定' }],
+  new_point: '位移：一段时间内位置的变化量，只看起点和终点',
+  clause: '从“用坐标 x 表示位置”出发，两个时刻的坐标相减',
+  start_points: [{ point: '直线上用坐标 x 表示位置', source: '假定' }],
   route_action: '继续主线',
   title: '位移：从位置到“变了多少”',
   reason: '接着你已经会的位置往下学',
+  sources: ['导航现场说出'],
 };
 const AVG = {
-  new_point: 'p-avg-velocity',
-  clause: 'c-avgv-from-disp',
-  start_points: [{ point: 'p-displacement', source: 'M09' }],
+  new_point: '平均速度：位移除以所用的时间',
+  clause: '用刚学过的位移，除以走过这段用的时间',
+  start_points: [{ point: '位移：一段时间内位置的变化量', source: '学过的记录' }],
   route_action: '继续主线',
   title: '平均速度',
   reason: '用刚学会的位移算一段时间的快慢',
+  sources: ['导航现场说出'],
 };
+
+/** 交卡必须带的路线决定（依据指回导航会话自己的第 1 行）。 */
+function navRoute(ctx: FakeContext) {
+  return {
+    decision: '维持主线',
+    reason: '按推荐往下学',
+    basis: [`${ctx.spec.session?.id ?? ''}:1`],
+  };
+}
 
 function learnerLine(text: string, says: string): number {
   const m = new RegExp(`L(\\d+) 学习者[^\\n]*${says}`).exec(text);
@@ -48,9 +59,14 @@ function system(leak: boolean) {
       };
     }
     if (has('submit_choice_card')) {
-      const option = text.includes('已合上过的新点（M09）：p-displacement') ? AVG : DISP;
+      const option = text.includes('已合上过的新点（学过的记录）：位移') ? AVG : DISP;
       return {
-        calls: [{ name: 'submit_choice_card', args: { options: [option], recommended: 0 } }],
+        calls: [
+          {
+            name: 'submit_choice_card',
+            args: { options: [option], recommended: 0, route_decision: navRoute(ctx) },
+          },
+        ],
       };
     }
     if (has('submit_verdict')) {

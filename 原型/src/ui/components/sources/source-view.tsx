@@ -25,7 +25,6 @@ import { usePanel } from '../../panel.ts';
 import { cropBox, overlaps, paragraphs, reportsFor, type Paragraph } from '../../source-model.ts';
 import { W } from '../../wording.ts';
 import { Badge, Card, Loading, Time } from '../evidence/parts.tsx';
-import { AlsoElsewhere } from './also-elsewhere.tsx';
 import { BookText } from './book-text.tsx';
 import { OriginalPage } from './original-page.tsx';
 
@@ -130,7 +129,6 @@ export function SourceView(props: {
       ) : (
         <OriginalSpot section={s} focus={focus} known={known} />
       )}
-      <AlsoElsewhere book={s.book} file={s.file} />
       <Neighbors
         prev={s.prev}
         next={s.next}

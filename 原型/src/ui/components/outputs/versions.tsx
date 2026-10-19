@@ -150,21 +150,13 @@ function Compare(props: { output: OutputView; pair: [number, number]; onClose: (
   const r = useLoad(
     `output-compare:${id}:${String(from)}:${String(to)}`,
     async () => {
-      const [cmp, a, b] = await Promise.all([
-        api.compareVersions(id, from, to),
-        api.version(id, from),
-        api.version(id, to),
-      ]);
-      // 两版各自核对过的知识点引用合在一起，增减里的小标签照样能显示名字
-      return {
-        compare: cmp.compare,
-        refs: [...a.version.references.objects, ...b.version.references.objects],
-      };
+      const cmp = await api.compareVersions(id, from, to);
+      return { compare: cmp.compare };
     },
     false,
   );
   if (!r.data) return <Loading error={r.error} />;
-  const { compare: c, refs } = r.data;
+  const { compare: c } = r.data;
   const rows = diffRows(c.lines);
   return (
     <div data-testid="output-compare" className="flex flex-col gap-3 rounded-2xl border p-4">
@@ -195,8 +187,8 @@ function Compare(props: { output: OutputView; pair: [number, number]; onClose: (
           <div className="text-muted-foreground text-xs">{W.refsNoChange}</div>
         ) : (
           <>
-            <RefList label={W.refsAdded} refs={c.refsAdded} objects={refs} tone="add" />
-            <RefList label={W.refsRemoved} refs={c.refsRemoved} objects={refs} tone="del" />
+            <RefList label={W.refsAdded} refs={c.refsAdded} tone="add" />
+            <RefList label={W.refsRemoved} refs={c.refsRemoved} tone="del" />
           </>
         )}
       </div>
@@ -224,12 +216,7 @@ function DiffRowView(props: { line: DiffLine }) {
   );
 }
 
-function RefList(props: {
-  label: string;
-  refs: string[];
-  objects: Parameters<typeof OutputText>[0]['refs'];
-  tone: 'add' | 'del';
-}) {
+function RefList(props: { label: string; refs: string[]; tone: 'add' | 'del' }) {
   if (props.refs.length === 0) return null;
   return (
     <div className="flex flex-wrap items-center gap-1">
@@ -244,7 +231,7 @@ function RefList(props: {
         {props.label}：
       </span>
       {props.refs.map((raw) => (
-        <OutputText key={raw} text={raw} refs={props.objects} compact className="inline-block" />
+        <OutputText key={raw} text={raw} compact className="inline-block" />
       ))}
     </div>
   );

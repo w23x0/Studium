@@ -2,7 +2,6 @@
 // 每个不过都写归因：系统（程序 / 提示词 / 设计）、模拟学生、判分器、环境（登录 / 额度），拿不准写“不确定”。
 import { join } from 'node:path';
 import { z } from 'zod';
-import { M08 } from '../../src/core/knowledge/m08.ts';
 import { M09 } from '../../src/core/knowledge/m09.ts';
 import type { ModelCapability } from '../../src/core/model/claude-agent-sdk.ts';
 import type { ModelAdapter } from '../../src/core/model/port.ts';
@@ -705,7 +704,6 @@ function personaText(run: ChainRun): string {
 async function cardMaterial(run: ChainRun): Promise<string | undefined> {
   const { first, next } = cards(run);
   if (!next) return undefined;
-  const m08 = await M08.load(join(run.dataRoot, 'knowledge', 'm08'));
   const m09 = await M09.load(join(run.dataRoot, 'knowledge', 'm09'));
   const goal = session(run, run.mainId)
     ?.records.map((r) => r.record)
@@ -715,15 +713,13 @@ async function cardMaterial(run: ChainRun): Promise<string | undefined> {
     c.options
       .map(
         (o, i) =>
-          `${String(i)}. ${o.title}${i === c.recommended ? '（推荐）' : ''}——理由：${o.reason}\n   新点 ${o.ticket.newPoint}「${m08.name(o.ticket.newPoint)}」；子句 ${o.ticket.clause}；出发点 ${o.ticket.startPoints.map((p) => `${m08.name(p.point)}（${p.source}）`).join('、')}；路线动作 ${o.ticket.routeAction}`,
+          `${String(i)}. ${o.title}${i === c.recommended ? '（推荐）' : ''}——理由：${o.reason}\n   新点 ${o.ticket.newPoint}；预期理解 ${o.ticket.clause}；出发点 ${o.ticket.startPoints.map((p) => `${p.point}（${p.source}）`).join('、')}；路线动作 ${o.ticket.routeAction}`,
       )
       .join('\n');
   const end = loopEnd(run);
   const vs = verdicts(run);
   return [
     `学习者谈定的方向：${goal?.type === 'project_goal' ? goal.text : '（没谈定）'}`,
-    '',
-    `知识结构（点与子句）：\n${m08.outline()}`,
     '',
     `第一张选项卡：\n${first ? describe(first) : '（无）'}`,
     `刚学的那段：${run.ticketText ?? '（无）'}`,

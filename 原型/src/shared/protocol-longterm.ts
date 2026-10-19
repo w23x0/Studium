@@ -2,7 +2,7 @@
 // 路线偏差记录、接着学、阶段复盘。protocol.ts 把它们 re-export，界面从 protocol.ts 取。
 import type { ReminderKind, Suspicion, Revisit } from './records-longterm.ts';
 
-/** 点的简写：id 与名字（M08 里查不到时 name 同 id）。 */
+/** 点的简写：id 与名字（name 等于 id）。 */
 export interface PointName {
   id: string;
   name: string;

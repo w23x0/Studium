@@ -147,6 +147,7 @@ describe('对话里的练习', () => {
             clause: 'c',
             startPoints: [],
             routeAction: '继续主线',
+            sourceCheck: [],
             stageCheck: true,
           },
         },

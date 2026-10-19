@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡经 helpers 补 route_decision；新点不再有知识点名字，只核 id。）
 // 验收：路线偏差记录（M05:22-23）。只经 HTTP 验证，模型是假模型。
 // - M05 出卡时，学习者没选推荐项、或选了之后很快放下 / 没合上，记一条（M05 自有记录，只追加，不写 M09）；
 // - 只记计划偏差的事实，不形成对学习者水平或能力的结论；
@@ -37,11 +38,11 @@ describe('路线偏差记录', () => {
       kind: 'not_recommended',
       loopSessionId: b.loopId,
       cardId: b.cardId,
-      recommended: { option: 0, title: '位移', newPoint: { id: 'p-displacement', name: '位移' } },
+      recommended: { option: 0, title: '位移', newPoint: { id: 'p-displacement' } },
       chosen: {
         option: 1,
         title: '平均速度',
-        newPoint: { id: 'p-avg-velocity', name: '平均速度' },
+        newPoint: { id: 'p-avg-velocity' },
       },
     });
   });

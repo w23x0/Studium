@@ -1,3 +1,4 @@
+// （W1 新版，取代旧的同名测试：交卡补 route_decision；守卫判合上带 understanding。）
 // 验收：一段学习结束后（学完或没学完），M10 在后台记“这次教法管不管用”（03「闭环外：事件与清单」④）。
 // - 开场给对话原文、诊断记录、判定（M10 读 M04 诊断）；记录引用的行须在这段对话里；
 // - 下一段学习的对话能用查询工具查到这条记录。只经 HTTP 验证。
@@ -9,6 +10,7 @@ import { FakeModel, type FakeContext, type FakeStep } from '../../src/core/model
 import { getJson, post, records, TOKEN, waitFor } from '../helpers/http.ts';
 import { DISPLACEMENT_OPTION, learnerLine, roleOf } from '../helpers/roles.ts';
 import { tempDir } from '../helpers/tmp.ts';
+import { navRoute } from './共用/w1-card.ts';
 
 const DIAGNOSIS = '诊断：学习者用自己的话说清了';
 const BASIS = '学习者自己说清了位移';
@@ -25,7 +27,10 @@ function responder(ctx: FakeContext): FakeStep | undefined {
     case 'm05':
       return {
         calls: [
-          { name: 'submit_choice_card', args: { options: [DISPLACEMENT_OPTION], recommended: 0 } },
+          {
+            name: 'submit_choice_card',
+            args: { options: [DISPLACEMENT_OPTION], recommended: 0, route_decision: navRoute(ctx) },
+          },
         ],
       };
     case 'loop':
@@ -42,7 +47,22 @@ function responder(ctx: FakeContext): FakeStep | undefined {
     case 'guard':
       return {
         calls: [
-          { name: 'submit_verdict', args: { closed: true, basis: BASIS, evidence_lines: [line] } },
+          {
+            name: 'submit_verdict',
+            args: {
+              closed: true,
+              basis: BASIS,
+              evidence_lines: [line],
+              understanding: [
+                {
+                  text: '学习者自己说清了',
+                  lines: [line],
+                  independence: '独立',
+                  durability: '仅当场',
+                },
+              ],
+            },
+          },
         ],
       };
     case 'm09':
