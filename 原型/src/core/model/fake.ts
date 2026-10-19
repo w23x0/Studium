@@ -1,5 +1,8 @@
 // 假模型：程序测试一律用它，不调真模型。默认回显；可按轮给脚本，或按会话给应答函数。
 // 工具调用由假模型直接执行核心交来的 ToolSpec.run，与真适配器走同一条钩子路径。
+import { mkdir, readFile, writeFile, appendFile } from 'node:fs/promises';
+import { dirname } from 'node:path';
+import { canRead, canWrite, resolveSandboxPath, virtualPath } from './sandbox-paths.ts';
 import {
   formatProgramFact,
   type ConversationSpec,
@@ -8,10 +11,19 @@ import {
   type ModelAdapter,
   type ModelConversation,
   type ModelEvent,
+  type SandboxActionEvent,
   type TurnInput,
 } from './port.ts';
 
+/** 一步里要做的一个沙盒动作（在真实文件系统上执行；`run` 不真跑）。 */
+export type FakeSandboxOp =
+  | { op: 'write' | 'append'; path: string; content: string }
+  | { op: 'read'; path: string }
+  | { op: 'run'; command: string };
+
 export interface FakeStep {
+  /** 先做的沙盒动作（按顺序）。 */
+  sandbox?: FakeSandboxOp[];
   /** 依次调用的工具。 */
   calls?: { name: string; args: Record<string, unknown> }[];
   /** 调完工具后说的话；不给就不说话。 */
@@ -143,6 +155,12 @@ export class FakeModel implements ModelAdapter {
       (typeof scripted === 'string' ? { text: scripted } : scripted) ?? {
         text: `（假模型）收到：${input.text}`,
       };
+    // 先做沙盒动作，再调工具，最后说话（工单 W4 §5.2）
+    for (const op of step.sandbox ?? []) {
+      const { action, text } = await runSandboxOp(spec, op);
+      if (text !== undefined) results.push(text);
+      yield { kind: 'sandbox_action', action };
+    }
     for (const call of step.calls ?? []) {
       if (this.options.delayMs) await sleep(this.options.delayMs);
       if (outer) {
@@ -179,6 +197,75 @@ export class FakeModel implements ModelAdapter {
       yield { kind: 'assistant_text', text };
     }
   }
+}
+
+/**
+ * 在真实文件系统上做一个沙盒动作（工单 W4 §5.2）：相对路径按 `workdir` 解析，`只读/<name>/…` 映射到对应目录；
+ * 越界写不写、越界读不读；`run` 不真执行，只记一条。
+ */
+async function runSandboxOp(
+  spec: ConversationSpec,
+  op: FakeSandboxOp,
+): Promise<{ action: SandboxActionEvent['action']; text?: string }> {
+  const sb = spec.sandbox;
+  if (sb === undefined) {
+    return {
+      action: {
+        op: op.op === 'read' ? 'read' : op.op === 'run' ? 'run' : 'write',
+        ...(op.op === 'run' ? { command: op.command } : { path: op.path }),
+        summary: '这个会话没有沙盒',
+        ok: false,
+      },
+    };
+  }
+  if (op.op === 'run') {
+    return {
+      action: {
+        op: 'run',
+        command: op.command,
+        summary: `跑命令（假模型不执行）：${op.command}`,
+        ok: true,
+      },
+    };
+  }
+  const abs = resolveSandboxPath(sb, op.path);
+  const shown = virtualPath(sb, abs);
+  if (op.op === 'read') {
+    if (!canRead(sb, abs)) {
+      return {
+        action: { op: 'read', path: shown, summary: `读 ${shown}`, ok: false },
+        text: `读不到 ${shown}：不在能读的范围内`,
+      };
+    }
+    try {
+      const body = await readFile(abs, 'utf8');
+      return { action: { op: 'read', path: shown, summary: `读 ${shown}`, ok: true }, text: body };
+    } catch (e) {
+      const reason = e instanceof Error ? e.message : String(e);
+      return {
+        action: { op: 'read', path: shown, summary: `读 ${shown}`, ok: false },
+        text: `读不到 ${shown}：${reason}`,
+      };
+    }
+  }
+  if (!canWrite(sb, abs)) {
+    return {
+      action: { op: 'write', path: shown, summary: `写 ${shown}`, ok: false },
+      text: `写不了 ${shown}：只读，或在工作区外`,
+    };
+  }
+  await mkdir(dirname(abs), { recursive: true });
+  if (op.op === 'write') await writeFile(abs, op.content);
+  else await appendFile(abs, op.content);
+  return {
+    action: {
+      op: 'write',
+      path: shown,
+      summary: `${op.op === 'write' ? '写' : '追加'} ${shown}`,
+      ok: true,
+      content: op.content,
+    },
+  };
 }
 
 function seenText(input: TurnInput): string {

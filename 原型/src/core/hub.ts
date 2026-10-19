@@ -26,6 +26,8 @@ import type {
   ModelAdapter,
   ModelConversation,
   ModelDisclosure,
+  SandboxActionEvent,
+  SandboxSpec,
   ToolSpec,
   TurnInput,
 } from './model/port.ts';
@@ -34,6 +36,10 @@ export interface KindConfig {
   systemPrompt: string;
   /** 本会话的工具；sessionId 让工具知道自己属于哪个会话。 */
   tools(sessionId: string): ToolSpec[];
+  /** 这个会话在沙盒里跑时给它的沙盒（没有 = 不给通用执行）；开模型对话时算一次。 */
+  sandbox?(sessionId: string): Promise<SandboxSpec | undefined>;
+  /** 每轮发给模型之前调用（插话不调）：刷新沙盒里那些每轮重渲染的只读文件。 */
+  beforeTurn?(sessionId: string): Promise<void>;
 }
 
 export interface HubOptions {
@@ -262,7 +268,10 @@ export class Hub {
   private async runTurn(sessionId: string, live: Live, input: TurnInput): Promise<void> {
     const adapter = this.opts.model.name;
     try {
-      live.conversation ??= await this.openConversation(sessionId, live.kind);
+      const cfg = this.opts.kinds(live.kind);
+      // 沙盒里每轮重渲染的只读文件（如本次对话）在这里刷新；插话不走这里（工单 W4 §5.3）
+      await cfg.beforeTurn?.(sessionId);
+      live.conversation ??= await this.openConversation(sessionId, live.kind, cfg);
       for await (const ev of live.conversation.send(input)) {
         switch (ev.kind) {
           case 'text_delta':
@@ -291,6 +300,22 @@ export class Hub {
               token: ev.token,
             });
             break;
+          case 'sandbox_action': {
+            const tag = sandboxTag(ev.action);
+            await this.append(sessionId, {
+              type: 'sandbox_action',
+              at: this.iso(),
+              actor: 'model',
+              op: ev.action.op,
+              ...(ev.action.path !== undefined ? { path: ev.action.path } : {}),
+              ...(ev.action.command !== undefined ? { command: ev.action.command } : {}),
+              summary: ev.action.summary,
+              ok: ev.action.ok,
+              ...(ev.action.content !== undefined ? { content: ev.action.content } : {}),
+              ...(tag !== undefined ? { tag } : {}),
+            });
+            break;
+          }
           case 'model':
             if (live.model !== ev.name) {
               live.model = ev.name;
@@ -326,6 +351,7 @@ export class Hub {
   private async openConversation(
     sessionId: string,
     kind: ConversationKind,
+    cfg: KindConfig,
   ): Promise<ModelConversation> {
     const records = await this.records(sessionId);
     const adapter = this.opts.model.name;
@@ -333,11 +359,12 @@ export class Hub {
       .map((r) => r.record)
       .filter((r) => r.type === 'model_session' && r.adapter === adapter)
       .at(-1);
-    const cfg = this.opts.kinds(kind);
+    const sandbox = await cfg.sandbox?.(sessionId);
     return this.opts.model.open({
       systemPrompt: cfg.systemPrompt,
       tools: cfg.tools(sessionId).map((t) => this.logged(sessionId, t)),
       session: { id: sessionId, kind },
+      ...(sandbox !== undefined ? { sandbox } : {}),
       ...(resume?.type === 'model_session' ? { resumeToken: resume.token } : {}),
     });
   }
@@ -402,6 +429,23 @@ export class Hub {
   private iso(): string {
     return this.now().toISOString();
   }
+}
+
+/** 教学工具在只读区里的虚拟路径前缀。 */
+const TEACHING_TOOLS_PREFIX = '只读/教学工具/';
+
+/**
+ * 程序按路径给沙盒动作打的标签（工单 W4 §5.3）：写工作区的 `诊断.md` → 诊断；
+ * 读 `只读/教学工具/<文件>` → `教学工具:<文件名>`。其余不打（Bash 里 cat 的拿不准，先不打）。
+ */
+function sandboxTag(action: SandboxActionEvent['action']): string | undefined {
+  const path = action.path;
+  if (path === undefined) return undefined;
+  if (action.op === 'write' && path === '诊断.md') return '诊断';
+  if (action.op === 'read' && path.startsWith(TEACHING_TOOLS_PREFIX)) {
+    return `教学工具:${path.slice(TEACHING_TOOLS_PREFIX.length)}`;
+  }
+  return undefined;
 }
 
 function newLive(log: SessionLog, kind: ConversationKind): Live {

@@ -124,6 +124,24 @@ export interface ToolCall {
   isError: boolean;
 }
 
+/**
+ * 沙盒里的一个动作（读 / 写 / 跑命令……），由程序当场记（记录/对话与事件记录.md §3），不靠模型自报。
+ * `path` 是虚拟路径；`tag` 由程序按路径打（写工作区的 诊断.md → 诊断；读 只读/教学工具/<文件> → 教学工具:<文件名>）。
+ */
+export interface SandboxAction {
+  type: 'sandbox_action';
+  at: string;
+  actor: 'model';
+  op: 'read' | 'write' | 'run' | 'search' | 'other';
+  path?: string;
+  command?: string;
+  summary: string;
+  ok: boolean;
+  tag?: string;
+  /** 写类动作写进去的文字（整份写 = 全文；追加 = 追加的部分）。 */
+  content?: string;
+}
+
 /** 模型适配层吐出的原始消息，逐条原样（含思考块）。只有该会话自己读。 */
 export interface ModelRaw {
   type: 'model_raw';
@@ -400,6 +418,7 @@ export type LogRecord =
   | ModelRaw
   | ModelSession
   | ModelUsed
+  | SandboxAction
   | TurnFailed
   | LoopNote
   | CloseRequested
