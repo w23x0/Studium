@@ -54,8 +54,8 @@ export class LongTerm {
     return this.d.hub();
   }
 
-  /** M05 选择卡会话里的额外工具：加提醒。 */
-  m05Tools(sessionId: string): ToolSpec[] {
+  /** 导航会话里的额外工具：加提醒。 */
+  reminderTools(sessionId: string): ToolSpec[] {
     return [
       {
         name: 'add_reminder',
@@ -157,11 +157,21 @@ export class LongTerm {
         throw e;
       });
       if (loop?.kind !== 'loop' || loop.parent !== mainId) {
-        throw new BadRequestError(`本项目里没有这个闭环：${input.loopSessionId}。`);
+        throw new BadRequestError(`本项目里没有这次学习：${input.loopSessionId}。`);
+      }
+      // 复检指已结束的学习，接着学指没合上的学习（工单 W3 §4.11）
+      const ended = (await this.hub.records(input.loopSessionId)).find(
+        (r) => r.record.type === 'loop_ended',
+      )?.record;
+      if (kind === 'recheck' && ended === undefined) {
+        throw new BadRequestError('复检要指已经结束的学习；这次学习还没结束。');
+      }
+      if (kind === 'resume' && !(ended?.type === 'loop_ended' && !ended.closed)) {
+        throw new BadRequestError('接着学要指没合上就结束的学习。');
       }
     }
     if (kind === 'resume' && input.loopSessionId === undefined) {
-      throw new BadRequestError('接着学的提醒要写是哪个闭环（loop）。');
+      throw new BadRequestError('接着学的提醒要写是哪次学习（loop）。');
     }
     const rec: ReminderAdded = {
       type: 'reminder_added',
@@ -482,13 +492,13 @@ export class LongTerm {
       '',
       '── 这段时间的学习（学过的记录上层 / 中层）──',
       learnings
-        .slice(0, REVIEW_LINES)
+        .slice(-REVIEW_LINES)
         .map((l) => `- ${this.d.learned.line(l)}`)
         .join('\n') || '（没有）',
       '',
       '── 停车场 ──',
       parked
-        .slice(0, REVIEW_LINES)
+        .slice(-REVIEW_LINES)
         .map((p) => `- ${this.d.learned.parkedLine(p)}`)
         .join('\n') || '空',
       '',

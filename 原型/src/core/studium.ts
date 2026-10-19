@@ -93,6 +93,8 @@ export class Studium {
   private readonly tasks = new Set<Promise<unknown>>();
   /** M15 整理一次只跑一个，后到的排在后面。 */
   private stateChain: Promise<void> = Promise.resolve();
+  /** 每个主对话一条：路线决定与卡排队写。 */
+  private readonly routeChains = new Map<string, Promise<unknown>>();
 
   /** 长期功能：复习 / 复检、阶段复盘、提醒与今天该做的。 */
   readonly longterm: LongTerm;
@@ -222,7 +224,7 @@ export class Studium {
             this.stateQueryTool(),
             this.retrieveTool(sessionId),
             this.cardTool(sessionId),
-            ...this.longterm.m05Tools(sessionId),
+            ...this.longterm.reminderTools(sessionId),
             this.o.cross.addNoteTool(sessionId),
           ];
         case 'retrieve':
@@ -501,31 +503,43 @@ export class Studium {
     await this.hub.idle(m05.sessionId);
     const card = this.cards.get(m05.sessionId);
     if (!card) throw new Error('M05 没有提交选择卡（见该会话记录）');
-    // 每次出卡先写一条路线决定，紧接着写卡（记录/单子与路线.md「路线决定与理由」）
-    const before = await this.hub.records(mainId);
-    const last = [...before].reverse().find((r) => r.record.type === 'route_decision');
-    const decision: RouteDecision = {
-      type: 'route_decision',
-      at: this.iso(),
-      navSessionId: m05.sessionId,
-      trigger,
-      decision: card.routeDecision.decision,
-      reason: card.routeDecision.reason,
-      basis: card.routeDecision.basis,
-      ...(last !== undefined ? { supersedes: last.line } : {}),
-    };
-    await this.hub.record(mainId, decision);
-    const record: ChoiceCard = {
-      type: 'choice_card',
-      at: this.iso(),
-      cardId: this.newId('card'),
-      m05SessionId: m05.sessionId,
-      options: card.options,
-      recommended: card.recommended,
-      trigger,
-    };
-    await this.hub.record(mainId, record);
-    return record;
+    // 每次出卡先写一条路线决定，紧接着写卡（记录/单子与路线.md「路线决定与理由」）；
+    // 同一主对话的几次出卡排队写，决定与卡才相邻、取代链不断
+    return this.inRouteOrder(mainId, async () => {
+      const before = await this.hub.records(mainId);
+      const last = [...before].reverse().find((r) => r.record.type === 'route_decision');
+      const decision: RouteDecision = {
+        type: 'route_decision',
+        at: this.iso(),
+        navSessionId: m05.sessionId,
+        trigger,
+        decision: card.routeDecision.decision,
+        reason: card.routeDecision.reason,
+        basis: card.routeDecision.basis,
+        ...(last !== undefined ? { supersedes: last.line } : {}),
+      };
+      await this.hub.record(mainId, decision);
+      const record: ChoiceCard = {
+        type: 'choice_card',
+        at: this.iso(),
+        cardId: this.newId('card'),
+        m05SessionId: m05.sessionId,
+        options: card.options,
+        recommended: card.recommended,
+        trigger,
+      };
+      await this.hub.record(mainId, record);
+      return record;
+    });
+  }
+
+  private inRouteOrder<T>(mainId: string, f: () => Promise<T>): Promise<T> {
+    const run = (this.routeChains.get(mainId) ?? Promise.resolve()).then(f);
+    this.routeChains.set(
+      mainId,
+      run.catch(() => undefined),
+    );
+    return run;
   }
 
   /** 学习者在选择卡上选定：存路线事实，开闭环对话，交开场。 */
@@ -983,7 +997,7 @@ export class Studium {
     }
 
     // ── 学过的记录：最近 20 次 + 总数；别的项目里的学习也要能看到（不按项目划界）──
-    const recent = learned.learnings.slice(-20);
+    const recent = learned.learnings.slice(-20).reverse();
     const learnedLines =
       recent.length > 0
         ? recent.map((l) => `- ${this.learned.line(l)}`)
@@ -1477,6 +1491,7 @@ export class Studium {
 
   /** 一次学习的上层一行（检索子代理开场用）。 */
   private async upperLine(l: Learning): Promise<string> {
+    if (l.status !== '没合上') return this.learned.line(l);
     const endLine = (await this.hub.records(l.loopId)).find(
       (r) => r.record.type === 'loop_ended',
     )?.line;

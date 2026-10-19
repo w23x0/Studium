@@ -20,7 +20,7 @@ import type {
   Ticket,
 } from '../shared/records.ts';
 import type { DerivedIndex } from './index/derived-index.ts';
-import type { DataDir } from './log/data-dir.ts';
+import { isSessionId, type DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
 import type {
   ModelAdapter,
@@ -140,6 +140,7 @@ export class Hub {
   }
 
   async records(sessionId: string): Promise<NumberedRecord[]> {
+    if (!isSessionId(sessionId)) throw new NotFoundError(`没有这个会话：${sessionId}`);
     try {
       return await readRecords(this.opts.dataDir.sessionPath(sessionId));
     } catch (err) {

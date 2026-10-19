@@ -250,7 +250,7 @@ export interface LoopBrief {
   stageCheck?: boolean;
 }
 
-/** 同时没收尾的学习数（负荷预算与任务限流；只提示、不硬拦）。 */
+/** 没收尾的学习数（负荷预算与任务限流；只提示、不硬拦）。 */
 export interface LoopLoad {
   /** 进行中（不含搁置）。 */
   inProgress: number;

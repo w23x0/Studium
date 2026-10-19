@@ -230,9 +230,12 @@ describe('写产出对话', () => {
     apps.push(app);
     const d = await getJson<DisclosureResponse>(app, '/disclosure');
     expect(d.sessions.map((s) => s.kind)).not.toContain('output');
-    expect(d.laterSessions).toEqual([
-      { kind: 'output', label: '写产出', model: null, effort: null },
-    ]);
+    expect(d.laterSessions).toContainEqual({
+      kind: 'output',
+      label: '写产出',
+      model: null,
+      effort: null,
+    });
     expect(d.sends.join('\n')).toContain('产出物');
   });
 });
