@@ -43,6 +43,11 @@ export async function writeDataVersion(root: string): Promise<void> {
   }
 }
 
+/** 会话 id 只由字母、数字、`_`、`-` 组成（也是文件名）。 */
+export function isSessionId(id: string): boolean {
+  return /^[A-Za-z0-9_-]+$/.test(id);
+}
+
 export class DataDir {
   private constructor(
     readonly root: string,
@@ -72,7 +77,7 @@ export class DataDir {
   }
 
   sessionPath(sessionId: string): string {
-    if (!/^[A-Za-z0-9_-]+$/.test(sessionId)) throw new Error(`会话 id 不合法：${sessionId}`);
+    if (!isSessionId(sessionId)) throw new Error(`会话 id 不合法：${sessionId}`);
     return join(this.root, 'sessions', `${sessionId}.jsonl`);
   }
 

@@ -35,10 +35,3 @@ export function foldLoop(recs: NumberedRecord[]): LoopFlags {
     ...(ended === undefined && shelved !== undefined ? { shelved } : {}),
   };
 }
-
-/** 一次学习现在的状态标签（给导航开场、主对话工具用）。 */
-export function stateLabel(f: LoopFlags): string {
-  if (f.ended !== undefined) return f.ended.closed ? '合上' : '没合上就结束';
-  if (f.shelved !== undefined) return '搁置中';
-  return '进行中';
-}
