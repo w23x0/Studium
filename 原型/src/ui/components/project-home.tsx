@@ -13,7 +13,6 @@ import {
   CornerDownRightIcon,
   InfoIcon,
   GaugeIcon,
-  LayersIcon,
   LibraryIcon,
   MessageCircleIcon,
   ShieldCheckIcon,
@@ -43,7 +42,6 @@ import { Badge, Loading } from './evidence/parts.tsx';
 import { RemindersSection } from './longterm/reminders.tsx';
 import { ReviewsSection } from './longterm/reviews.tsx';
 import { TodaySection } from './longterm/today.tsx';
-import { PracticeOverview } from './practice/practice-review.tsx';
 import { ProjectChats } from './project-chats.tsx';
 import { useSetting } from '../settings.ts';
 
@@ -87,7 +85,6 @@ export function ProjectHome(props: {
                   <ProjectChats projectId={props.projectId} tasks={props.tasks} />
                   <Groups overview={o} onError={props.onError} />
                   <OutputsSection projectId={props.projectId} />
-                  <PracticeOverview />
                   <Relations projectId={props.projectId} />
                   {/* 资料、记录、教法这些入口：开发者模式关掉时不显示 */}
                   {devMode && <AboutMe />}
@@ -317,8 +314,8 @@ function LoopRow(props: {
             </Badge>
           )}
           {l.stageCheck === true && (
-            <Badge tone="warn" title={W.practice.stageCheckHint}>
-              {W.practice.stageCheck}
+            <Badge tone="warn" title={W.stageCheckHint}>
+              {W.stageCheck}
             </Badge>
           )}
         </span>
@@ -441,11 +438,6 @@ function AboutMe() {
   const items: { icon: ReactNode; label: string; onClick: () => void }[] = [
     { icon: <LibraryIcon />, label: W.library, onClick: () => panel.show({ kind: 'library' }) },
     { icon: <BookCheckIcon />, label: W.learned, onClick: () => panel.show({ kind: 'learned' }) },
-    {
-      icon: <LayersIcon />,
-      label: W.practice.reviewTitle,
-      onClick: () => panel.show({ kind: 'practice' }),
-    },
     { icon: <GaugeIcon />, label: W.myState, onClick: () => panel.show({ kind: 'state' }) },
     {
       icon: <ClipboardListIcon />,

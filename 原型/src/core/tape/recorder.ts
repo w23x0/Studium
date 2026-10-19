@@ -17,8 +17,7 @@ import { IdTokens } from './ids.ts';
 
 /**
  * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
- * “practice.” 是 studium.practice 的、“outputs.” 是 M14 产出物的、“notes.” 是个人笔记的
- *（本地服务拿到的都是录带包过的那一份）。
+ * “outputs.” 是 M14 产出物的、“notes.” 是个人笔记的（本地服务拿到的都是录带包过的那一份）。
  */
 export const ACTIONS = [
   'createProject',
@@ -50,11 +49,6 @@ export const ACTIONS = [
   // 批 10b：资料来源说明、状态记录的“我的解释”
   'addSourceNote',
   'addStateExplanation',
-  // 批 9：练习的交作答、要提示、先不做、请老师归纳
-  'practice.submit',
-  'practice.askHint',
-  'practice.abandon',
-  'practice.requestSummary',
   // 左栏：项目改名（置顶、从列表删掉、对话改名只记在 ui/sidebar.jsonl，不进正本，不录）
   'renameProject',
 ] as const;
@@ -208,13 +202,10 @@ export class Recorder {
     }
   }
 
-  /** 给本地服务用的 Studium：学习者动作先记进录带再照常执行（studium.longterm、studium.practice 的动作同样）。 */
+  /** 给本地服务用的 Studium：学习者动作先记进录带再照常执行（studium.longterm 的动作同样）。 */
   wrapStudium(studium: Studium): Studium {
     const longterm = this.wrap(studium.longterm, 'longterm.');
-    const practice = this.wrap(studium.practice, 'practice.');
-    return this.wrap(studium, '', (prop) =>
-      prop === 'longterm' ? longterm : prop === 'practice' ? practice : undefined,
-    );
+    return this.wrap(studium, '', (prop) => (prop === 'longterm' ? longterm : undefined));
   }
 
   /** 给本地服务用的其他对象（产出物、笔记）：名字前缀 + 方法名在 ACTIONS 里的，先记再执行。 */
@@ -245,7 +236,7 @@ export class Recorder {
             args: this.ids.tokenize(withoutTrailingUndefined(args)),
             quiet: !(this.studium?.busy() ?? false),
             interject:
-              saysSomething(name, args) && typeof args[0] === 'string' && hub !== undefined
+              saysSomething(name) && typeof args[0] === 'string' && hub !== undefined
                 ? hub.isRunning(args[0])
                 : false,
           });
@@ -267,12 +258,9 @@ export class Recorder {
   }
 }
 
-/** 这个动作会在对话里添一句学习者的话（会话在跑时就是中途插话）：发话，或写一段作答交给练习。 */
-function saysSomething(name: string, args: unknown[]): boolean {
-  if (name === 'learnerSays') return true;
-  if (name !== 'practice.submit') return false;
-  const body = args[2];
-  return typeof body === 'object' && body !== null && 'text' in body;
+/** 这个动作会在对话里添一句学习者的话（会话在跑时就是中途插话）。 */
+function saysSomething(name: string): boolean {
+  return name === 'learnerSays';
 }
 
 function withoutTrailingUndefined(args: unknown[]): unknown[] {

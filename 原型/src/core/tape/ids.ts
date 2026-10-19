@@ -88,10 +88,14 @@ function mapStrings<T>(value: T, fn: (s: string) => string): T {
  * 只用于比较，不用于回放。
  */
 export function normalizeForCompare(text: string): string {
-  return text
-    .replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?Z?)?/g, '⟦时间⟧')
-    .replace(/\d{4}-\d{2}-\d{2}/g, '⟦日期⟧')
-    .replace(/\b\d{8}-\d{6}-([a-z0-9]+)-[0-9a-f]{6}\b/g, '⟦$1⟧')
-    .replace(/\b(card|f|st|sr)-[0-9a-f]{8}\b/g, '⟦$1⟧')
-    .replace(/⟦([a-z0-9]+)#\d+⟧/g, '⟦$1⟧');
+  return (
+    text
+      // 沙盒根（<数据目录>/sandbox/…）：数据目录每次运行都不同（临时目录），开场里的路径表会带上它
+      .replace(/[^\s（）]*\/sandbox\//g, '⟦沙盒根⟧/sandbox/')
+      .replace(/\d{4}-\d{2}-\d{2}[T ]\d{2}:\d{2}(:\d{2}(\.\d+)?Z?)?/g, '⟦时间⟧')
+      .replace(/\d{4}-\d{2}-\d{2}/g, '⟦日期⟧')
+      .replace(/\b\d{8}-\d{6}-([a-z0-9]+)-[0-9a-f]{6}\b/g, '⟦$1⟧')
+      .replace(/\b(card|f|st|sr)-[0-9a-f]{8}\b/g, '⟦$1⟧')
+      .replace(/⟦([a-z0-9]+)#\d+⟧/g, '⟦$1⟧')
+  );
 }

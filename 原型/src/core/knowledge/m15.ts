@@ -31,10 +31,10 @@ export interface StateRecord {
   /** 指回 M01 正本：哪个会话的哪几行。 */
   refs: { sessionId: string; lines: number[] }[];
   /**
-   * 这条状态出现在某次教法强度明显变化之后（M15 审查单「策略造成的状态须标注来源」）：
-   * 变化由程序从教学侧每轮的强度标注算出（intensity.ts），M15 只引用变化编号；旧记录没有。
+   * 这条状态出现在某段学习里某句教学之后（状态记录「策略造成的状态须标注来源」）：
+   * 会话与行号由程序核对（确是一句教学），这里只引用位置；旧记录没有。
    */
-  afterTeaching?: { changeId: string; loopSessionId: string; line: number; text: string };
+  afterTeaching?: { loopSessionId: string; line: number; text: string };
   m15SessionId: string;
   model: string;
 }

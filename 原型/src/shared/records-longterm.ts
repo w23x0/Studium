@@ -1,5 +1,5 @@
 // 跨闭环的长期功能（批 6）新增的正本记录类型与记录里的小结构。只加，不改旧字段的意思。
-// records.ts 把这里的类型接进 Ticket / SessionOpened / LoopNote / TalkEnded / LogRecord。
+// records.ts 把这里的类型接进 Ticket / SessionOpened / TalkEnded / LogRecord。
 
 /** 复习 / 复检：这张单子是回头去看以前那次学习（记录/单子与路线.md、会话/导航.md「二级功能」）。 */
 export const REVISIT_KINDS = ['复习', '复检'] as const;

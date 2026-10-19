@@ -24,13 +24,14 @@ import {
   type TeachingToolsResponse,
   type TicketView,
 } from '../shared/protocol.ts';
-import type {
-  ChoiceCard,
-  ChoiceMade,
-  ConversationKind,
-  LearnerObjection,
-  NumberedRecord,
-  Ticket,
+import {
+  DIAGNOSIS_TAG,
+  type ChoiceCard,
+  type ChoiceMade,
+  type ConversationKind,
+  type LearnerObjection,
+  type NumberedRecord,
+  type Ticket,
 } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import type { Learned } from './learned.ts';
@@ -118,16 +119,10 @@ export class Evidence {
       ...(opened.ticket !== undefined ? { ticket: this.ticket(opened.ticket) } : {}),
       model: await this.d.hub.modelInfo(loopId),
       verdicts,
+      // 诊断 = 模型在工作区里写的 诊断.md（沙盒动作，程序按路径打标签）
       diagnoses: recs.flatMap((r) =>
-        r.record.type === 'loop_note'
-          ? [
-              {
-                line: r.line,
-                at: r.record.at,
-                text: r.record.text,
-                ...(r.record.intensity ? { intensity: r.record.intensity } : {}),
-              },
-            ]
+        r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG
+          ? [{ line: r.line, at: r.record.at, text: r.record.content ?? '' }]
           : [],
       ),
       teachingToolsUsed: toolUsesOf(recs),
@@ -464,7 +459,6 @@ export class Evidence {
         quotes: await this.quotes(r.loopSessionId, r.evidenceLines),
         toolsUsed: r.toolsUsed,
         ...(r.toolUses ? { toolUses: r.toolUses } : {}),
-        ...(r.intensityTrend ? { intensityTrend: r.intensityTrend } : {}),
         ...(r.selfCheck ? { selfCheck: r.selfCheck } : {}),
         model: modelInfoOf(r.model),
         objections: this.d.objections.forRecord('m10', r.id).map(storedView),

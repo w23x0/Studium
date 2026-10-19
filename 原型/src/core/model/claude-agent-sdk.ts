@@ -3,10 +3,14 @@
 // 按 04-实现选型：关掉内置工具、不读 CLAUDE.md 与设置、用我们自己的系统提示；
 // 登录走产品负责人本机的 Claude 订阅（先在本机用 `claude` 登录一次）。
 import { randomUUID } from 'node:crypto';
+import { dirname, resolve } from 'node:path';
 import {
   createSdkMcpServer,
   query,
   tool,
+  type CanUseTool,
+  type Options,
+  type PermissionResult,
   type SDKMessage,
   type SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
@@ -19,11 +23,17 @@ import {
   type ModelConversation,
   type ModelDisclosure,
   type ModelEvent,
+  type SandboxActionEvent,
+  type SandboxSpec,
   type TurnInput,
 } from './port.ts';
 import type { Effort, Profiles } from './profiles.ts';
+import { canRead, canWrite, resolveSandboxPath, virtualPath } from './sandbox-paths.ts';
 
 const SERVER = 'studium';
+
+/** 有沙盒时打开的内置工具：通用读写、搜索与命令（工单 W4 §5.10）。 */
+const SANDBOX_TOOLS = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash'];
 
 export interface ClaudeAgentSdkOptions {
   /** 不填用 SDK 默认模型。 */
@@ -34,6 +44,203 @@ export interface ClaudeAgentSdkOptions {
   effort?: Effort;
   /** SDK 子进程的工作目录。SDK 按它归档自己的会话文件，续接时要一致，所以固定成数据目录。 */
   cwd?: string;
+}
+
+/**
+ * 由 spec 与选项算出 SDK 的 options（纯函数，不调模型；单测覆盖）。
+ * 没有 `spec.sandbox` 时保持原样：内置工具全关、只挂我们的进程内 MCP 工具。
+ * 有沙盒时打开六个通用工具，cwd 落到工作区，只读目录经 additionalDirectories 与沙盒的 allowRead 给出，
+ * 每次工具调用再经 `canUseTool` 按沙盒卡一道（记录/读写权限.md「执行方式」）。
+ */
+export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions): Options {
+  const server = createSdkMcpServer({
+    name: SERVER,
+    tools: spec.tools.map((t) =>
+      tool(t.name, t.description, t.input, async (args) => {
+        const r = await t.run(args);
+        return { content: [{ type: 'text', text: r.text }], isError: r.isError === true };
+      }),
+    ),
+  });
+  const profile = spec.session ? o.profiles?.[spec.session.kind] : undefined;
+  const model = profile?.model ?? o.model;
+  const effort = profile?.effort ?? o.effort;
+  const sb = spec.sandbox;
+  const cwd = sb !== undefined ? sb.workdir : o.cwd;
+  return {
+    systemPrompt: spec.systemPrompt,
+    tools: sb !== undefined ? SANDBOX_TOOLS : [],
+    settingSources: [],
+    mcpServers: { [SERVER]: server },
+    allowedTools: spec.tools.map((t) => `mcp__${SERVER}__${t.name}`),
+    strictMcpConfig: true,
+    includePartialMessages: true,
+    ...(spec.resumeToken !== undefined ? { resume: spec.resumeToken } : {}),
+    ...(model !== undefined ? { model } : {}),
+    ...(effort !== undefined ? { effort } : {}),
+    ...(cwd !== undefined ? { cwd } : {}),
+    ...(sb !== undefined
+      ? {
+          additionalDirectories: readOnlyDirs(sb),
+          permissionMode: 'default' as const,
+          canUseTool: sandboxPermission(sb),
+          sandbox: {
+            enabled: true,
+            autoAllowBashIfSandboxed: true,
+            allowUnsandboxedCommands: false,
+            filesystem: {
+              allowWrite: [sb.workdir],
+              denyRead: o.cwd !== undefined ? [o.cwd] : [],
+              allowRead: [sb.workdir, ...sb.readOnly.map((e) => e.path)],
+            },
+            // network: false = 不给联网（只放空名单并收紧）
+            ...(sb.network ? {} : { network: { allowedDomains: [], strictAllowlist: true } }),
+          },
+        }
+      : {}),
+    env: cleanEnv(),
+  };
+}
+
+/** 只读目录（单文件条目给它的父目录，去重）。 */
+function readOnlyDirs(sb: SandboxSpec): string[] {
+  const out = new Set<string>();
+  for (const e of sb.readOnly) out.add(e.name.endsWith('.md') ? dirname(e.path) : e.path);
+  return [...out];
+}
+
+export interface ToolUse {
+  name: string;
+  input: Record<string, unknown>;
+}
+
+/**
+ * 工具调用能不能做（工单 W4 §5.10）：我们的 `mcp__studium__*` 一律放行；Read / Glob / Grep 按 `canRead`；
+ * Write / Edit 按 `canWrite`；Bash 放行（命令由沙盒卡）；其余工具不给用。相对路径按工作区解析。
+ */
+export function sandboxPermission(sb: SandboxSpec): CanUseTool {
+  return (toolName: string, input: Record<string, unknown>): Promise<PermissionResult> =>
+    Promise.resolve(decide(sb, toolName, input));
+}
+
+function decide(
+  sb: SandboxSpec,
+  toolName: string,
+  input: Record<string, unknown>,
+): PermissionResult {
+  if (toolName.startsWith(`mcp__${SERVER}__`)) return allow(input);
+  switch (toolName) {
+    case 'Read': {
+      const abs = pathOf(sb, input.file_path);
+      if (abs === undefined || !canRead(sb, abs)) return deny(`${shown(sb, abs, input)} 读不到`);
+      return allow(input);
+    }
+    case 'Glob':
+    case 'Grep': {
+      const abs = input.path === undefined ? resolve(sb.workdir) : pathOf(sb, input.path);
+      if (abs === undefined || !canRead(sb, abs)) return deny(`${shown(sb, abs, input)} 读不到`);
+      return allow(input);
+    }
+    case 'Write':
+    case 'Edit': {
+      const abs = pathOf(sb, input.file_path);
+      if (abs === undefined || !canWrite(sb, abs)) {
+        return deny(`${shown(sb, abs, input)} 是只读的，或在工作区外，不能写`);
+      }
+      return allow(input);
+    }
+    case 'Bash':
+      return allow(input);
+    default:
+      return deny(`这个工具不给用：${toolName}`);
+  }
+}
+
+function allow(input: Record<string, unknown>): PermissionResult {
+  return { behavior: 'allow', updatedInput: input };
+}
+
+function deny(message: string): PermissionResult {
+  return { behavior: 'deny', message };
+}
+
+function pathOf(sb: SandboxSpec, v: unknown): string | undefined {
+  return typeof v === 'string' && v !== '' ? resolveSandboxPath(sb, v) : undefined;
+}
+
+function shown(sb: SandboxSpec, abs: string | undefined, input: Record<string, unknown>): string {
+  if (abs !== undefined) return virtualPath(sb, abs);
+  const raw = input.file_path ?? input.path;
+  return typeof raw === 'string' && raw !== '' ? raw : '这个路径';
+}
+
+/**
+ * 一个跑完的工具调用记成沙盒动作（工单 W4 §5.10）：Read → read，Write / Edit → write（带 content），
+ * Glob / Grep → search，Bash → run（带 command）；我们的工具与认不出的返回 undefined（不记）。
+ */
+export function sandboxActionOf(
+  sb: SandboxSpec,
+  use: ToolUse,
+  result: { is_error?: boolean },
+): SandboxActionEvent['action'] | undefined {
+  const ok = result.is_error !== true;
+  const input = use.input;
+  const path =
+    use.name === 'Bash'
+      ? undefined
+      : pathOf(
+          sb,
+          use.name === 'Glob' || use.name === 'Grep' ? (input.path ?? sb.workdir) : input.file_path,
+        );
+  const shownPath = path === undefined ? undefined : virtualPath(sb, path);
+  const withPath = shownPath !== undefined ? { path: shownPath } : {};
+  switch (use.name) {
+    case 'Read':
+      return { op: 'read', ...withPath, summary: `读 ${shownPath ?? ''}`, ok };
+    case 'Write':
+    case 'Edit': {
+      const content =
+        typeof input.content === 'string'
+          ? input.content
+          : typeof input.new_string === 'string'
+            ? input.new_string
+            : undefined;
+      return {
+        op: 'write',
+        ...withPath,
+        summary: `写 ${shownPath ?? ''}`,
+        ok,
+        ...(content !== undefined ? { content } : {}),
+      };
+    }
+    case 'Glob':
+    case 'Grep':
+      return { op: 'search', ...withPath, summary: `查 ${shownPath ?? ''}`, ok };
+    case 'Bash':
+      return {
+        op: 'run',
+        ...(typeof input.command === 'string' ? { command: input.command } : {}),
+        summary: `跑命令：${typeof input.command === 'string' ? input.command : ''}`,
+        ok,
+      };
+    default:
+      return undefined;
+  }
+}
+
+/** 消息里认得出的一小块内容（只取我们配沙盒动作要用的几个字段）。 */
+interface ContentBlock {
+  type: string;
+  id?: string;
+  name?: string;
+  input?: Record<string, unknown>;
+  tool_use_id?: string;
+  is_error?: boolean;
+}
+
+/** 消息里的内容块（内容是纯字符串时没有块）。 */
+function blocks(content: unknown): ContentBlock[] {
+  return Array.isArray(content) ? (content as ContentBlock[]) : [];
 }
 
 /** 从外层 Claude Code 继承来的会话变量会让 SDK 接到外层会话上，去掉。 */
@@ -69,6 +276,8 @@ class SdkConversation implements ModelConversation {
   private turnActive = false;
   /** 已交给 SDK、还没见它答到的输入（按 uuid）。 */
   private readonly pending: string[] = [];
+  /** 本轮见过、还没配上结果的工具调用（按 tool_use id）；沙盒动作由它配对。 */
+  private readonly toolUses = new Map<string, ToolUse>();
 
   constructor(
     private readonly spec: ConversationSpec,
@@ -78,35 +287,7 @@ class SdkConversation implements ModelConversation {
   }
 
   private start(): AsyncIterator<SDKMessage> {
-    const server = createSdkMcpServer({
-      name: SERVER,
-      tools: this.spec.tools.map((t) =>
-        tool(t.name, t.description, t.input, async (args) => {
-          const r = await t.run(args);
-          return { content: [{ type: 'text', text: r.text }], isError: r.isError === true };
-        }),
-      ),
-    });
-    const profile = this.spec.session ? this.options.profiles?.[this.spec.session.kind] : undefined;
-    const model = profile?.model ?? this.options.model;
-    const effort = profile?.effort ?? this.options.effort;
-    const q = query({
-      prompt: this.input,
-      options: {
-        systemPrompt: this.spec.systemPrompt,
-        tools: [],
-        settingSources: [],
-        mcpServers: { [SERVER]: server },
-        allowedTools: this.spec.tools.map((t) => `mcp__${SERVER}__${t.name}`),
-        strictMcpConfig: true,
-        includePartialMessages: true,
-        ...(this.spec.resumeToken !== undefined ? { resume: this.spec.resumeToken } : {}),
-        ...(model !== undefined ? { model } : {}),
-        ...(effort !== undefined ? { effort } : {}),
-        ...(this.options.cwd !== undefined ? { cwd: this.options.cwd } : {}),
-        env: cleanEnv(),
-      },
-    });
+    const q = query({ prompt: this.input, options: sdkOptionsFor(this.spec, this.options) });
     this.close_ = () => {
       q.close();
     };
@@ -185,7 +366,25 @@ class SdkConversation implements ModelConversation {
         continue;
       }
       if (msg.type === 'assistant' || msg.type === 'user') {
+        // 沙盒里跑的时候：把工具调用与它的结果配成沙盒动作事件（工单 W4 §5.10）
+        for (const b of blocks(msg.message.content)) {
+          if (b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') {
+            this.toolUses.set(b.id, { name: b.name, input: b.input ?? {} });
+          }
+        }
         yield { kind: 'raw', payload: msg.message };
+        if (msg.type === 'user') {
+          for (const b of blocks(msg.message.content)) {
+            if (b.type !== 'tool_result' || typeof b.tool_use_id !== 'string') continue;
+            const use = this.toolUses.get(b.tool_use_id);
+            if (use === undefined) continue;
+            this.toolUses.delete(b.tool_use_id);
+            const sb = this.spec.sandbox;
+            if (sb === undefined) continue;
+            const action = sandboxActionOf(sb, use, { is_error: b.is_error === true });
+            if (action !== undefined) yield { kind: 'sandbox_action', action };
+          }
+        }
       }
       if (msg.type === 'assistant') {
         // SDK 在回复上标出本轮已经并进来的用户消息（含中途插话）

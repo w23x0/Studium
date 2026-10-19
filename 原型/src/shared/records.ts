@@ -9,18 +9,8 @@ import type {
 } from './records-longterm.ts';
 import type { CrossDomain } from './records-cross.ts';
 
-import type {
-  PracticeAssigned,
-  PracticeDone,
-  PracticeFeedback,
-  PracticeHint,
-  PracticeSubmitted,
-  PracticeSummary,
-} from './records-practice.ts';
-
 export type * from './records-longterm.ts';
 export type * from './records-cross.ts';
-export type * from './records-practice.ts';
 
 /**
  * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 守卫 · m05 出选择卡（导航）
@@ -81,8 +71,6 @@ export interface UserMessage {
   objection?: { toLine: number };
   /** 随这句话附的图片（拍照 / 手写，批 4）：转写文字已并进 text（教学只读文字，M02:19），这里记原图与转写的来历。 */
   images?: ImageInput[];
-  /** 有这一项 = 这句话是学习者经练习任务提交的作答（批 9）：taskId 是任务编号；原话照记。 */
-  practice?: { taskId: string };
 }
 
 /** 学习者消息里的一张图片：原图在输入存放处（只追加），转写由模型接口做、学习者发送前可改。 */
@@ -124,6 +112,28 @@ export interface ToolCall {
   isError: boolean;
 }
 
+/** 沙盒动作的两个标签（程序按路径打，不看模型说什么；工单 W4 §5.3）。 */
+export const DIAGNOSIS_TAG = '诊断';
+export const TEACHING_TOOL_TAG = '教学工具:';
+
+/**
+ * 沙盒里的一个动作（读 / 写 / 跑命令……），由程序当场记（记录/对话与事件记录.md §3），不靠模型自报。
+ * `path` 是虚拟路径；`tag` 由程序按路径打（写工作区的 诊断.md → 诊断；读 只读/教学工具/<文件> → 教学工具:<文件名>）。
+ */
+export interface SandboxAction {
+  type: 'sandbox_action';
+  at: string;
+  actor: 'model';
+  op: 'read' | 'write' | 'run' | 'search' | 'other';
+  path?: string;
+  command?: string;
+  summary: string;
+  ok: boolean;
+  tag?: string;
+  /** 写类动作写进去的文字（整份写 = 全文；追加 = 追加的部分）。 */
+  content?: string;
+}
+
 /** 模型适配层吐出的原始消息，逐条原样（含思考块）。只有该会话自己读。 */
 export interface ModelRaw {
   type: 'model_raw';
@@ -152,57 +162,6 @@ export interface TurnFailed {
   type: 'turn_failed';
   at: string;
   reason: string;
-}
-
-/** 学习对话的诊断记录：给后续推理与审计用，不给学习者看，守卫不读。 */
-export interface LoopNote {
-  type: 'loop_note';
-  at: string;
-  text: string;
-  /** 这一轮的教法强度（M10 的四项参数 + 偏向）；模型没填就没有这个字段。 */
-  intensity?: Intensity;
-}
-
-export const LEVELS = ['低', '中', '高'] as const;
-export const PACES = ['慢', '中', '快'] as const;
-export const LEANS = ['输入', '均衡', '练习'] as const;
-
-/** 一轮教学的强度：信息量 / 提示强度 / 挑战程度各三档，节奏三档，以及这一轮偏输入还是偏练习。 */
-export interface Intensity {
-  info: (typeof LEVELS)[number];
-  hint: (typeof LEVELS)[number];
-  challenge: (typeof LEVELS)[number];
-  pace: (typeof PACES)[number];
-  lean: (typeof LEANS)[number];
-  reason?: string;
-}
-
-/** 强度的五项：信息量 / 提示强度 / 挑战程度 / 节奏 / 偏输入还是偏练习。 */
-export type Dimension = 'info' | 'hint' | 'challenge' | 'pace' | 'lean';
-
-export interface IntensityTurn {
-  line: number;
-  info: string;
-  hint: string;
-  challenge: string;
-  pace: string;
-  lean: string;
-}
-
-export interface DimensionTrend {
-  first: string;
-  last: string;
-  /** 相邻重复合并后的走法，如 高 → 中 → 低。 */
-  sequence: string[];
-  direction: '升' | '降' | '持平' | '起伏';
-}
-
-/** 一个闭环里四项（+偏向）的走向，程序算；使教法记录之间可比较。 */
-export interface IntensityTrend {
-  turns: IntensityTurn[];
-  /** 没标强度的诊断条数。 */
-  unannotated: number;
-  summary: Record<Dimension, DimensionTrend>;
 }
 
 export interface CloseRequested {
@@ -400,8 +359,8 @@ export type LogRecord =
   | ModelRaw
   | ModelSession
   | ModelUsed
+  | SandboxAction
   | TurnFailed
-  | LoopNote
   | CloseRequested
   | GuardVerdict
   | LoopEnded
@@ -419,13 +378,7 @@ export type LogRecord =
   | LoopShelved
   | LoopResumed
   | ReminderAdded
-  | ReminderClosed
-  | PracticeAssigned
-  | PracticeSubmitted
-  | PracticeFeedback
-  | PracticeHint
-  | PracticeDone
-  | PracticeSummary;
+  | ReminderClosed;
 
 /** 学习者异议指向什么：守卫的一次判定（学习会话 + 判定所在行），或 M10 / M15 的一条记录（记录 id）。 */
 export type ObjectionTarget =

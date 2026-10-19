@@ -2,7 +2,6 @@
 // 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示，守卫判定、结束等只显示一句结果。
 import type { ChoiceCard, NumberedRecord, ReviewWindow, RevisitKind } from '../shared/records.ts';
 import { parseReviewReturned } from '../shared/records-longterm.ts';
-import { finishPracticeCards, markAnswers, type PracticeUi } from './practice-model.ts';
 import { judgementLine, W } from './wording.ts';
 
 export interface UiMessage {
@@ -22,8 +21,6 @@ export interface UiMessage {
   link?: { sessionId: string; label: string };
   /** 学习者随这句话附的图片（原图 id），对话里显示缩略图、可点开。 */
   images?: string[];
-  /** 练习（批 9）：练习卡、交给练习的作答、写好的归纳。 */
-  practice?: PracticeUi;
 }
 
 export interface UiContext {
@@ -43,8 +40,6 @@ export function toUiMessages(
   const out: UiMessage[] = [];
   const push = (m: UiMessage) => out.push(m);
   const cards = new Map<string, ChoiceCard>();
-  /** 练习编号 → 练什么（做完那一行用）。 */
-  const practiceFocus = new Map<string, string>();
   for (const { line, record: r } of records) {
     const id = `l${String(line)}`;
     switch (r.type) {
@@ -59,15 +54,6 @@ export function toUiMessages(
             : {}),
           ...(r.images !== undefined && r.images.length > 0
             ? { images: r.images.map((i) => i.attachmentId) }
-            : {}),
-          ...(r.practice !== undefined
-            ? {
-                practice: {
-                  kind: 'answer' as const,
-                  taskId: r.practice.taskId,
-                  label: W.practice.answerTag,
-                },
-              }
             : {}),
         });
         break;
@@ -169,43 +155,11 @@ export function toUiMessages(
         }
         break;
       }
-      // 练习（批 9）：布置的题是一张卡；老师认的作答把那几句标上；做完 / 放下与写好的归纳各一行
-      case 'practice_assigned':
-        practiceFocus.set(r.id, r.focus);
-        push({
-          id,
-          role: 'system',
-          text: W.practice.cardText(r.focus),
-          line,
-          practice: { kind: 'card', taskId: r.id, loopOpen: true, candidates: [] },
-        });
-        break;
-      case 'practice_submitted':
-        markAnswers(out, r.taskId, r.lines, W.practice.markedTag);
-        break;
-      case 'practice_done':
-        push({
-          id,
-          role: 'system',
-          text: W.practice.doneLine(r.outcome, practiceFocus.get(r.taskId) ?? ''),
-          line,
-        });
-        break;
-      case 'practice_summary':
-        push({
-          id,
-          role: 'system',
-          text: W.practice.summaryLine,
-          line,
-          practice: { kind: 'summary', id: r.id },
-        });
-        break;
       default:
         // 诊断记录、工具调用、原始消息等是给模型与审计用的，不显示
         break;
     }
   }
-  finishPracticeCards(out, records);
   if (draft !== '' || ctx.running === true) {
     out.push({ id: 'draft', role: 'assistant', text: draft, line: 0 });
   }
@@ -276,7 +230,7 @@ export interface LoopSide {
   resumeOf?: string;
   /** 这段是复习 / 复检（批 6）。 */
   revisit?: RevisitKind;
-  /** 这段是阶段验收（批 9）。 */
+  /** 这段是阶段验收。 */
   stageCheck?: boolean;
 }
 

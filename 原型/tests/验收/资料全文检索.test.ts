@@ -1,4 +1,5 @@
-// 验收（W2 新版，取代旧版：只去掉已删的 m09 会话种类）：M07 全文检索——学习者用的 HTTP 接口，和闭环 / M05 能用的模型工具；返回书、小节、行号、片段（M07:15）。
+// 验收（W4 新版，取代旧版）：资料全文检索——学习者用的 HTTP 接口，和守卫 / 畅谈能用的模型工具；返回书、小节、行号、片段。
+// W4 起学习对话不再有资料查询工具（在沙盒里读 只读/资料/），只剩两个命令。设计：记录/资料.md「检索」；会话/学习对话.md §2。
 import { afterEach, describe, expect, it } from 'vitest';
 import type { LibrarySearchResponse } from '../../src/shared/protocol.ts';
 import { parseCitations } from '../../src/shared/citation.ts';
@@ -75,21 +76,20 @@ describe('资料全文检索', () => {
     expect((await call(app, `/library/search?q=x&book=${q('没有')}`)).status).toBe(404);
   });
 
-  it('模型工具 search_textbook：闭环、M05、守卫、畅谈有；M10 没有；结果带可直接用的出处标记', async () => {
+  it('模型工具 search_textbook：守卫、畅谈有；学习对话没有（在沙盒里读资料）；结果带可直接用的出处标记', async () => {
     const { app } = await startLibraryApp();
     apps.push(app);
-    const toolNames = (kind: 'loop' | 'm05' | 'guard' | 'talk' | 'm10'): string[] =>
+    const toolNames = (kind: 'loop' | 'guard' | 'talk'): string[] =>
       app.studium
         .kind(kind)
         .tools('x')
         .map((t) => t.name);
-    for (const kind of ['loop', 'm05', 'guard', 'talk'] as const) {
+    for (const kind of ['guard', 'talk'] as const) {
       expect(toolNames(kind), kind).toContain('search_textbook');
     }
-    for (const kind of ['m10'] as const) {
-      expect(toolNames(kind), kind).not.toContain('search_textbook');
-    }
-    const tools = app.studium.kind('loop').tools('x');
+    expect(toolNames('loop'), '学习对话只剩两个命令').not.toContain('search_textbook');
+    expect(toolNames('loop'), '学习对话只剩两个命令').not.toContain('read_source');
+    const tools = app.studium.kind('guard').tools('x');
     const search = tools.find((t) => t.name === 'search_textbook');
     const found = await search?.run({ query: '加速度' });
     expect(found?.isError).not.toBe(true);

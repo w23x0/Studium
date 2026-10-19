@@ -8,7 +8,6 @@ const RELOAD_ON = new Set([
   'session_opened',
   'guard_verdict',
   'close_requested',
-  'loop_note',
   'loop_ended',
   'after_loop_step',
   'choice_card',
@@ -18,6 +17,8 @@ const RELOAD_ON = new Set([
   'project_material',
   'project_deadline',
   'tool_call',
+  // 沙盒动作：诊断写在工作区的 诊断.md 里，写进来时依据面板的诊断区要重读
+  'sandbox_action',
   'user_message',
   // 学到一半（批 5）：先放一放 / 接着学
   'loop_shelved',
@@ -27,13 +28,6 @@ const RELOAD_ON = new Set([
   'reminder_closed',
   'talk_ended',
   'task_opened',
-  // 练习（批 9）：布置、作答、反馈、提示、做完 / 放下、归纳
-  'practice_assigned',
-  'practice_submitted',
-  'practice_feedback',
-  'practice_hint',
-  'practice_done',
-  'practice_summary',
 ]);
 
 function relevant(e: ServerEvent): boolean {

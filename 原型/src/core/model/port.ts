@@ -20,15 +20,46 @@ export interface ToolSpec {
   run(args: Record<string, unknown>): Promise<ToolResult>;
 }
 
+/**
+ * 一个会话的沙盒：能读写哪些数据、能否联网，由程序在执行环境里写死（记录/读写权限.md「执行方式」）。
+ * 学习对话与导航派出的检索子代理用它；模型看到的是虚拟路径（`诊断.md`、`只读/学过的记录/…`）。
+ */
+export interface SandboxSpec {
+  /** 模型可写的工作区（绝对路径）。 */
+  workdir: string;
+  /** 只读的目录或单个文件；模型看到的是 `只读/<name>/…`。`name` 可含 `/`；以 `.md` 结尾的是单个文件。 */
+  readOnly: { name: string; path: string }[];
+  /** 默认 false：不给联网。 */
+  network: boolean;
+}
+
 export interface ConversationSpec {
   /** 系统提示：只写定义、边界、输出格式。 */
   systemPrompt: string;
   /** 本会话能用的工具；写权限靠给什么工具来卡。 */
   tools: ToolSpec[];
+  /** 有这一项 = 这个会话在沙盒里跑（通用读写与命令），工具只是沙盒里的两个命令。 */
+  sandbox?: SandboxSpec;
   /** 上次的续接凭据（正本里最近一条 model_session），没有就是新开。 */
   resumeToken?: string;
   /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
   session?: { id: string; kind: ConversationKind };
+}
+
+/** 沙盒里的一个动作，程序当场记（不靠模型自报）。`content` 只有写类动作填。 */
+export interface SandboxActionEvent {
+  kind: 'sandbox_action';
+  action: {
+    op: 'read' | 'write' | 'run' | 'search' | 'other';
+    /** 虚拟路径（工作区里的相对工作区；只读的 `只读/<name>/…`）。 */
+    path?: string;
+    command?: string;
+    /** 一句中文说明（如“读 只读/教学工具/提取练习.md”）。 */
+    summary: string;
+    ok: boolean;
+    /** 写进去的文字（整份写 = 全文；追加 = 追加的部分）。 */
+    content?: string;
+  };
 }
 
 /** 一条输入：学习者的话，或程序追加的事实（守卫结论、离开多久等）。 */
@@ -48,6 +79,8 @@ export type ModelEvent =
   | { kind: 'session'; token: string }
   /** 本轮实际执行的模型名（不是可变别名）；拿到就报，名字变了再报。 */
   | { kind: 'model'; name: string }
+  /** 沙盒里的一个动作（读 / 写 / 跑命令……），程序当场记进正本。 */
+  | SandboxActionEvent
   /** 本轮结束。 */
   | { kind: 'turn_end' }
   /** 本轮失败；对话仍可继续。 */

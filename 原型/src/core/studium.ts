@@ -13,6 +13,7 @@ import type {
 } from '../shared/protocol.ts';
 import { CROSS_KINDS } from '../shared/records-cross.ts';
 import {
+  DIAGNOSIS_TAG,
   DURABILITY,
   INDEPENDENCE,
   START_SOURCES,
@@ -32,7 +33,6 @@ import type { Crosslinks } from './crosslinks.ts';
 import { Learned } from './learned.ts';
 import type { Learning } from '../shared/protocol-learned.ts';
 import { LongTerm } from './longterm.ts';
-import { Practice } from './practice.ts';
 import { routeDeviations } from './route-deviations.ts';
 import { REVISIT_KINDS } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
@@ -42,20 +42,12 @@ import type { Sources } from './sources.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { Objections } from './knowledge/objections.ts';
 import { STAGES, type M15, type StateConfirmation } from './knowledge/m15.ts';
-import {
-  changesOf,
-  describeTrend,
-  intensityInput,
-  notesOf,
-  parseIntensity,
-  trendOf,
-  type IntensityChange,
-} from './intensity.ts';
-import { teachingToolSpecs, toolUsesOf, type TeachingTools } from './teaching-tools.ts';
+import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { locate, type LocateDeps } from './locate.ts';
-import type { ToolResult, ToolSpec } from './model/port.ts';
+import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
-import { learnerLines, renderTranscript } from './transcript.ts';
+import { describeSandbox, Sandboxes } from './sandbox.ts';
+import { guardView, learnerLines, renderTranscript } from './transcript.ts';
 
 export class BadRequestError extends Error {}
 
@@ -99,11 +91,11 @@ export class Studium {
   /** 长期功能：复习 / 复检、阶段复盘、提醒与今天该做的。 */
   readonly longterm: LongTerm;
 
-  /** 练习任务（批 9，M03）：布置 → 作答 → 反馈 → 完成 / 放弃，习题清单，重复错误成模式，题型归纳，阶段验收。 */
-  readonly practice: Practice;
-
   /** 学过的记录（按层读每次学习）与外部导入存放处。 */
   readonly learned: Learned;
+
+  /** 学习对话与检索子代理的沙盒（只读的资料与记录、可写的工作区）。 */
+  private readonly sandboxes: Sandboxes;
 
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
@@ -113,15 +105,16 @@ export class Studium {
       newId: (prefix) => this.newId(prefix),
       iso: () => this.iso(),
     });
-    this.practice = new Practice({
+    this.sandboxes = new Sandboxes({
       hub: () => this.hub,
+      learned: this.learned,
       m07: o.m07,
-      iso: () => this.iso(),
-      newId: (prefix) => this.newId(prefix),
-      scopeOf: (id, all) => this.scopeOf(id, all),
-      assertActiveLoop: (id) => this.assertActiveLoop(id),
-      assertOpenLoop: (id) => this.assertOpenLoop(id),
-      learnerSays: (id, text, practice) => this.learnerSays(id, text, undefined, practice),
+      m10: o.m10,
+      m15: o.m15,
+      objections: o.objections,
+      teaching: o.teaching,
+      dataDir: o.dataDir,
+      scopeOf: (id) => this.scopeOf(id),
     });
     this.longterm = new LongTerm({
       hub: () => this.hub,
@@ -130,7 +123,6 @@ export class Studium {
       now: () => this.now(),
       iso: () => this.iso(),
       newId: (prefix) => this.newId(prefix),
-      loopOpening: (t) => this.loopOpening(t),
       projectOf: (id) => this.projectOf(id),
       stateQueryTool: () => this.stateQueryTool(),
     });
@@ -195,6 +187,15 @@ export class Studium {
 
   kind = (kind: ConversationKind): KindConfig => ({
     systemPrompt: this.o.prompts[kind],
+    ...(kind === 'loop'
+      ? {
+          sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
+          beforeTurn: (sessionId: string) => this.sandboxes.refreshLoop(sessionId),
+        }
+      : {}),
+    ...(kind === 'retrieve'
+      ? { sandbox: (sessionId: string) => this.retrieveSandbox(sessionId) }
+      : {}),
     tools: (sessionId) => {
       switch (kind) {
         case 'main':
@@ -207,13 +208,8 @@ export class Studium {
             ...this.longterm.reviewTools(sessionId),
           ];
         case 'loop':
-          return [
-            ...this.readTools(sessionId),
-            this.loopTranscriptTool(),
-            ...this.loopTools(sessionId),
-            this.o.cross.addNoteTool(sessionId),
-            ...this.practice.loopTools(sessionId),
-          ];
+          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），工具只剩两个命令
+          return this.loopTools(sessionId);
         case 'guard':
           return [...this.readTools(sessionId), this.verdictTool(sessionId)];
         case 'm05':
@@ -228,12 +224,8 @@ export class Studium {
             this.o.cross.addNoteTool(sessionId),
           ];
         case 'retrieve':
-          // 检索子代理：只为导航的一个问题找底层证据（工单 README §2.7）
-          return [
-            ...this.readTools(sessionId),
-            this.readSessionTool(),
-            this.findingsTool(sessionId),
-          ];
+          // 检索子代理：在只读沙盒里自己读，只挂交回结果这一个工具（工单 README §2.7）
+          return [this.findingsTool(sessionId)];
         case 'm15':
           return this.stateTools(sessionId);
         case 'm10':
@@ -253,7 +245,6 @@ export class Studium {
 
   /** 一个项目一条主对话；没有就开一条。 */
   async ensureMain(): Promise<string> {
-    await this.practice.warm();
     const main = this.hub.listSessions().find((s) => s.kind === 'main');
     if (main) return main.sessionId;
     return this.createProject();
@@ -455,16 +446,8 @@ export class Studium {
   }
 
   /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（03「闭环外」暂停）。images = 附图的来历（批 4，文字已并进 text）。 */
-  async learnerSays(
-    sessionId: string,
-    text: string,
-    images?: ImageInput[],
-    practice?: { taskId: string },
-  ): Promise<void> {
-    const meta = {
-      ...(images !== undefined && images.length > 0 ? { images } : {}),
-      ...(practice !== undefined ? { practice } : {}),
-    };
+  async learnerSays(sessionId: string, text: string, images?: ImageInput[]): Promise<void> {
+    const meta = { ...(images !== undefined && images.length > 0 ? { images } : {}) };
     const recs = await this.hub.records(sessionId);
     if (recs.some((r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended')) {
       throw new BadRequestError('这段对话已经结束了，回到项目里接着聊。');
@@ -589,7 +572,7 @@ export class Studium {
     await this.longterm.onChosen(mainId, card, option, loop.sessionId);
     await this.hub.send(loop.sessionId, {
       role: 'program',
-      text: await this.loopOpening(picked.ticket),
+      text: await this.loopOpening(picked.ticket, loop.sessionId),
     });
     return loop.sessionId;
   }
@@ -761,13 +744,32 @@ export class Studium {
     return c;
   }
 
-  /** 所有闭环里教法强度的明显变化（程序算）。 */
-  private async allIntensityChanges(): Promise<IntensityChange[]> {
-    const out: IntensityChange[] = [];
-    for (const x of this.hub.listSessions().filter((y) => y.kind === 'loop')) {
-      out.push(...changesOf(x.sessionId, notesOf(await this.hub.records(x.sessionId))));
+  /**
+   * “这条状态出现在某段学习里某句教学之后”的核对（工单 W4 §5.11）：会话须是一次学习，
+   * 行须是那次学习里的一句教学（assistant_message）；不然退回。
+   */
+  private async checkAfterTeaching(a: {
+    session?: string;
+    line?: number;
+    note?: string;
+  }): Promise<{ loopSessionId: string; line: number; text: string } | { problem: string }> {
+    const id = (a.session ?? '').trim();
+    const note = (a.note ?? '').trim();
+    if (id === '') return { problem: 'after_teaching.session 不能是空的' };
+    if (note === '') return { problem: 'after_teaching.note 要写清这条状态出现在什么之后' };
+    const opened = await this.hub.opened(id).catch((e: unknown) => {
+      if (e instanceof NotFoundError) return undefined;
+      throw e;
+    });
+    if (opened?.kind !== 'loop')
+      return { problem: `after_teaching.session 指的 ${id} 不是一次学习` };
+    const line = a.line;
+    if (typeof line !== 'number') return { problem: 'after_teaching.line 要填那句教学的行号' };
+    const rec = (await this.hub.records(id)).find((r) => r.line === line)?.record;
+    if (rec?.type !== 'assistant_message') {
+      return { problem: `第 ${String(line)} 行不是那次学习里的一句教学；只引教学行` };
     }
-    return out;
+    return { loopSessionId: id, line, text: note };
   }
 
   /** 附在一条 M10 / M15 记录描述后面的学习者异议（交给模型读；没有就是空串）。 */
@@ -842,8 +844,8 @@ export class Studium {
         '要判的闭环单子：',
         ticket ? this.describeTicket(ticket) : '（缺单子）',
         '',
-        '闭环对话原文（L 后是行号；只放对话本身，不含教学侧的诊断记录）：',
-        renderTranscript(records),
+        '这次学习的对话（L 后是行号；只放学习者看得到的与程序事实，模型一侧的诊断与沙盒动作不给）：',
+        guardView(records),
       ].join('\n'),
     });
     await this.hub.idle(guard.sessionId);
@@ -1410,9 +1412,16 @@ export class Studium {
     };
   }
 
-  // ───────────── 检索子代理（工单 §4.7）─────────────
+  // ───────────── 检索子代理（工单 README §2.7、W4 §5.9）─────────────
 
   private readonly findings = new Map<string, { text: string; ref: string }[]>();
+
+  /** 检索子代理的沙盒：只读的学过的记录与导航所属项目范围内的资料（它不写）。 */
+  private async retrieveSandbox(sessionId: string): Promise<SandboxSpec | undefined> {
+    const navId = (await this.hub.opened(sessionId)).parent;
+    if (navId === undefined) return undefined;
+    return this.sandboxes.forRetrieve(sessionId, navId);
+  }
 
   /** 导航派检索子代理：另开一个会话去找底层证据，只拿回核过的几条。 */
   private retrieveTool(navId: string): ToolSpec {
@@ -1444,7 +1453,7 @@ export class Studium {
         });
         await this.hub.send(sub.sessionId, {
           role: 'program',
-          text: await this.retrieveOpening(question, loops, navId),
+          text: await this.retrieveOpening(question, loops, navId, sub.sessionId),
         });
         await this.hub.idle(sub.sessionId);
         const found = this.findings.get(sub.sessionId);
@@ -1458,8 +1467,13 @@ export class Studium {
     };
   }
 
-  /** 检索子会话的开场：问题、点名的学习、本项目与别的项目的学习上层、交回规矩。 */
-  private async retrieveOpening(question: string, loops: string[], navId: string): Promise<string> {
+  /** 检索子会话的开场：问题、点名的学习、本项目与别的项目的学习上层、沙盒说明、交回规矩。 */
+  private async retrieveOpening(
+    question: string,
+    loops: string[],
+    navId: string,
+    sessionId: string,
+  ): Promise<string> {
     const mainId = (await this.hub.opened(navId)).parent;
     const here =
       mainId !== undefined ? (await this.learned.list(mainId)).learnings : await this.learned.all();
@@ -1481,9 +1495,12 @@ export class Studium {
         ...(await Promise.all(elsewhere.map((l) => this.upperLine(l)))),
       );
     }
+    const sb = await this.sandboxes.forRetrieve(sessionId, navId);
     lines.push(
       '',
-      '只为导航的一个问题找底层证据：从上面的上层（单子、判定）出发，用 read_session 读一次会话的原文（带行号）、用资料工具查教材，定位到原文行。',
+      '只为导航的一个问题找底层证据：从上面的上层（单子、判定）出发，到沙盒里读——每次学习的对话原文在 只读/学过的记录/<学习 id>-对话.md（带行号），教材在 只读/资料/<书 id>/，定位到原文行。',
+      describeSandbox(sb),
+      '',
       '用 submit_findings 交回至多 5 条，每条一句话 + 能定位的 ref（会话 id:行号 / 书/文件:行号）；没找到交空数组；只交一次。不下结论、不出路线。',
     );
     return lines.join('\n');
@@ -1530,29 +1547,6 @@ export class Studium {
         if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
         this.findings.set(sessionId, out);
         return ok('已交回。');
-      },
-    };
-  }
-
-  private loopTranscriptTool(): ToolSpec {
-    return {
-      name: 'read_loop',
-      description:
-        '读某个闭环对话的原文（带行号），用于没合上就结束的闭环；with_diagnosis 为真时连同闭环里写的诊断记录（M04）一起给，用来看状态解释候选有没有被裁决。',
-      input: {
-        session: z.string().describe('闭环对话的会话 id'),
-        with_diagnosis: z.boolean().optional(),
-      },
-      run: async (a) => {
-        const opened = await this.hub.opened(a.session as string);
-        if (opened.kind !== 'loop') return err('这不是闭环对话');
-        const records = await this.hub.records(opened.sessionId);
-        const text = renderTranscript(records);
-        if (a.with_diagnosis !== true) return ok(text);
-        const notes = records.flatMap((r) =>
-          r.record.type === 'loop_note' ? [`L${String(r.line)} 诊断：${r.record.text}`] : [],
-        );
-        return ok(`${text}\n\n诊断记录：\n${notes.join('\n') || '（无）'}`);
       },
     };
   }
@@ -1734,106 +1728,66 @@ export class Studium {
 
   // ───────────── 闭环对话 ─────────────
 
+  /**
+   * 学习对话的工具：只有两个命令（工单 W4 §5.5）。资料、学过的记录、状态、教法记录与教学工具
+   * 都在沙盒里当只读文件读，不再各挂一个工具；诊断写在工作区的 `诊断.md`（沙盒动作，程序当场记）。
+   */
   private loopTools(loopId: string): ToolSpec[] {
     return [
       {
-        name: 'write_diagnosis',
-        description:
-          '记这一轮的诊断（不给学习者看，守卫不读）。每轮先记诊断、再写给学习者的话；同时标这一轮打算用的教法强度（信息量 / 提示强度 / 挑战程度 / 节奏，各取一档，和偏输入还是偏练习），五项一起填。',
-        input: { text: z.string().describe('观察、指回的行号、怀疑、还缺什么'), ...intensityInput },
-        run: async (a) => {
-          const parsed = parseIntensity(a);
-          if (!parsed.ok) return err(`诊断没记：${parsed.error}`);
-          await this.hub.record(loopId, {
-            type: 'loop_note',
-            at: this.iso(),
-            text: a.text as string,
-            ...(parsed.intensity ? { intensity: parsed.intensity } : {}),
-          });
-          return ok(
-            parsed.intensity
-              ? '已记'
-              : '已记；这一轮没标教法强度（信息量 / 提示强度 / 挑战程度 / 节奏 / 偏向），下一轮请标上',
-          );
-        },
-      },
-      {
-        name: 'read_loop_transcript',
-        description: '读本闭环对话的原文（带行号）；上下文压缩后要看原话时用。',
-        input: {},
-        run: async () => ok(renderTranscript(await this.hub.records(loopId))),
-      },
-      {
         name: 'request_close',
-        description: '判断新点已沿子句合上时调用：程序开独立守卫判，返回守卫结论。',
+        description: '判断新点已沿预期理解合上时调用：程序开独立守卫判，返回守卫结论。',
         input: { reason: z.string() },
         run: async (a) => {
           const v = await this.requestClose(loopId, 'model', a.reason as string);
           return ok(verdictFact(v));
         },
       },
-      this.stateQueryTool(),
-      ...teachingToolSpecs(this.o.teaching),
-      {
-        name: 'query_strategy_records',
-        description:
-          '查这位学习者以前的教法记录（M10 个人策略过程）：在什么条件下用过什么做法、之后怎样。单条不证明因果。',
-        input: {},
-        run: () => {
-          const rows = this.o.m10.all();
-          return ok(
-            rows.length > 0
-              ? rows
-                  .map((r) => this.o.m10.describe(r) + this.objectionNotes('m10', r.id))
-                  .join('\n')
-              : '还没有记录',
-          );
-        },
-      },
-      {
-        name: 'request_state_recheck',
-        description:
-          '请 M15 重新确认某条状态记录（M04 → M15 唯一的反向请求）：只带记录 id，不带你的判断。',
-        input: { record_id: z.string() },
-        run: (a) => {
-          const id = a.record_id as string;
-          if (!this.o.m15.record(id)) return err(`没有这条状态记录：${id}`);
-          this.organizeStateLater(`M04 请求重新确认状态记录 ${id}`, loopId, true);
-          return ok('已请 M15 重新确认；结果之后用 query_state 查。');
-        },
-      },
       {
         name: 'end_loop_unclosed',
-        description: '学习者明确要结束、而闭环没合上时调用。',
+        description:
+          '学习者明确要结束而这次学习没合上时调用；学习者想先去学别的（另开一次学习）也走它——之后导航会读整段对话出下一张卡。',
         input: { note: z.string().describe('学习者要结束的话在哪一行、为什么') },
         run: async (a) => {
           await this.endUnclosed(loopId, a.note as string);
-          return ok('闭环已按“没合上就结束”处理；下一张选择卡会在主对话里出。和学习者道别即可。');
+          return ok(
+            '这次学习已按“没合上就结束”处理；下一张选择卡会在主对话里出。和学习者道别即可。',
+          );
         },
       },
     ];
   }
 
-  private async loopOpening(t: Ticket): Promise<string> {
+  /** 学习对话的开场：目标 + 单子（+ 阶段验收 / 复习复检 / 接着学）+ 沙盒说明（工单 W4 §5.5）。 */
+  private async loopOpening(t: Ticket, loopId: string): Promise<string> {
     const revisit = await this.revisitOpening(t);
     const resume = await this.resumeOpening(t);
-    const check = t.sourceCheck.map(
-      (c) =>
-        `- ${c.claim}${c.at !== undefined ? `（出处：${c.at}）` : ''}${c.modelAdded === true ? '（资料里没有，模型补的）' : ''}`,
-    );
+    const sb = await this.sandboxes.forLoop(loopId);
     return [
+      '这次学习的目标：靠单子里的出发点、沿预期理解把新点合上（把新点接进学习者已有的认识）。该讲就成段讲，质量不低于教材。',
+      '',
       ...revisit,
       ...resume,
-      '本闭环的单子：',
+      '单子：',
       this.describeTicket(t),
       '',
       '对资料核的结果：',
-      check.length > 0 ? check.join('\n') : '（没核过）',
+      t.sourceCheck.length > 0
+        ? t.sourceCheck
+            .map(
+              (c) =>
+                `- ${c.claim}${c.at !== undefined ? `（出处：${c.at}）` : ''}${c.modelAdded === true ? '（资料里没有，模型补的）' : ''}`,
+            )
+            .join('\n')
+        : '（没核过）',
       '',
-      ...this.practice.openingFacts(t),
-      '学过的记录（以往的学习）、学习者状态（M15）与以前的教法记录（M10）：要用时查。',
-      '',
-      '现在开始这次学习：先简短说明这次学什么、从哪出发，然后开始。',
+      ...(t.stageCheck === true
+        ? [
+            '这是一次阶段验收：看独立表现，默认不给提示，措辞照常平和；做完不等于合上，仍由守卫判。',
+            '',
+          ]
+        : []),
+      describeSandbox(sb),
     ].join('\n');
   }
 
@@ -1849,7 +1803,7 @@ export class Studium {
     return [
       `这是接着以前没合上的那次学习学（原来那次：「${orig.title}」${id}，${orig.openedAt.slice(0, 10)}–${orig.endedAt?.slice(0, 10) ?? ''}）。原来那次的上层：`,
       `- ${this.learned.parkedLine({ learning: orig, ...(endLine !== undefined ? { endLine } : {}) })}`,
-      `原来那次的行号不能当本次的证据；要看原来那次的对话用 read_loop 读会话 ${id}。`,
+      `原来那次的行号不能当本次的证据；要看原来那次的对话，读 只读/学过的记录/${id}-对话.md。`,
       '',
     ];
   }
@@ -2044,7 +1998,6 @@ export class Studium {
     const out: string[] = [];
     const starts: string[] = [];
     const nextCovered: Record<string, number> = {};
-    const changes: IntensityChange[] = [];
     let newLearnerLines = 0;
     for (const x of sessions) {
       const recs = await this.hub.records(x.sessionId);
@@ -2063,7 +2016,6 @@ export class Studium {
       const freshLearner = fresh.filter((r) => r.record.type === 'user_message');
       newLearnerLines += freshLearner.length;
       if (freshLearner.length === 0) continue;
-      if (x.kind === 'loop') changes.push(...changesOf(x.sessionId, notesOf(recs)));
       const kindLabel = label[x.kind as keyof typeof label];
       const lines: string[] = [];
       let prev: NumberedRecord | undefined;
@@ -2105,13 +2057,6 @@ export class Studium {
       '',
       '上次整理之后的新记录（L 后是该会话正本的行号；教学行只放开头一段，全文用 read_session 查）：',
       out.join('\n\n') || '（没有新的学习者的话）',
-      ...(changes.length > 0
-        ? [
-            '',
-            '教法强度明显变化（程序从教学侧每轮的强度标注算出，只给位置和哪一项怎么变，不含诊断内容）。某条状态出现在这之后时，写状态记录用 after_change 填变化编号，不确定就不填：',
-            ...changes.map((c) => `- 变化编号：${c.id} · 一段学习 ${c.loopSessionId}：${c.text}`),
-          ]
-        : []),
     ].join('\n');
     return { text, covered: nextCovered, newLearnerLines };
   }
@@ -2169,22 +2114,20 @@ export class Studium {
           output_type: z.enum(['承载读数', '解释候选']),
           time_range: z.string().describe('本次会话 / 近期（几号到几号）/ 较稳定的现实约束'),
           refs: z.array(z.object({ session: z.string(), lines: z.array(z.number().int()) })),
-          after_change: z
-            .string()
+          after_teaching: z
+            .object({
+              session: z.string().describe('一次学习的会话 id'),
+              line: z.number().int().describe('那次学习里一句教学（assistant_message）的行号'),
+              note: z.string().describe('这条状态出现在那段教学之后'),
+            })
             .optional()
-            .describe(
-              '这条状态出现在某次教法强度明显变化之后时，填开场列出的变化编号；不确定就不填',
-            ),
+            .describe('这条状态出现在某段学习里某句教学之后时填；不确定就不填'),
         },
         run: async (a) => {
-          const afterId = typeof a.after_change === 'string' ? a.after_change.trim() : '';
-          const change =
-            afterId === ''
-              ? undefined
-              : (await this.allIntensityChanges()).find((c) => c.id === afterId);
-          if (afterId !== '' && change === undefined) {
-            return err(`没有这个教法强度变化编号：${afterId}；只能填开场列出的变化编号`);
-          }
+          const raw = a.after_teaching as
+            { session?: string; line?: number; note?: string } | undefined;
+          const after = raw === undefined ? undefined : await this.checkAfterTeaching(raw);
+          if (after !== undefined && 'problem' in after) return err(after.problem);
           const refs = a.refs as { session: string; lines: number[] }[];
           const source = a.source as '自述' | '观察' | '推断';
           let learnerRef = false;
@@ -2220,13 +2163,12 @@ export class Studium {
             output: a.output_type as '承载读数' | '解释候选',
             timeRange: a.time_range as string,
             refs: refs.map((r) => ({ sessionId: r.session, lines: r.lines })),
-            ...(change
+            ...(after !== undefined && !('problem' in after)
               ? {
                   afterTeaching: {
-                    changeId: change.id,
-                    loopSessionId: change.loopSessionId,
-                    line: change.line,
-                    text: change.text,
+                    loopSessionId: after.loopSessionId,
+                    line: after.line,
+                    text: after.text,
                   },
                 }
               : {}),
@@ -2269,18 +2211,19 @@ export class Studium {
       lines: Set<number>;
       toolsUsed: string[];
       toolUses: { name: string; line: number }[];
-      trend: ReturnType<typeof trendOf>;
       /** 开场列出的“带标注”状态记录；有就必须写自查。 */
       annotatedStateIds: string[];
     }
   >();
 
-  /** 闭环结束后记“这次教法管不管用”：对话原文 + 诊断记录（M04）+ 守卫判定 + 教学工具使用记录 + 单子。 */
+  /** 一次学习结束后记“这次教法管不管用”：对话原文 + 诊断（沙盒动作）+ 守卫判定 + 教学工具使用记录 + 单子。 */
   private async recordStrategy(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
     const notes = records.flatMap((r) =>
-      r.record.type === 'loop_note' ? [`L${String(r.line)} ${r.record.text}`] : [],
+      r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG
+        ? [`L${String(r.line)} ${r.record.content ?? ''}`]
+        : [],
     );
     const verdicts = records.flatMap((r) =>
       r.record.type === 'guard_verdict'
@@ -2293,8 +2236,7 @@ export class Studium {
     // 用了哪份教学工具由程序从工具调用里读（03「教学工具怎么落」），不靠模型自报
     const toolUses = toolUsesOf(records);
     const toolsUsed = [...new Set(toolUses.map((u) => u.name))];
-    const trend = trendOf(notesOf(records));
-    // M10 对状态成因的自查：状态记录里有“出现在某次教法强度变化之后”标注的，先查自己的教法是不是成因
+    // 教法记录整理对状态成因的自查：状态记录里有“出现在某段教学之后”标注的，先查自己的教法是不是成因
     const annotated = this.o.m15
       .allRecords()
       .filter((r) => r.afterTeaching !== undefined)
@@ -2305,23 +2247,20 @@ export class Studium {
       lines: new Set(records.map((r) => r.line)),
       toolsUsed,
       toolUses,
-      trend,
       annotatedStateIds: annotated.map((r) => r.id),
     });
     await this.hub.send(s.sessionId, {
       role: 'program',
       text: [
-        `闭环：${loopId}「${opened.title}」`,
+        `一次学习：${loopId}「${opened.title}」`,
         `单子：${opened.ticket ? this.describeTicket(opened.ticket) : '（缺）'}`,
         `结束：${ended?.record.type === 'loop_ended' ? (ended.record.closed ? '合上（学习者已确认）' : '没合上就结束') : '（缺）'}`,
         '',
         `守卫判定：\n${verdicts.join('\n') || '（没申请过收口）'}`,
         '',
-        `诊断记录（M04，闭环对话里写的）：\n${notes.join('\n') || '（无）'}`,
+        `诊断记录（模型在工作区里写的 诊断.md，未经守卫）：\n${notes.join('\n') || '（无）'}`,
         '',
-        `教学工具使用记录（程序从工具调用里记的）：${toolUses.map((u) => `L${String(u.line)} ${u.name}`).join('、') || '这个闭环没取用教学工具，只能从对话原文看用了什么做法'}`,
-        '',
-        `教法强度走向（程序汇总闭环里每轮诊断标的四项 + 偏向）：\n${trend ? describeTrend(trend) : '（诊断里没标强度）'}`,
+        `教学工具使用记录（程序从沙盒动作里记的）：${toolUses.map((u) => `L${String(u.line)} 教学工具:${u.name}`).join('、') || '这次学习没读教学工具，只能从对话原文看用了什么做法'}`,
         '',
         ...(annotated.length > 0
           ? [
@@ -2329,7 +2268,7 @@ export class Studium {
               '',
             ]
           : []),
-        '闭环对话原文：',
+        '这次学习的对话原文：',
         renderTranscript(records),
       ].join('\n'),
     });
@@ -2374,7 +2313,6 @@ export class Studium {
           evidenceLines: lines,
           toolsUsed: target.toolsUsed,
           ...(target.toolUses.length > 0 ? { toolUses: target.toolUses } : {}),
-          ...(target.trend ? { intensityTrend: target.trend } : {}),
           ...(selfCheck !== ''
             ? { selfCheck: { stateIds: target.annotatedStateIds, note: selfCheck } }
             : {}),

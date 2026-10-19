@@ -7,13 +7,7 @@ import type {
   TodayItem,
   TodayView,
 } from '../shared/protocol-longterm.ts';
-import type {
-  ChoiceCard,
-  LogRecord,
-  ReminderAdded,
-  ReminderClosed,
-  Ticket,
-} from '../shared/records.ts';
+import type { ChoiceCard, LogRecord, ReminderAdded, ReminderClosed } from '../shared/records.ts';
 import {
   REMINDER_KINDS,
   reviewReturnedFact,
@@ -42,7 +36,6 @@ export interface LongTermDeps {
   now(): Date;
   iso(): string;
   newId(prefix: string): string;
-  loopOpening(t: Ticket): Promise<string>;
   projectOf(sessionId: string): Promise<string | undefined>;
   stateQueryTool(): ToolSpec;
 }

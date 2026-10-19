@@ -1,7 +1,7 @@
 // 资料（右侧面板）：书列表（按学科分组、标出项目资料）→ 目录 → 小节原文；在书里搜（默认只搜项目资料，
 // 可切查全部）；原件的一页。
 import { useState } from 'react';
-import { BookIcon, FileTextIcon, NotebookPenIcon, PencilRulerIcon, SearchIcon } from 'lucide-react';
+import { BookIcon, FileTextIcon, NotebookPenIcon, SearchIcon } from 'lucide-react';
 import type { BBox, TocEntry } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -156,29 +156,10 @@ function Toc(props: { book: string }) {
     <div className="flex flex-col gap-3">
       <h2 className="font-serif text-lg">{title}</h2>
       <SourceNoteCard book={book} />
-      <Button
-        variant="outline"
-        size="sm"
-        className="self-start"
-        onClick={() => panel.show({ kind: 'exercises', book })}
-      >
-        <PencilRulerIcon />
-        {W.practice.exercisesBook}
-      </Button>
       <Section title={W.toc}>
         <ul className="flex flex-col">
           {entries.map((e, i) => (
             <li key={i} className="group relative">
-              {e.kind === 'ch' && (
-                <button
-                  type="button"
-                  data-testid="chapter-exercises"
-                  className="text-muted-foreground hover:text-primary absolute end-1 top-1 rounded-md px-1.5 py-0.5 text-xs opacity-0 group-hover:opacity-100 focus:opacity-100"
-                  onClick={() => panel.show({ kind: 'exercises', book, chapter: e.chapter })}
-                >
-                  {W.practice.exercises}
-                </button>
-              )}
               <TocRow
                 entry={e}
                 onOpen={

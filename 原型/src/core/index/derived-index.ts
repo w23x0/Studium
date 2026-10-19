@@ -182,9 +182,11 @@ function searchableText(r: LogRecord): string {
     case 'user_message':
     case 'assistant_message':
     case 'program_fact':
-    case 'loop_note':
     case 'project_goal':
       return r.text;
+    // 沙盒动作只在写诊断时有内容（读 / 跑命令没有）
+    case 'sandbox_action':
+      return r.content ?? '';
     case 'session_opened':
       return r.title;
     default:

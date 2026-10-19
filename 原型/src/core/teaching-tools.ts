@@ -1,19 +1,15 @@
 // 教学工具（M10「通用策略知识层」，03「教学工具怎么落」）：一份 = 一个 Markdown 文件。
 // 官方的在 原型/教学工具/（agent 起草），学习者自己的在 <数据>/teaching-tools/（可加，预留第三方）。
-// 每次列出 / 取用时现读目录，学习者放进新文件不用重启。闭环里两个工具：列出、按名取全文；
-// 取用了哪几份由程序从工具调用记录里读（studium.ts），不由模型自报。
+// 每次列出 / 取用时现读目录，学习者放进新文件不用重启。学习对话不挂工具：这些是沙盒里的只读文件
+//（程序把 loadAll 的结果写进 只读/教学工具/）；读了哪几份由程序从沙盒动作里按路径标签取，不由模型自报。
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { z } from 'zod';
-import type { NumberedRecord } from '../shared/records.ts';
+import { TEACHING_TOOL_TAG, type NumberedRecord } from '../shared/records.ts';
 import { isNotFound } from './log/session-log.ts';
-import type { ToolSpec } from './model/port.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 export const OFFICIAL_TOOLS_DIR = join(here, '../../教学工具');
-
-export const READ_TEACHING_TOOL = 'read_teaching_tool';
 
 export type ToolOrigin = '官方' | '学习者自己';
 
@@ -137,61 +133,23 @@ export class TeachingTools {
     };
   }
 
-  async get(name: string): Promise<TeachingTool | undefined> {
-    return (await this.loadAll()).tools.find((t) => t.name === name);
+  /** 按名字取一份；名字只是识别用的，界面里的“用过哪份”记的是文件名，两种都认。 */
+  async get(nameOrFile: string): Promise<TeachingTool | undefined> {
+    const all = (await this.loadAll()).tools;
+    return all.find((t) => t.name === nameOrFile) ?? all.find((t) => t.file === nameOrFile);
   }
 }
 
-function nameArg(args: unknown): string {
-  const name = (args as { name?: unknown } | null)?.name;
-  return typeof name === 'string' ? name : '';
-}
-
-/** 从闭环正本的工具调用记录里读：取用了哪几份、在哪一行（报错的不算）。程序记的，不是模型报的。 */
+/**
+ * 从一次学习的沙盒动作里读：读了哪几份教学工具、在哪一行（读失败的、Bash 里 cat 的都不算）。
+ * 程序按路径打的标签，不是模型自报（记录/教法记录与教学工具.md「用了什么：程序照记」）。
+ */
 export function toolUsesOf(recs: NumberedRecord[]): { name: string; line: number }[] {
   return recs.flatMap((r) =>
-    r.record.type === 'tool_call' && r.record.name === READ_TEACHING_TOOL && !r.record.isError
-      ? [{ name: nameArg(r.record.args), line: r.line }]
+    r.record.type === 'sandbox_action' &&
+    r.record.ok &&
+    r.record.tag?.startsWith(TEACHING_TOOL_TAG) === true
+      ? [{ name: r.record.tag.slice(TEACHING_TOOL_TAG.length), line: r.line }]
       : [],
   );
-}
-
-/** 闭环对话里的两个教学工具：列出可用的、按名取一份全文。 */
-export function teachingToolSpecs(teaching: TeachingTools): ToolSpec[] {
-  return [
-    {
-      name: 'list_teaching_tools',
-      description:
-        '列出可用的教学工具（名字 + 一句适用条件）。教学工具是可选的做法参考，由你按情形选用；不用也行。',
-      input: {},
-      run: async () => {
-        const { tools, problems } = await teaching.list();
-        const rows = tools.map((t) => `- ${t.name}｜适用：${t.applies}｜${t.origin}`);
-        return {
-          text: [
-            rows.length > 0 ? rows.join('\n') : '（还没有教学工具）',
-            ...(problems.length > 0
-              ? ['', '装不上的文件：', ...problems.map((p) => `- ${p}`)]
-              : []),
-          ].join('\n'),
-        };
-      },
-    },
-    {
-      name: READ_TEACHING_TOOL,
-      description:
-        '按名字取一份教学工具的全文（做法、怎么引出证据、注意边界）。取用会被程序记下，供事后比较教法。',
-      input: { name: z.string().describe('list_teaching_tools 里的名字') },
-      run: async (a) => {
-        const name = nameArg(a);
-        const t = await teaching.get(name);
-        if (!t)
-          return {
-            text: `没有叫「${name}」的教学工具；先用 list_teaching_tools 看名字。`,
-            isError: true,
-          };
-        return { text: `教学工具「${t.name}」（${t.origin}；${t.status}）\n\n${t.text}` };
-      },
-    },
-  ];
 }

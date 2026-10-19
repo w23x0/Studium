@@ -85,10 +85,10 @@ export function ChoiceCardBox(props: {
                 {o.stageCheck === true && (
                   <span
                     data-testid="stage-check-badge"
-                    title={W.practice.stageCheckHint}
+                    title={W.stageCheckHint}
                     className="ms-2 rounded-full bg-amber-100 px-1.5 py-0.5 text-[0.7rem] font-medium text-amber-900 dark:bg-amber-900/40 dark:text-amber-200"
                   >
-                    {W.practice.stageCheck}
+                    {W.stageCheck}
                   </span>
                 )}
                 {i === props.recommended && (
@@ -100,7 +100,7 @@ export function ChoiceCardBox(props: {
               </div>
               <div className="text-muted-foreground text-sm">
                 {o.revisit !== undefined && `${W.revisitHint[o.revisit]}。`}
-                {o.stageCheck === true && `${W.practice.stageCheckHint}。`}
+                {o.stageCheck === true && `${W.stageCheckHint}。`}
                 {o.reason}
               </div>
             </button>

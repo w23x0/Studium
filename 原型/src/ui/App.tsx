@@ -34,7 +34,7 @@ import {
   UnclosedEndBar,
 } from './components/longterm/loop-extras.tsx';
 import { useReviewIds } from './components/longterm/reviews.tsx';
-import { StageCheckBanner, SummarizeButton } from './components/practice/loop-practice.tsx';
+import { StageCheckBanner } from './components/stage-check.tsx';
 import { OpenSessionContext } from './open-session.ts';
 import {
   CurrentSessionContext,
@@ -424,7 +424,6 @@ function Conversation(props: {
           ...(m.verdict ? { verdict: m.verdict } : {}),
           ...(m.objection ? { objection: m.objection } : {}),
           ...(m.images ? { images: m.images } : {}),
-          ...(m.practice ? { practice: m.practice } : {}),
         },
       },
       ...(m.role === 'assistant'
@@ -726,7 +725,6 @@ function LoopBar(props: {
   }
   return (
     <div className="flex justify-end gap-2">
-      <SummarizeButton loopId={props.sessionId} disabled={props.running} />
       <Button
         variant="outline"
         size="sm"

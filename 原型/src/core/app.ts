@@ -71,9 +71,16 @@ const KINDS: ConversationKind[] = [
   'output',
 ];
 
+/** 用同一套证据标准的会话：提示词后面接 prompts/evidence.md（只写一处）。 */
+const EVIDENCE_KINDS: ConversationKind[] = ['guard', 'loop'];
+
 export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
+  const evidence = await readFile(join(here, 'prompts/evidence.md'), 'utf8');
   const entries = await Promise.all(
-    KINDS.map(async (k) => [k, await readFile(join(here, `prompts/${k}.md`), 'utf8')] as const),
+    KINDS.map(async (k) => {
+      const own = await readFile(join(here, `prompts/${k}.md`), 'utf8');
+      return [k, EVIDENCE_KINDS.includes(k) ? `${own}\n${evidence}` : own] as const;
+    }),
   );
   return Object.fromEntries(entries) as Record<ConversationKind, string>;
 }

@@ -1,8 +1,6 @@
 // 核心与界面之间的 HTTP / SSE 协议。界面只认这里的类型，不碰核心实现。
 import type {
   ConversationKind,
-  Intensity,
-  IntensityTrend,
   LearnerObjection,
   NumberedRecord,
   ObjectionTarget,
@@ -16,7 +14,6 @@ import type { TodayView } from './protocol-longterm.ts';
 export type * from './protocol-longterm.ts';
 export type * from './protocol-learned.ts';
 export * from './protocol-cross.ts';
-export type * from './protocol-practice.ts';
 
 export interface SessionSummary {
   sessionId: string;
@@ -195,8 +192,6 @@ export interface DiagnosisView {
   line: number;
   at: string;
   text: string;
-  /** 这一轮标的教法强度（信息量 / 提示强度 / 挑战程度 / 节奏 + 偏输入还是偏练习）；没标就没有。 */
-  intensity?: Intensity;
 }
 
 /** 闭环里取用的一份教学工具：哪份、在闭环正本的哪一行（程序从工具调用里记的）。 */
@@ -324,8 +319,6 @@ export interface StrategyView {
   toolsUsed: string[];
   /** 每次取用：哪份、在闭环正本的哪一行；旧记录没有。 */
   toolUses?: TeachingToolUseView[];
-  /** 程序汇总的这个闭环里四项强度 + 偏向的走向；没标强度的闭环没有。 */
-  intensityTrend?: IntensityTrend;
   /** 记录时有“出现在 X 之后”标注的状态时，M10 对自己教法是否为成因的自查。 */
   selfCheck?: { stateIds: string[]; note: string };
   model: ModelInfo;
@@ -351,12 +344,11 @@ export interface ConfirmationResponse {
   confirmation: ConfirmationView;
 }
 
-/** 状态出现在某次教法强度明显变化之后的标注（变化由程序算出）。 */
+/** 状态出现在某段学习里某句教学之后的标注（会话与行号由程序核对）。 */
 export interface AfterTeachingView {
-  changeId: string;
   loopSessionId: string;
   line: number;
-  /** “第 12 行起，提示强度由「高」降为「低」”。 */
+  /** 模型写下的说明：这条状态出现在什么之后。 */
   text: string;
 }
 

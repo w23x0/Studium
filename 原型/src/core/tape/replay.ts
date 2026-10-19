@@ -151,9 +151,13 @@ const REMOVED_ACTIONS = new Set<string>([
   'reanalyzeLoop',
   'chooseDetour',
   'longterm.continueLoop',
+  'practice.submit',
+  'practice.askHint',
+  'practice.abandon',
+  'practice.requestSummary',
 ]);
 
-/** 重做一个学习者动作：“longterm.” / “practice.” / “outputs.” / “notes.” 开头的找对应的对象，别的是 Studium 的方法。 */
+/** 重做一个学习者动作：“longterm.” / “outputs.” / “notes.” 开头的找对应的对象，别的是 Studium 的方法。 */
 async function perform(app: App, name: ActionName, args: unknown[]): Promise<void> {
   const dot = name.indexOf('.');
   const where = dot < 0 ? '' : name.slice(0, dot);
@@ -161,13 +165,11 @@ async function perform(app: App, name: ActionName, args: unknown[]): Promise<voi
   const target: object =
     where === 'longterm'
       ? app.studium.longterm
-      : where === 'practice'
-        ? app.studium.practice
-        : where === 'outputs'
-          ? app.outputs
-          : where === 'notes'
-            ? app.notes
-            : app.studium;
+      : where === 'outputs'
+        ? app.outputs
+        : where === 'notes'
+          ? app.notes
+          : app.studium;
   const fn = (target as Record<string, unknown>)[method];
   if (typeof fn !== 'function') {
     // 这些动作随知识点编号库一起删了（工单 W1 §4.8）：旧录带回放到这里就停，说清是版本的事
