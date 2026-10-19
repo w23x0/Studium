@@ -46,7 +46,7 @@ function responder(ctx: FakeContext): FakeStep | undefined {
       };
     case 'loop':
       return ctx.input.text.includes('终点减起点')
-        ? { calls: [{ name: 'write_diagnosis', args: { text: '说清了' } }], text: '换个情境？' }
+        ? { sandbox: [{ op: 'append', path: '诊断.md', content: '说清了' }], text: '换个情境？' }
         : { text: '从位置说起。' };
     case 'guard':
       return {
