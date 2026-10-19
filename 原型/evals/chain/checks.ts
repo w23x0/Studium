@@ -401,7 +401,9 @@ function guardLines(run: ChainRun): CheckResult {
     };
   }
   const learner = learnerLines(loop.records);
-  const bad = vs.flatMap((v) => v.lines.filter((l) => !learner.has(l)));
+  const bad = vs.flatMap((v) =>
+    [...v.lines, ...(v.understanding ?? []).flatMap((u) => u.lines)].filter((l) => !learner.has(l)),
+  );
   const closedNoLines = vs.filter((v) => v.closed && v.lines.length === 0);
   const rejected = sessionsOf(run, 'guard').flatMap((g) =>
     toolCalls(g)
@@ -439,15 +441,18 @@ function understandingRule(run: ChainRun): CheckResult {
   const id = '合上的判定含实际理解与证据强度';
   const end = loopEnd(run);
   const learning = learningOf(run);
-  if (!end || learning === undefined || learning.status === '进行中') {
-    return { id, by: '程序', outcome: '未判', detail: '学习对话没结束' };
+  if (!end) return { id, by: '程序', outcome: '未判', detail: '学习对话没结束' };
+  if (!end.closed) {
+    return { id, by: '程序', outcome: '未判', detail: '这次没合上，没有合上的判定可查' };
   }
-  if (learning.status !== '合上') {
+  if (learning?.status !== '合上') {
     return {
       id,
       by: '程序',
-      outcome: '未判',
-      detail: `这次学习${learning.status}，没有合上的判定可查`,
+      outcome: '不过',
+      detail: `学习对话结束那行是合上，学过的记录里却是“${learning?.status ?? '没有这次学习'}”`,
+      attribution: '系统·程序',
+      why: '学过的记录按正本现算，两层应一致',
     };
   }
   const u = learning.verdict?.understanding ?? [];
@@ -498,11 +503,17 @@ function unclosedRule(run: ChainRun): CheckResult {
   const id = '没合上没有判定';
   const end = loopEnd(run);
   const learning = learningOf(run);
-  if (!end || learning === undefined || learning.status === '进行中') {
-    return { id, by: '程序', outcome: '未判', detail: '学习对话没结束' };
-  }
-  if (learning.status === '合上') {
-    return { id, by: '程序', outcome: '未判', detail: '这次学习合上了' };
+  if (!end) return { id, by: '程序', outcome: '未判', detail: '学习对话没结束' };
+  if (end.closed) return { id, by: '程序', outcome: '未判', detail: '这次学习合上了' };
+  if (learning?.status !== '没合上') {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: `学习对话结束那行是没合上，学过的记录里却是“${learning?.status ?? '没有这次学习'}”`,
+      attribution: '系统·程序',
+      why: '学过的记录按正本现算，两层应一致',
+    };
   }
   const problems = [
     ...(learning.verdict !== undefined ? ['没合上却带着守卫判定'] : []),

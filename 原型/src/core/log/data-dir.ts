@@ -34,13 +34,12 @@ export async function checkDataVersion(root: string): Promise<void> {
   }
 }
 
-/** 取锁之后写版本文件；已经有就不动。 */
+/**
+ * 取锁之后写版本文件。核对已过：要么还没有会话，要么已是当前版本，所以直接写当前版本
+ * （只有旧版本文件、还没有会话的目录也随之升上来，不然有了会话下次启动会报旧版本）。
+ */
 export async function writeDataVersion(root: string): Promise<void> {
-  try {
-    await writeFile(join(root, 'data-version'), `${DATA_VERSION}\n`, { flag: 'wx' });
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
-  }
+  await writeFile(join(root, 'data-version'), `${DATA_VERSION}\n`);
 }
 
 /** 会话 id 只由字母、数字、`_`、`-` 组成（也是文件名）。 */

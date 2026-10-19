@@ -629,7 +629,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       // 只认这三种指向；别的回 400，不悄悄给空列表
       const kind = q.get('kind') ?? undefined;
       if (kind !== undefined && !['guard_verdict', 'pedagogy', 'state'].includes(kind)) {
-        throw new BadRequest(`异议指向的种类没有 ${kind}`);
+        throw new BadRequest('kind 要是 guard_verdict、state 或 pedagogy');
       }
       const objections = ev.objections(kind, q.get('record') ?? undefined);
       send(res, 200, { objections } satisfies ObjectionsResponse);

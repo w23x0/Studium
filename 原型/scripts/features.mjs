@@ -2,9 +2,9 @@
 // `--check` 只核对、不跑测试：每个问题一行打到 stdout，有问题退出 1。不带参数时先核对（不过就退出 1），
 // 再跑被引用的 vitest 测试文件（tests/… 与 src/…），按结果刷新 状态；e2e 与 npm run 条目的状态不动。
 import { spawnSync } from 'node:child_process';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { join, relative } from 'node:path';
 
 const argv = process.argv.slice(2);
 const CHECK_ONLY = argv.includes('--check');
@@ -49,6 +49,11 @@ function check(list) {
       problems.push(`${item.id}：验证里没有测试文件也没有命令`);
     }
   }
+  // 覆盖：tests/验收/ 里每个测试至少被一条引用
+  const cited = new Set(list.flatMap((i) => pathsIn(i.验证)));
+  for (const f of readdirSync('tests/验收').filter((x) => x.endsWith('.test.ts'))) {
+    if (!cited.has(`tests/验收/${f}`)) problems.push(`tests/验收/${f}：没有条目`);
+  }
   return problems;
 }
 
@@ -74,20 +79,18 @@ spawnSync('npx', ['vitest', 'run', ...files, '--reporter', 'json', '--outputFile
 });
 const report = JSON.parse(readFileSync(out, 'utf8'));
 rmSync(dir, { recursive: true, force: true });
-/** 报告里的文件路径是绝对路径：按 tests/ 或 src/ 截成相对路径。 */
-function relativeName(name) {
-  const at = name.search(/\/(tests|src)\//);
-  return at < 0 ? name : name.slice(at + 1);
-}
+// 报告里的文件路径是绝对路径，换成相对本目录的
 const passed = new Set(
-  report.testResults.filter((t) => t.status === 'passed').map((t) => relativeName(t.name)),
+  report.testResults
+    .filter((t) => t.status === 'passed')
+    .map((t) => relative(process.cwd(), t.name)),
 );
 for (const item of list) {
   // e2e 与 npm run 条目不动：验证以 npm run 开头、或只指向 e2e 的跳过
   if (/^npm run /.test(item.验证)) continue;
-  const p = pathsIn(item.验证).find((x) => /^(tests|src)\//.test(x));
-  if (p === undefined) continue;
-  item.状态 = passed.has(p) ? '通过' : '未通过';
+  const ps = pathsIn(item.验证).filter((x) => /^(tests|src)\//.test(x));
+  if (ps.length === 0) continue;
+  item.状态 = ps.every((p) => passed.has(p)) ? '通过' : '未通过';
 }
 writeFileSync(listPath, `${JSON.stringify(list, null, 2)}\n`);
 for (const item of list)

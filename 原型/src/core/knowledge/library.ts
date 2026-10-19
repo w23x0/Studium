@@ -71,7 +71,7 @@ const MAX_SUBJECT_DEPTH = 4;
 const SCAN_TTL_MS = 2000;
 /** 切分结果所在的子目录名：`书库处理/` 的产出格式，真书库与样例书库都是这样。 */
 export const BOOK_DIR = 'm07';
-/** 不往里找的目录：切分结果目录与页段。（原来还跳过 `m08`；知识点已取消、不再有这种目录，一并去掉。） */
+/** 不往里找的目录：切分结果目录与页段。 */
 const SKIP_DIR = new RegExp(`^(\\.|node_modules$|${BOOK_DIR}$|p\\d+-\\d+$)`);
 
 export class Library {
