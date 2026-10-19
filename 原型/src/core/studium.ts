@@ -1014,7 +1014,10 @@ export class Studium {
         flags.ended?.closed === false &&
         (opened.ticket === undefined ||
           !learnings.some(
-            (x) => x.status === '合上' && x.ticket.newPoint === opened.ticket?.newPoint,
+            (x) =>
+              x.status === '合上' &&
+              x.ticket.newPoint === opened.ticket?.newPoint &&
+              x.openedAt > opened.at,
           ));
       if (parking !== undefined && (unresolved || flags.shelved !== undefined)) {
         const text = `缺：${parking.missing
@@ -1630,8 +1633,8 @@ export class Studium {
   private async revisitOpening(t: Ticket): Promise<string[]> {
     const r = t.revisit;
     if (r === undefined) return [];
-    const one = await this.learned.one(r.ofLoop).catch(() => undefined);
-    if (one === undefined) return [];
+    // 交卡时 revisitProblem 已核过这次学习存在；读不到就是真出错，照抛
+    const one = await this.learned.one(r.ofLoop);
     const verdict = one.verdict;
     const strengths = (verdict?.understanding ?? [])
       .map((u) => `${u.text}（${u.independence}、${u.durability}）`)
@@ -2322,8 +2325,6 @@ function formatDuration(ms: number): string {
   if (h < 48) return `${String(Math.round(h))} 小时`;
   return `${String(Math.round(h / 24))} 天`;
 }
-
-/** 笔记提取：开场里最多放多少字笔记原文，超出的让模型用 read_source 读。 */
 
 /** 把 project_material 记录折叠成当前选用的资料（按选用顺序）。 */
 export function foldMaterials(recs: LogRecord[]): { book: string; addedAt: string }[] {

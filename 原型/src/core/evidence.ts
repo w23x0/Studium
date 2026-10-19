@@ -508,11 +508,10 @@ export class Evidence {
       else groups.unclosed.push(brief);
     }
     // 积压 = 没合上、且之后没有新点文字相同的一次合上的学习
-    const closedPoints = new Set(
-      groups.closed.flatMap((b) => (b.newPoint !== undefined ? [b.newPoint.id] : [])),
-    );
     const parked = groups.unclosed.filter(
-      (b) => b.newPoint === undefined || !closedPoints.has(b.newPoint.id),
+      (b) =>
+        b.newPoint === undefined ||
+        !groups.closed.some((c) => c.newPoint?.id === b.newPoint?.id && c.openedAt > b.openedAt),
     ).length;
     const counts = {
       inProgress: groups.inProgress.length,
