@@ -17,6 +17,9 @@ import {
   toolNames,
 } from './共用/w3-flow.ts';
 
+/** 学习结束后照常挂在这次学习下的后台整理（状态整理、教法记录），不算“另开的会话”。 */
+const BACKGROUND: string[] = ['m15', 'm10'];
+
 const apps: App[] = [];
 afterEach(async () => {
   for (const a of apps.splice(0)) await a.close();
@@ -50,7 +53,7 @@ describe('删小卡、分叉、停车记录（W3）', () => {
     const steps = ofType(recs, 'after_loop_step').map((r) => r.record.step);
     expect(steps, '没合上之后的清单只有出卡一步').toEqual(['card_ready']);
     expect(
-      (await sessionList(app)).filter((s) => s.parent === loop),
+      (await sessionList(app)).filter((s) => s.parent === loop && !BACKGROUND.includes(s.kind)),
       '不另开挂在这次学习下的会话（停车记录、小卡）',
     ).toEqual([]);
     expect(
@@ -117,7 +120,7 @@ describe('删小卡、分叉、停车记录（W3）', () => {
       ).toBe(false);
     }
     expect(
-      (await sessionList(app)).filter((s) => s.parent === loop),
+      (await sessionList(app)).filter((s) => s.parent === loop && !BACKGROUND.includes(s.kind)),
       '不另开会话',
     ).toEqual([]);
   });
