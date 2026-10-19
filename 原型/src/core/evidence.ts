@@ -33,6 +33,7 @@ import {
   type NumberedRecord,
   type Ticket,
 } from '../shared/records.ts';
+import { currentGoal } from './goal.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import type { Learned } from './learned.ts';
 import { locate } from './locate.ts';
@@ -61,6 +62,8 @@ export interface EvidenceDeps {
   inputs?: Inputs;
   /** 教学工具（批 7）。 */
   teaching: TeachingTools;
+  /** 会联网搜索的会话种类（外发披露用；来自 Studium.kind，不另写名单）。 */
+  webSearchKinds: () => ConversationKind[];
 }
 
 export class Evidence {
@@ -350,10 +353,7 @@ export class Evidence {
     const main = await this.d.hub.opened(mainId);
     if (main.kind !== 'main') throw new BadRequestError('这不是一个项目。');
     const mainRecs = await this.d.hub.records(mainId);
-    const goal = mainRecs
-      .map((r) => r.record)
-      .filter((r) => r.type === 'project_goal')
-      .at(-1);
+    const goal = currentGoal(mainRecs);
     const title = mainRecs
       .map((r) => r.record)
       .filter((r) => r.type === 'project_title')
@@ -398,7 +398,7 @@ export class Evidence {
     return {
       mainSessionId: mainId,
       title: title?.type === 'project_title' ? title.title : main.title,
-      ...(goal?.type === 'project_goal' ? { goal: goal.text } : {}),
+      ...(goal !== undefined ? { goal: goal.goal.text } : {}),
       ...(dl.deadline !== undefined ? { deadline: dl.deadline } : {}),
       ...(dl.note !== undefined ? { deadlineNote: dl.note } : {}),
       materialCount: foldMaterials(mainLog).length,
@@ -583,7 +583,15 @@ export class Evidence {
         '你对这些记录提的异议',
         '你的产出物（笔记、推导、论文、方法比较）的当前版本和你的修改（在“写产出”对话里会读到）',
         '你加的图片（只在转写时送去；对话里只送转写出的文字）',
+        '畅谈和导航对话里模型拟的联网搜索词与要打开的网址',
       ],
+      webSearch: {
+        sessions: this.d.webSearchKinds().map((kind) => ({
+          kind,
+          label: CONVERSATION_KIND_LABELS[kind],
+        })),
+        note: '这些对话里模型可以自己联网搜索、打开网页：搜索词和网址由模型从对话与记录里拟出，经上面的模型服务发出；搜到的内容回到对话里。',
+      },
       sessions: kinds.filter((k) => !LATER_KINDS.includes(k)).map(sessionRow),
       // 批 8 起新增的会话类单列（早先的验收测试规定 sessions 就是原来那八类，不能往里加）
       laterSessions: kinds.filter((k) => LATER_KINDS.includes(k)).map(sessionRow),

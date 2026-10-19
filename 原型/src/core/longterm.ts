@@ -18,6 +18,7 @@ import type { Learned } from './learned.ts';
 import { routeDeviations } from './route-deviations.ts';
 import type { M15 } from './knowledge/m15.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
+import { currentGoal, describeGoal } from './goal.ts';
 import { BadRequestError, foldDeadline } from './studium.ts';
 
 /** 期限还有几天内算“临近”，进“今天该做的”（实现细节，可调）。 */
@@ -461,8 +462,9 @@ export class LongTerm {
 
   /** 复盘开场（会话/导航.md「二级功能」阶段进展与复盘）：读学过的记录上 / 中层、停车场、现算的路线偏差。 */
   private async reviewOpening(mainId: string, since: string, until: string): Promise<string> {
-    const recs = (await this.hub.records(mainId)).map((r) => r.record);
-    const goal = recs.filter((r) => r.type === 'project_goal').at(-1);
+    const numbered = await this.hub.records(mainId);
+    const recs = numbered.map((r) => r.record);
+    const goal = currentGoal(numbered);
     const dl = foldDeadline(recs);
     const inWin = (at: string): boolean => at >= since && at <= until;
     // 这段时间动过的学习：它自己的正本里有记录落在窗口内
@@ -481,7 +483,7 @@ export class LongTerm {
     const earlier = (await this.reviews(mainId)).filter((r) => r.summary !== undefined);
     return [
       `这一次的活：给学习者做一次阶段复盘（回看 ${since.slice(0, 10)} 到 ${until.slice(0, 10)}），不是谈方向。`,
-      `方向目标：${goal?.type === 'project_goal' ? goal.text : '（还没有）'}；期限：${dl.deadline ?? '没有记'}`,
+      `${goal !== undefined ? describeGoal(goal.goal) : '方向目标：（还没有）'}；期限：${dl.deadline ?? '没有记'}`,
       '',
       '── 这段时间的学习（学过的记录上层 / 中层）──',
       learnings

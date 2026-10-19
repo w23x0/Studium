@@ -16,7 +16,15 @@ export function goalTalkResponder(ctx: FakeContext): FakeStep | undefined {
     if (ctx.input.role === 'program') return { text: '你想学到什么程度？' };
     if (ctx.input.text.includes('能自己推导')) {
       return {
-        calls: [{ name: 'settle_goal', args: { goal: GOAL, project_name: PROJECT_NAME } }],
+        calls: [
+          {
+            name: 'settle_goal',
+            args: {
+              title: PROJECT_NAME,
+              abilities: [{ ability: GOAL, reason: '想自己推导常见问题' }],
+            },
+          },
+        ],
         text: '那就这么定了。',
       };
     }

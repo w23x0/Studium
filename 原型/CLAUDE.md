@@ -65,14 +65,15 @@
 ## 真模型
 
 走产品负责人本机的 Claude 订阅：本机先用 `claude` 登录一次，再 `npm start`。Agent SDK 的内置工具全关、
-不读 CLAUDE.md 与设置（`settingSources: []`）、系统提示用我们自己的。它自己的会话文件存在 `~/.claude/projects/`
+不读 CLAUDE.md 与设置（`settingSources: []`）、系统提示用我们自己的。畅谈与导航放开 WebSearch / WebFetch
+（其余会话不开）。它自己的会话文件存在 `~/.claude/projects/`
 下以数据目录命名的文件夹里，只作续接用；我们的正本是 `var/sessions/*.jsonl`。
 
 ## 正本记录
 
 每个会话一个 `var/sessions/<会话 id>.jsonl`，一行一条，行号 = 引用地址。类型见 `src/shared/records.ts`：
 `session_opened` · `user_message` · `assistant_message` · `model_raw`（适配层吐出的原始消息，含思考块）·
-`model_session`（续接凭据）· `turn_failed` · `program_fact` · `tool_call` · `sandbox_action`（沙盒里的读 / 写 / 跑命令；`tag` 由程序按路径打：`诊断`、`教学工具:<文件名>`）· 一次学习相关（`close_requested` `guard_verdict` `loop_ended` `after_loop_step`；搁置与恢复 `loop_shelved` `loop_resumed`）· `project_goal` `project_title`（项目名随方向变，开头那行不改）· `task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `choice_card` `choice_made` `route_decision`（路线决定；理由必标行号）· 长期功能（`reminder_added` `reminder_closed`；`session_opened.resumeOf` `review`、`Ticket.revisit` `returnTo` `resumeOf`）· `Ticket.stageCheck`（阶段验收）。学习者对守卫判定的异议是带 `objection` 标记的 `user_message`；附图的学习者消息带 `images`（原图 id、转写原文、发出的文字、转写模型；转写文字已并进 `text`）；对 M10 / M15 记录的异议另存 `knowledge/objections/`、学习者对 M15 记录的确认 / 否认另存 `knowledge/m15/confirmations.jsonl`（都只追加，不改原记录）；学习者对教材原文的报错另存 `knowledge/source-reports/`（只追加，不改书库）。左栏的界面操作（置顶、从列表删掉——只藏起来、对话改名）另存 `ui/sidebar.jsonl`（只追加，读时折叠，`src/core/sidebar.ts`）；项目改名是主对话里 `source: 'learner'` 的 `project_title`。加类型只能加，不改旧字段的意思。
+`model_session`（续接凭据）· `turn_failed` · `program_fact` · `tool_call` · `sandbox_action`（沙盒里的读 / 写 / 跑命令；`tag` 由程序按路径打：`诊断`、`教学工具:<文件名>`）· 一次学习相关（`close_requested` `guard_verdict` `loop_ended` `after_loop_step`；搁置与恢复 `loop_shelved` `loop_resumed`）· `project_goal` `project_title`（项目名随方向变，开头那行不改；新 `project_goal` 带标题、各块能力 / 理由 / 确认理由、顺序参考、期限、临时、`supersedes`）· `turn_context`（主对话每轮从记录重建的开场，`forLine` 指那轮输入的行）· `task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `choice_card` `choice_made` `route_decision`（路线决定；理由必标行号）· 长期功能（`reminder_added` `reminder_closed`；`session_opened.resumeOf` `review`、`Ticket.revisit` `returnTo` `resumeOf`）· `Ticket.stageCheck`（阶段验收）。学习者对守卫判定的异议是带 `objection` 标记的 `user_message`；附图的学习者消息带 `images`（原图 id、转写原文、发出的文字、转写模型；转写文字已并进 `text`）；对 M10 / M15 记录的异议另存 `knowledge/objections/`、学习者对 M15 记录的确认 / 否认另存 `knowledge/m15/confirmations.jsonl`（都只追加，不改原记录）；学习者对教材原文的报错另存 `knowledge/source-reports/`（只追加，不改书库）。左栏的界面操作（置顶、从列表删掉——只藏起来、对话改名）另存 `ui/sidebar.jsonl`（只追加，读时折叠，`src/core/sidebar.ts`）；项目改名是主对话里 `source: 'learner'` 的 `project_title`。加类型只能加，不改旧字段的意思。
 
 ## 本机试用
 
