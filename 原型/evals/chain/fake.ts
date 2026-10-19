@@ -96,26 +96,6 @@ function system(leak: boolean) {
         ],
       };
     }
-    if (has('write_formation_record')) {
-      const line = learnerLine(text, '终点减起点');
-      return {
-        calls: [
-          {
-            name: 'write_formation_record',
-            args: {
-              new_point: 'p-displacement',
-              clause: 'c-disp-from-pos',
-              start_points: ['p-position'],
-              understanding: '位移只看起点终点',
-              process: '自己说出',
-              unmet: '',
-              evidence_strength: '仅当场；独立',
-              evidence_lines: [line],
-            },
-          },
-        ],
-      };
-    }
     if (has('write_strategy_record')) {
       const line = Number(/L(\d+) 学习者/.exec(text)?.[1] ?? 0);
       return {

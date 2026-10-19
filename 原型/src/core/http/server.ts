@@ -641,7 +641,12 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     } else if (a === 'm15' && b === 'state' && n === 3) {
       send(res, 200, (await ev.state()) satisfies StateResponse);
     } else if (a === 'objections' && n === 2) {
-      const objections = ev.objections(q.get('kind') ?? undefined, q.get('record') ?? undefined);
+      // 只认这三种指向；别的（比如已经没有的 m09）回 400，不悄悄给空列表
+      const kind = q.get('kind') ?? undefined;
+      if (kind !== undefined && !['guard_verdict', 'm10', 'm15'].includes(kind)) {
+        throw new BadRequest(`异议指向的种类没有 ${kind}`);
+      }
+      const objections = ev.objections(kind, q.get('record') ?? undefined);
       send(res, 200, { objections } satisfies ObjectionsResponse);
     } else if (a === 'teaching-tools' && n === 2) {
       send(res, 200, (await ev.teachingTools()) satisfies TeachingToolsResponse);

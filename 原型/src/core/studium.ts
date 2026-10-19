@@ -99,7 +99,7 @@ export class Studium {
   /** 闭环中途：通知 M05 → 小卡 → 分叉 / 搁置 / 停车记录（批 5）。 */
   private readonly detours: Detours;
 
-  /** 跨闭环的长期功能（批 6）：复习 / 复检、降档、当前视图、接着学、复盘、提醒、路线偏差。 */
+  /** 长期功能：复习 / 复检、接着学、阶段复盘、提醒与今天该做的、路线偏差。 */
   readonly longterm: LongTerm;
 
   /** 练习任务（批 9，M03）：布置 → 作答 → 反馈 → 完成 / 放弃，习题清单，重复错误成模式，题型归纳，阶段验收。 */
@@ -163,7 +163,7 @@ export class Studium {
 
   private readonly idListeners = new Set<(prefix: string, id: string) => void>();
 
-  /** 程序生成的编号（选择卡、M09 / M15 / M10 记录）；录带按生成顺序给它们稳定记号。 */
+  /** 程序生成的编号（选择卡、M15 / M10 记录等）；录带按生成顺序给它们稳定记号。 */
   private newId(prefix: string): string {
     const id = `${prefix}-${randomBytes(4).toString('hex')}`;
     for (const fn of this.idListeners) fn(prefix, id);
@@ -779,8 +779,8 @@ export class Studium {
         await this.hub.send(mainId, {
           role: 'program',
           text: closed
-            ? `“${opened.title}”合上了（学习者已确认）。下一张选择卡正在出，出好会贴在这里。`
-            : `“${opened.title}”没合上就结束了。下一张选择卡正在出，出好会贴在这里。`,
+            ? `“${opened.title}”合上了（学习者已确认）。下一张卡正在出，出好会贴在这里。`
+            : `“${opened.title}”没合上就结束了。下一张卡正在出，出好会贴在这里。`,
         });
         const card = await this.requestCard(
           closed ? `合上：${opened.title}（${loopId}）` : `没合上：${opened.title}（${loopId}）`,
@@ -1759,7 +1759,7 @@ export class Studium {
 
   /**
    * 交给 M15 的 M01 事实：与 M04 取不同的字段（03「M15」读什么）——时间、间隔、停顿、中断与停下的地方、
-   * 学习者的话（含紧邻的前一句教学作前序事件）。不给诊断记录、守卫判定、M09，也不给“合上没有”。
+   * 学习者的话（含紧邻的前一句教学作前序事件）。不给诊断记录、守卫判定，也不给“合上没有”。
    */
   private async stateFacts(covered: Record<string, number>) {
     const sessions = this.hub
@@ -2094,7 +2094,7 @@ export class Studium {
     return {
       name: 'write_strategy_record',
       description:
-        '写一条个人策略过程记录（M10 自己的记录，不进 M09）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这个闭环的行号。单次记录不证明因果。',
+        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这个闭环的行号。单次记录不证明因果。',
       input: {
         conditions: z.string(),
         strategies: z.string(),

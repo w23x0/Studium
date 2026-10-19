@@ -1,5 +1,5 @@
 // M14 知识产出物存放处（M14 审查单）：学习者自己的产出物对象、版本链、相关文献、“写产出”对话的绑定。
-// 每类一个只追加的 JSONL，永不改写；每次保存 = 新版本。不写 M09。
+// 每类一个只追加的 JSONL，永不改写；每次保存 = 新版本。
 import { join } from 'node:path';
 import type { LiteratureEntry, OutputObject, OutputTask, OutputVersion } from '../../shared/m14.ts';
 import { appendJsonl, readJsonl } from './jsonl.ts';
