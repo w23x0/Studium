@@ -89,10 +89,8 @@ function responder(guardLine: { line: number }) {
       case 'loop':
         if (ctx.input.text.includes('位移就是终点减起点')) {
           return {
-            calls: [
-              { name: 'write_diagnosis', args: { text: '学习者自己说清了' } },
-              { name: 'request_close', args: { reason: '说清了' } },
-            ],
+            sandbox: [{ op: 'append', path: '诊断.md', content: '学习者自己说清了\n' }],
+            calls: [{ name: 'request_close', args: { reason: '说清了' } }],
           };
         }
         return { text: '我们从位置出发。你说说位移是什么？' };

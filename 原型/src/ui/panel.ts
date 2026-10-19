@@ -5,7 +5,7 @@ import type { BBox } from '../shared/protocol.ts';
 /** 面板里能看的东西。 */
 export type PanelTarget =
   | { kind: 'home' }
-  /** verdictLine：滚到这次判断；noteLine：滚到这一轮老师的观察（从“出现在教法变化之后”点进来）。 */
+  /** verdictLine：滚到这次判断；noteLine：滚到这一轮老师的观察（从“出现在某段教学之后”点进来）。 */
   | { kind: 'loop'; loopId: string; verdictLine?: number; noteLine?: number }
   | { kind: 'card'; cardId: string; option?: number }
   /** 我学会的：不给 = 全部；point = 这个点的经过；recordId = 那条记录所在点的经过。 */
@@ -15,10 +15,6 @@ export type PanelTarget =
   /** 教法（教学工具）：不给名字 = 列表；给名字 = 这一份的全文。 */
   | { kind: 'tools'; name?: string }
   | { kind: 'disclosure' }
-  /** 练习里看到的（批 9）：常犯的错 + 这类题怎么想；summary 给了就展开那一份归纳。 */
-  | { kind: 'practice'; summary?: string }
-  /** 书里的习题（批 9）：给章就只看这一章。 */
-  | { kind: 'exercises'; book: string; chapter?: string }
   /** 资料：不给书 = 书列表；给书 = 这本书的目录。 */
   | { kind: 'library'; book?: string }
   /** all = 不限项目资料、查全部。 */
@@ -69,7 +65,6 @@ export function isWideTarget(t: PanelTarget): boolean {
     t.kind === 'search' ||
     t.kind === 'source' ||
     t.kind === 'page' ||
-    t.kind === 'exercises' ||
     t.kind === 'output'
   );
 }

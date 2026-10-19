@@ -63,7 +63,7 @@ export function responder(state: FlowState) {
           return { text: '我们开始，你说说位移是什么？' };
         if (ctx.input.text.includes('终点减起点')) {
           return {
-            calls: [{ name: 'write_diagnosis', args: { text: DIAGNOSIS } }],
+            sandbox: [{ op: 'append', path: '诊断.md', content: DIAGNOSIS }],
             text: '换个情境说说？',
           };
         }

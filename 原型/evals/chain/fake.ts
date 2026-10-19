@@ -128,7 +128,10 @@ function system(leak: boolean) {
         : ctx.input.role === 'program'
           ? '我们从你会的位置说起。你觉得位移是什么？'
           : '说说看：走一圈回到原点，位移是多少？';
-      return { calls: [{ name: 'write_diagnosis', args: { text: '观察到的' } }], text: say };
+      return {
+        sandbox: [{ op: 'append', path: '诊断.md', content: '观察到的\n' }],
+        text: say,
+      };
     }
     return { text: '好。' };
   };

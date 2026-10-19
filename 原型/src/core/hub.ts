@@ -9,15 +9,17 @@ import {
   type SessionSummary,
   type ServerEvent,
 } from '../shared/protocol.ts';
-import type {
-  ConversationKind,
-  ImageInput,
-  LogRecord,
-  NumberedRecord,
-  ResumeOrigin,
-  ReviewWindow,
-  SessionOpened,
-  Ticket,
+import {
+  DIAGNOSIS_TAG,
+  TEACHING_TOOL_TAG,
+  type ConversationKind,
+  type ImageInput,
+  type LogRecord,
+  type NumberedRecord,
+  type ResumeOrigin,
+  type ReviewWindow,
+  type SessionOpened,
+  type Ticket,
 } from '../shared/records.ts';
 import type { DerivedIndex } from './index/derived-index.ts';
 import { isSessionId, type DataDir } from './log/data-dir.ts';
@@ -441,9 +443,9 @@ const TEACHING_TOOLS_PREFIX = '只读/教学工具/';
 function sandboxTag(action: SandboxActionEvent['action']): string | undefined {
   const path = action.path;
   if (path === undefined) return undefined;
-  if (action.op === 'write' && path === '诊断.md') return '诊断';
+  if (action.op === 'write' && path === '诊断.md') return DIAGNOSIS_TAG;
   if (action.op === 'read' && path.startsWith(TEACHING_TOOLS_PREFIX)) {
-    return `教学工具:${path.slice(TEACHING_TOOLS_PREFIX.length)}`;
+    return `${TEACHING_TOOL_TAG}${path.slice(TEACHING_TOOLS_PREFIX.length)}`;
   }
   return undefined;
 }

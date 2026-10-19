@@ -182,7 +182,6 @@ function searchableText(r: LogRecord): string {
     case 'user_message':
     case 'assistant_message':
     case 'program_fact':
-    case 'loop_note':
     case 'project_goal':
       return r.text;
     case 'session_opened':

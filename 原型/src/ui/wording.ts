@@ -2,12 +2,9 @@
 // 内部词（闭环、选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里；
 // wording.test.ts 会查。对照：右边注释是内部叫法，只给写代码的人看。
 import type { LoopStatus, SourceReportKind, StateRecordView } from '../shared/protocol.ts';
-import { WP } from './wording-practice.ts';
 import { WS } from './wording-sidebar.ts';
 
 export const W = {
-  /** 练习（批 9）的叫法在 wording-practice.ts。 */
-  practice: WP,
   /** 左栏、全部项目页、账号菜单与设置的叫法在 wording-sidebar.ts。 */
   sidebar: WS,
   // ── 项目页 ──
@@ -406,34 +403,12 @@ export const W = {
   toolsUsedHint: '老师按需取用的；点开看全文。',
   toolsUsedNone: '这次没取用过。',
   toolTimes: (n: number) => `${String(n)} 次`,
-  // 每轮的教法强度
-  intensity: '这一轮怎么教的',
-  intensityDims: {
-    info: '信息量',
-    hint: '提示',
-    challenge: '挑战',
-    pace: '节奏',
-    lean: '讲还是练',
-  } as const,
-  intensityDimsLong: {
-    info: '信息量',
-    hint: '提示强度',
-    challenge: '挑战程度',
-    pace: '节奏',
-    lean: '偏讲还是偏练',
-  } as const,
-  leanValue: { 输入: '偏讲', 均衡: '讲练各半', 练习: '偏练' } as Record<string, string>,
-  intensityWhy: '为什么这样调',
-  intensityTrend: '这段学习里教法怎么变的',
-  intensityTrendHint:
-    '每一行是一项，从左到右是一轮一轮；格子越高越多（节奏越高越快，讲还是练越高越偏练）。',
-  intensityTurn: (n: number) => `第 ${String(n)} 轮`,
-  intensityUnmarked: (n: number) => `另有 ${String(n)} 次观察没记这一轮怎么教的。`,
-  intensityNone: '还没记过每一轮怎么教的。',
-  direction: { 升: '往上走', 降: '往下走', 持平: '没变', 起伏: '有起有落' } as const,
-  trendSummary: '教法强度的走向',
+  // 阶段验收（练习整块删了以后只留说明）
+  stageCheck: '阶段验收',
+  stageCheckHint: '看你自己能做到哪；默认不给提示',
+  stageCheckBanner: '这次是阶段验收，默认不给提示。做完不等于学完，学没学会照常看你讲得怎么样。',
   selfCheck: '老师先查了自己的教法',
-  selfCheckHint: '你的状态里有出现在教法变化之后的，老师先查是不是自己的教法引起的：',
+  selfCheckHint: '你的状态里有出现在某段教学之后的，老师先查是不是自己的教法引起的：',
   selfCheckStates: (n: number) => `对照了你的 ${String(n)} 条状态`,
   // 我的状态：来源与确认
   sourceLevel: {
@@ -451,16 +426,7 @@ export const W = {
   stateConfirmed: '你说过：对，是这样',
   stateDenied: '你说过：不对',
   stateDeniedSent: '记下了。下次整理你的状态时会把你的话带上。',
-  afterTeaching: (what: string) => `这是在${what}之后出现的`,
-  afterTeachingUnknown: '这是在老师调整教法之后出现的',
   afterTeachingGo: '看那一轮',
-  teachingChange: {
-    info: { up: '老师讲得更多', down: '老师讲得少了' },
-    hint: { up: '老师把提示给多', down: '老师把提示变少' },
-    challenge: { up: '老师把题目加难', down: '老师把难度放低' },
-    pace: { up: '老师加快节奏', down: '老师放慢节奏' },
-    lean: { up: '老师从多讲转向多让你练', down: '老师从多让你练转向多讲' },
-  } as const,
 
   // ── 我的产出：自己写的笔记整理、推导、小论文、方法比较（批 8b） ──
   outputs: '我的产出', // 知识产出物

@@ -8,7 +8,6 @@ const RELOAD_ON = new Set([
   'session_opened',
   'guard_verdict',
   'close_requested',
-  'loop_note',
   'loop_ended',
   'after_loop_step',
   'choice_card',
@@ -27,13 +26,6 @@ const RELOAD_ON = new Set([
   'reminder_closed',
   'talk_ended',
   'task_opened',
-  // 练习（批 9）：布置、作答、反馈、提示、做完 / 放下、归纳
-  'practice_assigned',
-  'practice_submitted',
-  'practice_feedback',
-  'practice_hint',
-  'practice_done',
-  'practice_summary',
 ]);
 
 function relevant(e: ServerEvent): boolean {

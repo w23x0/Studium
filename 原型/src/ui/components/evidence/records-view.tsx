@@ -12,7 +12,7 @@ import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel, useProject } from '../../panel.ts';
 import { DeviationsSection, LearnedPlaceholder } from '../longterm/learned.tsx';
-import { afterTeachingText, toolCounts, trendLines, verdictText } from '../../teaching-model.ts';
+import { toolCounts, verdictText } from '../../teaching-model.ts';
 import { W } from '../../wording.ts';
 import {
   Badge,
@@ -179,7 +179,7 @@ function StateRecord(props: { record: StateRecordView; onObjected: () => void })
       {after !== undefined && (
         <div className="bg-primary/5 flex flex-wrap items-center gap-x-2 gap-y-1 rounded-lg px-3 py-2 text-xs">
           <HistoryIcon className="text-primary size-3.5" />
-          <span>{afterTeachingText(after)}</span>
+          <span>{after.text}</span>
           <button
             type="button"
             className="text-primary hover:underline"
@@ -329,20 +329,6 @@ function Strategy(props: { record: StrategyView; onObjected: () => void }) {
             {tools.map((t) => (
               <ToolChip key={t.name} name={t.name} count={t.count} />
             ))}
-          </span>
-        </Field>
-      )}
-      {s.intensityTrend !== undefined && (
-        <Field label={W.trendSummary}>
-          <span className="flex flex-col gap-0.5 text-xs">
-            {trendLines(s.intensityTrend.summary).map((l) => (
-              <span key={l}>{l}</span>
-            ))}
-            {s.intensityTrend.unannotated > 0 && (
-              <span className="text-muted-foreground">
-                {W.intensityUnmarked(s.intensityTrend.unannotated)}
-              </span>
-            )}
           </span>
         </Field>
       )}
