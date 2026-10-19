@@ -7,7 +7,7 @@ import type {
   OutputResponse,
   SaveVersionRequest,
   VersionResponse,
-} from '../../src/shared/m14.ts';
+} from '../../src/shared/output.ts';
 import { join } from 'node:path';
 import { call, post, TOKEN } from './http.ts';
 import { tempDir } from './tmp.ts';

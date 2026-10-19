@@ -3,7 +3,7 @@
 // 每一版各有自己的引用，两版比较给出引用的增减。【知识点|…】【子句|…】不再是引用（W1 去知识点编号库）。只经 HTTP 验证。
 import { afterEach, describe, expect, it } from 'vitest';
 import { formatCitation } from '../../src/shared/citation.ts';
-import type { CompareResponse, OutputResponse } from '../../src/shared/m14.ts';
+import type { CompareResponse, OutputResponse } from '../../src/shared/output.ts';
 import type { App } from '../../src/core/app.ts';
 import { getJson } from '../helpers/http.ts';
 import { BOOK, createOutput, saveVersion, startOutputsApp } from '../helpers/outputs.ts';

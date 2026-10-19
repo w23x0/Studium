@@ -70,7 +70,7 @@ describe('分析层取消', () => {
       'm09',
     );
     // m10 / m15：种类认得，只是记录不存在
-    for (const kind of ['m10', 'm15']) {
+    for (const kind of ['pedagogy', 'state']) {
       const r = await post(app, '/objections', { kind, recordId: 'nope', text: '不对' });
       expect(r.status, `${kind} 种类照旧认（记录不存在回 400）`).toBe(400);
       expect(((await r.json()) as { error: string }).error, `${kind}：报的是找不到记录`).toContain(

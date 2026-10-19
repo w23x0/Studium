@@ -98,28 +98,28 @@ describe('验收：项目资料', () => {
 
   it('模型的资料工具：项目会话里默认限定，all=true 查全库；没选资料行为同以前', async () => {
     const { app, mainId } = await boot();
-    const run = async (kind: 'm05', name: string, args: Record<string, unknown>) =>
+    const run = async (kind: 'nav', name: string, args: Record<string, unknown>) =>
       (await toolOf(app, kind, mainId, name).run(args)).text;
 
     // 没选：全库
-    expect(await run('m05', 'search_textbook', { query: '加速度' })).toContain('ch01/sec-1.3.md');
-    expect(await run('m05', 'textbook_index', {})).toContain(SAMPLE_BOOK);
+    expect(await run('nav', 'search_textbook', { query: '加速度' })).toContain('ch01/sec-1.3.md');
+    expect(await run('nav', 'textbook_index', {})).toContain(SAMPLE_BOOK);
 
     await post(app, `/projects/${mainId}/materials`, { add: [SECOND_BOOK] });
-    const limited = await run('m05', 'search_textbook', { query: '加速度' });
+    const limited = await run('nav', 'search_textbook', { query: '加速度' });
     expect(limited).toContain('没找到');
     expect(limited).toContain('all=true');
-    expect(await run('m05', 'search_textbook', { query: '加速度', all: true })).toContain(
+    expect(await run('nav', 'search_textbook', { query: '加速度', all: true })).toContain(
       'ch01/sec-1.3.md',
     );
     // 明确指定书：不受限
-    expect(await run('m05', 'search_textbook', { query: '加速度', book: SAMPLE_BOOK })).toContain(
+    expect(await run('nav', 'search_textbook', { query: '加速度', book: SAMPLE_BOOK })).toContain(
       'ch01/sec-1.3.md',
     );
-    const index = await run('m05', 'textbook_index', {});
+    const index = await run('nav', 'textbook_index', {});
     expect(index).toContain(SECOND_BOOK.trim());
     expect(index).not.toContain(SAMPLE_BOOK);
-    expect(await run('m05', 'textbook_index', { all: true })).toContain(SAMPLE_BOOK);
+    expect(await run('nav', 'textbook_index', { all: true })).toContain(SAMPLE_BOOK);
   });
 
   it('闭环 / 守卫会话沿父子关系找到项目，用的是同一个资料范围', async () => {

@@ -27,7 +27,7 @@ export function responder(state: FlowState) {
   return (ctx: FakeContext): FakeStep | undefined => {
     const line = learnerLine(ctx.input.text, '终点减起点');
     switch (roleOf(ctx)) {
-      case 'm05':
+      case 'nav':
         return {
           calls: [
             {
@@ -93,7 +93,7 @@ export function responder(state: FlowState) {
             },
           ],
         };
-      case 'm10': {
+      case 'pedagogy': {
         if (ctx.input.role !== 'program') return { text: '好' };
         return {
           calls: [
@@ -109,7 +109,7 @@ export function responder(state: FlowState) {
           ],
         };
       }
-      case 'm15': {
+      case 'state': {
         if (ctx.input.role !== 'program') return { text: '好' };
         const sessionId = /一段学习 (\S+)「/.exec(ctx.input.text)?.[1] ?? '';
         const tired = learnerLine(ctx.input.text, '有点累');

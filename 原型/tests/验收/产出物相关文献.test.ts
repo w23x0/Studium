@@ -4,7 +4,7 @@
 import { readFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { LiteratureListResponse, LiteratureResponse } from '../../src/shared/m14.ts';
+import type { LiteratureListResponse, LiteratureResponse } from '../../src/shared/output.ts';
 import type { App } from '../../src/core/app.ts';
 import { getJson, post } from '../helpers/http.ts';
 import { BOOK, createOutput, startOutputsApp } from '../helpers/outputs.ts';
@@ -101,7 +101,7 @@ describe('产出物相关文献', () => {
     apps.push(app);
     const out = await createOutput(app, mainId, { title: 't', kind: '小论文', text: 'x' });
     await post(app, `/outputs/${out.id}/literature`, { title: 'a', relation: '1' });
-    const file = join(app.dataDir.root, 'knowledge', 'm14', 'literature.jsonl');
+    const file = join(app.dataDir.root, 'knowledge', 'output', 'literature.jsonl');
     const one = (await readFile(file, 'utf8')).split('\n').filter(Boolean);
     await post(app, `/outputs/${out.id}/literature`, { title: 'b', relation: '2' });
     const two = (await readFile(file, 'utf8')).split('\n').filter(Boolean);

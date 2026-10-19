@@ -101,13 +101,13 @@ describe('学习者异议', () => {
 
     const knowledge = (name: string) => join(app.dataDir.root, 'knowledge', name, 'records.jsonl');
     const snapshot = async () => ({
-      m10: await readFile(knowledge('m10'), 'utf8'),
-      m15: await readFile(knowledge('m15'), 'utf8'),
+      m10: await readFile(knowledge('pedagogy'), 'utf8'),
+      m15: await readFile(knowledge('state'), 'utf8'),
       loop: JSON.stringify(await records(app, loopId)),
     });
     const before = await snapshot();
-    const st = (await getJson<{ records: { id: string }[] }>(app, '/m15/state')).records[0];
-    const sr = (await getJson<{ records: { id: string }[] }>(app, '/m10/records')).records[0];
+    const st = (await getJson<{ records: { id: string }[] }>(app, '/state/records')).records[0];
+    const sr = (await getJson<{ records: { id: string }[] }>(app, '/pedagogy/records')).records[0];
     expect(st?.id, '有一条状态记录').toBeTruthy();
     expect(sr?.id, '有一条教法记录').toBeTruthy();
     const verdictLine =
@@ -124,8 +124,8 @@ describe('学习者异议', () => {
       '记进异议存放处，不进学习正本',
     ).toBe(false);
     for (const [kind, recordId] of [
-      ['m10', sr?.id],
-      ['m15', st?.id],
+      ['pedagogy', sr?.id],
+      ['state', st?.id],
     ] as const) {
       const r = await post(app, '/objections', { kind, recordId, text: `${kind}：${WORDS}` });
       expect(r.status, `${kind} 记录的异议收下`).toBe(201);
@@ -148,9 +148,9 @@ describe('学习者异议', () => {
     const stateRuns = () =>
       fake.opened.filter((s) => s.tools.some((t) => t.name === 'write_state_record')).length;
     expect(stateRuns(), '合上后整理过一次状态').toBe(1);
-    const st = (await getJson<{ records: { id: string }[] }>(app, '/m15/state')).records[0];
+    const st = (await getJson<{ records: { id: string }[] }>(app, '/state/records')).records[0];
     const NOTE = '我没说过累，是随口一说';
-    await post(app, '/objections', { kind: 'm15', recordId: st?.id, text: NOTE });
+    await post(app, '/objections', { kind: 'state', recordId: st?.id, text: NOTE });
 
     // 再开一次学习，没说话就结束：只有异议是新的
     flow.loopId = '';

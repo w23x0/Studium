@@ -13,7 +13,7 @@ const kindOf = (ctx: FakeContext) =>
   ctx.spec.tools.some((t) => t.name === 'submit_verdict')
     ? 'guard'
     : ctx.spec.tools.some((t) => t.name === 'submit_choice_card')
-      ? 'm05'
+      ? 'nav'
       : ctx.spec.tools.some((t) => t.name === 'request_close')
         ? 'loop'
         : 'main';
@@ -38,7 +38,7 @@ const route = (ctx: FakeContext) => ({
 function responder(guardLine: { line: number }) {
   return (ctx: FakeContext): FakeStep | undefined => {
     switch (kindOf(ctx)) {
-      case 'm05':
+      case 'nav':
         return {
           calls: [
             {
@@ -162,14 +162,14 @@ describe('M15 / M10 的读写范围与触发', () => {
   it('M15 只拿读对话与写自己两层的工具；M10 不读资料原文', async () => {
     const app = await boot();
     const m15 = app.studium
-      .kind('m15')
+      .kind('state')
       .tools('x')
       .map((t) => t.name);
     expect(m15.sort()).toEqual(
       ['read_session', 'read_state_records', 'write_current_state', 'write_state_record'].sort(),
     );
     const m10 = app.studium
-      .kind('m10')
+      .kind('pedagogy')
       .tools('x')
       .map((t) => t.name);
     expect(m10).not.toContain('read_source');
@@ -178,7 +178,7 @@ describe('M15 / M10 的读写范围与触发', () => {
 
   it('没有新的学习者的话不整理；M04 请求重新确认时照样整理', async () => {
     const app = await boot();
-    const count = () => app.hub.listSessions().filter((s) => s.kind === 'm15').length;
+    const count = () => app.hub.listSessions().filter((s) => s.kind === 'state').length;
     app.studium.organizeStateLater('测试');
     await app.studium.settled();
     expect(count()).toBe(0);

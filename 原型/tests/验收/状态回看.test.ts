@@ -51,7 +51,7 @@ function makeResponder() {
       };
     }
     switch (roleOf(ctx)) {
-      case 'm05':
+      case 'nav':
         return {
           calls: [
             {
@@ -66,7 +66,7 @@ function makeResponder() {
         };
       case 'loop':
         return { text: '我们开始。' };
-      case 'm15': {
+      case 'state': {
         if (ctx.input.role !== 'program') return { text: '好' };
         const loopId = /一段学习 (\S+)「/.exec(t)?.[1] ?? '';
         const line = learnerLine(t, '有点累');
@@ -132,7 +132,7 @@ async function m15Opening(app: App, nth: number): Promise<string> {
           '/sessions',
         )
       ).sessions
-        .filter((x) => x.kind === 'm15')
+        .filter((x) => x.kind === 'state')
         .sort(
           (a, b) => a.openedAt.localeCompare(b.openedAt) || a.sessionId.localeCompare(b.sessionId),
         )[nth - 1],
@@ -153,7 +153,7 @@ describe('验收：状态回看与学习者解释', () => {
     });
     apps.push(app);
     const mainId = await app.studium.ensureMain();
-    const empty = await getJson<StateTimelineResponse>(app, '/m15/timeline');
+    const empty = await getJson<StateTimelineResponse>(app, '/state/timeline');
     expect(empty.entries).toEqual([]);
     expect(empty.stages).toEqual([]);
 
@@ -162,7 +162,7 @@ describe('验收：状态回看与学习者解释', () => {
     const loop2 = await openLoop(app, mainId, 2);
     await tiredAndEnd(app, loop2);
 
-    const tl = await getJson<StateTimelineResponse>(app, '/m15/timeline');
+    const tl = await getJson<StateTimelineResponse>(app, '/state/timeline');
     expect(tl.entries).toHaveLength(2);
     const ats = tl.entries.map((e) => e.record.at);
     expect([...ats].sort()).toEqual(ats);
@@ -174,7 +174,7 @@ describe('验收：状态回看与学习者解释', () => {
     expect(first?.sourceLevel).toBe('自述');
     expect(first?.refs[0]?.quotes[0]?.text).toContain('有点累');
     // 回看是只读视图：不影响“我的状态”
-    expect((await getJson<StateResponse>(app, '/m15/state')).records).toHaveLength(2);
+    expect((await getJson<StateResponse>(app, '/state/records')).records).toHaveLength(2);
   });
 
   it('我的解释：只追加、不改原记录；回看里带着；下次整理读到并标为自述；坏请求被拒', async () => {
@@ -185,28 +185,28 @@ describe('验收：状态回看与学习者解释', () => {
     const mainId = await app.studium.ensureMain();
     const loop1 = await openLoop(app, mainId, 1);
     await tiredAndEnd(app, loop1);
-    const rec = (await getJson<StateResponse>(app, '/m15/state')).records[0];
+    const rec = (await getJson<StateResponse>(app, '/state/records')).records[0];
     const id = rec?.id ?? '';
-    const file = join(dataRoot, 'knowledge', 'm15', 'records.jsonl');
+    const file = join(dataRoot, 'knowledge', 'state', 'records.jsonl');
     const before = await readFile(file, 'utf8');
 
-    const res = await post(app, `/m15/records/${id}/explanations`, { text: `  ${EXPLAIN}  ` });
+    const res = await post(app, `/state/records/${id}/explanations`, { text: `  ${EXPLAIN}  ` });
     expect(res.status).toBe(201);
     const ex = ((await res.json()) as AddExplanationResponse).explanation;
     expect(ex).toMatchObject({ recordId: id, text: EXPLAIN });
     // 原记录一个字节都没动；解释另存
     expect(await readFile(file, 'utf8')).toBe(before);
     expect(
-      await readFile(join(dataRoot, 'knowledge', 'm15', 'explanations.jsonl'), 'utf8'),
+      await readFile(join(dataRoot, 'knowledge', 'state', 'explanations.jsonl'), 'utf8'),
     ).toContain(EXPLAIN);
     // 再补一句也是追加
-    await post(app, `/m15/records/${id}/explanations`, { text: '今天也没吃早饭' });
-    const tl = await getJson<StateTimelineResponse>(app, '/m15/timeline');
+    await post(app, `/state/records/${id}/explanations`, { text: '今天也没吃早饭' });
+    const tl = await getJson<StateTimelineResponse>(app, '/state/timeline');
     expect(tl.entries[0]?.explanations.map((e) => e.text)).toEqual([EXPLAIN, '今天也没吃早饭']);
     expect(tl.entries[0]?.record.text).toBe('学习者说有点累');
 
     // 模型查状态时看得到，并明说是学习者自述、原记录没改
-    const q = await toolOf(app, 'm05', mainId, 'query_state').run({ detail: true });
+    const q = await toolOf(app, 'nav', mainId, 'query_state').run({ detail: true });
     expect(q.text).toContain(EXPLAIN);
     expect(q.text).toContain('学习者补充的解释（自述，原记录没改');
 
@@ -222,12 +222,12 @@ describe('验收：状态回看与学习者解释', () => {
     await tiredAndEnd(app, loop3);
     expect(await m15Opening(app, 3)).not.toContain(EXPLAIN);
 
-    expect((await post(app, `/m15/records/${id}/explanations`, { text: '   ' })).status).toBe(400);
-    expect((await post(app, `/m15/records/${id}/explanations`, {})).status).toBe(400);
-    expect((await post(app, '/m15/records/st-不存在/explanations', { text: 'x' })).status).toBe(
+    expect((await post(app, `/state/records/${id}/explanations`, { text: '   ' })).status).toBe(400);
+    expect((await post(app, `/state/records/${id}/explanations`, {})).status).toBe(400);
+    expect((await post(app, '/state/records/st-不存在/explanations', { text: 'x' })).status).toBe(
       400,
     );
-    expect((await call(app, '/m15/records/x/explanations')).status).toBe(404);
+    expect((await call(app, '/state/records/x/explanations')).status).toBe(404);
   });
 
   it('只补了解释、没有新对话，也会触发下一次整理', async () => {
@@ -242,17 +242,17 @@ describe('验收：状态回看与学习者解释', () => {
     const mainId = await app.studium.ensureMain();
     const loop1 = await openLoop(app, mainId, 1);
     await tiredAndEnd(app, loop1);
-    const id = (await getJson<StateResponse>(app, '/m15/state')).records[0]?.id ?? '';
+    const id = (await getJson<StateResponse>(app, '/state/records')).records[0]?.id ?? '';
     // 没有新对话、没有新解释：不整理
     app.studium.organizeStateLater('测试：什么都没变');
     await app.studium.settled();
     expect(
       (await getJson<{ sessions: { kind: string }[] }>(app, '/sessions')).sessions.filter(
-        (s) => s.kind === 'm15',
+        (s) => s.kind === 'state',
       ),
     ).toHaveLength(1);
     // 补了解释就整理
-    await post(app, `/m15/records/${id}/explanations`, { text: EXPLAIN });
+    await post(app, `/state/records/${id}/explanations`, { text: EXPLAIN });
     app.studium.organizeStateLater('测试：学习者补了解释');
     await app.studium.settled();
     expect(await m15Opening(app, 2)).toContain(EXPLAIN);
@@ -274,8 +274,8 @@ describe('验收：状态回看与学习者解释', () => {
     const mainId = await a.studium.ensureMain();
     const loop1 = await openLoop(a, mainId, 1);
     await tiredAndEnd(a, loop1);
-    const id = (await getJson<StateResponse>(a, '/m15/state')).records[0]?.id ?? '';
-    expect((await post(a, `/m15/records/${id}/explanations`, { text: EXPLAIN })).status).toBe(201);
+    const id = (await getJson<StateResponse>(a, '/state/records')).records[0]?.id ?? '';
+    expect((await post(a, `/state/records/${id}/explanations`, { text: EXPLAIN })).status).toBe(201);
     expect(
       (
         await post(a, '/library/source-notes', {
@@ -310,7 +310,7 @@ describe('验收：状态回看与学习者解释', () => {
       library,
     });
     apps.push(b);
-    const tl = await getJson<StateTimelineResponse>(b, '/m15/timeline');
+    const tl = await getJson<StateTimelineResponse>(b, '/state/timeline');
     expect(tl.entries[0]?.explanations.map((e) => e.text)).toEqual([EXPLAIN]);
     const note = (
       await getJson<SourceNoteResponse>(

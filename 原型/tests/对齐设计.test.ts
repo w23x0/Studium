@@ -32,7 +32,7 @@ const ROUTE = { decision: '维持主线', reason: '按推荐往下学', basis: [
 function responder() {
   return (ctx: FakeContext): FakeStep | undefined => {
     switch (roleOf(ctx)) {
-      case 'm05':
+      case 'nav':
         return {
           calls: [
             {
@@ -97,7 +97,7 @@ describe('记录里存实际执行的模型', () => {
   it('M10 记录与守卫判定存模型自报的名字，不存适配器名', async () => {
     const { app, loopId } = await runLoop(new FakeModel({ responder: responder() }));
     const m10 = await readFile(
-      join(app.dataDir.root, 'knowledge', 'm10', 'records.jsonl'),
+      join(app.dataDir.root, 'knowledge', 'pedagogy', 'records.jsonl'),
       'utf8',
     ).catch(() => '');
     expect(m10).not.toContain('"model":"fake"');
@@ -137,7 +137,7 @@ describe('选择卡出处', () => {
     const app = await createApp({ dataRoot: await tempDir(), model, token: TOKEN, port: 0 });
     apps.push(app);
     await app.studium.requestCard('测试');
-    const spec = model.opened.find((s) => s.session?.kind === 'm05');
+    const spec = model.opened.find((s) => s.session?.kind === 'nav');
     const tool = spec?.tools.find((t) => t.name === 'submit_choice_card');
     if (!tool) throw new Error('没有出卡工具');
     return { app, schema: z.object(tool.input) };
@@ -170,7 +170,7 @@ describe('选择卡出处', () => {
 
     const model = new FakeModel({
       responder: (ctx) =>
-        roleOf(ctx) === 'm05'
+        roleOf(ctx) === 'nav'
           ? {
               calls: [
                 {
@@ -207,7 +207,7 @@ describe('畅谈结束后整理状态', () => {
     await app.studium.settled();
     const recs = (await app.hub.records(talk.sessionId)).map((r) => r.record);
     expect(recs.some((r) => r.type === 'talk_ended' && r.goal === GOAL)).toBe(true);
-    const m15 = app.hub.listSessions().filter((s) => s.kind === 'm15');
+    const m15 = app.hub.listSessions().filter((s) => s.kind === 'state');
     expect(m15.map((s) => s.parent)).toContain(talk.sessionId);
   });
 });

@@ -3,7 +3,7 @@
 // 每次保存同样是新版本，正文由程序按结构渲染（引用照样能核对）；不合格式的拒绝。只经 HTTP 验证。
 import { afterEach, describe, expect, it } from 'vitest';
 import { formatCitation } from '../../src/shared/citation.ts';
-import type { MethodComparison, OutputResponse } from '../../src/shared/m14.ts';
+import type { MethodComparison, OutputResponse } from '../../src/shared/output.ts';
 import type { App } from '../../src/core/app.ts';
 import { getJson, post } from '../helpers/http.ts';
 import { BOOK, createOutput, saveVersion, startOutputsApp } from '../helpers/outputs.ts';
