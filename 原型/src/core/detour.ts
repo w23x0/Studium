@@ -35,10 +35,10 @@ export interface DetourDeps {
   iso(): string;
   newId(prefix: string): string;
   describeTicket(t: Ticket): string;
-  /** M05 通用开场（方向、期限、资料、M09、闭环状态与数量、停车场）。 */
+  /** M05 通用开场（方向、期限、资料、学过的记录、学习状态与数量、停车场）。 */
   m05Opening(trigger: string, mainId: string): Promise<string>;
   /** 闭环开场（单子 + 知识片段 + “现在开始”）。 */
-  loopOpening(t: Ticket): string;
+  loopOpening(t: Ticket): Promise<string>;
   /** M05 会话共用的只读工具。 */
   m05ReadTools(sessionId: string): ToolSpec[];
 }
@@ -384,7 +384,7 @@ export class Detours {
         `返回条件：${fork.returnCondition}。`,
         `范围：${fork.scope ?? '补到父闭环够用为止，不要扩成一大块'}。`,
         '',
-        this.d.loopOpening(ticket),
+        await this.d.loopOpening(ticket),
       ].join('\n'),
     });
     return { choice: 'fork', forkLoopSessionId: child.sessionId };
@@ -463,7 +463,7 @@ export class Detours {
     });
     if (why !== undefined) return;
     const text = closed
-      ? `分叉闭环「${opened.title}」（${forkId}）合上了：补完了 ${what}，回到这里。分叉的学习记录已写进 M09（用 M09 查询工具看）。接着教本闭环：原来卡住的地方（学习者原话 ${fork.basisLines.map((l) => `L${String(l)}`).join('、')}）可以再来一次；补得牢不牢，仍看学习者接下来的表现。`
+      ? `分叉闭环「${opened.title}」（${forkId}）合上了：补完了 ${what}，回到这里。这次分叉学习的结果（单子与判定）记进学过的记录里了。接着教本闭环：原来卡住的地方（学习者原话 ${fork.basisLines.map((l) => `L${String(l)}`).join('、')}）可以再来一次；补得牢不牢，仍看学习者接下来的表现。`
       : `分叉闭环「${opened.title}」（${forkId}）没合上就结束了：${what} 没补好。学习者决定先回到这里，缺口已记进停车场。本闭环照常继续；用到 ${what} 的地方留意，别当成他已经会了。`;
     await this.d.hub().send(fork.fromLoop, { role: 'program', text });
   }
@@ -494,7 +494,7 @@ export class Detours {
     return [
       `这次的活：给一个${reason === 'shelved' ? '被学习者搁置' : '没合上就结束'}的闭环记停车记录（不是出选择卡）。`,
       '停车记录 = 缺在哪个出发点 + 恢复计划（何时、从哪接上）。可靠的搁置要有具体的恢复计划，而不是笼统的“以后再说”。',
-      '读下面的单子、教学侧中途报过的缺口和对话原文（需要时用 read_loop 或查 M09），用 submit_parking_note 交回，只交一次。',
+      '读下面的单子、教学侧中途报过的缺口和对话原文（需要时用 read_loop 读原文），用 submit_parking_note 交回，只交一次。',
       '',
       `闭环：「${opened.title}」（${loopId}）`,
       `单子：${opened.ticket ? this.d.describeTicket(opened.ticket) : '（缺）'}`,
@@ -577,7 +577,7 @@ export class Detours {
     );
   }
 
-  /** 重做一件被重启打断的活：小卡贴回闭环并告诉教学侧；停车记录照记（没合上就结束的补记清单步骤）。 */
+  /** 重做一件被重启打断的活：小卡贴回闭环并告诉教学侧；停车记录照记（重启前已经安排下去的那件）。 */
   async finishInterrupted(sessionId: string): Promise<void> {
     const job = this.jobs.get(sessionId);
     if (job === undefined) return;
@@ -610,14 +610,6 @@ export class Detours {
         });
       }
       throw err;
-    }
-    if (job.reason === 'ended_unclosed') {
-      await this.d.hub().record(job.loopId, {
-        type: 'after_loop_step',
-        at: this.d.iso(),
-        step: 'parked',
-        detail: '停车记录已写入（重启后补做）',
-      });
     }
   }
 

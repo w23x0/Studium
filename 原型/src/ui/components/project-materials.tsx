@@ -8,7 +8,6 @@ import {
   LibraryIcon,
   NotebookPenIcon,
   PlusIcon,
-  SparklesIcon,
   XIcon,
 } from 'lucide-react';
 import type { NoteSummary, ProjectMaterialView } from '../../shared/protocol.ts';
@@ -242,9 +241,6 @@ function MaterialRow(props: {
           <XIcon />
         </TooltipIconButton>
       </div>
-      {m.kind === 'note' && !missing && (
-        <ExtractButton book={m.book} projectId={props.projectId} onError={props.onError} />
-      )}
     </div>
   );
 }
@@ -306,7 +302,7 @@ function Picker(props: {
   );
 }
 
-/** 导入本机的笔记（文件或目录）；导入后可加进项目资料、可让系统找出写过的知识点。 */
+/** 导入本机的笔记（文件或目录）；导入后可加进项目资料。 */
 function NoteImport(props: {
   projectId: string;
   chosen: Set<string>;
@@ -449,58 +445,6 @@ function ImportResult(props: {
           </Button>
         )}
       </div>
-      <ExtractButton book={n.id} projectId={props.projectId} onError={undefined} />
-    </div>
-  );
-}
-
-/** “让系统从笔记里找出我写过的知识点”：后台跑，结果在“我学会的”里标作还没核实。 */
-function ExtractButton(props: {
-  book: string;
-  projectId: string;
-  onError: ((e: unknown) => void) | undefined;
-}) {
-  const panel = usePanel();
-  const [state, setState] = useState<'idle' | 'busy' | 'started'>('idle');
-  const [error, setError] = useState<string | undefined>();
-  if (state === 'started') {
-    return (
-      <div className="text-muted-foreground flex flex-wrap items-center gap-2 text-xs">
-        {W.noteExtractStarted}
-        <button
-          type="button"
-          className="text-primary hover:underline"
-          onClick={() => panel.show({ kind: 'learned' })}
-        >
-          {W.noteExtractOpen}
-        </button>
-      </div>
-    );
-  }
-  return (
-    <div className="flex flex-col gap-1">
-      <Button
-        variant="ghost"
-        size="xs"
-        className="text-muted-foreground self-start"
-        disabled={state === 'busy'}
-        onClick={() => {
-          setState('busy');
-          setError(undefined);
-          api
-            .extractNote(props.book, props.projectId)
-            .then(() => setState('started'))
-            .catch((e: unknown) => {
-              setState('idle');
-              if (props.onError !== undefined) props.onError(e);
-              else setError(errText(e));
-            });
-        }}
-      >
-        <SparklesIcon />
-        {W.noteExtract}
-      </Button>
-      {error !== undefined && <div className="text-destructive text-xs">{error}</div>}
     </div>
   );
 }

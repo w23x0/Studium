@@ -31,21 +31,19 @@ export const ACTIONS = [
   'objectToVerdict',
   'objectToRecord',
   'confirmRecord',
-  // 批 3a：项目资料、期限、笔记导入与提点
+  // 批 3a：项目资料、期限、笔记导入
   'changeMaterials',
   'setDeadline',
   'notes.import',
-  'extractNotePoints',
   // 批 5：小卡上的选择、搁置、恢复
   'chooseDetour',
   'shelveLoop',
   'resumeLoop',
-  // 批 6：接着学、提醒、复盘、重新分析
+  // 批 6：接着学、提醒、复盘
   'longterm.continueLoop',
   'longterm.addReminder',
   'longterm.closeReminder',
   'longterm.startReview',
-  'reanalyzeLoop',
   // 批 8：产出物、版本、文献、候选、写产出对话
   'outputs.create',
   'outputs.save',

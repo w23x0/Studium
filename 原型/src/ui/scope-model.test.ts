@@ -1,12 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { BookSummary, ExternalRecordView, TocEntry } from '../shared/protocol.ts';
-import {
-  chapterNumber,
-  chapterTitles,
-  groupBySubject,
-  noteImagePieces,
-  splitExternals,
-} from './scope-model.ts';
+import type { BookSummary, TocEntry } from '../shared/protocol.ts';
+import { chapterNumber, chapterTitles, groupBySubject, noteImagePieces } from './scope-model.ts';
 
 const book = (id: string, over: Partial<BookSummary> = {}): BookSummary => ({
   id,
@@ -82,22 +76,5 @@ describe('笔记里的图片引用', () => {
   });
   it('尖括号包的路径', () => {
     expect(noteImagePieces('![a](<图1.png>)')).toEqual([{ image: '图1.png', alt: 'a' }]);
-  });
-});
-
-describe('外部导入分档', () => {
-  const rec = (id: string, source: '自述' | '笔记'): ExternalRecordView => ({
-    id,
-    at: '2026-10-10T00:00:00Z',
-    source,
-    status: '未验证',
-    claim: id,
-    basis: '',
-    model: 'm',
-  });
-  it('按来源分开，新的在前', () => {
-    const s = splitExternals([rec('a', '自述'), rec('b', '笔记'), rec('c', '自述')]);
-    expect(s.self.map((r) => r.id)).toEqual(['c', 'a']);
-    expect(s.notes.map((r) => r.id)).toEqual(['b']);
   });
 });

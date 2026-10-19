@@ -77,27 +77,18 @@ export function responder(state: FlowState) {
                 closed: state.guardClosed,
                 basis: state.guardClosed ? '学习者自己说清了位移（见证据行）' : '还差一个情境',
                 evidence_lines: state.guardClosed ? [line] : [],
-              },
-            },
-          ],
-        };
-      case 'm09':
-        return {
-          calls: [
-            {
-              name: 'write_formation_record',
-              args: {
-                new_point: 'p-displacement',
-                clause: 'c-disp-from-pos',
-                start_points: ['p-position'],
-                understanding: '位移只看起点终点',
-                process: '自己说',
-                unmet: '',
-                new_point_evidence: { time: '仅当场', independence: '独立' },
-                start_point_evidence: [
-                  { point: 'p-position', time: '仅当场', independence: '独立' },
-                ],
-                evidence_lines: [line],
+                ...(state.guardClosed
+                  ? {
+                      understanding: [
+                        {
+                          text: '位移只看起点终点',
+                          lines: [line],
+                          independence: '独立',
+                          durability: '仅当场',
+                        },
+                      ],
+                    }
+                  : {}),
               },
             },
           ],
@@ -207,7 +198,7 @@ export async function requestClose(app: App, loopId: string, nth: number): Promi
   await settled(app, loopId);
 }
 
-/** 确认合上，并等后台（M09、下一张卡、M15、M10）都跑完。 */
+/** 确认合上，并等后台（下一张卡、M15、M10）都跑完。 */
 export async function confirmAndSettle(app: App, loopId: string): Promise<void> {
   expect((await post(app, `/sessions/${loopId}/confirm-close`)).status).toBe(202);
   await app.studium.settled();

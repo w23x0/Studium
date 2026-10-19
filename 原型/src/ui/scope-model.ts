@@ -1,5 +1,5 @@
-// 资料范围（批 3b）的纯转换：书按学科分组、章名、笔记里的图片引用、外部导入记录分档。
-import type { BookSummary, ExternalRecordView, TocEntry } from '../shared/protocol.ts';
+// 资料范围（批 3b）的纯转换：书按学科分组、章名、笔记里的图片引用。
+import type { BookSummary, TocEntry } from '../shared/protocol.ts';
 
 /** 个人笔记在书库里的学科名（核心给笔记的 subject）。 */
 export const NOTE_SUBJECT = '个人笔记';
@@ -85,16 +85,4 @@ function safeDecode(s: string): string {
     // 不是合法的 % 转义（路径里本来就有 %）：原样用，与核心导入时一致
     return s;
   }
-}
-
-/** 外部导入的记录按来源分两档（自己说会的 / 笔记里看到的），各自新的在前。 */
-export function splitExternals(records: ExternalRecordView[]): {
-  self: ExternalRecordView[];
-  notes: ExternalRecordView[];
-} {
-  const newest = [...records].reverse();
-  return {
-    self: newest.filter((r) => r.source === '自述'),
-    notes: newest.filter((r) => r.source === '笔记'),
-  };
 }

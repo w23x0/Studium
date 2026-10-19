@@ -34,7 +34,6 @@ describe('链路评测管道', () => {
       .filter((c) => c.outcome === '不过')
       .map((c) => [c.id, c.detail]);
     expect(failed).toEqual([]);
-    expect(r?.run.m09).toHaveLength(1);
     expect(r?.checks.find((c) => c.id === '守卫判定符合预期')?.outcome).toBe('过');
     expect(r?.run.interjection?.line).toBeGreaterThan(0);
     const report = renderReport({

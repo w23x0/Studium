@@ -62,7 +62,7 @@ export async function makeNotesDir(): Promise<{ dir: string; file1: string; file
 /** 从某个会话（项目主对话 id 也行）取一类会话的工具。 */
 export function toolOf(
   app: App,
-  kind: 'loop' | 'm05' | 'talk' | 'guard' | 'm09',
+  kind: 'loop' | 'm05' | 'talk' | 'guard',
   sessionId: string,
   name: string,
 ): ToolSpec {

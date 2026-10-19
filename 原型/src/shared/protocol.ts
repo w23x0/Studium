@@ -9,10 +9,12 @@ import type {
   Ticket,
   SourceReport,
   SourceReportKind,
+  Understanding,
 } from './records.ts';
-import type { RegressionView, TodayView } from './protocol-longterm.ts';
+import type { TodayView } from './protocol-longterm.ts';
 
 export type * from './protocol-longterm.ts';
+export type * from './protocol-learned.ts';
 export * from './protocol-cross.ts';
 export type * from './protocol-practice.ts';
 
@@ -111,10 +113,10 @@ export type TicketView = Ticket;
 /** 选项出处里的一条，已尽量回查。resolved 为假 = 查不到（原样给出 raw）。 */
 export interface SourceView {
   raw: string;
-  kind: 'm09_record' | 'loop_line' | 'book_line' | 'unknown';
+  kind: 'loop_line' | 'book_line' | 'unknown';
   resolved: boolean;
   label: string;
-  /** 回查到的内容：点的一句话、形成记录的理解、闭环那一行的原话。 */
+  /** 回查到的内容：学习那一行的原话、书里那几行原文。 */
   detail?: string;
   sessionId?: string;
   line?: number;
@@ -180,7 +182,9 @@ export interface GuardVerdictView {
   problem?: string;
   guardSessionId: string;
   model: ModelInfo;
-  /** 守卫引用的闭环行与那几行的原文。 */
+  /** 学习者实际表现出的理解与证据强度；判没合上时写的也照存（旧数据没有这一栏）。 */
+  understanding?: Understanding[];
+  /** 守卫引用的学习行与那几行的原文。 */
   quotes: QuoteView[];
   /** 触发这次判定的收口申请。 */
   request?: { line: number; at: string; by: 'model' | 'learner'; reason: string };
@@ -191,8 +195,6 @@ export interface DiagnosisView {
   line: number;
   at: string;
   text: string;
-  /** 这条诊断是“以前会的现在答不出”的结构化条目（批 6）。 */
-  regression?: RegressionView;
   /** 这一轮标的教法强度（信息量 / 提示强度 / 挑战程度 / 节奏 + 偏输入还是偏练习）；没标就没有。 */
   intensity?: Intensity;
 }
@@ -427,37 +429,6 @@ export interface ShelveRequest {
   note?: string;
 }
 
-export interface FormationView {
-  id: string;
-  at: string;
-  loopSessionId: string;
-  newPoint: PointRef;
-  clause: string;
-  startPoints: PointRef[];
-  understanding: string;
-  process: string;
-  unmet: string;
-  evidenceStrength: string;
-  evidence?: {
-    newPoint: { time: string; independence: string };
-    startPoints: { point: string; time: string; independence: string }[];
-  };
-  evidenceLines: number[];
-  /** 证据行在闭环正本里的原话。 */
-  quotes: QuoteView[];
-  model: ModelInfo;
-  objections: ObjectionView[];
-  /** 这个闭环的第几版分析（分析可重做、多版本并存；旧记录当第 1 版）。 */
-  version: number;
-  /** 是这个闭环的最新一版（当前视图取它；旧版本仍可查）。 */
-  latest: boolean;
-  level?: string;
-  summary?: string;
-  keywords?: string[];
-  /** 复习 / 复检闭环写的记录。 */
-  revisit?: { kind: '复习' | '复检'; formationIds: string[] };
-}
-
 export interface StrategyView {
   id: string;
   at: string;
@@ -557,10 +528,6 @@ export interface CurrentStateView {
   model: ModelInfo;
 }
 
-export interface FormationsResponse {
-  records: FormationView[];
-}
-
 export interface StrategiesResponse {
   records: StrategyView[];
 }
@@ -585,9 +552,9 @@ export interface VerdictObjectionRequest {
   text: string;
 }
 
-/** 对 M09 / M10 / M15 的一条记录提异议。 */
+/** 对 M10 / M15 的一条记录提异议。 */
 export interface RecordObjectionRequest {
-  kind: 'm09' | 'm10' | 'm15';
+  kind: 'm10' | 'm15';
   recordId: string;
   text: string;
 }
@@ -640,7 +607,6 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   talk: '谈方向',
   loop: '学习对话',
   guard: '判断学没学会',
-  m09: '写“我会什么”的记录',
   m05: '出下一步选项',
   m15: '整理“我的状态”',
   m10: '记教法效果',
@@ -995,34 +961,4 @@ export interface NoteImportResponse {
 
 export interface NotesResponse {
   notes: NoteSummary[];
-}
-
-export interface NoteExtractRequest {
-  /** 笔记 id。 */
-  book: string;
-  /** 挂在哪个项目下（可不填）。 */
-  projectId?: string;
-}
-
-/** 外部导入进 M09 的一条（学习者在系统之外学到的）：未验证，和闭环形成记录分开。 */
-export interface ExternalRecordView {
-  id: string;
-  at: string;
-  /** 自述 = 畅谈里学习者自己说会 · 笔记 = 从学习者笔记里提的。 */
-  source: '自述' | '笔记';
-  /** 一律“未验证”：闭环证据永远优先。 */
-  status: '未验证';
-  claim: string;
-  point?: { id: string; name: string };
-  /** 判读依据（如“笔记里有完整推导与自己的解释”“只说了会，没展开”）。 */
-  basis: string;
-  grade?: string;
-  /** 自述：畅谈会话与学习者的行；笔记：书 + 小节文件 + 行段。 */
-  talk?: { sessionId: string; lines: number[]; quotes: string[] };
-  note?: { book: string; file: string; from: number; to: number };
-  model: string;
-}
-
-export interface ExternalRecordsResponse {
-  records: ExternalRecordView[];
 }

@@ -1,5 +1,5 @@
 // M10 个人策略过程与效果层（M10 审查单）：这位学习者在什么闭环、诊断与状态条件下用过什么做法，之后 M04 的
-// 诊断怎么变。M10 自己的记录，不写入 M09；单次记录不证明因果。只追加。
+// 诊断怎么变。M10 自己的记录；单次记录不证明因果。只追加。
 import { join } from 'node:path';
 import { DIMENSIONS, DIMENSION_LABEL } from '../intensity.ts';
 import type { IntensityTrend } from '../../shared/records.ts';

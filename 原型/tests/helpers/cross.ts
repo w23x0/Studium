@@ -42,40 +42,11 @@ export async function makeCrossLibrary(): Promise<string> {
   return root;
 }
 
-/** 往数据目录里预先放一条 M09 形成记录（让某个点“合上过”）；要在 createApp 之前调。 */
-export async function seedKnown(dataRoot: string, points: string[]): Promise<void> {
-  const dir = join(dataRoot, 'knowledge', 'm09');
-  await mkdir(dir, { recursive: true });
-  await writeFile(
-    join(dir, 'records.jsonl'),
-    points
-      .map((point) =>
-        JSON.stringify({
-          id: `f-${point}`,
-          at: '2026-09-01T00:00:00.000Z',
-          loopSessionId: 'loop-seed',
-          newPoint: point,
-          clause: 'c-seed',
-          startPoints: [],
-          understanding: '会了',
-          process: '略',
-          unmet: '无',
-          evidenceStrength: '仅当场、独立',
-          evidenceLines: [],
-          model: 'seed',
-        }),
-      )
-      .join('\n') + '\n',
-  );
-}
-
 export async function bootCross(opts: {
   model: FakeModel;
-  known?: string[];
 }): Promise<{ app: App; mainId: string; dataRoot: string; library: string }> {
   const library = await makeCrossLibrary();
   const dataRoot = await tempDir();
-  if ((opts.known ?? []).length > 0) await seedKnown(dataRoot, opts.known ?? []);
   const app = await createApp({
     dataRoot,
     model: opts.model,

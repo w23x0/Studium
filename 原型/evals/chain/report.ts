@@ -38,7 +38,6 @@ const KIND_LABEL: Record<ConversationKind, string> = {
   talk: '畅谈',
   loop: '学习对话',
   guard: '守卫',
-  m09: '写 M09',
   m05: 'M05 出卡',
   m15: 'M15 整理',
   m10: 'M10 记录',
@@ -66,7 +65,7 @@ export function conclusion(run: ChainRun): string {
       : `守卫 ${String(vs.length)} 次（${vs.map((v) => (v.closed ? '合上' : '未合上')).join('、')}）`,
   );
   const end = loopEnd(run);
-  if (end) parts.push(end.closed ? '学完、写了 M09' : '没合上就结束、没写 M09');
+  if (end) parts.push(end.closed ? '学完（合上）' : '没合上就结束');
   const next = cards(run).next;
   const rec = next?.options[next.recommended];
   if (rec) parts.push(`下一张卡推「${rec.title}」`);

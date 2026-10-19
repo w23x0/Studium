@@ -33,7 +33,7 @@ export function estimate(students: Student[], k: number): string {
   let student = 0;
   let judge = 0;
   for (const s of students) {
-    // 主对话 ~4 · 畅谈 说满+1 · M05 两次 · 学习对话 说满+开场+插话+守卫事实 · 守卫 ~3 · M09 · M10 · M15 ~2
+    // 主对话 ~4 · 畅谈 说满+1 · M05 两次 · 学习对话 说满+开场+插话+守卫事实 · 守卫 ~3 · M10 · M15 ~2
     system += 4 + (s.maxTalkTurns + 1) + 2 + (s.maxLoopTurns + 3) + 3 + 1 + 1 + 2;
     student += 3 + s.maxTalkTurns + 2 + 2 + s.maxLoopTurns;
     judge += 6 + (s.observeFocus !== undefined ? 1 : 0) + 1;

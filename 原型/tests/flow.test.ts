@@ -1,4 +1,4 @@
-// 闭环主路径（假模型）：出选择卡 → 选定开闭环 → 教 → 申请收口 → 守卫（核对引用行）→ 确认 → 写 M09 → 下一张卡。
+// 一次学习的主路径（假模型）：出选择卡 → 选定开学习 → 教 → 申请收口 → 守卫（核对引用行）→ 确认 → 下一张卡。
 import { afterEach, describe, expect, it } from 'vitest';
 import { createApp, type App } from '../src/core/app.ts';
 import { FakeModel, type FakeContext, type FakeStep } from '../src/core/model/fake.ts';
@@ -14,11 +14,9 @@ const kindOf = (ctx: FakeContext) =>
     ? 'guard'
     : ctx.spec.tools.some((t) => t.name === 'submit_choice_card')
       ? 'm05'
-      : ctx.spec.tools.some((t) => t.name === 'write_formation_record')
-        ? 'm09'
-        : ctx.spec.tools.some((t) => t.name === 'request_close')
-          ? 'loop'
-          : 'main';
+      : ctx.spec.tools.some((t) => t.name === 'request_close')
+        ? 'loop'
+        : 'main';
 
 const option = {
   new_point: 'p-displacement',
@@ -56,28 +54,34 @@ function responder(guardLine: { line: number }) {
           calls: [
             {
               name: 'submit_verdict',
-              args: { closed: true, basis: '见学习者的解释', evidence_lines: [guardLine.line + 1] },
+              args: {
+                closed: true,
+                basis: '见学习者的解释',
+                evidence_lines: [guardLine.line + 1],
+                understanding: [
+                  {
+                    text: '位移只看起点终点',
+                    lines: [guardLine.line + 1],
+                    independence: '独立',
+                    durability: '仅当场',
+                  },
+                ],
+              },
             },
             {
               name: 'submit_verdict',
-              args: { closed: true, basis: '见学习者的解释', evidence_lines: [guardLine.line] },
-            },
-          ],
-        };
-      case 'm09':
-        return {
-          calls: [
-            {
-              name: 'write_formation_record',
               args: {
-                new_point: 'p-displacement',
-                clause: 'c-disp-from-pos',
-                start_points: ['p-position'],
-                understanding: '位移只看起点终点',
-                process: '从走路的例子',
-                unmet: '',
-                evidence_strength: '当场、独立',
+                closed: true,
+                basis: '见学习者的解释',
                 evidence_lines: [guardLine.line],
+                understanding: [
+                  {
+                    text: '位移只看起点终点',
+                    lines: [guardLine.line],
+                    independence: '独立',
+                    durability: '仅当场',
+                  },
+                ],
               },
             },
           ],
@@ -99,7 +103,7 @@ function responder(guardLine: { line: number }) {
 }
 
 describe('闭环主路径（假模型）', () => {
-  it('从选择卡走到合上、写 M09、出下一张卡', async () => {
+  it('从选择卡走到合上、出下一张卡', async () => {
     const guardLine = { line: 0 };
     const app = await createApp({
       dataRoot: await tempDir(),
@@ -133,13 +137,13 @@ describe('闭环主路径（假模型）', () => {
     await studium.confirmClose(loopId, '确认');
     for (let i = 0; i < 50; i++) {
       const steps = (await hub.records(loopId)).filter((r) => r.record.type === 'after_loop_step');
-      if (steps.length >= 2) break;
+      if (steps.length >= 1) break;
       await new Promise((r) => setTimeout(r, 20));
     }
     const steps = (await hub.records(loopId)).flatMap((r) =>
       r.record.type === 'after_loop_step' ? [r.record.step] : [],
     );
-    expect(steps).toEqual(['m09_written', 'card_ready']);
+    expect(steps).toEqual(['card_ready']);
     const cards = (await hub.records(mainId)).filter((r) => r.record.type === 'choice_card');
     expect(cards).toHaveLength(2);
   });
@@ -157,7 +161,7 @@ describe('M15 / M10 的读写范围与触发', () => {
     return app;
   }
 
-  it('M15 只拿读对话与写自己两层的工具；M10 不读 M09、M07', async () => {
+  it('M15 只拿读对话与写自己两层的工具；M10 不读资料原文', async () => {
     const app = await boot();
     const m15 = app.studium
       .kind('m15')
@@ -170,7 +174,6 @@ describe('M15 / M10 的读写范围与触发', () => {
       .kind('m10')
       .tools('x')
       .map((t) => t.name);
-    expect(m10).not.toContain('query_m09');
     expect(m10).not.toContain('read_source');
     expect(m10).toContain('write_strategy_record');
   });

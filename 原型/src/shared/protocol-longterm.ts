@@ -1,86 +1,11 @@
-// 跨闭环的长期功能（批 6）的接口类型：M09 当前视图与时间版本、分析重做、提醒与“今天该做的”、
-// 路线偏差记录、接着学、阶段复盘。protocol.ts 把它们 re-export，界面从 protocol.ts 取。
-import type { ReminderKind, Suspicion, Revisit } from './records-longterm.ts';
+// 长期功能的接口类型：提醒与“今天该做的”、路线偏差记录、接着学、阶段复盘。
+// protocol.ts 把它们 re-export，界面从 protocol.ts 取。
+import type { ReminderKind } from './records-longterm.ts';
 
 /** 点的简写：id 与名字（name 等于 id）。 */
 export interface PointName {
   id: string;
   name: string;
-}
-
-/** 当前视图里一个点现在的状态（按时间折叠形成记录与时间版本记录得出；不替代底层记录）。 */
-export type ViewStatus = '闭环证据' | '提取失败' | '降档' | '重新掌握' | '仅外部导入';
-
-export interface ViewEvidence {
-  /** 最近一次证据所在的形成记录（该闭环的最新一版分析）。 */
-  recordId: string;
-  at: string;
-  loopSessionId: string;
-  /** 这个点在那个闭环里是新点还是出发点。 */
-  role: '新点' | '出发点';
-  /** 证据强度的文字：“仅当场、独立”等。 */
-  strength: string;
-  /** 那次是复习 / 复检。 */
-  revisit?: Revisit['kind'];
-}
-
-/** M09 当前视图的一行：每个点一行，派生层，可从记录重算。 */
-export interface PointViewEntry {
-  point: PointName;
-  /** 当前档次（四级理解标签，只作索引）；没标过就没有。 */
-  level?: string;
-  status: ViewStatus;
-  /** 最近一次闭环证据；只有外部导入时没有。 */
-  lastEvidence?: ViewEvidence;
-  /** 最近一次碰过（闭环证据或时间版本记录）；只有外部导入时是导入时间。 */
-  lastTouchedAt: string;
-  /** 距今多少天没碰了（按核心的时钟）。 */
-  daysSince: number;
-  /** 一句话摘要。 */
-  summary: string;
-  /** 检索关键词。 */
-  keywords: string[];
-  /** 最新一版分析是第几版（同一个闭环的分析可以重做）。 */
-  versions: number;
-  /** 依据：几个闭环的证据、几条外部导入。 */
-  sources: { loops: number; external: number };
-  /** 影响当前档次的时间版本记录（旧在前）。 */
-  timeline: { id: string; at: string; kind: string }[];
-}
-
-export interface PointViewResponse {
-  generatedAt: string;
-  entries: PointViewEntry[];
-}
-
-export interface PointViewDetailResponse {
-  entry: PointViewEntry;
-  /** 这个点的全部时间版本记录。 */
-  timeline: TimelineView[];
-}
-
-export interface TimelineView {
-  id: string;
-  at: string;
-  kind: '提取失败' | '降档' | '重新掌握';
-  point: PointName;
-  loopSessionId: string;
-  /** 指向的旧记录 id。 */
-  targets: string[];
-  reason: string;
-  evidenceLines: number[];
-  stateRuledOut?: string;
-  level?: string;
-  model: { name: string };
-}
-
-export interface TimelineResponse {
-  records: TimelineView[];
-}
-
-/** 对一个已合上的闭环重新分析（用当前模型）；新版本并存，旧版本不动。 */
-export interface ReanalyzeRequest {
-  loop: string;
 }
 
 export interface ReminderView {
@@ -179,15 +104,4 @@ export interface ReviewBrief {
 
 export interface ReviewsResponse {
   reviews: ReviewBrief[];
-}
-
-/** 闭环里教学侧记的“以前会的现在答不出”条目（结构化）。 */
-export interface RegressionView {
-  line: number;
-  at: string;
-  point: PointName;
-  basisLines: number[];
-  suspicion: Suspicion;
-  against: string[];
-  text: string;
 }

@@ -2,8 +2,7 @@
 // 学完一个闭环（说一句 → 收口 → 确认）的步骤。
 import { createApp, type App } from '../../src/core/app.ts';
 import { FakeModel, type FakeContext, type FakeStep } from '../../src/core/model/fake.ts';
-import type { FormationsResponse } from '../../src/shared/protocol.ts';
-import { getJson, post, TOKEN } from './http.ts';
+import { post, TOKEN } from './http.ts';
 import { detourResponder, newDetourState, type DetourState } from './detour-flow.ts';
 import { confirmAndSettle, requestClose, SAY, settled } from './evidence-flow.ts';
 import { tempDir } from './tmp.ts';
@@ -41,7 +40,7 @@ export async function startLong(
   return { app, mainId: await app.studium.ensureMain(), fake, dataRoot: root };
 }
 
-/** 在闭环里说一句 → 申请收口 → 确认合上，等后台（写 M09、下一张卡……）跑完。 */
+/** 在一次学习里说一句 → 申请收口 → 确认合上，等后台（下一张卡……）跑完。 */
 export async function learnAndClose(app: App, loopId: string): Promise<void> {
   await post(app, `/sessions/${loopId}/messages`, { text: SAY });
   await settled(app, loopId);
@@ -49,22 +48,9 @@ export async function learnAndClose(app: App, loopId: string): Promise<void> {
   await confirmAndSettle(app, loopId);
 }
 
-export async function formations(
-  app: App,
-  loopId?: string,
-): Promise<FormationsResponse['records']> {
-  const q = loopId !== undefined ? `?loop=${loopId}` : '';
-  return (await getJson<FormationsResponse>(app, `/m09/records${q}`)).records;
-}
-
 /** 工具名在这个会话的工具表里吗。 */
 export function hasTool(ctx: FakeContext, name: string): boolean {
   return ctx.spec.tools.some((t) => t.name === name);
-}
-
-/** 开场文字里第一个 M09 形成记录 id（f-xxxxxxxx）。 */
-export function firstFormationId(text: string): string | undefined {
-  return /\bf-[0-9a-f]{8}\b/.exec(text)?.[0];
 }
 
 export const AVG_OPTION = {

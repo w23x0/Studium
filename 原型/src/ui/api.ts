@@ -3,7 +3,6 @@ import type {
   CardResponse,
   ChooseResponse,
   DisclosureResponse,
-  FormationsResponse,
   LoopEvidenceResponse,
   ObjectionResponse,
   ProjectOverviewResponse,
@@ -34,7 +33,6 @@ import type {
   ProjectDeadlineResponse,
   NoteImportResponse,
   NotesResponse,
-  ExternalRecordsResponse,
   DetourChooseResponse,
   LoopRelationsResponse,
   TeachingToolsResponse,
@@ -43,13 +41,12 @@ import type {
   AddReminderRequest,
   ContinueLoopResponse,
   DeviationsResponse,
-  PointViewDetailResponse,
-  PointViewResponse,
+  LearnedResponse,
+  LearningResponse,
   ReminderView,
   RemindersResponse,
   ReviewResponse,
   ReviewsResponse,
-  TimelineResponse,
   TodayView,
   AddExplanationResponse,
   SourceNoteField,
@@ -181,7 +178,6 @@ export const api = {
   overview: (mainId: string) => call<ProjectOverviewResponse>(`/projects/${mainId}/overview`),
   loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),
   card: (cardId: string) => call<CardResponse>(`/cards/${cardId}`),
-  formations: () => call<FormationsResponse>('/m09/records'),
   strategies: () => call<StrategiesResponse>('/m10/records'),
   state: () => call<StateResponse>('/m15/state'),
   // ── 批 10b：来源说明、状态回看 ──
@@ -263,15 +259,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(title !== undefined && title !== '' ? { path, title } : { path }),
     }),
-  extractNote: (book: string, projectId?: string) =>
-    call<object>('/library/notes/extract', {
-      method: 'POST',
-      body: JSON.stringify(projectId !== undefined ? { book, projectId } : { book }),
-    }),
   /** 笔记里引用的图片（给 <img src>）。 */
   noteAssetUrl: (book: string, ref: string) =>
     withToken(`/api/library/note-asset?${qs({ book, ref })}`),
-  externals: () => call<ExternalRecordsResponse>('/m09/external'),
   // ── 我的产出（批 8b） ──
   outputs: (projectId: string) => call<ListOutputsResponse>(`/projects/${projectId}/outputs`),
   output: (id: string) => call<OutputResponse>(`/outputs/${encodeURIComponent(id)}`),
@@ -301,15 +291,10 @@ export const api = {
         brief !== undefined && brief.trim() !== '' ? { brief: brief.trim() } : {},
       ),
     }),
-  // ── 跨段学习的长期功能（批 6） ──
-  /** 我学会的：现在掌握成什么样（派生，不存盘）。 */
-  pointView: () => call<PointViewResponse>('/m09/view'),
-  pointDetail: (point: string) =>
-    call<PointViewDetailResponse>(`/m09/view/${encodeURIComponent(point)}`),
-  timeline: (point?: string) => call<TimelineResponse>(`/m09/timeline?${qs({ point })}`),
-  /** 用现在的模型把一段学完的学习重新分析一遍（后台做，新的一版和旧的并存）。 */
-  reanalyze: (loop: string) =>
-    call<object>('/m09/reanalyze', { method: 'POST', body: JSON.stringify({ loop }) }),
+  // ── 长期功能（批 6） ──
+  /** 学过的记录：按层读每次学习（上层单子 / 中层判定）与外部导入。 */
+  learned: (project?: string) => call<LearnedResponse>(`/learned?${qs({ project })}`),
+  learning: (loopId: string) => call<LearningResponse>(`/learned/${encodeURIComponent(loopId)}`),
   /** 接着没学完的那段学：开一段新的学习。 */
   continueLoop: (loopId: string) =>
     call<ContinueLoopResponse>(`/sessions/${loopId}/continue`, { method: 'POST', body: '{}' }),

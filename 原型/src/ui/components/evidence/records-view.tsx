@@ -1,11 +1,8 @@
 // 关于学习者的记录：我学会的、我的状态、教法记录。每条带依据原话与模型，可提不同看法。
-import { useEffect, useState } from 'react';
-import { CheckIcon, FileTextIcon, HistoryIcon, XIcon } from 'lucide-react';
+import { useState } from 'react';
+import { CheckIcon, HistoryIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { modelInfoOf } from '../../../shared/protocol.ts';
 import type {
-  ExternalRecordView,
-  FormationView,
   ObjectionView,
   QuoteView,
   StateRecordView,
@@ -14,9 +11,7 @@ import type {
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel, useProject } from '../../panel.ts';
-import { levelText } from '../../longterm-model.ts';
-import { DeviationsSection, PointHistoryView, PointViewList } from '../longterm/learned.tsx';
-import { splitExternals } from '../../scope-model.ts';
+import { DeviationsSection, LearnedPlaceholder } from '../longterm/learned.tsx';
 import { afterTeachingText, toolCounts, trendLines, verdictText } from '../../teaching-model.ts';
 import { W } from '../../wording.ts';
 import {
@@ -27,7 +22,6 @@ import {
   ModelLine,
   ObjectionForm,
   ObjectionList,
-  PointLink,
   Quote,
   Section,
   Time,
@@ -53,7 +47,7 @@ function Quotes(props: { quotes: QuoteView[]; sessionId: string }) {
 }
 
 function Objections(props: {
-  kind: 'm09' | 'm10' | 'm15';
+  kind: 'm10' | 'm15';
   recordId: string;
   objections: ObjectionView[];
   onDone: () => void;
@@ -90,177 +84,17 @@ function OpenLoop(props: { sessionId: string }) {
 // ───────────── 我学会的 ─────────────
 
 /**
- * 以现在的样子为主（批 6）：每个知识点一行，点开看经过与每段学习的分析；
- * 还没核实的（自己说会的、笔记里看到的）单独一组在下，只作参考；最后是“没按推荐走的时候”。
- * 给了 recordId（别处点进来的一条记录）就直接看那条记录所在知识点的经过。
+ * W2 起分析层与当前视图取消：这里只留空壳（W6 做新的“我学会的”：按学习列），
+ * 加“没按推荐走的时候”（路线偏差，只读）。
  */
-export function LearnedView(props: { recordId?: string | undefined; point?: string | undefined }) {
-  const r = useLoad('m09', () => api.formations());
-  const ext = useLoad('m09:external', () => api.externals());
+export function LearnedView() {
   const project = useProject();
-  const { recordId } = props;
-  const record = r.data?.records.find((f) => f.id === recordId);
-  const point = props.point ?? record?.newPoint.id;
-  const external = ext.data?.records.some((x) => x.id === recordId) === true;
-  useEffect(() => {
-    if (!external || recordId === undefined) return;
-    document
-      .getElementById(`m09-${recordId}`)
-      ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [external, recordId]);
-  if (point !== undefined) {
-    return (
-      <PointHistoryView
-        point={point}
-        focusRecord={recordId}
-        renderFormation={(f, active, onObjected) => (
-          <Formation record={f} active={active} onObjected={onObjected} />
-        )}
-      />
-    );
-  }
-  // 点进来的是一条形成记录，还没读回来
-  if (recordId !== undefined && !r.data && !external) return <Loading error={r.error} />;
-  const { self, notes } = splitExternals(ext.data?.records ?? []);
-  const unverified = self.length + notes.length;
   return (
     <div className="flex flex-col gap-5" data-testid="learned-view">
       <h2 className="font-serif text-lg">{W.learned}</h2>
-      <PointViewList />
-      {ext.error !== undefined && <Loading error={ext.error} />}
-      {unverified > 0 && (
-        <Section title={W.learnedUnverified} hint={W.learnedUnverifiedHint}>
-          <div data-testid="learned-unverified" className="flex flex-col gap-4">
-            {self.length > 0 && <ExternalGroup title={W.learnedSelf} records={self} />}
-            {notes.length > 0 && <ExternalGroup title={W.learnedFromNotes} records={notes} />}
-          </div>
-        </Section>
-      )}
+      <LearnedPlaceholder />
       <DeviationsSection projectId={project} />
     </div>
-  );
-}
-
-function ExternalGroup(props: { title: string; records: ExternalRecordView[] }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <div className="flex items-baseline gap-2 text-sm">
-        <span className="font-medium">{props.title}</span>
-        <span className="text-muted-foreground text-xs">{props.records.length}</span>
-      </div>
-      {props.records.map((x) => (
-        <External key={x.id} record={x} />
-      ))}
-    </div>
-  );
-}
-
-function External(props: { record: ExternalRecordView }) {
-  const panel = usePanel();
-  const x = props.record;
-  const note = x.note;
-  return (
-    <Card id={`m09-${x.id}`} className="flex flex-col gap-3 border-dashed">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <Badge tone="warn">{W.unverified}</Badge>
-        <Badge>{x.source === '自述' ? W.learnedSelf : W.learnedFromNotes}</Badge>
-        <span className="ms-auto">
-          <Time at={x.at} />
-        </span>
-      </div>
-      <div className="font-serif">{x.claim}</div>
-      {x.point !== undefined && <Field label={W.point}>{x.point.name}</Field>}
-      {x.grade !== undefined && x.grade !== '' && <Field label={W.grade}>{x.grade}</Field>}
-      {x.basis !== '' && <Field label={W.whyGraded}>{x.basis}</Field>}
-      {x.talk !== undefined && (
-        <Quotes
-          quotes={x.talk.lines.map((line, i) => ({
-            line,
-            at: x.at,
-            ...(x.talk?.quotes[i] !== undefined ? { text: x.talk.quotes[i] } : {}),
-          }))}
-          sessionId={x.talk.sessionId}
-        />
-      )}
-      {note !== undefined && (
-        <button
-          type="button"
-          className="text-primary flex items-center gap-1 self-start text-xs hover:underline"
-          onClick={() =>
-            panel.show({
-              kind: 'source',
-              book: note.book,
-              file: note.file,
-              from: note.from,
-              to: note.to,
-            })
-          }
-        >
-          <FileTextIcon className="size-3.5" />
-          {W.noteSpot}
-        </button>
-      )}
-      <ModelLine model={modelInfoOf(x.model)} />
-    </Card>
-  );
-}
-
-export function Formation(props: {
-  record: FormationView;
-  active: boolean;
-  onObjected: () => void;
-}) {
-  const f = props.record;
-  return (
-    <Card id={`m09-${f.id}`} active={props.active} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-1.5">
-        <PointLink point={f.newPoint} />
-        {f.revisit !== undefined && (
-          <Badge tone="accent" title={W.revisitHint[f.revisit.kind]}>
-            {W.revisitKind[f.revisit.kind]}
-          </Badge>
-        )}
-        <span className="text-muted-foreground text-xs">
-          {W.versionN(f.version)}
-          {f.latest ? ` · ${W.latestBadge}` : ''}
-        </span>
-        <span className="ms-auto">
-          <Time at={f.at} />
-        </span>
-      </div>
-      {f.summary !== undefined && f.summary !== '' && <div className="font-serif">{f.summary}</div>}
-      {levelText(f.level) !== undefined && <Field label={W.levelLabel}>{levelText(f.level)}</Field>}
-      <Field label={W.understanding}>{f.understanding}</Field>
-      {f.process !== '' && <Field label={W.process}>{f.process}</Field>}
-      {f.unmet !== '' && <Field label={W.unmet}>{f.unmet}</Field>}
-      {f.startPoints.length > 0 && (
-        <Field label={W.startPoints}>
-          <span className="flex flex-wrap gap-x-3 gap-y-1">
-            {f.startPoints.map((p) => (
-              <PointLink key={p.id} point={p} />
-            ))}
-          </span>
-        </Field>
-      )}
-      <Field label={W.strength}>
-        {f.evidenceStrength}
-        {f.evidence !== undefined && (
-          <span className="text-muted-foreground mt-1 block text-xs">
-            {f.newPoint.name}：{f.evidence.newPoint.time} · {f.evidence.newPoint.independence}
-            {f.evidence.startPoints.map((s) => (
-              <span key={s.point} className="block">
-                {f.startPoints.find((p) => p.id === s.point)?.name ?? s.point}：{s.time} ·{' '}
-                {s.independence}
-              </span>
-            ))}
-          </span>
-        )}
-      </Field>
-      <Quotes quotes={f.quotes} sessionId={f.loopSessionId} />
-      <OpenLoop sessionId={f.loopSessionId} />
-      <ModelLine model={f.model} />
-      <Objections kind="m09" recordId={f.id} objections={f.objections} onDone={props.onObjected} />
-    </Card>
   );
 }
 

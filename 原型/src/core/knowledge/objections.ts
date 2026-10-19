@@ -1,4 +1,4 @@
-// 学习者异议存放处：对守卫判定（闭环已结束）、M09 / M10 / M15 记录提的异议。
+// 学习者异议存放处：对守卫判定（一次学习已结束）、M10 / M15 记录提的异议。
 // 每条异议是独立的一条追加记录，指向原记录，不改原记录；异议按自述来源记录，不覆盖可观察事实（横切原则 5）。只追加。
 import { join } from 'node:path';
 import type { LearnerObjection, ObjectionTarget } from '../../shared/records.ts';
@@ -24,8 +24,8 @@ export class Objections {
     return [...this.rows];
   }
 
-  /** 指向某条 M09 / M10 / M15 记录的异议。 */
-  forRecord(kind: 'm09' | 'm10' | 'm15', recordId: string): LearnerObjection[] {
+  /** 指向某条 M10 / M15 记录的异议。 */
+  forRecord(kind: 'm10' | 'm15', recordId: string): LearnerObjection[] {
     return this.rows.filter(
       (o) => o.target.kind === kind && 'recordId' in o.target && o.target.recordId === recordId,
     );
@@ -47,9 +47,7 @@ export class Objections {
 export function describeTarget(t: ObjectionTarget): string {
   switch (t.kind) {
     case 'guard_verdict':
-      return `闭环 ${t.loopSessionId} 第 ${String(t.line)} 行守卫判定`;
-    case 'm09':
-      return `形成记录 ${t.recordId}`;
+      return `一次学习（${t.loopSessionId}）第 ${String(t.line)} 行守卫判定`;
     case 'm10':
       return `教法记录 ${t.recordId}`;
     case 'm15':

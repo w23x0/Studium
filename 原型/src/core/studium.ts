@@ -12,6 +12,8 @@ import type {
 } from '../shared/protocol.ts';
 import { CROSS_KINDS } from '../shared/records-cross.ts';
 import {
+  DURABILITY,
+  INDEPENDENCE,
   START_SOURCES,
   type ChoiceCard,
   type ChoiceOption,
@@ -23,9 +25,11 @@ import {
   type NumberedRecord,
   type RouteDecision,
   type Ticket,
+  type Understanding,
 } from '../shared/records.ts';
 import type { Crosslinks } from './crosslinks.ts';
 import { Detours } from './detour.ts';
+import { Learned } from './learned.ts';
 import { LongTerm } from './longterm.ts';
 import { Practice } from './practice.ts';
 import { REVISIT_KINDS } from '../shared/records-longterm.ts';
@@ -34,16 +38,7 @@ import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { foldLoop, LOAD_HEAVY, PARKING_PILE, stateLabel } from './loop-state.ts';
 import type { Library } from './knowledge/m07.ts';
 import type { Sources } from './sources.ts';
-import {
-  EVIDENCE_INDEPENDENCE,
-  EVIDENCE_TIMES,
-  LEVELS,
-  NOTE_GRADES,
-  describeEvidence,
-  type EvidenceStrength,
-  type FormationEvidence,
-  type M09,
-} from './knowledge/m09.ts';
+import type { Learning } from '../shared/protocol-learned.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { Objections } from './knowledge/objections.ts';
 import { STAGES, type M15, type StateConfirmation } from './knowledge/m15.ts';
@@ -58,7 +53,6 @@ import {
 } from './intensity.ts';
 import { teachingToolSpecs, toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { locate, type LocateDeps } from './locate.ts';
-import { isNotFound } from './log/session-log.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
@@ -75,7 +69,8 @@ const TEACHING_EXCERPT = 160;
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
   m07: Library;
-  m09: M09;
+  /** 数据目录（学过的记录的导入存放处在其下）。 */
+  dataDir: string;
   m10: M10;
   m15: M15;
   /** 学习者异议存放处。 */
@@ -104,14 +99,23 @@ export class Studium {
   /** 闭环中途：通知 M05 → 小卡 → 分叉 / 搁置 / 停车记录（批 5）。 */
   private readonly detours: Detours;
 
-  /** 跨闭环的长期功能（批 6）：复习 / 复检、降档、当前视图、接着学、复盘、提醒、路线偏差。 */
+  /** 长期功能：复习 / 复检、接着学、阶段复盘、提醒与今天该做的、路线偏差。 */
   readonly longterm: LongTerm;
 
   /** 练习任务（批 9，M03）：布置 → 作答 → 反馈 → 完成 / 放弃，习题清单，重复错误成模式，题型归纳，阶段验收。 */
   readonly practice: Practice;
 
+  /** 学过的记录（按层读每次学习）与外部导入存放处。 */
+  readonly learned: Learned;
+
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
+    this.learned = new Learned({
+      hub: () => this.hub,
+      dir: o.dataDir,
+      newId: (prefix) => this.newId(prefix),
+      iso: () => this.iso(),
+    });
     this.practice = new Practice({
       hub: () => this.hub,
       m07: o.m07,
@@ -124,7 +128,7 @@ export class Studium {
     });
     this.longterm = new LongTerm({
       hub: () => this.hub,
-      m09: o.m09,
+      learned: this.learned,
       m15: o.m15,
       deviations: o.deviations,
       now: () => this.now(),
@@ -159,7 +163,7 @@ export class Studium {
 
   private readonly idListeners = new Set<(prefix: string, id: string) => void>();
 
-  /** 程序生成的编号（选择卡、M09 / M15 / M10 记录）；录带按生成顺序给它们稳定记号。 */
+  /** 程序生成的编号（选择卡、M15 / M10 记录等）；录带按生成顺序给它们稳定记号。 */
   private newId(prefix: string): string {
     const id = `${prefix}-${randomBytes(4).toString('hex')}`;
     for (const fn of this.idListeners) fn(prefix, id);
@@ -231,21 +235,11 @@ export class Studium {
             ...this.readTools(sessionId),
             this.loopTranscriptTool(),
             ...this.loopTools(sessionId),
-            ...this.longterm.loopTools(sessionId),
             this.o.cross.addNoteTool(sessionId),
             ...this.practice.loopTools(sessionId),
           ];
         case 'guard':
-          return [...this.readTools(sessionId, { m09: false }), this.verdictTool(sessionId)];
-        case 'm09':
-          // 同一类会话两种活：闭环合上后写形成记录；从学习者的笔记里提点（外部导入，未验证）
-          return this.noteTargets.has(sessionId)
-            ? [...this.readTools(sessionId, { m09: false }), this.notePointsTool(sessionId)]
-            : [
-                ...this.readTools(sessionId, { m07: false, m09: false }),
-                this.formationTool(sessionId),
-                ...this.longterm.m09Tools(sessionId),
-              ];
+          return [...this.readTools(sessionId), this.verdictTool(sessionId)];
         case 'm05':
           // 同一类会话三种活：出下一闭环的选择卡；闭环中途的小卡；给没合上 / 搁置的闭环记停车记录
           return (
@@ -262,16 +256,13 @@ export class Studium {
           return this.stateTools(sessionId);
         case 'm10':
           return [
-            ...this.readTools(sessionId, { m07: false, m09: false }),
+            ...this.readTools(sessionId, { m07: false }),
             this.stateQueryTool(),
             this.strategyTool(sessionId),
           ];
         case 'output':
-          // M14 不直读 M09（审查单），只读 M07；写产出新版本的工具由 Outputs 给
-          return [
-            ...this.readTools(sessionId, { m09: false }),
-            ...this.o.outputs.sessionTools(sessionId),
-          ];
+          // M14 只读 M07；写产出新版本的工具由 Outputs 给
+          return [...this.readTools(sessionId), ...this.o.outputs.sessionTools(sessionId)];
       }
     },
   });
@@ -584,7 +575,7 @@ export class Studium {
     await this.longterm.onChosen(mainId, card, option, loop.sessionId);
     await this.hub.send(loop.sessionId, {
       role: 'program',
-      text: this.loopOpening(picked.ticket),
+      text: await this.loopOpening(picked.ticket),
     });
     return loop.sessionId;
   }
@@ -630,7 +621,7 @@ export class Studium {
     this.background('合上之后的清单', () => this.afterLoop(loopId, true));
   }
 
-  /** 学习者要结束、没合上：不开守卫、不写 M09，M05 读原文出下一张卡。 */
+  /** 学习者要结束、没合上：不开守卫，导航读原文出下一张卡。 */
   async endUnclosed(loopId: string, note: string): Promise<void> {
     await this.assertOpenLoop(loopId);
     await this.hub.record(loopId, {
@@ -661,28 +652,6 @@ export class Studium {
   /** 没合上就结束的闭环，学习者点“接着学”：开新闭环续接它。 */
   continueLoop(loopId: string): Promise<string> {
     return this.longterm.continueLoop(loopId);
-  }
-
-  /** 重新分析前的检查：只能是已合上、写过分析的闭环。 */
-  async assertReanalyzable(loopId: string): Promise<void> {
-    const opened = await this.hub.opened(loopId).catch((e: unknown) => {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
-    });
-    if (opened?.kind !== 'loop') throw new BadRequestError('这不是一个闭环。');
-    const ended = (await this.hub.records(loopId)).find((r) => r.record.type === 'loop_ended');
-    if (ended?.record.type !== 'loop_ended' || !ended.record.closed) {
-      throw new BadRequestError('只有合上的闭环才有分析可重做。');
-    }
-    if (this.o.m09.forLoop(loopId).length === 0) {
-      throw new BadRequestError('这个闭环还没有分析记录（写 M09 没成功），不是重做的情况。');
-    }
-  }
-
-  /** 对已合上的闭环用当前模型重新分析：新版本并存，旧版本不动；由程序触发，不在闭环结束时自动做。 */
-  async reanalyzeLoop(loopId: string): Promise<void> {
-    await this.assertReanalyzable(loopId);
-    await this.writeM09(loopId, true);
   }
 
   /** 学习者把闭环搁置（可恢复）；后台让 M05 记停车记录（恢复计划）。 */
@@ -738,20 +707,15 @@ export class Studium {
     };
   }
 
-  /** 对 M09 / M10 / M15 的一条记录提异议：只追加一条异议记录，不改原记录；下次整理 / 出卡时被读到。 */
+  /** 对 M10 / M15 的一条记录提异议：只追加一条异议记录，不改原记录；下次整理 / 出卡时被读到。 */
   async objectToRecord(
-    kind: 'm09' | 'm10' | 'm15',
+    kind: 'm10' | 'm15',
     recordId: string,
     text: string,
   ): Promise<LearnerObjection> {
     const body = text.trim();
     if (body === '') throw new BadRequestError('异议不能是空的。');
-    const exists =
-      kind === 'm09'
-        ? this.o.m09.record(recordId)
-        : kind === 'm10'
-          ? this.o.m10.record(recordId)
-          : this.o.m15.record(recordId);
+    const exists = kind === 'm10' ? this.o.m10.record(recordId) : this.o.m15.record(recordId);
     if (exists === undefined) throw new BadRequestError(`找不到这条记录：${recordId}。`);
     const objection: LearnerObjection = {
       id: this.newId('obj'),
@@ -793,8 +757,8 @@ export class Studium {
     return out;
   }
 
-  /** 附在一条 M09 / M10 / M15 记录描述后面的学习者异议（交给模型读；没有就是空串）。 */
-  private objectionNotes(kind: 'm09' | 'm10' | 'm15', recordId: string): string {
+  /** 附在一条 M10 / M15 记录描述后面的学习者异议（交给模型读；没有就是空串）。 */
+  private objectionNotes(kind: 'm10' | 'm15', recordId: string): string {
     const rows = this.o.objections.forRecord(kind, recordId);
     return rows.map((o) => `\n  学习者异议（自述，原记录没改）：${o.text}`).join('');
   }
@@ -802,58 +766,24 @@ export class Studium {
   // ───────────── 清单 ─────────────
 
   /**
-   * 合上之后：① 存盘（已在 loop_ended）② 写 M09 ③ M05 出选择卡（② 在 ③ 前）④ M15 整理、M10 记录在后台跑、不等。
-   * 没合上：跳过 ②。
+   * 一次学习结束（01-流程.md §3）：① 存盘（已在 loop_ended）② 主对话里说一句 ③ 导航出选择卡
+   * ④ ③ 之后（成或败）再起后台：状态整理与教法记录整理，不等它们。合上与没合上走同一条，只是触发原因不同。
    */
   private async afterLoop(loopId: string, closed: boolean): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const mainId = opened.parent ?? (await this.ensureMain());
-    this.organizeStateLater(`一段学习（${loopId}）结束了`, loopId);
-    this.background('M10 记录', () => this.recordStrategy(loopId));
     const isFork = opened.fork !== undefined;
     try {
-      // 分叉闭环结束后回到父闭环，不在主对话里出下一张卡
+      // 分叉学习结束后回到父学习，不在主对话里出下一张卡
       if (!isFork) {
         await this.hub.send(mainId, {
           role: 'program',
           text: closed
-            ? `闭环“${opened.title}”合上了（学习者已确认）。下一张选择卡正在出，出好会贴在这里。`
-            : `闭环“${opened.title}”没合上就结束了。下一张选择卡正在出，出好会贴在这里。`,
+            ? `“${opened.title}”合上了（学习者已确认）。下一张卡正在出，出好会贴在这里。`
+            : `“${opened.title}”没合上就结束了。下一张卡正在出，出好会贴在这里。`,
         });
-      }
-      if (closed) {
-        await this.writeM09(loopId);
-        await this.hub.record(loopId, {
-          type: 'after_loop_step',
-          at: this.iso(),
-          step: 'm09_written',
-          detail: '形成记录已写入 M09',
-        });
-      } else {
-        // 没合上：先记停车记录（缺在哪个出发点 + 恢复计划），出卡时 M05 读得到
-        try {
-          await this.detours.park(loopId, 'ended_unclosed');
-          await this.hub.record(loopId, {
-            type: 'after_loop_step',
-            at: this.iso(),
-            step: 'parked',
-            detail: '停车记录已写入',
-          });
-        } catch (err) {
-          console.error(`闭环 ${loopId} 的停车记录失败：`, err);
-          await this.hub.record(loopId, {
-            type: 'after_loop_step',
-            at: this.iso(),
-            step: 'failed',
-            detail: `停车记录：${err instanceof Error ? err.message : String(err)}`,
-          });
-        }
-      }
-      if (!isFork) {
         const card = await this.requestCard(
-          closed
-            ? `闭环“${opened.title}”（${loopId}）合上了`
-            : `闭环“${opened.title}”（${loopId}）没合上就结束了；可读它的原文和停车记录`,
+          closed ? `合上：${opened.title}（${loopId}）` : `没合上：${opened.title}（${loopId}）`,
           mainId,
         );
         await this.hub.record(loopId, {
@@ -864,7 +794,7 @@ export class Studium {
         });
       }
     } catch (err) {
-      console.error(`闭环 ${loopId} 结束后的清单失败：`, err);
+      console.error(`一次学习（${loopId}）结束后的清单失败：`, err);
       await this.hub.record(loopId, {
         type: 'after_loop_step',
         at: this.iso(),
@@ -872,26 +802,22 @@ export class Studium {
         detail: err instanceof Error ? err.message : String(err),
       });
     }
-    // 分叉闭环：不管前面的步骤成没成，都要回到父闭环（否则父闭环一直在等）
-    if (opened.fork !== undefined) {
+    // 分叉学习：不管前面的步骤成没成，都要回到父学习（否则父学习一直在等）；W3 删分叉时一并去掉
+    if (isFork) {
       try {
         await this.detours.returnToParent(loopId, closed);
-        await this.hub.record(loopId, {
-          type: 'after_loop_step',
-          at: this.iso(),
-          step: 'returned',
-          detail: opened.fork.fromLoop,
-        });
       } catch (err) {
-        console.error(`分叉闭环 ${loopId} 回父闭环失败：`, err);
+        console.error(`分叉学习 ${loopId} 回父学习失败：`, err);
         await this.hub.record(loopId, {
           type: 'after_loop_step',
           at: this.iso(),
           step: 'failed',
-          detail: `回父闭环：${err instanceof Error ? err.message : String(err)}`,
+          detail: `回父学习：${err instanceof Error ? err.message : String(err)}`,
         });
       }
     }
+    this.organizeStateLater(`一段学习（${loopId}）结束了`, loopId);
+    this.background('M10 记录', () => this.recordStrategy(loopId));
   }
 
   // ───────────── 守卫 ─────────────
@@ -901,7 +827,7 @@ export class Studium {
   private async runGuard(loopId: string): Promise<GuardVerdict> {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
-    const guard = await this.hub.createSession('guard', { title: '闭环守卫', parent: loopId });
+    const guard = await this.hub.createSession('guard', { title: '守卫', parent: loopId });
     this.guardTarget.set(guard.sessionId, records);
     const ticket = opened.ticket;
     await this.hub.send(guard.sessionId, {
@@ -917,6 +843,8 @@ export class Studium {
     await this.hub.idle(guard.sessionId);
     const v = this.verdicts.get(guard.sessionId);
     this.guardTarget.delete(guard.sessionId);
+    // 记守卫这一轮实际执行的模型（不是别名、不是适配器名；取不到时是它给的兜底串）
+    const model = await this.hub.executedModel(guard.sessionId);
     return {
       type: 'guard_verdict',
       at: this.iso(),
@@ -927,6 +855,7 @@ export class Studium {
         lines: [],
         problem: '守卫没有提交判定',
       }),
+      model,
     };
   }
 
@@ -935,16 +864,28 @@ export class Studium {
   private verdictTool(guardId: string): ToolSpec {
     return {
       name: 'submit_verdict',
-      description: '交回闭环是否合上。证据行只能是学习者的行。只提交一次。',
+      description: '交回这次学习是否合上，并写下学习者实际表现出的理解。引用的行只能是学习者的行。',
       input: {
         closed: z.boolean(),
         basis: z.string().describe('一段话，引用写行号'),
         evidence_lines: z.array(z.number().int()).describe('学习者的行号'),
+        understanding: z
+          .array(
+            z.object({
+              text: z.string().describe('学习者实际表现出的理解，一句到几句'),
+              lines: z.array(z.number().int()).describe('学习者的行号'),
+              independence: z.enum(INDEPENDENCE),
+              durability: z.enum(DURABILITY),
+            }),
+          )
+          .optional()
+          .describe('判合上时至少一条；判没合上时可写可不写'),
       },
       run: (a) => {
         const closed = a.closed as boolean;
         const basis = a.basis as string;
         const lines = a.evidence_lines as number[];
+        const raw = a.understanding as Understanding[] | undefined;
         if (this.verdicts.has(guardId)) return err('已经提交过判定');
         const target = this.guardTarget.get(guardId) ?? [];
         const learner = learnerLines(target);
@@ -956,127 +897,35 @@ export class Studium {
           );
         }
         if (closed && lines.length === 0) return err('判合上必须引至少一行学习者的话作证据');
-        this.verdicts.set(guardId, { guardSessionId: guardId, closed, basis, lines });
-        return ok('判定已收到');
-      },
-    };
-  }
-
-  // ───────────── M09 ─────────────
-
-  private readonly formations = new Set<string>();
-
-  private async writeM09(loopId: string, redo = false): Promise<void> {
-    const opened = await this.hub.opened(loopId);
-    const records = await this.hub.records(loopId);
-    const verdict = records
-      .map((r) => r.record)
-      .filter((r) => r.type === 'guard_verdict')
-      .at(-1);
-    const s = await this.hub.createSession('m09', { title: '写形成记录', parent: loopId });
-    this.m09Target.set(s.sessionId, { loopId, records });
-    this.longterm.m09Opened(s.sessionId, loopId, records, redo);
-    await this.hub.send(s.sessionId, {
-      role: 'program',
-      text: [
-        ...(await this.longterm.m09Opening(loopId, records, redo)),
-        '单子：',
-        opened.ticket ? this.describeTicket(opened.ticket) : '（缺单子）',
-        '',
-        `守卫判定：${verdict?.type === 'guard_verdict' ? `${verdict.closed ? '合上' : '未合上'}。${verdict.basis}（证据行 ${verdict.lines.join('、')}）` : '（缺）'}`,
-        '',
-        '闭环对话原文：',
-        renderTranscript(records),
-      ].join('\n'),
-    });
-    await this.hub.idle(s.sessionId);
-    this.m09Target.delete(s.sessionId);
-    this.longterm.m09Closed(s.sessionId);
-    if (!this.formations.has(s.sessionId)) throw new Error('写 M09 的会话没有提交形成记录');
-  }
-
-  private readonly m09Target = new Map<string, { loopId: string; records: NumberedRecord[] }>();
-
-  private formationTool(sessionId: string): ToolSpec {
-    const strengthShape = z.object({
-      time: z.enum(EVIDENCE_TIMES),
-      independence: z.enum(EVIDENCE_INDEPENDENCE),
-    });
-    return {
-      name: 'write_formation_record',
-      description: '把这个闭环的个人形成记录写进 M09。只提交一次。',
-      input: {
-        new_point: z.string(),
-        clause: z.string(),
-        start_points: z.array(z.string()),
-        understanding: z.string(),
-        process: z.string(),
-        unmet: z.string(),
-        new_point_evidence: strengthShape.optional(),
-        start_point_evidence: z.array(strengthShape.extend({ point: z.string() })).optional(),
-        evidence_strength: z.string().optional().describe('旧形态，不再使用；请填上面两项'),
-        evidence_lines: z.array(z.number().int()),
-        level: z
-          .enum(LEVELS)
-          .optional()
-          .describe('新点在学习者身上表现到的理解层级（认出 / 复现 / 结构 / 迁移），只作索引'),
-        summary: z.string().optional().describe('一句话摘要（索引）'),
-        keywords: z.array(z.string()).optional().describe('检索关键词（索引）'),
-      },
-      run: async (a) => {
-        if (this.formations.has(sessionId)) return err('已经写过了');
-        const target = this.m09Target.get(sessionId);
-        if (!target) return err('找不到要写的闭环');
-        const startPoints = a.start_points as string[];
-        const newEv = a.new_point_evidence as EvidenceStrength | undefined;
-        const startEv = a.start_point_evidence as
-          (EvidenceStrength & { point: string })[] | undefined;
-        let evidence: FormationEvidence | undefined;
-        if (newEv !== undefined || startEv !== undefined) {
-          if (newEv === undefined || startEv === undefined)
-            return err('证据强度要同时给新点一项、每个出发点各一项');
-          const got = startEv.map((s) => s.point);
-          const missing = startPoints.filter((p) => !got.includes(p));
-          const extra = got.filter((p) => !startPoints.includes(p));
-          if (missing.length > 0 || extra.length > 0 || new Set(got).size !== got.length)
-            return err(
-              `出发点的证据强度要与 start_points 一一对应（缺 ${missing.join('、') || '无'}；多 ${extra.join('、') || '无'}）`,
-            );
-          evidence = { newPoint: newEv, startPoints: startEv };
-        } else if (a.evidence_strength === undefined) {
-          return err('缺证据强度：给 new_point_evidence 与 start_point_evidence');
+        // 实际理解：行号核对同证据行；一条不过整次退回，什么都不收
+        const understanding = raw ?? [];
+        if (closed && understanding.length === 0) {
+          return err('判合上必须写下学习者实际表现出的理解（understanding，至少一条）');
         }
-        const learner = learnerLines(target.records);
-        const lines = a.evidence_lines as number[];
-        const bad = lines.filter((l) => !learner.has(l));
-        if (bad.length > 0)
-          return err(`第 ${bad.join('、')} 行不是学习者说的话；证据只引学习者的行`);
-        const revisit = await this.longterm.revisitOfLoop(target.loopId);
-        const version = this.o.m09.forLoop(target.loopId).length + 1;
-        await this.o.m09.add({
-          id: this.newId('f'),
-          at: this.iso(),
-          loopSessionId: target.loopId,
-          newPoint: a.new_point as string,
-          clause: a.clause as string,
-          startPoints,
-          understanding: a.understanding as string,
-          process: a.process as string,
-          unmet: a.unmet as string,
-          evidenceStrength: evidence ? describeEvidence(evidence) : (a.evidence_strength as string),
-          ...(evidence ? { evidence } : {}),
-          evidenceLines: lines,
-          model: await this.hub.executedModel(sessionId),
-          version,
-          ...(a.level !== undefined ? { level: a.level as (typeof LEVELS)[number] } : {}),
-          ...(a.summary !== undefined && (a.summary as string).trim() !== ''
-            ? { summary: (a.summary as string).trim() }
-            : {}),
-          ...(a.keywords !== undefined ? { keywords: a.keywords as string[] } : {}),
-          ...(revisit !== undefined ? { revisit } : {}),
+        for (const u of understanding) {
+          if (u.text.trim() === '') return err('每条理解都要写清学习者实际表现出的理解');
+          if (u.lines.length === 0) return err('每条理解都要指回至少一行学习者的话');
+          const notLearner = u.lines.filter((l) => !learner.has(l));
+          if (notLearner.length > 0) {
+            return err(
+              `第 ${notLearner.join('、')} 行不是学习者说的话，理解只能指回学习者的行，重新提交`,
+            );
+          }
+          if (!INDEPENDENCE.includes(u.independence)) {
+            return err(`独立程度只能是 ${INDEPENDENCE.join(' / ')}，收到 ${u.independence}`);
+          }
+          if (!DURABILITY.includes(u.durability)) {
+            return err(`持久程度只能是 ${DURABILITY.join(' / ')}，收到 ${u.durability}`);
+          }
+        }
+        this.verdicts.set(guardId, {
+          guardSessionId: guardId,
+          closed,
+          basis,
+          lines,
+          ...(raw === undefined ? {} : { understanding: raw }),
         });
-        this.formations.add(sessionId);
-        return ok('已写入 M09');
+        return ok('判定已收到');
       },
     };
   }
@@ -1096,11 +945,10 @@ export class Studium {
     const main = (await this.hub.records(mainId)).map((r) => r.record);
     const goal = main.filter((r) => r.type === 'project_goal').at(-1);
     const loops = this.hub.listSessions().filter((s) => s.kind === 'loop' && s.parent === mainId);
-    const known = this.o.m09.knownPoints();
-    const { lines: loopStates, load } = await this.loopStatesText(loops, known);
+    const learned = await this.learned.list(mainId);
+    const { lines: loopStates, load } = await this.loopStatesText(loops, learned.learnings);
     const objections = this.o.objections.all().slice(-20);
     const scope = await this.scopeOf(mainId);
-    const external = this.o.m09.externals().slice(-30);
     const deadline = foldDeadline(main).deadline;
     return [
       `触发原因：${trigger}`,
@@ -1111,11 +959,11 @@ export class Studium {
       '',
       `资料范围：${scope !== undefined ? `项目选用了 ${String(scope.length)} 份资料：${scope.join('、')}。教材查询工具默认只在这些里查；学习者或你明确要时，传 all=true 查全库。` : '项目没选资料：查全库。'}`,
       '',
-      `已合上过的新点（学过的记录）：${known.length > 0 ? known.join('、') : '（空：冷启动，第一次学习选小的）'}`,
+      `学过的记录（每次学习一行；合上的带守卫写下的实际理解，没合上的带结束原话与当时的路线决定）：\n${learned.learnings.length > 0 ? learned.learnings.map((l) => `- ${this.learned.describe(l)}`).join('\n') : '（空：冷启动，第一次学习选小的）'}`,
       '',
-      ...(external.length > 0
+      ...(learned.imports.length > 0
         ? [
-            `外部导入（学习者在系统之外学到的：自述 / 笔记里写过；未验证，可信度低于学习记录，学习里的证据永远优先，可以怀疑，不算“已合上过”）：\n${external.map((r) => this.o.m09.describeExternal(r, (id) => id)).join('\n')}`,
+            `外部导入（学习者在系统之外学到的：畅谈里说的 / 笔记里写的；未验证，可信度低于学习记录，学习里的证据永远优先，可以怀疑，不算“已合上过”）：\n${learned.imports.map((x) => `- ${x.channel}：${'session' in x.ref ? `${x.ref.session} 第 ${x.ref.lines.join('、')} 行` : `笔记 ${x.ref.note}`}（未验证）`).join('\n')}`,
             '',
           ]
         : []),
@@ -1140,7 +988,7 @@ export class Studium {
    */
   private async loopStatesText(
     loops: { sessionId: string; title: string }[],
-    known: string[],
+    learnings: Learning[],
   ): Promise<{ lines: string[]; load: string[] }> {
     const lines: string[] = [];
     const count = { active: 0, shelved: 0, waiting: 0 };
@@ -1161,9 +1009,13 @@ export class Studium {
       }
       if (flags.waitingFork !== undefined) extra.push(`等分叉 ${flags.waitingFork} 回来`);
       const parking = flags.parking;
+      // 没合上、且之后没有新点文字相同的一次合上的学习 = 缺口还没补上
       const unresolved =
         flags.ended?.closed === false &&
-        (opened.ticket === undefined || !known.includes(opened.ticket.newPoint));
+        (opened.ticket === undefined ||
+          !learnings.some(
+            (x) => x.status === '合上' && x.ticket.newPoint === opened.ticket?.newPoint,
+          ));
       if (parking !== undefined && (unresolved || flags.shelved !== undefined)) {
         const text = `缺：${parking.missing
           .map((m) => (m.point !== undefined ? m.point : m.text))
@@ -1227,11 +1079,12 @@ export class Studium {
       revisit: z
         .object({
           kind: z.enum(REVISIT_KINDS),
-          formation_ids: z.array(z.string()).min(1),
+          of_loop: z.string().describe('回看的是哪次学习（学习会话 id）'),
+          verdict_line: z.number().int().optional().describe('那次学习里判定所在的行号'),
         })
         .optional()
         .describe(
-          '复习 / 复检以前合上过的点时填：kind，和以前的 M09 形成记录 id（它们的新点必须就是 new_point）；学新点不填',
+          '复习 / 复检以前学过的东西时填：kind + 回看哪次学习（会话 id，可带判定行）；学新点不填',
         ),
       cross_domain: z
         .object({
@@ -1277,7 +1130,7 @@ export class Studium {
           route_action?: string;
           source_check?: { claim?: string; at?: string; model_added?: boolean }[];
           stage_check?: boolean;
-          revisit?: { kind: '复习' | '复检'; formation_ids?: string[] };
+          revisit?: { kind?: '复习' | '复检'; of_loop?: string; verdict_line?: number };
           cross_domain?: { kind?: string; other_point?: string; problem?: string };
           title?: string;
           reason?: string;
@@ -1368,20 +1221,36 @@ export class Studium {
               problem: o.cross_domain.problem ?? '',
             };
           }
+          let revisit: Ticket['revisit'];
+          if (o.revisit !== undefined) {
+            if (blank(o.revisit.kind)) problems.push(`${n}的 revisit 缺 kind（复习 / 复检）`);
+            if (blank(o.revisit.of_loop))
+              problems.push(`${n}的 revisit 缺 of_loop（回看哪次学习）`);
+            else {
+              const bad = await this.revisitProblem(
+                o.revisit.of_loop ?? '',
+                o.revisit.verdict_line,
+              );
+              if (bad !== undefined) problems.push(`${n}：${bad}`);
+            }
+            revisit = {
+              kind: o.revisit.kind ?? '复习',
+              ofLoop: o.revisit.of_loop ?? '',
+              ...(o.revisit.verdict_line === undefined
+                ? {}
+                : { verdictLine: o.revisit.verdict_line }),
+            };
+          }
           const ticket: Ticket = {
             newPoint: o.new_point ?? '',
             clause: o.clause ?? '',
             startPoints,
             routeAction: o.route_action ?? '',
             sourceCheck,
-            ...(o.revisit !== undefined
-              ? { revisit: { kind: o.revisit.kind, formationIds: o.revisit.formation_ids ?? [] } }
-              : {}),
+            ...(revisit !== undefined ? { revisit } : {}),
             ...(crossDomain !== undefined ? { crossDomain } : {}),
             ...(o.stage_check === true ? { stageCheck: true } : {}),
           };
-          const revisit = this.longterm.revisitProblem(ticket);
-          if (revisit !== undefined) problems.push(`${n}：${revisit}`);
           options.push({
             title: o.title ?? '',
             reason: o.reason ?? '',
@@ -1513,20 +1382,18 @@ export class Studium {
       },
       {
         name: 'list_learned',
-        description: '按记录列出本项目合上过的、进行中的、没合上的闭环，以及 M09 形成记录。',
+        description:
+          '列出这个项目里学过的记录：每次学习一行（合上的带守卫写下的实际理解与证据强度，没合上的带结束原话与当时的路线决定），以及外部导入（未验证）。',
         input: {},
         run: async () => {
-          const rows = this.o.m09.current().map((r) => this.o.m09.describe(r));
-          const loops: string[] = [];
-          for (const l of this.hub
-            .listSessions()
-            .filter((s) => s.kind === 'loop' && s.parent === mainId)) {
-            const state = stateLabel(foldLoop(await this.hub.records(l.sessionId)));
-            loops.push(`- ${l.sessionId}「${l.title}」：${state}`);
-          }
-          const ext = this.o.m09.externals().map((r) => this.o.m09.describeExternal(r, (id) => id));
+          const body = await this.learned.list(mainId);
+          const rows = body.learnings.map((l) => `- ${this.learned.describe(l)}`);
+          const imports = body.imports.map(
+            (x) =>
+              `- ${x.channel}：${'session' in x.ref ? `${x.ref.session} 第 ${x.ref.lines.join('、')} 行` : `笔记 ${x.ref.note}`}（未验证，不算学会）`,
+          );
           return ok(
-            `闭环：\n${loops.join('\n') || '（还没有）'}\n\nM09 形成记录（闭环证据）：\n${rows.join('\n') || '（还没有）'}${ext.length > 0 ? `\n\n外部导入（学习者自述 / 笔记，未验证，不算学会）：\n${ext.join('\n')}` : ''}`,
+            `学过的记录（每次学习一行）：\n${rows.join('\n') || '（还没有）'}${imports.length > 0 ? `\n\n外部导入（学习者自述 / 笔记，未验证，不算学会）：\n${imports.join('\n')}` : ''}`,
           );
         },
       },
@@ -1572,14 +1439,14 @@ export class Studium {
         known: z
           .array(
             z.object({
-              claim: z.string().describe('学习者自己说他已经会 / 学过的是什么，一句话'),
-              point: z.string().optional().describe('学习者说的那个东西，一句话；不填也行'),
-              basis: z.string().optional().describe('判读依据：他怎么说的、说到什么程度'),
+              text: z.string().describe('学习者亲口说自己会 / 学过的是什么，一句话'),
               lines: z.array(z.number().int()).min(1).describe('学习者说这话的行号（本对话里）'),
             }),
           )
           .optional()
-          .describe('学习者在畅谈里亲口说自己已经会的东西（自述，未验证）；没说就不填，不要猜'),
+          .describe(
+            '学习者亲口说自己已经会的东西（自述，未验证）：一句话 + 他说这话的行号；不猜、不对照知识点；没说就不填',
+          ),
         deadline: z.string().optional().describe('学习者说了期限才填，YYYY-MM-DD；没说不填'),
       },
       run: async (a) => {
@@ -1595,16 +1462,15 @@ export class Studium {
         if (deadline !== undefined && deadline !== '' && !validDate(deadline)) {
           return err('deadline 要写成 YYYY-MM-DD 的真实日期；学习者没说期限就不填');
         }
-        // 自述要引学习者自己的话（和 M15 的自述同一条规矩）；先全部核对，不过就什么都不写
-        const known =
-          (a.known as
-            { claim: string; point?: string; basis?: string; lines: number[] }[] | undefined) ?? [];
+        // 学习者亲口说会的：写一句话 + 他说这话的行号；先全部核对，不过就整次退回、什么都不写
+        const known = (a.known as { text: string; lines: number[] }[] | undefined) ?? [];
         const learner = learnerLines(recs);
         for (const k of known) {
-          if (k.claim.trim() === '') return err('known 里有空的 claim');
+          if (k.text.trim() === '') return err('known 里有一条没写学习者说会的是什么');
+          if (k.lines.length === 0) return err('known 每条都要引学习者说这话的行号');
           const bad = k.lines.filter((l) => !learner.has(l));
           if (bad.length > 0) {
-            return err(`known 里引的第 ${bad.join('、')} 行不是学习者说的话；自述只引学习者的行`);
+            return err(`known 里引的第 ${bad.join('、')} 行不是学习者说的话；只引学习者的行`);
           }
         }
         const at = this.iso();
@@ -1613,28 +1479,12 @@ export class Studium {
         if (deadline !== undefined && deadline !== '') {
           await this.hub.record(mainId, { type: 'project_deadline', at, deadline });
         }
-        if (known.length > 0) {
-          const model = await this.hub.executedModel(talkId);
-          for (const k of known) {
-            await this.o.m09.addExternal({
-              id: this.newId('x'),
-              at,
-              source: '自述',
-              status: '未验证',
-              claim: k.claim.trim(),
-              ...(k.point !== undefined && k.point !== '' ? { point: k.point } : {}),
-              basis: k.basis?.trim() || '学习者在畅谈里自己说会，没有验证',
-              talk: {
-                sessionId: talkId,
-                lines: k.lines,
-                quotes: k.lines.map((l) => {
-                  const r = recs.find((x) => x.line === l)?.record;
-                  return r?.type === 'user_message' ? r.text.slice(0, 200) : '';
-                }),
-              },
-              model,
-            });
-          }
+        // 外部导入：程序写原样指针（畅谈会话 + 学习者那几行），不经模型分析、不写“点亮了什么”
+        for (const k of known) {
+          await this.learned.addImport({
+            channel: '畅谈',
+            ref: { session: talkId, lines: k.lines },
+          });
         }
         await this.hub.record(talkId, { type: 'talk_ended', at, goal, title });
         await this.hub.send(mainId, {
@@ -1752,36 +1602,76 @@ export class Studium {
     ];
   }
 
-  private loopOpening(t: Ticket): string {
-    const history = t.startPoints
-      .flatMap((s) => this.o.m09.forPoint(s.point))
-      .map((r) => this.o.m09.describe(r));
-    const external = t.startPoints
-      .flatMap((s) => this.o.m09.externalsForPoint(s.point))
-      .map((r) => this.o.m09.describeExternal(r, (id) => id));
+  private async loopOpening(t: Ticket): Promise<string> {
+    const revisit = await this.revisitOpening(t);
     const check = t.sourceCheck.map(
       (c) =>
         `- ${c.claim}${c.at !== undefined ? `（出处：${c.at}）` : ''}${c.modelAdded === true ? '（资料里没有，模型补的）' : ''}`,
     );
     return [
-      ...this.longterm.revisitOpening(t),
+      ...revisit,
       '本闭环的单子：',
       this.describeTicket(t),
       '',
       '对资料核的结果：',
       check.length > 0 ? check.join('\n') : '（没核过）',
       '',
-      `学过的记录里相关的：${history.length > 0 ? '\n' + history.join('\n') : '缺历史背景（这些出发点还没有记录）'}`,
-      ...(external.length > 0
-        ? [
-            `外部导入记录（学习者在系统之外学到的：自述 / 笔记；未验证，可信度低于学习记录，教学中可以怀疑它）：\n${external.join('\n')}`,
-          ]
-        : []),
       ...this.practice.openingFacts(t),
-      '学习者状态（M15）与以前的教法记录（M10）：要用时查。',
+      '学过的记录（以往的学习）、学习者状态（M15）与以前的教法记录（M10）：要用时查。',
       '',
       '现在开始这次学习：先简短说明这次学什么、从哪出发，然后开始。',
     ].join('\n');
+  }
+
+  /**
+   * 复习 / 复检那次学习的开场：回看的是哪次学习（附它的单子与通过的判定：理解 + 证据强度）。
+   * 不是复习 / 复检时为空。核对（revisitProblem）在交卡时已做，这里只写事实。
+   */
+  private async revisitOpening(t: Ticket): Promise<string[]> {
+    const r = t.revisit;
+    if (r === undefined) return [];
+    const one = await this.learned.one(r.ofLoop).catch(() => undefined);
+    if (one === undefined) return [];
+    const verdict = one.verdict;
+    const strengths = (verdict?.understanding ?? [])
+      .map((u) => `${u.text}（${u.independence}、${u.durability}）`)
+      .join('；');
+    return [
+      `这是一次${r.kind}，不是第一次学这个点：回看的是 ${r.ofLoop}「${one.title}」那次学习${r.verdictLine !== undefined ? `（判定在第 ${String(r.verdictLine)} 行）` : ''}。`,
+      `那次的状态：${one.status}${one.endNote !== undefined ? `（学习者结束时的原话：${one.endNote}）` : ''}`,
+      `那次的单子：新点 ${one.ticket.newPoint}；预期理解 ${one.ticket.clause}`,
+      ...(verdict !== undefined
+        ? [
+            `那次通过的判定：${verdict.basis}${strengths !== '' ? `；实际表现出的理解：${strengths}` : ''}`,
+          ]
+        : ['那次没有判定。']),
+      '',
+    ];
+  }
+
+  /**
+   * 复习 / 复检的单子指回的那次学习站不站得住（工单 §4.6）：`ofLoop` 是一次已结束的学习；
+   * 给了 `verdictLine` 时那一行要是判定。站不住就返回一句话（交卡时整张卡退回）。
+   */
+  async revisitProblem(ofLoop: string, verdictLine?: number): Promise<string | undefined> {
+    const opened = await this.hub.opened(ofLoop).catch((e: unknown) => {
+      if (e instanceof NotFoundError) return undefined;
+      throw e;
+    });
+    if (opened === undefined || opened.kind !== 'loop') {
+      return `revisit 指的 ${ofLoop} 不是一次学习`;
+    }
+    const recs = await this.hub.records(ofLoop);
+    if (!recs.some((r) => r.record.type === 'loop_ended')) {
+      return `revisit 指的 ${ofLoop} 还没结束（复习 / 复检只看已经结束的那次）`;
+    }
+    if (verdictLine !== undefined) {
+      const at = recs.find((r) => r.line === verdictLine)?.record;
+      if (at?.type !== 'guard_verdict') {
+        return `revisit 的 verdict_line ${String(verdictLine)} 不是 ${ofLoop} 里的一份判定`;
+      }
+    }
+    return undefined;
   }
 
   // ───────────── M15 学习者状态（存放处 + 后台整理）─────────────
@@ -1869,7 +1759,7 @@ export class Studium {
 
   /**
    * 交给 M15 的 M01 事实：与 M04 取不同的字段（03「M15」读什么）——时间、间隔、停顿、中断与停下的地方、
-   * 学习者的话（含紧邻的前一句教学作前序事件）。不给诊断记录、守卫判定、M09，也不给“合上没有”。
+   * 学习者的话（含紧邻的前一句教学作前序事件）。不给诊断记录、守卫判定，也不给“合上没有”。
    */
   private async stateFacts(covered: Record<string, number>) {
     const sessions = this.hub
@@ -2204,7 +2094,7 @@ export class Studium {
     return {
       name: 'write_strategy_record',
       description:
-        '写一条个人策略过程记录（M10 自己的记录，不进 M09）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这个闭环的行号。单次记录不证明因果。',
+        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这个闭环的行号。单次记录不证明因果。',
       input: {
         conditions: z.string(),
         strategies: z.string(),
@@ -2282,121 +2172,6 @@ export class Studium {
     if (ended) throw new BadRequestError('这部分已经结束了。');
   }
 
-  /** 笔记提取的会话 → 要提的笔记（书库 id）。 */
-  private readonly noteTargets = new Map<string, { book: string; done: boolean }>();
-
-  /**
-   * 笔记导入后可选：让模型从学习者的笔记里提“他写过的点”，作为“笔记、未验证”档写进 M09（M09:26,47）。
-   * 开一个 M09 会话（和写形成记录同一类，另一种活），后台跑；结果在 GET /api/m09/external。
-   */
-  async extractNotePoints(book: string, projectId?: string): Promise<string> {
-    const info = await this.o.m07.info(book);
-    if (info?.kind !== 'note')
-      throw new BadRequestError('只能从个人笔记里提：这不是一份导入的笔记。');
-    if (projectId !== undefined) await this.requireProject(projectId);
-    const toc = await this.o.m07.toc(book);
-    const parts: string[] = [];
-    let budget = NOTE_EXTRACT_CHARS;
-    for (const e of toc) {
-      if (e.file === undefined) {
-        parts.push(`## ${e.num} ${e.title}`);
-        continue;
-      }
-      const r = await this.o.m07.lines(book, e.file);
-      let body = r.lines.map((l) => `${String(l.n)}\t${l.text}`).join('\n');
-      if (body.length > budget)
-        body = `${body.slice(0, Math.max(budget, 0))}\n（后面截断了，用 read_source 读全）`;
-      budget -= body.length;
-      parts.push(`## ${e.num} ${e.title}（文件 ${e.file}，共 ${String(r.total)} 行）\n${body}`);
-    }
-    const s = await this.hub.createSession('m09', {
-      title: '提取笔记里的点',
-      ...(projectId !== undefined ? { parent: projectId } : {}),
-    });
-    this.noteTargets.set(s.sessionId, { book, done: false });
-    await this.hub.send(s.sessionId, {
-      role: 'program',
-      text: [
-        '这一次不是写闭环形成记录，而是从学习者的个人笔记里提“他写过的点”（外部导入，未验证）。',
-        `笔记：《${book}》（作者：学习者；来源：个人笔记；原路径：${info.meta?.originalPath ?? '未知'}）。每个小节前是文件名，行前是行号。`,
-        '',
-        parts.join('\n\n'),
-      ].join('\n'),
-    });
-    await this.hub.idle(s.sessionId);
-    return s.sessionId;
-  }
-
-  private notePointsTool(sessionId: string): ToolSpec {
-    return {
-      name: 'write_note_points',
-      description:
-        '把从学习者笔记里提到的点写进 M09 的“笔记、未验证”档。每个点：学习者写过的是什么、笔记里写到什么程度、依据的笔记行段。只提交一次；笔记里没有的不要编。',
-      input: {
-        points: z
-          .array(
-            z.object({
-              claim: z.string().describe('学习者在笔记里写过的是什么，一句话'),
-              point: z.string().optional().describe('笔记里提到的那个东西，一句话；不填也行'),
-              grade: z.enum(NOTE_GRADES).describe('笔记里写到什么程度'),
-              basis: z.string().describe('判读依据：笔记里看到了什么才这样分'),
-              file: z.string().describe('笔记小节文件，如 ch01/sec-1.1.md'),
-              from_line: z.number().int(),
-              to_line: z.number().int(),
-            }),
-          )
-          .min(1),
-      },
-      run: async (a) => {
-        const target = this.noteTargets.get(sessionId);
-        if (!target) return err('找不到要提的笔记');
-        if (target.done) return err('已经提交过了');
-        const points = a.points as {
-          claim: string;
-          point?: string;
-          grade: (typeof NOTE_GRADES)[number];
-          basis: string;
-          file: string;
-          from_line: number;
-          to_line: number;
-        }[];
-        for (const p of points) {
-          if (p.claim.trim() === '' || p.basis.trim() === '') return err('claim 和 basis 都不能空');
-          let r;
-          try {
-            r = await this.o.m07.lines(target.book, p.file, p.from_line, p.to_line);
-          } catch (e) {
-            if (isNotFound(e)) return err(`笔记里没有这个文件：${p.file}`);
-            throw e;
-          }
-          if (p.from_line < 1 || p.to_line < p.from_line || r.lines.length === 0) {
-            return err(
-              `${p.file} 第 ${String(p.from_line)}–${String(p.to_line)} 行不在笔记里（共 ${String(r.total)} 行）`,
-            );
-          }
-        }
-        const at = this.iso();
-        const model = await this.hub.executedModel(sessionId);
-        for (const p of points) {
-          await this.o.m09.addExternal({
-            id: this.newId('x'),
-            at,
-            source: '笔记',
-            status: '未验证',
-            claim: p.claim.trim(),
-            ...(p.point !== undefined && p.point !== '' ? { point: p.point } : {}),
-            basis: p.basis.trim(),
-            grade: p.grade,
-            note: { book: target.book, file: p.file, from: p.from_line, to: p.to_line },
-            model,
-          });
-        }
-        target.done = true;
-        return ok(`已写入 ${String(points.length)} 条（笔记、未验证）`);
-      },
-    };
-  }
-
   /** 资料范围的说明，接在工具结果后面：只搜了项目选用的，要全库传 all。 */
   private scopeHint(scope: string[] | undefined): string {
     return scope !== undefined
@@ -2404,8 +2179,8 @@ export class Studium {
       : '';
   }
 
-  /** 只读查询工具：M07、M09（按 03「读写权限」）；资料类工具默认只查项目选的资料（没选 = 全库）。 */
-  private readTools(sessionId: string, opt: { m07?: boolean; m09?: boolean } = {}): ToolSpec[] {
+  /** 只读查询工具：资料原文与出处（按记录/读写权限.md）；默认只查项目选的资料（没选 = 全库）。 */
+  private readTools(sessionId: string, opt: { m07?: boolean } = {}): ToolSpec[] {
     const allParam = z
       .boolean()
       .optional()
@@ -2510,28 +2285,6 @@ export class Studium {
         },
       );
     }
-    if (opt.m09 !== false) {
-      tools.push(...this.longterm.viewTools());
-      tools.push({
-        name: 'query_m09',
-        description:
-          '查学习者的 M09 记录，分两档：已结束闭环的形成记录（闭环证据，已验证）；外部导入（学习者自述 / 笔记里写过的，未验证，可信度低、闭环证据优先）。给点 id 只看与这个点有关的。',
-        input: { point: z.string().optional() },
-        run: (a) => {
-          const p = a.point as string | undefined;
-          const rows = p ? this.o.m09.forPoint(p) : this.o.m09.current();
-          const ext = p ? this.o.m09.externalsForPoint(p) : this.o.m09.externals();
-          const closed = rows
-            .map((r) => this.o.m09.describe(r) + this.objectionNotes('m09', r.id))
-            .join('\n');
-          if (ext.length === 0) return ok(rows.length > 0 ? closed : '没有记录');
-          const outside = ext.map((r) => this.o.m09.describeExternal(r, (id) => id)).join('\n');
-          return ok(
-            `闭环形成记录（已验证）：\n${closed || '没有'}\n\n外部导入（未验证，自述 / 笔记；不算学会，闭环证据优先，可以怀疑）：\n${outside}`,
-          );
-        },
-      });
-    }
     return tools;
   }
 }
@@ -2571,7 +2324,6 @@ function formatDuration(ms: number): string {
 }
 
 /** 笔记提取：开场里最多放多少字笔记原文，超出的让模型用 read_source 读。 */
-const NOTE_EXTRACT_CHARS = 30_000;
 
 /** 把 project_material 记录折叠成当前选用的资料（按选用顺序）。 */
 export function foldMaterials(recs: LogRecord[]): { book: string; addedAt: string }[] {

@@ -1,5 +1,5 @@
 // 链路评测的驱动：一个模拟学生在一个全新的核心上走完整条链——开项目 → 主对话说想学什么 → 畅谈谈出方向 →
-// 下一步 → 选择卡 → 学习对话（第 2 句起的一次中途插话）→ 我觉得懂了（守卫）→ 学完了 / 先到这里 → 写 M09 → 下一张卡，
+// 下一步 → 选择卡 → 学习对话（第 2 句起的一次中途插话）→ 我觉得懂了（守卫）→ 学完了 / 先到这里 → 下一张卡，
 // 后台 M15 / M10 跑完才算完。学习者的每个动作都经本地服务的 HTTP 接口做（录带只录经接口的动作，回放才对得上）；
 // 学生只看到界面按 thread-model 转出来的文字，看不到系统提示、诊断记录、工具调用、程序事实。
 // 驱动只在学生不动或轮数用完时代点，代点一律记进步骤日志，报告里标“驱动”。
@@ -9,7 +9,6 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { createApp, type App } from '../../src/core/app.ts';
-import { M09, type FormationRecord } from '../../src/core/knowledge/m09.ts';
 import { M10, type StrategyRecord } from '../../src/core/knowledge/m10.ts';
 import { M15 } from '../../src/core/knowledge/m15.ts';
 import type { ModelAdapter, ModelConversation } from '../../src/core/model/port.ts';
@@ -65,7 +64,6 @@ export interface ChainRun {
   /** 单子、新点、子句的文字（给判分器）。 */
   ticketText?: string;
   sessions: SessionSnapshot[];
-  m09: FormationRecord[];
   m10: StrategyRecord[];
   m15Records: number;
   m15Current: string | undefined;
@@ -460,7 +458,7 @@ async function chain(d: Driver, run: ChainRun, http: Http, app: App): Promise<vo
     await d.press(loopId, 'end', '评测驱动：轮数用完，代点“先到这里”');
   }
 
-  // ⑥ 结束后的清单（写 M09、下一张卡、M15 / M10）跑完
+  // ⑥ 结束后的清单（下一张卡、M15 / M10）跑完
   await d.settle();
   const after = await d.records(mainId);
   const next = pendingCard(after);
@@ -483,7 +481,6 @@ export async function runStudent(
     tapePath,
     steps: [],
     sessions: [],
-    m09: [],
     m10: [],
     m15Records: 0,
     m15Current: undefined,
@@ -534,7 +531,6 @@ async function snapshot(app: App, run: ChainRun): Promise<void> {
     run.sessions.push({ ...s, records: await app.hub.records(s.sessionId) });
   }
   const k = join(app.dataDir.root, 'knowledge');
-  run.m09 = (await M09.load(join(k, 'm09'))).all();
   run.m10 = (await M10.load(join(k, 'm10'))).all();
   const m15 = await M15.load(join(k, 'm15'));
   run.m15Records = m15.allRecords().length;

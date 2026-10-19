@@ -41,17 +41,6 @@ describe('sourceText', () => {
         .detail,
     ).toBe('查不到原文');
   });
-
-  it('给学习者看的部分不含编号与内部词', () => {
-    const t = sourceText({
-      raw: 'r1',
-      kind: 'm09_record',
-      resolved: true,
-      label: '形成记录 r1（闭环 L）',
-      detail: '位移只看起点终点',
-    });
-    expect(JSON.stringify(t)).not.toMatch(/闭环|形成记录|r1/);
-  });
 });
 
 describe('其他', () => {

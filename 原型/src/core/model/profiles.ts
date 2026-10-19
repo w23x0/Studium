@@ -12,7 +12,7 @@ export interface Profile {
 
 export type Profiles = Partial<Record<ConversationKind, Profile>>;
 
-/** 默认：主对话低强度；畅谈、闭环对话、守卫、M05、M15 高强度；M09 / M10 03 没规定，不设。 */
+/** 默认：主对话低强度；畅谈、学习对话、守卫、M05、M15 高强度；M10 没规定，不设。 */
 export const DEFAULT_PROFILES: Profiles = {
   main: { effort: 'low' },
   talk: { effort: 'high' },
@@ -33,9 +33,7 @@ export function mergeProfiles(overrides: unknown, base: Profiles = DEFAULT_PROFI
   }
   const out: Profiles = { ...base };
   for (const [kind, raw] of Object.entries(overrides)) {
-    if (
-      !(kind in { main: 1, talk: 1, loop: 1, guard: 1, m09: 1, m05: 1, m15: 1, m10: 1, output: 1 })
-    ) {
+    if (!(kind in { main: 1, talk: 1, loop: 1, guard: 1, m05: 1, m15: 1, m10: 1, output: 1 })) {
       throw new Error(`STUDIUM_PROFILES 里没有这种会话类：${kind}`);
     }
     const p = raw as Profile;

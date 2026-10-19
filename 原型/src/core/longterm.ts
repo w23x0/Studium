@@ -1,13 +1,9 @@
-// 跨闭环的长期功能（批 6）：复习 / 复检、重新掌握与降档、M09 当前视图、接着学、阶段复盘、
-// 应用内提醒与“今天该做的”、路线偏差记录。对应 M05:22-25,29-30 · M09:18,28,30,32 · M04:18,49。
-// 设计没写清的地方的补法见 工作单.md「补位清单」。studium.ts 只在几处挂钩，逻辑都在这里。
+// 长期功能：复习 / 复检、接着学、阶段复盘、应用内提醒与“今天该做的”、路线偏差记录。
+// 读学过的记录（按层）与 M15 状态；分析层已取消（10-18）。studium.ts 只在几处挂钩，逻辑都在这里。
 import { z } from 'zod';
 import type {
-  PointViewEntry,
-  RegressionView,
   ReminderView,
   ReviewBrief,
-  TimelineView,
   TodayItem,
   TodayView,
 } from '../shared/protocol-longterm.ts';
@@ -22,17 +18,14 @@ import type {
 import {
   REMINDER_KINDS,
   reviewReturnedFact,
-  SUSPICIONS,
   type ReminderKind,
-  type Revisit,
 } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import type { Deviations } from './knowledge/m05-deviations.ts';
-import { LEVELS, TIMELINE_KINDS, type M09, type TimelineRecord } from './knowledge/m09.ts';
-import { buildPointView } from './knowledge/m09-view.ts';
+import type { Learned } from './learned.ts';
 import type { M15 } from './knowledge/m15.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
-import { learnerLines, renderTranscript } from './transcript.ts';
+import { renderTranscript } from './transcript.ts';
 import { BadRequestError, foldDeadline } from './studium.ts';
 
 /** 期限还有几天内算“临近”，进“今天该做的”（实现细节，可调）。 */
@@ -42,35 +35,26 @@ export const REVIEW_EVERY_DAYS = 14;
 export const REVIEW_MIN_ENDED = 2;
 /** 开出去后学习者只说了这么几句就没合上结束，记为“很快放下”（实现细节，可调）。 */
 export const QUICK_DROP_MESSAGES = 3;
-/** M05 开场里最多列多少个点的现状 / 多少条路线偏差。 */
-const VIEW_LINES = 25;
+/** M05 开场里最多列多少条路线偏差。 */
 const DEVIATION_LINES = 8;
 /** 复盘开场里各部分最多放多少条。 */
 const REVIEW_LINES = 30;
 
 export interface LongTermDeps {
   hub(): Hub;
-  m09: M09;
+  /** 学过的记录（按层读；阶段复盘与路线事实读它）。 */
+  learned: Learned;
   m15: M15;
   deviations: Deviations;
   now(): Date;
   iso(): string;
   newId(prefix: string): string;
-  loopOpening(t: Ticket): string;
+  loopOpening(t: Ticket): Promise<string>;
   projectOf(sessionId: string): Promise<string | undefined>;
   stateQueryTool(): ToolSpec;
 }
 
-/** 写 M09 的会话在干哪次活：哪个闭环、学习者的行、是不是重新分析。 */
-interface M09Job {
-  loopId: string;
-  learner: Set<number>;
-  redo: boolean;
-}
-
 export class LongTerm {
-  private readonly m09Jobs = new Map<string, M09Job>();
-
   constructor(private readonly d: LongTermDeps) {}
 
   private get hub(): Hub {
@@ -86,368 +70,14 @@ export class LongTerm {
     return id;
   }
 
-  // ───────────── M09 当前视图（派生层，随时从记录重算）─────────────
+  // ───────────── M05：开场的提醒与路线偏差、提醒工具 ─────────────
 
-  pointView(opt: { q?: string; status?: string } = {}): PointViewEntry[] {
-    let entries = buildPointView(this.d.m09, (id) => id, this.d.now());
-    if (opt.status !== undefined && opt.status !== '') {
-      entries = entries.filter((e) => e.status === opt.status);
-    }
-    const q = opt.q?.trim().toLowerCase();
-    if (q !== undefined && q !== '') {
-      entries = entries.filter((e) =>
-        [e.point.id, e.point.name, e.summary, ...e.keywords].some((s) =>
-          s.toLowerCase().includes(q),
-        ),
-      );
-    }
-    return entries;
-  }
-
-  pointDetail(point: string): { entry: PointViewEntry; timeline: TimelineView[] } {
-    const entry = this.pointView().find((e) => e.point.id === point);
-    if (entry === undefined) throw new BadRequestError(`M09 里没有这个点的记录：${point}。`);
-    return { entry, timeline: this.timelineViews(point) };
-  }
-
-  timelineViews(point?: string): TimelineView[] {
-    return this.d.m09
-      .timelines()
-      .filter((t) => point === undefined || t.point === point)
-      .map((t) => ({
-        id: t.id,
-        at: t.at,
-        kind: t.kind,
-        point: { id: t.point, name: this.pointName(t.point) },
-        loopSessionId: t.loopSessionId,
-        targets: t.targets,
-        reason: t.reason,
-        evidenceLines: t.evidenceLines,
-        ...(t.stateRuledOut !== undefined ? { stateRuledOut: t.stateRuledOut } : {}),
-        ...(t.level !== undefined ? { level: t.level } : {}),
-        model: { name: t.model },
-      }));
-  }
-
-  private viewLine(e: PointViewEntry): string {
-    const ev = e.lastEvidence;
-    return [
-      `- ${this.pointText(e.point.id)}：状态 ${e.status}${e.level !== undefined ? `，层级 ${e.level}` : ''}；${
-        ev !== undefined
-          ? `最近证据 ${ev.at.slice(0, 10)}（距今 ${String(e.daysSince)} 天，${ev.role}，${ev.strength}${ev.revisit !== undefined ? `，${ev.revisit}` : ''}，记录 ${ev.recordId}）`
-          : `只有外部导入（${e.lastTouchedAt.slice(0, 10)}，距今 ${String(e.daysSince)} 天）`
-      }；摘要：${e.summary}`,
-      ...e.timeline.map((t) => `    时间版本：${t.at.slice(0, 10)} ${t.kind}（${t.id}）`),
-    ].join('\n');
-  }
-
-  /** 给模型的只读工具：M09 当前视图。 */
-  viewTools(): ToolSpec[] {
-    return [
-      {
-        name: 'query_m09_view',
-        description:
-          '查 M09 的当前视图（派生层，每个点一行：当前层级、状态、最近一次证据与强度、距今几天、一句话摘要）。可按点 id 或关键词查；不给参数列出全部（最久没碰的在前）。它是索引，不替代形成记录和证据。',
-        input: { point: z.string().optional(), keyword: z.string().optional() },
-        run: (a) => {
-          let entries = this.pointView({ q: (a.keyword as string | undefined) ?? '' });
-          const p = a.point as string | undefined;
-          if (p !== undefined && p !== '') entries = entries.filter((e) => e.point.id === p);
-          entries.sort((x, y) => x.lastTouchedAt.localeCompare(y.lastTouchedAt));
-          return ok(
-            entries.length > 0 ? entries.map((e) => this.viewLine(e)).join('\n') : '没有记录',
-          );
-        },
-      },
-    ];
-  }
-
-  // ───────────── 复习 / 复检 ─────────────
-
-  /** M05 交回的单子上的 revisit 是否站得住：指向的形成记录存在、新点与单子的新点一致。 */
-  revisitProblem(t: Ticket): string | undefined {
-    const r = t.revisit;
-    if (r === undefined) return undefined;
-    if (r.formationIds.length === 0) return '复习 / 复检要指向以前的形成记录（formation_ids）';
-    for (const id of r.formationIds) {
-      const rec = this.d.m09.record(id);
-      if (rec === undefined) return `M09 里没有形成记录 ${id}`;
-      if (rec.newPoint !== t.newPoint) {
-        return `形成记录 ${id} 的新点是 ${rec.newPoint}，不是单子的新点 ${t.newPoint}；复习 / 复检回头看的就是以前合上过的那个点`;
-      }
-    }
-    return undefined;
-  }
-
-  /** 闭环开场里复习 / 复检的事实（没有就空）。 */
-  revisitOpening(t: Ticket): string[] {
-    const r = t.revisit;
-    if (r === undefined) return [];
-    const old = r.formationIds.flatMap((id) => {
-      const rec = this.d.m09.record(id);
-      return rec !== undefined ? [this.d.m09.describe(rec)] : [];
-    });
-    const timeline = this.d.m09
-      .timelines()
-      .filter((x) => x.point === t.newPoint)
-      .map((x) => this.d.m09.describeTimeline(x, (id) => id));
-    return [
-      `这是一次${r.kind}，不是第一次学这个点。${r.kind === '复检' ? '复检 = 对以前作出的掌握结论重新验证，是个短闭环。' : '复习 = 巩固已经形成的内容，是个短闭环。'}`,
-      `以前的形成记录：\n${old.join('\n') || '（查不到）'}`,
-      ...(timeline.length > 0 ? [`此后这个点的时间版本记录：\n${timeline.join('\n')}`] : []),
-      '',
-    ];
-  }
-
-  /** 复检 / 复习闭环写 M09 时，形成记录上标明（单子上有就标）。 */
-  async revisitOfLoop(loopId: string): Promise<Revisit | undefined> {
-    return (await this.hub.opened(loopId)).ticket?.revisit;
-  }
-
-  // ───────────── 教学侧：以前会的现在答不出（结构化诊断条目）─────────────
-
-  loopTools(loopId: string): ToolSpec[] {
-    return [
-      {
-        name: 'note_regression',
-        description:
-          '闭环里发现“以前会的（M09 里有记录，含外部导入）现在答不出 / 表现与之不符”时，在诊断里记一条结构化条目：哪个点、指回学习者原话的行、怀疑是什么原因（遗忘 / 提取失败 / 状态原因：疲劳、分心等）、针对 M09 哪条旧记录。这只是候选，不是 M09 记录；闭环合上时写 M09 的会话会读到这类条目（不读诊断全文），自己判断记不记。',
-        input: {
-          point: z.string().describe('哪个点'),
-          observed: z.string().describe('观察到什么：以前的记录说会，现在表现怎样（一两句）'),
-          basis_lines: z.array(z.number().int()).describe('指回学习者原话的行号'),
-          suspicion: z.enum(SUSPICIONS),
-          against: z
-            .array(z.string())
-            .optional()
-            .describe('针对的 M09 旧记录 id（形成记录 / 外部导入）；不确定可不填'),
-        },
-        run: async (a) => {
-          const recs = await this.hub.records(loopId);
-          if (recs.some((r) => r.record.type === 'loop_ended')) return fail('这个闭环已经结束了。');
-          const point = a.point as string;
-          const observed = (a.observed as string).trim();
-          if (observed === '') return fail('observed 不能是空的：写清观察到什么。');
-          const basis = a.basis_lines as number[];
-          if (basis.length === 0) return fail('basis_lines 至少给一行学习者的原话。');
-          const learner = learnerLines(recs);
-          const bad = basis.filter((l) => !learner.has(l));
-          if (bad.length > 0) {
-            return fail(`第 ${bad.join('、')} 行不是学习者说的话；依据只指回学习者的原话行。`);
-          }
-          const against = (a.against as string[] | undefined) ?? [];
-          const known = this.knownRecordIds(point);
-          const unknown = against.filter((id) => !known.has(id));
-          if (unknown.length > 0) return fail(`M09 里没有这个点的记录 ${unknown.join('、')}。`);
-          if (known.size === 0) {
-            return fail(
-              `M09 里还没有点 ${point} 的记录，谈不上“以前会的”；这是前置缺口，用 request_detour 通知。`,
-            );
-          }
-          await this.hub.record(loopId, {
-            type: 'loop_note',
-            at: this.d.iso(),
-            text: observed,
-            regression: {
-              point,
-              basisLines: basis,
-              suspicion: a.suspicion as (typeof SUSPICIONS)[number],
-              against,
-            },
-          });
-          return ok(
-            '已记为诊断里的结构化条目（候选）。它不构成 M09 记录；接着教，闭环合上时写 M09 的会话会读到。',
-          );
-        },
-      },
-    ];
-  }
-
-  /** M09 里与某个点有关的记录 id（形成记录、外部导入、时间版本记录）。 */
-  private knownRecordIds(point: string): Set<string> {
-    return new Set([
-      ...this.d.m09
-        .all()
-        .filter((r) => r.newPoint === point || r.startPoints.includes(point))
-        .map((r) => r.id),
-      ...this.d.m09.externalsForPoint(point).map((r) => r.id),
-      ...this.d.m09
-        .timelines()
-        .filter((t) => t.point === point)
-        .map((t) => t.id),
-    ]);
-  }
-
-  // ───────────── 写 M09 的会话：重新分析、复检、提取失败 / 降档 / 重新掌握 ─────────────
-
-  /** 写 M09 的会话开出来时登记它在干哪个闭环的活。 */
-  m09Opened(sessionId: string, loopId: string, records: NumberedRecord[], redo: boolean): void {
-    this.m09Jobs.set(sessionId, { loopId, learner: learnerLines(records), redo });
-  }
-
-  m09Closed(sessionId: string): void {
-    this.m09Jobs.delete(sessionId);
-  }
-
-  /** 写 M09 开场里追加的事实：重新分析的说明、复习 / 复检的旧记录、教学侧记的结构化条目（不含诊断全文）。 */
-  async m09Opening(loopId: string, records: NumberedRecord[], redo: boolean): Promise<string[]> {
-    const opened = await this.hub.opened(loopId);
-    const out: string[] = [];
-    if (redo) {
-      const versions = this.d.m09.forLoop(loopId);
-      out.push(
-        `这一次是对这个已合上闭环的重新分析：已经有 ${String(versions.length)} 版分析（模型：${[...new Set(versions.map((v) => v.model))].join('、')}）。从原文独立重做一版，新版本与旧版本并存，旧的不改；只用 write_formation_record。`,
-        '',
-      );
-      return out;
-    }
-    if (opened.ticket?.revisit !== undefined) {
-      out.push(...this.revisitOpening(opened.ticket));
-      out.push(
-        `（这个闭环是${opened.ticket.revisit.kind}闭环，形成记录上程序会标明。${
-          opened.ticket.revisit.kind === '复检'
-            ? '复检合上后，若这个点此前有提取失败 / 降档记录，可用 write_timeline_record 追加“重新掌握”，须引学习者在本闭环里的原话行。'
-            : ''
-        }）`,
-        '',
-      );
-    }
-    const notes = records.flatMap((r) =>
-      r.record.type === 'loop_note' && r.record.regression !== undefined
-        ? [{ line: r.line, text: r.record.text, reg: r.record.regression }]
-        : [],
-    );
-    if (notes.length > 0) {
-      out.push(
-        '教学侧在本闭环里记下的“以前会的现在答不出 / 表现不符”条目（结构化条目，只列这类，不含诊断全文）：',
-        ...notes.map(({ line, text, reg }) => {
-          const quotes = reg.basisLines.map((l) => {
-            const rec = records.find((x) => x.line === l)?.record;
-            return `L${String(l)}「${rec?.type === 'user_message' ? rec.text.slice(0, 120) : ''}」`;
-          });
-          return `- 诊断第 ${String(line)} 行：点 ${this.pointText(reg.point)}；怀疑：${reg.suspicion}；针对旧记录：${reg.against.join('、') || '未指明'}；依据学习者原话 ${quotes.join('、')}；教学侧说明：${text}`;
-        }),
-        '这些只是候选。要记“提取失败 / 降档”（write_timeline_record），得你自己判断学习者的表现确实与旧记录不符，并且已排除疲劳等状态侧解释（可用 query_state 看；教学侧怀疑是状态原因的，不记）。拿不准就不记。',
-        '',
-      );
-    }
-    return out;
-  }
-
-  /** 写 M09 的会话里的额外工具：追加时间版本记录（重新分析的会话没有）。 */
-  m09Tools(sessionId: string): ToolSpec[] {
-    const job = this.m09Jobs.get(sessionId);
-    if (job === undefined || job.redo) return [];
-    return [this.timelineTool(sessionId, job)];
-  }
-
-  private timelineTool(sessionId: string, job: M09Job): ToolSpec {
-    return {
-      name: 'write_timeline_record',
-      description:
-        '追加一条时间版本记录，指向 M09 里的旧记录，旧记录不改：提取失败 / 降档（来自本闭环里教学侧记下的结构化条目，须已排除状态侧解释）；重新掌握（只在复检闭环合上之后，此前这个点有提取失败 / 降档）。可以调用多次，每个点一条。',
-      input: {
-        kind: z.enum(TIMELINE_KINDS),
-        point: z.string().describe('哪个点'),
-        targets: z
-          .array(z.string())
-          .min(1)
-          .describe('指向的旧记录 id（形成记录 / 外部导入 / 更早的时间版本记录）'),
-        reason: z.string().describe('依据什么：学习者表现与旧记录哪里不符 / 复检里怎样做到了'),
-        evidence_lines: z.array(z.number().int()).describe('学习者在本闭环里的原话行'),
-        level: z.enum(LEVELS).optional().describe('降档后 / 重新掌握后的理解层级（降档必填）'),
-        state_ruled_out: z
-          .string()
-          .optional()
-          .describe('提取失败 / 降档必填：怎样排除了疲劳等状态侧解释'),
-      },
-      run: async (a) => {
-        const kind = a.kind as (typeof TIMELINE_KINDS)[number];
-        const point = a.point as string;
-        const lines = a.evidence_lines as number[];
-        if (lines.length === 0) return fail('evidence_lines 至少给一行学习者的原话。');
-        const bad = lines.filter((l) => !job.learner.has(l));
-        if (bad.length > 0)
-          return fail(`第 ${bad.join('、')} 行不是学习者说的话；证据只引学习者的行。`);
-        const targets = a.targets as string[];
-        const known = this.knownRecordIds(point);
-        const unknown = targets.filter((id) => !known.has(id));
-        if (unknown.length > 0)
-          return fail(`以前学过的记录里没有这个点的这几条：${unknown.join('、')}。`);
-        const reason = (a.reason as string).trim();
-        if (reason === '') return fail('reason 不能是空的。');
-        const level = a.level as (typeof LEVELS)[number] | undefined;
-        const ruledOut = (a.state_ruled_out as string | undefined)?.trim();
-        const recs = await this.hub.records(job.loopId);
-        const opened = await this.hub.opened(job.loopId);
-        if (kind === '重新掌握') {
-          if (opened.ticket?.revisit?.kind !== '复检' || opened.ticket.newPoint !== point) {
-            return fail('“重新掌握”只能来自这个点的复检闭环合上之后。');
-          }
-          const priors = this.d.m09
-            .timelines()
-            .filter((t) => t.point === point && (t.kind === '提取失败' || t.kind === '降档'));
-          if (priors.length === 0) {
-            return fail('这个点没有提取失败 / 降档记录，不需要记“重新掌握”。');
-          }
-        } else {
-          // 遗忘 / 提取失败只能来自闭环结束的那次提交，且提交时已排除状态侧解释（M04:49 · M09:32）
-          if (ruledOut === undefined || ruledOut === '') {
-            return fail('提取失败 / 降档要写明怎样排除了疲劳等状态侧解释（state_ruled_out）。');
-          }
-          const flagged = recs.flatMap((r) =>
-            r.record.type === 'loop_note' && r.record.regression?.point === point
-              ? [r.record.regression]
-              : [],
-          );
-          if (flagged.length === 0) {
-            return fail(
-              `本闭环里教学侧没有记过点 ${point} 的“以前会的现在答不出”条目；进行中没发现的，不能在提交时补记提取失败 / 降档。`,
-            );
-          }
-          if (flagged.every((f) => f.suspicion === '状态原因')) {
-            return fail('教学侧怀疑是状态原因（不是遗忘 / 提取失败），不记提取失败 / 降档。');
-          }
-          if (kind === '降档' && level === undefined)
-            return fail('降档要写降档后的理解层级（level）。');
-        }
-        const rec: TimelineRecord = {
-          id: this.d.newId('tl'),
-          at: this.d.iso(),
-          kind,
-          point,
-          loopSessionId: job.loopId,
-          targets,
-          reason,
-          evidenceLines: lines,
-          ...(ruledOut !== undefined && ruledOut !== '' ? { stateRuledOut: ruledOut } : {}),
-          ...(level !== undefined ? { level } : {}),
-          model: await this.hub.executedModel(sessionId),
-        };
-        await this.d.m09.addTimeline(rec);
-        return ok(`已追加${kind}记录（${rec.id}），旧记录没有改。`);
-      },
-    };
-  }
-
-  // ───────────── M05：开场的长期读数、提醒工具、路线偏差挂钩 ─────────────
-
-  /** M05 开场追加的段落：各点多久没碰了与当时证据强度、提醒、最近的路线偏差。 */
+  /** M05 开场追加的段落：提醒、最近的路线偏差。 */
   async m05Opening(mainId: string): Promise<string[]> {
-    const entries = this.pointView().filter((e) => e.status !== '仅外部导入');
-    const oldest = [...entries].sort((x, y) => x.lastTouchedAt.localeCompare(y.lastTouchedAt));
     const reminders = (await this.reminderViews(mainId)).filter((r) => r.closed === undefined);
     const devs = this.d.deviations.all(mainId).slice(-DEVIATION_LINES);
     const resumes = await this.resumeLines(mainId);
     return [
-      '── 长期读数（程序整理，供复习 / 复检与难度参考）──',
-      entries.length > 0
-        ? `M09 里合上过的点的现状（共 ${String(entries.length)} 个，最久没碰的在前，列前 ${String(VIEW_LINES)} 个；全部用 query_m09_view 查）：\n${oldest
-            .slice(0, VIEW_LINES)
-            .map((e) => this.viewLine(e))
-            .join('\n')}`
-        : 'M09 里还没有合上过的点（没有可复习 / 复检的）。',
-      '',
       `提醒（还没办的）：${
         reminders.length > 0
           ? '\n' +
@@ -491,7 +121,7 @@ export class LongTerm {
       {
         name: 'add_reminder',
         description:
-          '加一条应用内提醒（只追加，不是系统通知）：什么时候、做什么。复检某个点（kind=recheck，填 point）、接着某个没合上的闭环（kind=resume，填 loop）、期限前（kind=deadline，填 before_deadline_days）、其他。时间由你按 M09 记录的时间与证据强度判断，没有固定天数。可以调用多次。',
+          '加一条应用内提醒（只追加，不是系统通知）：什么时候、做什么。复检某个点（kind=recheck，填 point）、接着某个没合上的闭环（kind=resume，填 loop）、期限前（kind=deadline，填 before_deadline_days）、其他。时间由你按学过的记录的时间与证据强度判断，没有固定天数。可以调用多次。',
         input: {
           due: z.string().optional().describe('YYYY-MM-DD'),
           before_deadline_days: z
@@ -847,9 +477,6 @@ export class LongTerm {
     if (ticket === undefined || main === undefined) {
       throw new BadRequestError('这部分没有单子，接不上。');
     }
-    if (ticket.revisit === undefined && this.d.m09.knownPoints().includes(ticket.newPoint)) {
-      throw new BadRequestError('这个点后来已经合上了，不用再接着学。');
-    }
     const successor = this.hub.listSessions().filter((s) => s.kind === 'loop' && s.parent === main);
     for (const s of successor) {
       const o = await this.hub.opened(s.sessionId);
@@ -868,7 +495,7 @@ export class LongTerm {
     });
     await this.hub.send(loop.sessionId, {
       role: 'program',
-      text: [...block, '', this.d.loopOpening(ticket)].join('\n'),
+      text: [...block, '', await this.d.loopOpening(ticket)].join('\n'),
     });
     for (const r of await this.reminderViews(main)) {
       if (r.closed === undefined && r.kind === 'resume' && r.loopSessionId === loopId) {
@@ -1001,11 +628,10 @@ export class LongTerm {
     ];
   }
 
-  /** 畅谈类会话的另一种活（阶段复盘）的工具：状态与当前视图查询 + 交回（查询 M07 / M09 的工具畅谈本来就有）。 */
+  /** 畅谈类会话的另一种活（阶段复盘）的工具：状态查询 + 交回（查询 M07 的工具畅谈本来就有）。 */
   reviewTools(talkId: string): ToolSpec[] {
     return [
       this.d.stateQueryTool(),
-      ...this.viewTools(),
       {
         name: 'finish_review',
         description:
@@ -1077,7 +703,7 @@ export class LongTerm {
     return out.sort((a, b) => a.openedAt.localeCompare(b.openedAt));
   }
 
-  /** 开一个复盘对话：读这段时间的 M09 / 停车场 / M15 当前状态，给学习者一段复盘，最后交回主对话一句。 */
+  /** 开一个复盘对话：读这段时间结束的学习（上层与中层）/ 停车场 / M15 当前状态，给学习者一段复盘，最后交回主对话一句。 */
   async startReview(
     mainId: string,
     opt: { since?: string; anchorLine?: number } = {},
@@ -1126,7 +752,10 @@ export class LongTerm {
     const inWin = (at: string): boolean => at >= since && at <= until;
     const loopLines: string[] = [];
     const parked: string[] = [];
-    const known = new Set(this.d.m09.knownPoints());
+    const learnings = (await this.d.learned.list(mainId)).learnings;
+    const known = new Set(
+      learnings.filter((l) => l.status === '合上').map((l) => l.ticket.newPoint),
+    );
     for (const s of this.hub
       .listSessions()
       .filter((x) => x.kind === 'loop' && x.parent === mainId)) {
@@ -1158,14 +787,10 @@ export class LongTerm {
         );
       }
     }
-    const forms = this.d.m09
-      .current()
-      .filter((r) => inWin(this.d.m09.forLoop(r.loopSessionId)[0]?.at ?? r.at));
-    const tl = this.d.m09.timelines().filter((t) => inWin(t.at));
-    const touchedPoints = new Set([...forms.map((f) => f.newPoint), ...tl.map((t) => t.point)]);
-    const viewLines = this.pointView()
-      .filter((e) => touchedPoints.has(e.point.id))
-      .map((e) => this.viewLine(e));
+    const ended = learnings.filter((l) => {
+      const at = l.endedAt ?? l.openedAt;
+      return inWin(at);
+    });
     const devs = this.d.deviations.all(mainId).filter((r) => inWin(r.at));
     const earlier = (await this.reviews(mainId)).filter((r) => r.summary !== undefined);
     const state = this.d.m15.describeCurrent();
@@ -1175,16 +800,12 @@ export class LongTerm {
       '',
       `这段时间动过的闭环：\n${loopLines.join('\n') || '（没有）'}`,
       '',
-      `本阶段 M09 新增的形成记录（每个闭环最新一版分析）：\n${
-        forms
+      `本阶段结束的学习（上层：单子，没合上的另带结束原话与当时的路线决定；中层：守卫判定）：\n${
+        ended
           .slice(0, REVIEW_LINES)
-          .map((f) => this.d.m09.describe(f))
+          .map((l) => `- ${this.d.learned.describe(l)}`)
           .join('\n') || '（没有）'
       }`,
-      '',
-      `本阶段的时间版本记录（提取失败 / 降档 / 重新掌握）：\n${tl.map((t) => this.d.m09.describeTimeline(t, (id) => id)).join('\n') || '（没有）'}`,
-      '',
-      `涉及的点现在的状态（M09 当前视图）：\n${viewLines.slice(0, REVIEW_LINES).join('\n') || '（没有）'}`,
       '',
       `停车场（本阶段没合上就结束、缺口还没补上）：\n${parked.join('\n') || '空'}`,
       '',
@@ -1218,4 +839,4 @@ function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 }
 
-export type { LogRecord, RegressionView };
+export type { LogRecord };
