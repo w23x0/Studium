@@ -462,11 +462,17 @@ export class LongTerm {
     const goal = recs.filter((r) => r.type === 'project_goal').at(-1);
     const dl = foldDeadline(recs);
     const inWin = (at: string): boolean => at >= since && at <= until;
-    const learnings = (await this.d.learned.list(mainId)).learnings.filter((l) =>
-      inWin(l.endedAt ?? l.openedAt),
-    );
+    // 这段时间动过的学习：它自己的正本里有记录落在窗口内
+    const all = (await this.d.learned.list(mainId)).learnings;
+    const touched = new Set<string>();
+    for (const l of all) {
+      if ((await this.hub.records(l.loopId)).some((r) => inWin(r.record.at))) {
+        touched.add(l.loopId);
+      }
+    }
+    const learnings = all.filter((l) => touched.has(l.loopId));
     const parked = (await this.d.learned.parked(mainId)).filter((p) =>
-      inWin(p.learning.endedAt ?? p.learning.openedAt),
+      touched.has(p.learning.loopId),
     );
     const devs = (await routeDeviations(this.hub, mainId)).filter((d) => inWin(d.at));
     const earlier = (await this.reviews(mainId)).filter((r) => r.summary !== undefined);

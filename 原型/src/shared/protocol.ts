@@ -284,7 +284,7 @@ export interface ProjectOverview {
     awaitingChoice: CardView[];
     /** 合上。 */
     closed: LoopBrief[];
-    /** 没合上（停车场）；每个带最近一条停车记录。 */
+    /** 没合上（停车场）。 */
     unclosed: LoopBrief[];
     /** 搁置着的闭环（可恢复）。没有就没有这一项。 */
     shelved?: LoopBrief[];

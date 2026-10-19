@@ -259,13 +259,12 @@ export function pendingCard(records: NumberedRecord[]): ChoiceCard | undefined {
 export const SHELVE_NO_NOTE = '学习者点了“先放一放”，没写为什么';
 
 /**
- * 搁置备注里学习者自己写的那句；程序代写的（没写原因、在小卡上选的、接口默认）不算，返回空。
- * 程序代写的几种：界面的 SHELVE_NO_NOTE、接口不带备注时的默认话、小卡上选“先放一放”时核心写的说明。
+ * 搁置备注里学习者自己写的那句；程序代写的（没写原因、接口默认）不算，返回空。
+ * 程序代写的几种：界面的 SHELVE_NO_NOTE、接口不带备注时的默认话。
  */
 export function learnerShelveNote(note: string): string | undefined {
   const t = note.trim();
   if (t === '' || t === SHELVE_NO_NOTE || t === '学习者在界面上点了按钮') return undefined;
-  if (t.startsWith('在小卡上选了')) return undefined;
   return t;
 }
 
