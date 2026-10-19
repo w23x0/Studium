@@ -17,10 +17,8 @@ import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
 import { ImageViewer } from '@/components/input/modal';
-import { DetourCardBox } from '@/components/detour-card';
 import { PracticeCard } from '@/components/practice/practice-card';
 import { coversAny } from '@/evidence-model';
-import type { DetourUi } from '@/thread-model';
 import type { PracticeUi } from '@/practice-model';
 import { useOpenSession } from '@/open-session';
 import { useCurrentSession, useHighlight, usePanel } from '@/panel';
@@ -35,7 +33,6 @@ interface MessageMeta {
   verdict?: { closed: boolean };
   objection?: { toLine: number; label: string };
   images?: string[];
-  detour?: DetourUi;
   practice?: PracticeUi;
 }
 
@@ -249,15 +246,13 @@ const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, verdict, line, detour, practice } = useMeta();
+  const { link, verdict, line, practice } = useMeta();
   const open = useOpenSession();
   const panel = usePanel();
   const sessionId = useCurrentSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
-      {detour !== undefined && sessionId !== undefined ? (
-        <DetourCardBox loopId={sessionId} card={detour} />
-      ) : practice?.kind === 'card' && sessionId !== undefined && line !== undefined ? (
+      {practice?.kind === 'card' && sessionId !== undefined && line !== undefined ? (
         <PracticeCard
           loopId={sessionId}
           taskId={practice.taskId}

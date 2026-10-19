@@ -11,10 +11,8 @@ import {
 } from '../shared/protocol.ts';
 import type {
   ConversationKind,
-  ForkOrigin,
   ImageInput,
   LogRecord,
-  M05Job,
   NumberedRecord,
   ResumeOrigin,
   ReviewWindow,
@@ -109,10 +107,8 @@ export class Hub {
       parent?: string;
       ticket?: Ticket;
       anchorLine?: number;
-      fork?: ForkOrigin;
       resumeOf?: ResumeOrigin;
       review?: ReviewWindow;
-      m05Job?: M05Job;
     },
   ): Promise<SessionSummary> {
     const at = this.now();
@@ -128,10 +124,8 @@ export class Hub {
       ...(meta.parent !== undefined ? { parent: meta.parent } : {}),
       ...(meta.ticket !== undefined ? { ticket: meta.ticket } : {}),
       ...(meta.anchorLine !== undefined ? { anchorLine: meta.anchorLine } : {}),
-      ...(meta.fork !== undefined ? { fork: meta.fork } : {}),
       ...(meta.resumeOf !== undefined ? { resumeOf: meta.resumeOf } : {}),
       ...(meta.review !== undefined ? { review: meta.review } : {}),
-      ...(meta.m05Job !== undefined ? { m05Job: meta.m05Job } : {}),
     };
     await this.append(sessionId, opened);
     return summary(opened);
@@ -433,9 +427,8 @@ function summary(o: SessionOpened): SessionSummary {
   };
 }
 
-/** 学习对话的来历：从哪段学习中途岔出去补的，或接着哪段没学完的学的；都不是返回空。 */
+/** 学习对话的来历：接着哪段没学完的学的；不是返回空。 */
 export function sessionFrom(o: SessionOpened): SessionSummary['from'] {
-  if (o.fork !== undefined) return { kind: 'fork', loop: o.fork.fromLoop };
   if (o.resumeOf !== undefined) return { kind: 'resume', loop: o.resumeOf.fromLoop };
   return undefined;
 }

@@ -6,8 +6,6 @@ import { timingSafeEqual } from 'node:crypto';
 import type {
   ChooseRequest,
   ChooseResponse,
-  DetourChooseRequest,
-  DetourChooseResponse,
   LoopRelationsResponse,
   ShelveRequest,
   CreateSessionResponse,
@@ -408,19 +406,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             await studium.endUnclosed(id, note);
             send(res, 202, {});
             return;
-          case 'detour': {
-            // 闭环中途小卡上的选择（先补 / 接着学 / 搁置）
-            const b = body as Partial<DetourChooseRequest>;
-            if (typeof b.cardId !== 'string' || typeof b.option !== 'number') {
-              throw new BadRequest('cardId 要是字符串、option 要是数字');
-            }
-            send(
-              res,
-              201,
-              (await studium.chooseDetour(id, b.cardId, b.option)) satisfies DetourChooseResponse,
-            );
-            return;
-          }
           case 'shelve': {
             const b = body as Partial<ShelveRequest>;
             const why = typeof b.note === 'string' && b.note.trim() !== '' ? b.note : note;

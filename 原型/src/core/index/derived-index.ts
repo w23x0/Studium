@@ -92,7 +92,7 @@ export class DerivedIndex {
       kind: SessionSummary['kind'];
       title: string;
       parent: string | null;
-      from_kind: 'fork' | 'resume' | null;
+      from_kind: 'resume' | null;
       from_loop: string | null;
       opened_at: string;
       last_at: string | null;

@@ -35,12 +35,10 @@ export const ACTIONS = [
   'changeMaterials',
   'setDeadline',
   'notes.import',
-  // 批 5：小卡上的选择、搁置、恢复
-  'chooseDetour',
+  // 批 5：搁置、恢复
   'shelveLoop',
   'resumeLoop',
-  // 批 6：接着学、提醒、复盘
-  'longterm.continueLoop',
+  // 批 6：提醒、复盘
   'longterm.addReminder',
   'longterm.closeReminder',
   'longterm.startReview',

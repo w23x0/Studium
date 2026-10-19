@@ -15,7 +15,6 @@ import { Library } from './knowledge/m07.ts';
 import { Notes } from './knowledge/m07-notes.ts';
 import { Originals } from './knowledge/m07-originals.ts';
 import { SourceReports } from './knowledge/m07-reports.ts';
-import { Deviations } from './knowledge/m05-deviations.ts';
 import { M10 } from './knowledge/m10.ts';
 import { M14 } from './knowledge/m14.ts';
 import { M15 } from './knowledge/m15.ts';
@@ -60,7 +59,17 @@ export interface App {
   close(): Promise<void>;
 }
 
-const KINDS: ConversationKind[] = ['main', 'talk', 'loop', 'guard', 'm05', 'm15', 'm10', 'output'];
+const KINDS: ConversationKind[] = [
+  'main',
+  'talk',
+  'loop',
+  'guard',
+  'm05',
+  'retrieve',
+  'm15',
+  'm10',
+  'output',
+];
 
 export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
   const entries = await Promise.all(
@@ -76,7 +85,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
   const m10 = await M10.load(join(dataDir.root, 'knowledge', 'm10'));
   const m15 = await M15.load(join(dataDir.root, 'knowledge', 'm15'));
-  const deviations = await Deviations.load(join(dataDir.root, 'knowledge', 'm05'));
   const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
   const library = new Library(
     opts.library ?? join(SAMPLE_DIR, '书库'),
@@ -117,7 +125,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     m10,
     m15,
     objections,
-    deviations,
     teaching,
     outputs,
     cross,
@@ -150,9 +157,9 @@ export async function createApp(opts: AppOptions): Promise<App> {
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
   await studium.ensureMain();
-  await studium.recover();
   const evidence = new Evidence({
     hub,
+    learned: studium.learned,
     m10,
     m15,
     objections,

@@ -19,14 +19,9 @@ const RELOAD_ON = new Set([
   'project_deadline',
   'tool_call',
   'user_message',
-  // 学到一半（批 5）：通知、小卡、选了什么、岔出去的回来、先放一放 / 接着学、没学完的记录
-  'route_signal',
-  'detour_card',
-  'detour_made',
-  'fork_returned',
+  // 学到一半（批 5）：先放一放 / 接着学
   'loop_shelved',
   'loop_resumed',
-  'parking_note',
   // 跨段学习的长期功能（批 6）：提醒加上 / 办掉；复盘交回、开出复盘
   'reminder_added',
   'reminder_closed',

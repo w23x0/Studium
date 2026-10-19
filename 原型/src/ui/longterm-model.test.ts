@@ -1,33 +1,32 @@
-// 长期功能界面用的纯转换：没按推荐走的说法、今天先不看的项；
+// 长期功能界面用的纯转换：路线偏差的说法、今天先不看的项；
 // 以及对话里的复习 / 复检、接着学、阶段复盘。
 import { describe, expect, it } from 'vitest';
-import type { DeviationView, TodayItem } from '../shared/protocol.ts';
+import type { TodayItem } from '../shared/protocol.ts';
 import type { NumberedRecord } from '../shared/records.ts';
 import { reviewReturnedFact } from '../shared/records-longterm.ts';
 import { addDays, deviationLine, todayKey, visibleToday } from './longterm-model.ts';
 import { loopSide, reviewWindow, toUiMessages } from './thread-model.ts';
 import { W } from './wording.ts';
 
-describe('没按推荐走的说法与今天该做的', () => {
-  it('三种偏差都是日常话', () => {
-    const base = { id: 'd', at: 'x', mainSessionId: 'M' };
-    const rec = { option: 0, title: '位移' };
-    const chosen = { option: 1, title: '平均速度' };
-    expect(deviationLine({ ...base, kind: 'not_recommended', recommended: rec, chosen })).toBe(
-      W.devNotRecommended('位移', '平均速度'),
-    );
-    const ended: DeviationView = {
-      ...base,
-      kind: 'ended_unclosed',
-      loopSessionId: 'L',
-      facts: { learnerMessages: 2, minutes: 5, quickDrop: true },
-    };
-    expect(deviationLine(ended, () => '位移')).toBe(
-      `${W.devEnded('位移')}（${W.devEndedFacts(2, 5)}，${W.devQuick}）`,
-    );
-    expect(deviationLine({ ...base, kind: 'detour_choice', recommended: rec, chosen: rec })).toBe(
-      W.devDetourSame('位移'),
-    );
+describe('路线偏差的说法与今天该做的', () => {
+  it('三类偏差都是日常话', () => {
+    expect(
+      deviationLine({
+        kind: '没选推荐项',
+        at: '2026-10-02',
+        text: '推荐「位移」，学习者选了「平均速度」',
+        refs: [],
+      }),
+    ).toBe('2026-10-02 没选推荐项：推荐「位移」，学习者选了「平均速度」');
+    expect(
+      deviationLine({
+        kind: '没合上就结束',
+        at: '2026-10-03',
+        loopId: 'L',
+        text: '「平均速度」没合上就结束：先到这',
+        refs: [],
+      }),
+    ).toBe('2026-10-03 没合上就结束：「平均速度」没合上就结束：先到这');
   });
   it('今天先不看的项藏起来；提醒按 id 区分', () => {
     const reminder: TodayItem = {

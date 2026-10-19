@@ -56,9 +56,7 @@ export interface ReminderAdded {
   kind: ReminderKind;
   /** 做什么，用日常话。 */
   text: string;
-  /** recheck：复检哪个点。 */
-  point?: string;
-  /** resume：接着哪个闭环。 */
+  /** recheck：复检以前哪次学习；resume：接着哪次没合上的学习（学习会话 id）。 */
   loopSessionId?: string;
   by: 'm05' | 'learner';
   m05SessionId?: string;

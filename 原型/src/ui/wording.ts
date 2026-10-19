@@ -14,7 +14,7 @@ export const W = {
   projectHome: '项目概览', // 项目页（Overview）
   projectChat: '项目对话', // 主对话
   /** 左栏对话列表里学习对话的来历。 */
-  taskFrom: { fork: '岔出去补的', resume: '接着学的' } as const,
+  taskFrom: { resume: '接着学的' } as const,
   goal: '想学的方向', // 方向目标
   goalMissing: '还没谈定。在项目对话里说说你想学什么。',
   backToChat: '回到项目对话',
@@ -28,7 +28,6 @@ export const W = {
     closed: '学完了', // 合上
     unclosed: '先放下的（没学完）', // 没合上（停车场）
     shelved: '先放一放的', // 搁置
-    waitingFork: '等补完回来的', // 等分叉回来
   },
   groupHints: {
     inProgress: '正在学、还没学完的',
@@ -36,7 +35,6 @@ export const W = {
     closed: '判断过你已经学会、你也确认了的',
     unclosed: '没学完就先停下的，以后可以再接着学',
     shelved: '暂时放下的，点“接着学”或在里面说句话就能接上',
-    waitingFork: '中途先去补前面的（或学别的），那边学完就回来接着学',
   },
   openConversation: '打开对话',
   lastJudgement: (closed: boolean) => (closed ? '上次判断：已经掌握' : '上次判断：还差一点'),
@@ -362,35 +360,8 @@ export const W = {
   whyGraded: '为什么这么看',
   noteSpot: '看笔记里这一处',
 
-  // ── 学到一半：先补前面的 / 岔开去学别的 / 先放一放（批 5） ──
-  detourAsk: '学到这里，要不要先停一下？', // 闭环中途的小卡
-  detourKind: {
-    fork: '先去补', // 开分叉
-    continue: '接着学',
-    shelve: '先放一放', // 搁置
-  } as const,
-  detourChosen: '你选了',
-  detourWhy: '为什么问这个',
-  detourScope: '补到什么程度',
-  goThere: '去那边',
+  // ── 学到一半：先放一放 ──
   thatPart: '那一段',
-  backThere: '回到那里',
-  forkFrom: '从', // 分叉对话顶部：从《父》岔出来……
-  forkBanner: {
-    gap: (what: string) => `岔出来补「${what}」，补完会回到那里`,
-    branch: (what: string) => `岔出来去学「${what}」，学完会回到那里`,
-  },
-  waitingBanner: {
-    gap: (what: string) => `在补「${what}」，补完回来`,
-    branch: (what: string) => `在学「${what}」，学完回来`,
-  },
-  forkReturned: {
-    gap: (what: string) => `补完了「${what}」，回到这里接着学。`,
-    branch: (what: string) => `学完了「${what}」，回到这里接着学。`,
-  },
-  forkNotDone: (what: string) => `「${what}」没补好，先回到这里（已记在没学完的里）。`,
-  forkEnded: (closed: boolean) =>
-    closed ? '这一段补完了，回到原来那段接着学。' : '先学到这里，回到原来那段接着学。',
   shelve: '先放一放', // 搁置
   shelveHint: '先放下，不算学完也不算半途而废；以后点“接着学”或在这里说句话就能接上。',
   shelvePlaceholder: '想写一句为什么先放下（可不填）',
@@ -403,47 +374,17 @@ export const W = {
   shelvedLine: '先放一放了。',
   shelvedLineNote: (note: string) => `先放一放了：${note}`,
   resumedLine: '接着学。',
-  parkedLine: (p: { missing: string; when: string; from: string }) =>
-    `记下了没学完的地方：还缺 ${p.missing}；打算${p.when}，从${p.from}接上。`,
-  parkingTitle: '没学完的地方', // 停车记录
-  parkingReason: {
-    ended_unclosed: '没学完就停下时记的',
-    shelved: '先放一放时记的',
-  } as const,
-  parkingMissing: '缺在哪',
-  parkingWhen: '打算什么时候',
-  parkingFrom: '从哪接上',
-  parkingWords: '依据的原话',
   shelvedNote: '放下时说的',
   shelvedBadge: '放着',
-  waitingBadge: '等补完',
-  forkBadge: '岔出来的',
-  forkOfLine: (title: string) => `从「${title}」岔出来的`,
-  waitingLine: (title: string) => `在那边：${title}`,
   loadHeavy: (n: number) =>
     `同时开着的有点多（${String(n)} 段没学完）。先把手上的学完或放一放，再开新的。`,
   loadPile: (n: number) => `没学完的攒了 ${String(n)} 段，先收一收：挑一段接着学。`,
-  // 学习之间的关系（来源、岔开、回来）
+  // 学习之间的关系（从哪来）
   relations: '学习之间的来龙去脉',
-  relationsHint: '每段学习从哪来、中途岔开去补了什么、回来没有',
+  relationsHint: '每段学习从哪来、接着的是哪一段',
   origin: '从哪来',
   originCard: '从“下一步学什么”里选的',
-  originFork: '从另一段学习里岔出来的',
   originUnknown: '记不清从哪来',
-  forkWhy: '为什么岔开',
-  forkWhat: '要补的',
-  forkReturn: (title: string) => `这边学完就回到「${title}」`,
-  forkBasis: '在原来那段对话里看原话',
-  forksOut: '中途岔开去补的',
-  forkBackDone: '学完回来了',
-  forkBackNot: '没学完就回来了',
-  forkOut: '还在那边',
-  signals: '中途提过的“先停一下”', // route_signal
-  signalsHint: '学到一半发现前面有地方不牢、或你想先去学别的时，老师提出来的；下面是依据的原话。',
-  signalKind: { gap: '前面有地方不牢', branch: '想先去学别的' } as const,
-  signalNote: '老师的补充',
-  offered: '给你的选择',
-  notChosenYet: '还没选',
 
   // ── 教法：老师可以取用的教学方法、每轮的教法强度、状态确认（批 7） ──
   tools: '教学方法库', // 教学工具库（M10 通用策略知识层）
@@ -716,8 +657,6 @@ export const W = {
     复检: '这次是复检：看看以前学会的还在不在。不是从头学，答不上来也没关系，正好知道哪里要补。',
   } as const,
   // 接着没学完的学
-  continueLoop: '接着学',
-  continuing: '正在开…',
   resumeOfBefore: '接着',
   resumeOfAfter: '学（原来那段没学完）',
   resumeOfLine: (title: string) => `接着《${title}》学的`,
@@ -743,18 +682,10 @@ export const W = {
   reviewTask: '一起复盘这段时间',
   // 我学会的（W2 起先留空壳，W6 做按学习列）
   learnedPlaceholder: '这里以后按每次学习列出来（学会了什么、学成什么样），还没做。',
-  // 没按推荐走的时候
+  // 路线偏差（现算的三类，只说事实）
   deviations: '没按推荐走的时候',
   deviationsHint: '只记下事实，给你自己回头看；不代表学得好不好。',
   deviationsNone: '还没有。',
-  devNotRecommended: (rec: string, chosen: string) => `推荐的是「${rec}」，你选了「${chosen}」`,
-  devEnded: (title: string) => `「${title}」没学完就先停下了`,
-  devEndedFacts: (said: number, minutes: number) =>
-    `说了 ${String(said)} 句，开了 ${String(minutes)} 分钟`,
-  devQuick: '很快就放下了',
-  devDetour: (rec: string, chosen: string) =>
-    `学到一半问要不要先停一下：推荐「${rec}」，你选了「${chosen}」`,
-  devDetourSame: (chosen: string) => `学到一半问要不要先停一下：你照推荐选了「${chosen}」`,
   seeThatLearning: '看那段学习',
 
   // ── 通用 ──

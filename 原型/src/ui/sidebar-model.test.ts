@@ -44,7 +44,7 @@ const sessions: SessionSummary[] = [
     openedAt: '2026-10-04T00:00:00Z',
     lastAt: '2026-10-04T00:00:00Z',
     parent: 'm1',
-    from: { kind: 'fork', loop: 'l1' },
+    from: { kind: 'resume', loop: 'l1' },
   },
   {
     sessionId: 't2',

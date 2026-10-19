@@ -8,7 +8,6 @@ import { usePanel } from '../../panel.ts';
 import { W } from '../../wording.ts';
 import { loopTrend, toolCounts } from '../../teaching-model.ts';
 import { IntensityLine, TrendChart } from './intensity-view.tsx';
-import { LoopDetours } from './loop-detour-view.tsx';
 import { ToolChip } from './tools-view.tsx';
 import { LoopPractice } from '../practice/loop-practice.tsx';
 import {
@@ -76,8 +75,6 @@ export function LoopView(props: {
             {W.status[loop.status]}
           </Badge>
           {loop.shelved !== undefined && <Badge tone="warn">{W.shelvedBadge}</Badge>}
-          {loop.waitingFork !== undefined && <Badge tone="accent">{W.waitingBadge}</Badge>}
-          {loop.fork !== undefined && <Badge>{W.forkBadge}</Badge>}
           {loop.ticket?.revisit !== undefined && (
             <Badge tone="accent" title={W.revisitHint[loop.ticket.revisit.kind]}>
               {W.revisitKind[loop.ticket.revisit.kind]}
@@ -103,8 +100,6 @@ export function LoopView(props: {
           </Card>
         </Section>
       )}
-
-      <LoopDetours loop={loop} />
 
       <LoopPractice loopId={loop.sessionId} />
 

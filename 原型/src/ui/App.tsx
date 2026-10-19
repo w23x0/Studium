@@ -35,7 +35,7 @@ import {
 } from './components/longterm/loop-extras.tsx';
 import { useReviewIds } from './components/longterm/reviews.tsx';
 import { StageCheckBanner, SummarizeButton } from './components/practice/loop-practice.tsx';
-import { OpenSessionContext, useOpenSession } from './open-session.ts';
+import { OpenSessionContext } from './open-session.ts';
 import {
   CurrentSessionContext,
   HighlightContext,
@@ -424,7 +424,6 @@ function Conversation(props: {
           ...(m.verdict ? { verdict: m.verdict } : {}),
           ...(m.objection ? { objection: m.objection } : {}),
           ...(m.images ? { images: m.images } : {}),
-          ...(m.detour ? { detour: m.detour } : {}),
           ...(m.practice ? { practice: m.practice } : {}),
         },
       },
@@ -550,11 +549,9 @@ function Conversation(props: {
 }
 
 const NO_LINES: readonly number[] = [];
-const NO_SIDE: LoopSide = { openDetour: false };
+const NO_SIDE: LoopSide = {};
 
-/**
- * 学习对话顶部的一行：这段是从哪段岔出来补什么的（可点回去）；或这段正在等岔出去的那段学完回来（可跳过去）。
- */
+/** 学习对话顶部的一行：搁置、复习 / 复检、阶段验收（接着学的来历在开场里）。 */
 function LoopBanner(props: {
   side: LoopSide;
   titleOf: (id: string) => string | undefined;
@@ -562,7 +559,6 @@ function LoopBanner(props: {
   projectId: string;
 }) {
   const { side, titleOf } = props;
-  const open = useOpenSession();
   return (
     <div className="flex flex-col gap-1 px-4 pb-2 text-sm empty:hidden">
       <LongtermBanner
@@ -572,42 +568,6 @@ function LoopBanner(props: {
         titleOf={titleOf}
       />
       {side.stageCheck === true && <StageCheckBanner />}
-      {side.fork !== undefined && (
-        <div
-          data-testid="fork-origin"
-          className="text-muted-foreground bg-muted/50 flex flex-wrap items-center gap-1 rounded-lg px-3 py-1.5"
-        >
-          {W.forkFrom}
-          <button
-            type="button"
-            className="text-foreground decoration-primary/40 hover:decoration-primary underline underline-offset-4"
-            onClick={() => side.fork && open(side.fork.fromLoop)}
-          >
-            《{titleOf(side.fork.fromLoop) ?? W.thatPart}》
-          </button>
-          {W.forkBanner[side.fork.kind](side.fork.what)}
-        </div>
-      )}
-      {side.waiting !== undefined && (
-        <div
-          data-testid="waiting-fork"
-          className="bg-primary/5 border-primary/30 flex flex-wrap items-center gap-2 rounded-lg border px-3 py-1.5"
-        >
-          {W.waitingBanner[side.waiting.kind](
-            side.waiting.what !== ''
-              ? side.waiting.what
-              : (titleOf(side.waiting.forkLoopSessionId) ?? W.thatPart),
-          )}
-          <Button
-            variant="outline"
-            size="xs"
-            className="ms-auto"
-            onClick={() => side.waiting && open(side.waiting.forkLoopSessionId)}
-          >
-            {W.goThere}
-          </Button>
-        </div>
-      )}
     </div>
   );
 }
@@ -679,23 +639,11 @@ function LoopBar(props: {
 }) {
   const { side } = props;
   const state = loopState(props.records);
-  const open = useOpenSession();
   const [shelving, setShelving] = useState(false);
   const act = (fn: () => Promise<unknown>) => {
     fn().catch(props.onError);
   };
   if (state.kind === 'ended') {
-    // 岔出来的那段学完（或停下）：回到原来那段
-    if (side.fork !== undefined) {
-      const from = side.fork.fromLoop;
-      return (
-        <EndedBar
-          text={W.forkEnded(state.closed)}
-          backLabel={`《${props.titleOf(from) ?? W.thatPart}》`}
-          onBack={() => open(from)}
-        />
-      );
-    }
     if (!state.closed) {
       return (
         <UnclosedEndBar
