@@ -1,5 +1,5 @@
-// M14 高阶学习与知识产出（批 8）：学习者自己的产出物（笔记整理、推导、小论文、方法比较……）挂在项目下，
-// 只追加存版本，可列、可取任一版、可比较两版；正文里用出处标记引 M07 原文（【教材|…】），
+// 高阶学习与知识产出（批 8）：学习者自己的产出物（笔记整理、推导、小论文、方法比较……）挂在项目下，
+// 只追加存版本，可列、可取任一版、可比较两版；正文里用出处标记引资料原文（【教材|…】），
 // 核心能解析、核对、回查；相关文献只追加；方法比较是一种结构化产出；“写产出”任务对话让模型协助写。
 // 引用核对只认教材出处；旧的知识点 / 子句引用标记不再解析。
 import { randomBytes } from 'node:crypto';
@@ -24,17 +24,17 @@ import {
   type SaveVersionRequest,
   type VersionSummary,
   type VersionView,
-} from '../shared/m14.ts';
+} from '../shared/output.ts';
 import { diffLines } from './diff.ts';
 import { NotFoundError, type Hub } from './hub.ts';
-import type { Library } from './knowledge/m07.ts';
-import type { M14 } from './knowledge/m14.ts';
+import type { Library } from './knowledge/library.ts';
+import type { OutputStore } from './knowledge/output.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import type { Sources } from './sources.ts';
 import { BadRequestError } from './studium.ts';
 
 export interface OutputsDeps {
-  store: M14;
+  store: OutputStore;
   sources: Sources;
   library: Library;
   now?: () => Date;

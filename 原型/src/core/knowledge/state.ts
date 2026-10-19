@@ -1,13 +1,13 @@
-// M15：学习者状态与条件的存放处（03「M15」）。两层，都只追加：
-// 底层 = 状态记录（一句话 + 来源 + 时间范围 + 指回 M01 行号）；上层 = “当前状态”页（每次整理写一版，最新一版即当前，
-// 可随时从底层整个重算）。另记每次整理看到 M01 的哪一行为止，没有新记录就不整理。
+// 状态记录：学习者状态与条件的存放处（`docs/设计/记录/状态记录.md`）。两层，都只追加：
+// 底层 = 状态记录（一句话 + 来源 + 时间范围 + 指回会话行号）；上层 = “当前状态”页（每次整理写一版，最新一版即当前，
+// 可随时从底层整个重算）。另记每次整理看到哪一行为止，没有新记录就不整理。
 import { join } from 'node:path';
 import { appendJsonl, readJsonl } from './jsonl.ts';
 
 export type StateSource = '自述' | '观察' | '推断';
 /** 来源档：模型只能写前三档；“已确认”是学习者在界面上确认过的（只由确认记录得出，不写进状态记录本身）。 */
 export type StateSourceLevel = StateSource | '已确认';
-/** 承载读数与知识诊断正交、直接可用；解释候选与“他不会”竞争，须经 M04 裁决（M15 审查单「输出分型」）。 */
+/** 承载读数与知识诊断正交、直接可用；解释候选与“他不会”竞争，须经守卫裁决（`docs/设计/记录/状态记录.md`「输出分型」）。 */
 export type StateOutput = '承载读数' | '解释候选';
 /** 状态阶段子模块只出类型与依据跨度（三锁）。 */
 export const STAGES = [
@@ -28,14 +28,14 @@ export interface StateRecord {
   output: StateOutput;
   /** 适用时间范围：本次会话 / 近期（几号到几号）/ 较稳定的现实约束。 */
   timeRange: string;
-  /** 指回 M01 正本：哪个会话的哪几行。 */
+  /** 指回正本：哪个会话的哪几行。 */
   refs: { sessionId: string; lines: number[] }[];
   /**
    * 这条状态出现在某段学习里某句教学之后（状态记录「策略造成的状态须标注来源」）：
    * 会话与行号由程序核对（确是一句教学），这里只引用位置；旧记录没有。
    */
   afterTeaching?: { loopSessionId: string; line: number; text: string };
-  m15SessionId: string;
+  stateSessionId: string;
   model: string;
 }
 
@@ -48,7 +48,7 @@ export interface StateConfirmation {
   note?: string;
 }
 
-/** 学习者给一条状态记录补的“我的解释”（批 10b，M15:42）：单独追加，不改状态记录；整理时当自述读。 */
+/** 学习者给一条状态记录补的“我的解释”（批 10b）：单独追加，不改状态记录；整理时当自述读。 */
 export interface StateExplanation {
   id: string;
   at: string;
@@ -63,19 +63,19 @@ export interface CurrentStatePage {
   stage: Stage;
   /** 阶段判断依据的时间跨度。 */
   basisSpan: string;
-  m15SessionId: string;
+  stateSessionId: string;
   model: string;
 }
 
-/** 一次整理看到 M01 的哪一行为止（程序记，不是模型写的）。 */
+/** 一次整理看到哪一行为止（程序记，不是模型写的）。 */
 export interface OrganizeRun {
   at: string;
   trigger: string;
-  m15SessionId: string;
+  stateSessionId: string;
   covered: Record<string, number>;
 }
 
-export class M15 {
+export class StateStore {
   private constructor(
     private readonly dir: string,
     private records: StateRecord[],
@@ -85,8 +85,8 @@ export class M15 {
     private explanations: StateExplanation[],
   ) {}
 
-  static async load(dir: string): Promise<M15> {
-    return new M15(
+  static async load(dir: string): Promise<StateStore> {
+    return new StateStore(
       dir,
       await readJsonl<StateRecord>(join(dir, 'records.jsonl')),
       await readJsonl<CurrentStatePage>(join(dir, 'current.jsonl')),

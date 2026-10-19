@@ -21,7 +21,7 @@ afterEach(async () => {
 });
 
 const responder = (ctx: FakeContext): FakeStep | undefined =>
-  roleOf(ctx) === 'm05'
+  roleOf(ctx) === 'nav'
     ? {
         calls: [
           {

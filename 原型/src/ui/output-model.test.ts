@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { DiffLine, VersionView } from '../shared/m14.ts';
+import type { DiffLine, VersionView } from '../shared/output.ts';
 import {
   addDim,
   addMethod,

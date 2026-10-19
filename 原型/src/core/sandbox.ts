@@ -8,9 +8,9 @@ import type { Import, Learning } from '../shared/protocol-learned.ts';
 import type { Hub } from './hub.ts';
 import { NotFoundError } from './hub.ts';
 import type { Learned } from './learned.ts';
-import type { Library } from './knowledge/m07.ts';
-import type { M10 } from './knowledge/m10.ts';
-import type { M15 } from './knowledge/m15.ts';
+import { BOOK_DIR, type Library } from './knowledge/library.ts';
+import type { PedagogyStore } from './knowledge/pedagogy.ts';
+import type { StateStore } from './knowledge/state.ts';
 import type { Objections } from './knowledge/objections.ts';
 import type { TeachingTools } from './teaching-tools.ts';
 import type { SandboxSpec } from './model/port.ts';
@@ -46,9 +46,9 @@ export function describeSandbox(sb: SandboxSpec): string {
 export interface SandboxDeps {
   hub: () => Hub;
   learned: Learned;
-  m07: Library;
-  m10: M10;
-  m15: M15;
+  library: Library;
+  pedagogy: PedagogyStore;
+  state: StateStore;
   objections: Objections;
   teaching: TeachingTools;
   /** 数据目录；沙盒在 <数据>/sandbox/<会话 id>/。 */
@@ -118,11 +118,11 @@ export class Sandboxes {
   /** 每本可用的书一项：`资料/<书 id>` → 这本书的切分目录。 */
   private async bookEntries(sessionId: string): Promise<{ name: string; path: string }[]> {
     const scope = await this.o.scopeOf(sessionId);
-    const books = scope ?? (await this.o.m07.books());
+    const books = scope ?? (await this.o.library.books());
     return Promise.all(
       books.map(async (b) => ({
         name: `资料/${b}`,
-        path: join(await this.o.m07.bookDir(b), 'm07'),
+        path: join(await this.o.library.bookDir(b), BOOK_DIR),
       })),
     );
   }
@@ -248,16 +248,16 @@ export class Sandboxes {
 
   /** 只读/状态记录/状态.md：当前状态页 + 全部状态记录 + 异议。 */
   private stateText(): string {
-    const m15 = this.o.m15;
-    const rows = m15.allRecords();
+    const state = this.o.state;
+    const rows = state.allRecords();
     return [
       '# 学习者的非知识状态与条件',
       '',
-      m15.describeCurrent(),
+      state.describeCurrent(),
       '',
       '## 状态记录（底层，只追加）',
       rows.length > 0
-        ? rows.map((r) => m15.describeRecord(r) + this.objectionNotes('m15', r.id)).join('\n')
+        ? rows.map((r) => state.describeRecord(r) + this.objectionNotes('state', r.id)).join('\n')
         : '（暂无）',
       '',
       '解释候选须经你在诊断里裁决才能当依据；承载读数可直接用。',
@@ -266,16 +266,16 @@ export class Sandboxes {
 
   /** 只读/教法记录/教法记录.md：这个学习者的教法记录（后台整理写的）。 */
   private strategyText(): string {
-    const rows = this.o.m10.all();
+    const rows = this.o.pedagogy.all();
     if (rows.length === 0) return '# 教法记录\n\n（还没有）';
     return [
       '# 教法记录（这个学习者在什么条件下用过什么教法、之后怎样；单条不证明因果）',
       '',
-      ...rows.map((r) => this.o.m10.describe(r) + this.objectionNotes('m10', r.id)),
+      ...rows.map((r) => this.o.pedagogy.describe(r) + this.objectionNotes('pedagogy', r.id)),
     ].join('\n');
   }
 
-  private objectionNotes(kind: 'm10' | 'm15', recordId: string): string {
+  private objectionNotes(kind: 'pedagogy' | 'state', recordId: string): string {
     return this.o.objections
       .forRecord(kind, recordId)
       .map((o) => `\n  学习者异议（自述，原记录没改）：${o.text}`)

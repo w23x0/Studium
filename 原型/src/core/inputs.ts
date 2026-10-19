@@ -1,4 +1,4 @@
-// 输入（批 4，M02:19）：学习者附的图片（拍照 / 手写）。
+// 输入（批 4，`docs/设计/记录/对话与事件记录.md`）：学习者附的图片（拍照 / 手写）。
 // 原图只追加地存进输入存放处（<数据>/inputs/），写入后不改、不删；经模型接口转写成文字（公式用 LaTeX），
 // 转写结果单独记一行；发消息时转写文字（学习者可改）带来源标注并进消息文字——教学只读文字，图片不给对话模型。
 import { createHash, randomBytes } from 'node:crypto';
@@ -184,7 +184,7 @@ export class Inputs {
 
   /**
    * 把学习者打的字和附的图合成一条消息：每张图的文字（改过的转写 / 照转写 / 学习者自己写的说明）
-   * 带一行来源标注接在后面（转写文本标来源，M02:19）。引用对不上就报错，什么都不记。
+   * 带一行来源标注接在后面（转写文本标来源）。引用对不上就报错，什么都不记。
    */
   compose(text: unknown, images: unknown): { text: string; images: ImageInput[] } {
     const typed = typeof text === 'string' ? text.trim() : '';

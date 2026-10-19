@@ -9,12 +9,14 @@ import {
   DIAGNOSIS_TAG,
   DURABILITY,
   INDEPENDENCE,
+  START_SOURCES,
   type ChoiceCard,
   type ConversationKind,
   type GuardVerdict,
   type NumberedRecord,
   type ToolCall,
 } from '../../src/shared/records.ts';
+import type { Learning } from '../../src/shared/protocol-learned.ts';
 import { toUiMessages } from '../../src/ui/thread-model.ts';
 import { CASES } from '../cases.ts';
 import { tapeInterjections, type ChainRun, type SessionSnapshot } from './driver.ts';
@@ -71,6 +73,11 @@ export interface ProbeResult {
 
 export function sessionsOf(run: ChainRun, kind: ConversationKind): SessionSnapshot[] {
   return run.sessions.filter((s) => s.kind === kind);
+}
+
+/** 学过的记录那一层（driver 快照时按 `/api/learned/<学习 id>` 取好）。 */
+function learningOf(run: ChainRun): Learning | undefined {
+  return run.learning;
 }
 
 function session(run: ChainRun, id: string | undefined): SessionSnapshot | undefined {
@@ -147,8 +154,8 @@ function chainComplete(run: ChainRun): CheckResult {
     ['开学习对话', run.loopId !== undefined],
     ['学习对话结束', loopEnd(run) !== undefined],
     ['出下一张选项卡', cards(run).next !== undefined],
-    ['M15 整理跑过', sessionsOf(run, 'm15').length > 0],
-    ['M10 记录跑过', sessionsOf(run, 'm10').length > 0],
+    ['状态整理跑过', sessionsOf(run, 'state').length > 0],
+    ['教法记录整理跑过', sessionsOf(run, 'pedagogy').length > 0],
   ];
   const missing = stages.filter(([, ok]) => !ok).map(([n]) => n);
   const fails = turnFailures(run);
@@ -189,18 +196,19 @@ function toolsCalled(run: ChainRun): CheckResult {
   if (main && !accepted(main, 'open_goal_talk')) missing.push('主对话没调 open_goal_talk');
   const talk = session(run, run.talkId);
   if (talk && !accepted(talk, 'settle_goal')) missing.push('畅谈没调成 settle_goal');
-  for (const s of sessionsOf(run, 'm05')) {
-    if (!accepted(s, 'submit_choice_card')) missing.push(`M05 ${s.sessionId} 没交成选项卡`);
+  for (const s of sessionsOf(run, 'nav')) {
+    if (!accepted(s, 'submit_choice_card')) missing.push(`导航 ${s.sessionId} 没交成选项卡`);
   }
   for (const s of sessionsOf(run, 'guard')) {
     if (!accepted(s, 'submit_verdict')) missing.push(`守卫 ${s.sessionId} 没交成判定`);
   }
-  for (const s of sessionsOf(run, 'm10')) {
-    if (!accepted(s, 'write_strategy_record')) missing.push(`M10 ${s.sessionId} 没写成记录`);
+  for (const s of sessionsOf(run, 'pedagogy')) {
+    if (!accepted(s, 'write_strategy_record'))
+      missing.push(`教法记录整理 ${s.sessionId} 没写成记录`);
   }
-  for (const s of sessionsOf(run, 'm15')) {
+  for (const s of sessionsOf(run, 'state')) {
     if (!accepted(s, 'write_current_state') && !accepted(s, 'write_state_record')) {
-      missing.push(`M15 ${s.sessionId} 什么都没写`);
+      missing.push(`状态整理 ${s.sessionId} 什么都没写`);
     }
   }
   const loop = session(run, run.loopId);
@@ -393,7 +401,9 @@ function guardLines(run: ChainRun): CheckResult {
     };
   }
   const learner = learnerLines(loop.records);
-  const bad = vs.flatMap((v) => v.lines.filter((l) => !learner.has(l)));
+  const bad = vs.flatMap((v) =>
+    [...v.lines, ...(v.understanding ?? []).flatMap((u) => u.lines)].filter((l) => !learner.has(l)),
+  );
   const closedNoLines = vs.filter((v) => v.closed && v.lines.length === 0);
   const rejected = sessionsOf(run, 'guard').flatMap((g) =>
     toolCalls(g)
@@ -426,36 +436,26 @@ function guardLines(run: ChainRun): CheckResult {
   };
 }
 
-function verdictRule(run: ChainRun): CheckResult {
+/** 合上的那次学习按学过的记录那一层看：判定带了实际理解与证据强度没有。 */
+function understandingRule(run: ChainRun): CheckResult {
+  const id = '合上的判定含实际理解与证据强度';
   const end = loopEnd(run);
-  const vs = verdicts(run);
-  const id = '判定带实际理解';
+  const learning = learningOf(run);
   if (!end) return { id, by: '程序', outcome: '未判', detail: '学习对话没结束' };
   if (!end.closed) {
-    // 申请收口后守卫判没合上、学习者再结束是正常流程；只查不该有判合上的判定
-    const closedVs = vs.filter((v) => v.closed);
-    return closedVs.length === 0
-      ? { id, by: '程序', outcome: '过', detail: '没合上就结束，没有判合上的判定' }
-      : {
-          id,
-          by: '程序',
-          outcome: '不过',
-          detail: `没合上却记了 ${String(closedVs.length)} 份判合上的判定`,
-          attribution: '系统·程序',
-          why: '判合上后结束应记成合上',
-        };
+    return { id, by: '程序', outcome: '未判', detail: '这次没合上，没有合上的判定可查' };
   }
-  const passed = vs.filter((v) => v.closed).at(-1);
-  if (passed === undefined) {
+  if (learning?.status !== '合上') {
     return {
       id,
       by: '程序',
       outcome: '不过',
-      detail: '合上了却没有一份通过的判定',
+      detail: `学习对话结束那行是合上，学过的记录里却是“${learning?.status ?? '没有这次学习'}”`,
       attribution: '系统·程序',
+      why: '学过的记录按正本现算，两层应一致',
     };
   }
-  const u = passed.understanding ?? [];
+  const u = learning.verdict?.understanding ?? [];
   if (u.length === 0) {
     return {
       id,
@@ -468,16 +468,24 @@ function verdictRule(run: ChainRun): CheckResult {
   }
   const loop = session(run, run.loopId);
   const learner = learnerLines(loop?.records ?? []);
+  const empty = u.filter((x) => x.text.trim() === '');
+  const noLines = u.filter((x) => x.lines.length === 0);
   const bad = u.flatMap((x) => x.lines.filter((l) => !learner.has(l)));
   const badTier = u.filter(
     (x) => !INDEPENDENCE.includes(x.independence) || !DURABILITY.includes(x.durability),
   );
-  if (bad.length > 0 || badTier.length > 0) {
+  const problems = [
+    ...(empty.length > 0 ? [`有 ${String(empty.length)} 条理解没写文字`] : []),
+    ...(noLines.length > 0 ? [`有 ${String(noLines.length)} 条理解没指回学习者的行`] : []),
+    ...(bad.length > 0 ? [`理解引的第 ${bad.join('、')} 行不是学习者的话`] : []),
+    ...(badTier.length > 0 ? ['有理解档位不在规定的几档里'] : []),
+  ];
+  if (problems.length > 0) {
     return {
       id,
       by: '程序',
       outcome: '不过',
-      detail: `${bad.length > 0 ? `理解引的第 ${bad.join('、')} 行不是学习者的话；` : ''}${badTier.length > 0 ? '有理解档位不在规定的几档里' : ''}`,
+      detail: problems.join('；'),
       attribution: '系统·程序',
       why: '程序本该在收判定时核对并退回',
     };
@@ -486,8 +494,44 @@ function verdictRule(run: ChainRun): CheckResult {
     id,
     by: '程序',
     outcome: '过',
-    detail: `合上，判定带 ${String(u.length)} 条实际理解（证据行 ${passed.lines.join('、')}；模型 ${passed.model ?? '（未记）'}）`,
+    detail: `合上，判定带 ${String(u.length)} 条实际理解（独立程度 ${u.map((x) => x.independence).join('、')}；持久程度 ${u.map((x) => x.durability).join('、')}）`,
   };
+}
+
+/** 没合上的那次：学过的记录里不该有守卫判定，结束原话要对得上。 */
+function unclosedRule(run: ChainRun): CheckResult {
+  const id = '没合上没有判定';
+  const end = loopEnd(run);
+  const learning = learningOf(run);
+  if (!end) return { id, by: '程序', outcome: '未判', detail: '学习对话没结束' };
+  if (end.closed) return { id, by: '程序', outcome: '未判', detail: '这次学习合上了' };
+  if (learning?.status !== '没合上') {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: `学习对话结束那行是没合上，学过的记录里却是“${learning?.status ?? '没有这次学习'}”`,
+      attribution: '系统·程序',
+      why: '学过的记录按正本现算，两层应一致',
+    };
+  }
+  const problems = [
+    ...(learning.verdict !== undefined ? ['没合上却带着守卫判定'] : []),
+    ...(learning.endNote !== end.note
+      ? [`结束原话对不上（记录里是「${learning.endNote ?? ''}」，结束那行是「${end.note}」）`]
+      : []),
+  ];
+  if (problems.length > 0) {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: problems.join('；'),
+      attribution: '系统·程序',
+      why: '没合上的那次只有上层（单子 + 结束原话），不该有中层判定',
+    };
+  }
+  return { id, by: '程序', outcome: '过', detail: `没合上：${end.note}；没有判定` };
 }
 
 /** 合上的那次学习的新点（从单子文字里取）。 */
@@ -520,10 +564,13 @@ function nextCardNotLearned(run: ChainRun): CheckResult {
       attribution: run.error !== undefined ? '不确定' : '系统·程序',
     };
   }
-  // 已学会 = 合上的那次的单子新点（W2 起不存分析层，学过的记录按层读）
-  const known = new Set(
-    loopEnd(run)?.closed === true && run.ticketText !== undefined ? [ticketNewPoint(run)] : [],
-  );
+  // 已学会 = 合上的那次学习按学过的记录那一层看到的单子新点
+  const learning = learningOf(run);
+  const knownText =
+    learning?.status === '合上' && learning.ticket.newPoint !== ''
+      ? learning.ticket.newPoint
+      : ticketNewPoint(run);
+  const known = new Set(loopEnd(run)?.closed === true ? [knownText] : []);
   const bad = next.options.filter((o) => known.has(o.ticket.newPoint));
   const list = next.options
     .map((o, i) => `${String(i)}.${o.ticket.newPoint}${i === next.recommended ? '（推荐）' : ''}`)
@@ -541,7 +588,7 @@ function nextCardNotLearned(run: ChainRun): CheckResult {
         outcome: '不过',
         detail: `把已学会的 ${bad.map((o) => o.ticket.newPoint).join('、')} 又当新内容推；下一张：${list}`,
         attribution: '系统·提示词',
-        why: 'M05 提示词写了“已会的只作出发点”；程序没卡',
+        why: '导航提示词写了“已会的只作出发点”；程序没卡',
       };
 }
 
@@ -593,32 +640,34 @@ function effortAccepted(run: ChainRun, probe: ProbeResult): CheckResult {
 }
 
 function backgroundModules(run: ChainRun): CheckResult {
+  const id = '状态记录与教法记录整理跑了且隔离';
   const problems: string[] = [];
-  const m15 = sessionsOf(run, 'm15');
-  if (m15.length === 0) problems.push('M15 没整理');
+  const states = sessionsOf(run, 'state');
+  if (states.length === 0) problems.push('状态整理没跑');
   const notes = (session(run, run.loopId)?.records ?? []).flatMap((r) =>
     r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok
       ? [r.record.content ?? '']
       : [],
   );
-  for (const s of m15) {
+  for (const s of states) {
     const opening = s.records.flatMap((r) =>
       r.record.type === 'program_fact' ? [r.record.text] : [],
     );
     const leaked = notes.filter(
       (n) => n.length > 12 && opening.some((o) => o.includes(n.slice(0, 40))),
     );
-    if (leaked.length > 0) problems.push(`M15 开场里出现了诊断记录（${String(leaked.length)} 条）`);
-    if (opening.some((o) => o.includes('守卫判定'))) problems.push('M15 开场里出现了守卫判定');
+    if (leaked.length > 0)
+      problems.push(`状态整理开场里出现了诊断记录（${String(leaked.length)} 条）`);
+    if (opening.some((o) => o.includes('守卫判定'))) problems.push('状态整理开场里出现了守卫判定');
   }
-  if (run.loopId !== undefined && !run.m10.some((r) => r.loopSessionId === run.loopId)) {
-    problems.push('M10 没记这段学习');
+  if (run.loopId !== undefined && !run.pedagogy.some((r) => r.loopSessionId === run.loopId)) {
+    problems.push('教法记录整理没记这段学习');
   }
-  const detail = `M15 整理 ${String(m15.length)} 次、状态记录 ${String(run.m15Records)} 条、当前状态页${run.m15Current !== undefined ? '有' : '无'}；M10 记录 ${String(run.m10.length)} 条`;
+  const detail = `状态整理 ${String(states.length)} 次、状态记录 ${String(run.stateRecords)} 条、当前状态页${run.stateCurrent !== undefined ? '有' : '无'}；教法记录 ${String(run.pedagogy.length)} 条`;
   return problems.length === 0
-    ? { id: 'M15 / M10 后台跑了且隔离', by: '程序', outcome: '过', detail }
+    ? { id, by: '程序', outcome: '过', detail }
     : {
-        id: 'M15 / M10 后台跑了且隔离',
+        id,
         by: '程序',
         outcome: '不过',
         detail: `${problems.join('；')}｜${detail}`,
@@ -653,6 +702,117 @@ async function interjection(run: ChainRun): Promise<CheckResult> {
   };
 }
 
+/** 学习对话在沙盒里跑：正本里有沙盒动作，且只挂着两个命令。 */
+function sandboxedLoop(run: ChainRun): CheckResult {
+  const id = '学习对话在沙盒里';
+  const loop = session(run, run.loopId);
+  if (!loop) return { id, by: '程序', outcome: '未判', detail: '没有学习对话' };
+  const actions = loop.records.flatMap((r) =>
+    r.record.type === 'sandbox_action' ? [r.record] : [],
+  );
+  const diag = actions.filter((a) => a.tag === DIAGNOSIS_TAG).length;
+  const tools = [...new Set(toolCalls(loop).map((t) => t.name))];
+  const extra = tools.filter((n) => n !== 'request_close' && n !== 'end_loop_unclosed');
+  const detail = `沙盒动作 ${String(actions.length)} 条（tag: 诊断 ${String(diag)} 条）；工具 ${tools.join('、') || '（没调）'}`;
+  if (actions.length === 0) {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: `学习对话正本里没有沙盒动作；${detail}`,
+      attribution: '系统·程序',
+      why: '学习对话在沙盒里跑，读写与命令都该记成 sandbox_action',
+    };
+  }
+  if (extra.length > 0) {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: `学习对话还挂着别的工具：${extra.join('、')}；${detail}`,
+      attribution: '系统·程序',
+      why: '学习对话只该有申请收口、结束这次学习（没合上）两个命令',
+    };
+  }
+  return { id, by: '程序', outcome: '过', detail };
+}
+
+/** 这次学习的单子是文字，不是编号。 */
+function ticketIsText(run: ChainRun): CheckResult {
+  const id = '单子是文字';
+  const loop = session(run, run.loopId);
+  if (!loop) return { id, by: '程序', outcome: '未判', detail: '没有学习对话' };
+  const opened = loop.records.map((r) => r.record).find((r) => r.type === 'session_opened');
+  const ticket = opened?.type === 'session_opened' ? opened.ticket : undefined;
+  if (ticket === undefined) {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: '这次学习的开场里没有单子',
+      attribution: '系统·程序',
+    };
+  }
+  const codeLike = (x: string): boolean => /^[pc]-[a-z0-9-]+$/.test(x);
+  const problems = [
+    ...(ticket.newPoint.trim() === ''
+      ? ['新点是空的']
+      : codeLike(ticket.newPoint)
+        ? [`新点像编号：${ticket.newPoint}`]
+        : []),
+    ...(ticket.clause.trim() === ''
+      ? ['预期理解是空的']
+      : codeLike(ticket.clause)
+        ? [`预期理解像编号：${ticket.clause}`]
+        : []),
+    ...ticket.startPoints
+      .filter((p) => !(START_SOURCES as readonly string[]).includes(p.source))
+      .map((p) => `出发点的来源不在规定的几种里：${p.source}`),
+  ];
+  const detail = `新点「${ticket.newPoint}」；预期理解「${ticket.clause}」；出发点 ${ticket.startPoints.map((p) => `${p.point}（${p.source}）`).join('、') || '（无）'}`;
+  if (problems.length > 0) {
+    return {
+      id,
+      by: '程序',
+      outcome: '不过',
+      detail: `${problems.join('；')}｜${detail}`,
+      attribution: '系统·提示词',
+      why: '单子各栏都是文字，程序只核对非空与来源',
+    };
+  }
+  return { id, by: '程序', outcome: '过', detail };
+}
+
+/** 主对话里每张选择卡之前，都有一条同一次导航写的路线决定。 */
+function routeDecisions(run: ChainRun): CheckResult {
+  const id = '每张卡前有路线决定';
+  const main = session(run, run.mainId)?.records ?? [];
+  const cardRows = main.flatMap((r) =>
+    r.record.type === 'choice_card' ? [{ line: r.line, nav: r.record.navSessionId }] : [],
+  );
+  if (cardRows.length === 0) {
+    return { id, by: '程序', outcome: '未判', detail: '主对话里没有选择卡' };
+  }
+  const decisions = main.flatMap((r) =>
+    r.record.type === 'route_decision' ? [{ line: r.line, nav: r.record.navSessionId }] : [],
+  );
+  const missing = cardRows.filter(
+    (c) => !decisions.some((d) => d.line < c.line && d.nav === c.nav),
+  );
+  const detail = `${String(cardRows.length)} 张卡，${String(decisions.length)} 条路线决定`;
+  return missing.length === 0
+    ? { id, by: '程序', outcome: '过', detail }
+    : {
+        id,
+        by: '程序',
+        outcome: '不过',
+        detail: `第 ${missing.map((r) => String(r.line)).join('、')} 行的卡前面没有同一次导航写的路线决定；${detail}`,
+        lines: missing.map((r) => r.line),
+        attribution: '系统·程序',
+        why: '出卡时先写 route_decision、紧接着写 choice_card，由程序保证',
+      };
+}
+
 export async function programChecks(run: ChainRun, probe: ProbeResult): Promise<CheckResult[]> {
   return [
     chainComplete(run),
@@ -661,7 +821,11 @@ export async function programChecks(run: ChainRun, probe: ProbeResult): Promise<
     noInternalWords(run),
     guardExpectation(run),
     guardLines(run),
-    verdictRule(run),
+    understandingRule(run),
+    unclosedRule(run),
+    sandboxedLoop(run),
+    ticketIsText(run),
+    routeDecisions(run),
     nextCardNotLearned(run),
     effortAccepted(run, probe),
     backgroundModules(run),

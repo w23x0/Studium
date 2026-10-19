@@ -57,7 +57,7 @@ describe('验收：个人笔记进 M07', () => {
     expect(note.skipped).toEqual([join(dir, '附件.txt')]);
 
     // 存在数据目录自己的 M07 区，不在书库里
-    expect(await readdir(join(dataRoot, 'knowledge', 'm07-notes'))).toContain(note.id);
+    expect(await readdir(join(dataRoot, 'knowledge', 'notes'))).toContain(note.id);
     expect(await snapshot(dir)).toEqual(before);
     expect(await snapshot(library)).toEqual(libBefore);
 

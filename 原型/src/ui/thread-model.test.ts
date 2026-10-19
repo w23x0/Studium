@@ -54,7 +54,7 @@ describe('toUiMessages', () => {
           type: 'choice_card',
           at,
           cardId: 'c1',
-          m05SessionId: 'm',
+          navSessionId: 'm',
           options: [
             {
               title: '位移',
@@ -158,7 +158,7 @@ describe('loopState / pendingCard', () => {
       type: 'choice_card' as const,
       at,
       cardId: 'c1',
-      m05SessionId: 'm',
+      navSessionId: 'm',
       options: [],
       recommended: 0,
       trigger: '',

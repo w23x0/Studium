@@ -128,6 +128,6 @@ describe('教材出处', () => {
     const prompts = await loadPrompts();
     expect(prompts.loop).toContain('【教材|书名|小节文件|L起行-止行】');
     expect(prompts.loop).toContain('不一致');
-    expect(prompts.m05).toContain('书名/文件:行号');
+    expect(prompts.nav).toContain('书名/文件:行号');
   });
 });

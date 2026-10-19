@@ -35,6 +35,7 @@ describe('链路评测管道', () => {
       .map((c) => [c.id, c.detail]);
     expect(failed).toEqual([]);
     expect(r?.checks.find((c) => c.id === '守卫判定符合预期')?.outcome).toBe('过');
+    expect(r?.checks.find((c) => c.id === '合上的判定含实际理解与证据强度')?.outcome).toBe('过');
     expect(r?.run.interjection?.line).toBeGreaterThan(0);
     const report = renderReport({
       runId: 'test',

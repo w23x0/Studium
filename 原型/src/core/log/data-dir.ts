@@ -3,8 +3,8 @@ import { mkdir, open, readdir, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path';
 import { isNotFound } from './session-log.ts';
 
-/** 当前数据目录的版本（工单 W1「数据版本」）；单子与记录的形状变了就加一，旧目录不能直接开。 */
-export const DATA_VERSION = '2';
+/** 当前数据目录的版本（`原型/CLAUDE.md`「存放处」）；单子与记录的形状变了就加一，旧目录不能直接开。 */
+export const DATA_VERSION = '3';
 
 async function sessionFileNames(root: string): Promise<string[]> {
   try {
@@ -34,13 +34,12 @@ export async function checkDataVersion(root: string): Promise<void> {
   }
 }
 
-/** 取锁之后写版本文件；已经有就不动。 */
+/**
+ * 取锁之后写版本文件。核对已过：要么还没有会话，要么已是当前版本，所以直接写当前版本
+ * （只有旧版本文件、还没有会话的目录也随之升上来，不然有了会话下次启动会报旧版本）。
+ */
 export async function writeDataVersion(root: string): Promise<void> {
-  try {
-    await writeFile(join(root, 'data-version'), `${DATA_VERSION}\n`, { flag: 'wx' });
-  } catch (err) {
-    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') throw err;
-  }
+  await writeFile(join(root, 'data-version'), `${DATA_VERSION}\n`);
 }
 
 /** 会话 id 只由字母、数字、`_`、`-` 组成（也是文件名）。 */

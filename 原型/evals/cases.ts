@@ -1,4 +1,4 @@
-// 评测目录：每个失败模式一条，判定过 / 不过。失败模式取自审查单与 03 里“必须每次成立”的规矩。
+// 评测目录：每个失败模式一条，判定过 / 不过。失败模式取自 `docs/设计/` 里“必须每次成立”的规矩。
 import { learnerLines } from '../src/core/transcript.ts';
 import type { EvalCase, EvalRun, Verdict } from './types.ts';
 
@@ -27,7 +27,7 @@ export const CASES: EvalCase[] = [
   {
     id: '不替学习者做那一步',
     failureMode:
-      '教学替学习者做掉本该由学习者做的那一步（M02 / 03「教学工具怎么落」必须每次成立的规矩）',
+      '教学替学习者做掉本该由学习者做的那一步（`docs/设计/会话/学习对话.md` 必须每次成立的规矩）',
     student: { persona: PLAIN, turns: 3 },
     finish: 'none',
     judges: [
@@ -35,7 +35,7 @@ export const CASES: EvalCase[] = [
         id: '没替学习者做',
         kind: 'model',
         rubric:
-          '读闭环对话原文：教学有没有替学习者做掉本该由学习者做的那一步（直接给出完整答案或推导结论，学习者只需点头）。有就不过，并指出行号。',
+          '读学习对话原文：教学有没有替学习者做掉本该由学习者做的那一步（直接给出完整答案或推导结论，学习者只需点头）。有就不过，并指出行号。',
       },
     ],
   },
@@ -49,13 +49,14 @@ export const CASES: EvalCase[] = [
         id: '每轮停在第一个问题',
         kind: 'model',
         rubric:
-          '读闭环对话原文：教学的每一轮话是否停在第一个需要学习者回答的地方。一轮里抛出多个要回答的问题、或问完又自己接着讲，就不过，并指出行号。',
+          '读学习对话原文：教学的每一轮话是否停在第一个需要学习者回答的地方。一轮里抛出多个要回答的问题、或问完又自己接着讲，就不过，并指出行号。',
       },
     ],
   },
   {
     id: '自述懂了不算合上',
-    failureMode: '学习者只说“我懂了”、说不出所以然，闭环却被判合上（M04「不降门槛」）',
+    failureMode:
+      '学习者只说“我懂了”、说不出所以然，却被判合上（`docs/设计/会话/守卫.md`「不降门槛」）',
     student: { persona: '你很快就说“我懂了”，但被追问时说不出所以然。', turns: 2 },
     finish: 'request_close',
     judges: [
@@ -73,7 +74,7 @@ export const CASES: EvalCase[] = [
   },
   {
     id: '不露内部词',
-    failureMode: '给学习者的话里露出内部词（闭环、选择卡、守卫、出发点、子句、模块名）',
+    failureMode: '给学习者的话里露出内部词（旧叫法、选择卡、守卫、出发点、子句、会话种类名）',
     student: { persona: PLAIN, turns: 3 },
     finish: 'none',
     judges: [
@@ -91,7 +92,7 @@ export const CASES: EvalCase[] = [
   },
   {
     id: '证据只认学习者的行',
-    failureMode: '守卫拿教学讲解的行当证据（00 原则 7、8）',
+    failureMode: '守卫拿教学讲解的行当证据（`docs/设计/00-定位与原则.md` 原则 7、8）',
     student: { persona: '你认真回答，能用自己的话说出“位移就是终点减起点”。', turns: 2 },
     finish: 'request_close',
     judges: [

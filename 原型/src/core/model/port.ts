@@ -1,5 +1,5 @@
 // 模型适配层的接口。核心只认这里；具体框架（Agent SDK、假模型、以后别家）各写一个适配器。
-// 对应 03「闭环对话」四个接口：开场交付（systemPrompt + 第一条消息）· 工具（tools）
+// 对应 `docs/设计/会话/学习对话.md` 的四个接口：开场交付（systemPrompt + 第一条消息）· 工具（tools）
 // · 钩子（工具的 run 由核心实现，如“申请收口”；程序追加事实 = role 为 program 的输入）
 // · 交回原文（ModelEvent 里的 raw，由核心逐条记进正本）。
 import type { z } from 'zod';

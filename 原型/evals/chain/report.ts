@@ -38,10 +38,10 @@ const KIND_LABEL: Record<ConversationKind, string> = {
   talk: '畅谈',
   loop: '学习对话',
   guard: '守卫',
-  m05: 'M05 出卡',
+  nav: '导航',
   retrieve: '检索子代理',
-  m15: 'M15 整理',
-  m10: 'M10 记录',
+  state: '状态整理',
+  pedagogy: '教法记录整理',
   output: '写产出',
 };
 

@@ -1,5 +1,5 @@
 // 长期功能：复习 / 复检、阶段复盘、应用内提醒与“今天该做的”。
-// 读学过的记录（按层）与 M15 状态；分析层已取消（10-18）。studium.ts 只在几处挂钩，逻辑都在这里。
+// 读学过的记录（按层）与状态记录；分析层已取消（10-18）。studium.ts 只在几处挂钩，逻辑都在这里。
 import { z } from 'zod';
 import type {
   ReminderView,
@@ -16,7 +16,7 @@ import {
 import { NotFoundError, type Hub } from './hub.ts';
 import type { Learned } from './learned.ts';
 import { routeDeviations } from './route-deviations.ts';
-import type { M15 } from './knowledge/m15.ts';
+import type { StateStore } from './knowledge/state.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import { currentGoal, describeGoal } from './goal.ts';
 import { BadRequestError, foldDeadline } from './studium.ts';
@@ -33,7 +33,7 @@ export interface LongTermDeps {
   hub(): Hub;
   /** 学过的记录（按层读；阶段复盘与路线事实读它）。 */
   learned: Learned;
-  m15: M15;
+  state: StateStore;
   now(): Date;
   iso(): string;
   newId(prefix: string): string;
@@ -85,7 +85,7 @@ export class LongTerm {
                 kind: a.kind as ReminderKind,
                 ...(a.loop !== undefined ? { loopSessionId: a.loop as string } : {}),
               },
-              'm05',
+              'nav',
               sessionId,
             );
             return await ok(`提醒已加（${r.id}，${r.due}）。`);
@@ -113,8 +113,8 @@ export class LongTerm {
       kind?: ReminderKind;
       loopSessionId?: string;
     },
-    by: 'm05' | 'learner',
-    m05SessionId?: string,
+    by: 'nav' | 'learner',
+    navSessionId?: string,
   ): Promise<ReminderView> {
     const main = await this.hub.records(mainId);
     const opened = main[0]?.record;
@@ -176,7 +176,7 @@ export class LongTerm {
       text,
       ...(input.loopSessionId !== undefined ? { loopSessionId: input.loopSessionId } : {}),
       by,
-      ...(m05SessionId !== undefined ? { m05SessionId } : {}),
+      ...(navSessionId !== undefined ? { navSessionId } : {}),
     };
     await this.hub.record(mainId, rec);
     return this.reminderView(rec, undefined);
@@ -343,7 +343,7 @@ export class LongTerm {
     ];
   }
 
-  /** 畅谈类会话的另一种活（阶段复盘）的工具：状态查询 + 交回（查询 M07 的工具畅谈本来就有）。 */
+  /** 畅谈类会话的另一种活（阶段复盘）的工具：状态查询 + 交回（查资料的工具畅谈本来就有）。 */
   reviewTools(talkId: string): ToolSpec[] {
     return [
       this.d.stateQueryTool(),
@@ -418,7 +418,7 @@ export class LongTerm {
     return out.sort((a, b) => a.openedAt.localeCompare(b.openedAt));
   }
 
-  /** 开一个复盘对话：读这段时间结束的学习（上层与中层）/ 停车场 / M15 当前状态，给学习者一段复盘，最后交回主对话一句。 */
+  /** 开一个复盘对话：读这段时间结束的学习（上层与中层）/ 停车场 / 当前状态，给学习者一段复盘，最后交回主对话一句。 */
   async startReview(
     mainId: string,
     opt: { since?: string; anchorLine?: number } = {},
@@ -501,7 +501,7 @@ export class LongTerm {
       '── 路线偏差（事实）──',
       devs.map((d) => `- ${d.at.slice(0, 10)} ${d.kind}：${d.text}`).join('\n') || '（没有）',
       '',
-      `学习者的状态：${this.d.m15.describeCurrent()}`,
+      `学习者的状态：${this.d.state.describeCurrent()}`,
       '',
       `此前的复盘交回的话：\n${earlier.map((r) => `- ${r.until.slice(0, 10)}：${r.summary ?? ''}`).join('\n') || '（没有）'}`,
       '',

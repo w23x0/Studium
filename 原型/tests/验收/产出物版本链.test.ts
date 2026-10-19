@@ -11,7 +11,7 @@ import type {
   OutputResponse,
   VersionResponse,
   VersionsResponse,
-} from '../../src/shared/m14.ts';
+} from '../../src/shared/output.ts';
 import { call, getJson, post, TOKEN } from '../helpers/http.ts';
 import { createOutput, saveVersion, startOutputsApp, status } from '../helpers/outputs.ts';
 
@@ -137,7 +137,7 @@ describe('产出物版本链', () => {
       ),
     ).toEqual(['A']);
 
-    const file = join(root, 'knowledge', 'm14', 'versions.jsonl');
+    const file = join(root, 'knowledge', 'output', 'versions.jsonl');
     const before = (await readFile(file, 'utf8')).split('\n').filter(Boolean);
     expect(before).toHaveLength(3);
     await saveVersion(dataRoot, a.id, { text: 'a3' });

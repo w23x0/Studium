@@ -18,7 +18,7 @@ import {
 } from './共用/w3-flow.ts';
 
 /** 学习结束后照常挂在这次学习下的后台整理（状态整理、教法记录），不算“另开的会话”。 */
-const BACKGROUND: string[] = ['m15', 'm10'];
+const BACKGROUND: string[] = ['state', 'pedagogy'];
 
 const apps: App[] = [];
 afterEach(async () => {

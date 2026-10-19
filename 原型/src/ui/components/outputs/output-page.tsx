@@ -3,7 +3,7 @@
 // 能跳到一起写的对话，也能从这里开一个“和老师一起写”的对话。
 import { useState, type ReactNode } from 'react';
 import { MessageSquareIcon, PenLineIcon, TriangleAlertIcon, UsersRoundIcon } from 'lucide-react';
-import type { OutputView, VersionView } from '../../../shared/m14.ts';
+import type { OutputView, VersionView } from '../../../shared/output.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';

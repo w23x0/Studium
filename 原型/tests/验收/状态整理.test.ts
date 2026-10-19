@@ -24,7 +24,7 @@ afterEach(async () => {
 function responder(ids: { loop: string }) {
   return (ctx: FakeContext): FakeStep | undefined => {
     switch (roleOf(ctx)) {
-      case 'm05':
+      case 'nav':
         return {
           calls: [
             { name: 'query_state', args: {} },
@@ -46,7 +46,7 @@ function responder(ids: { loop: string }) {
           };
         }
         return { text: '我们从位置说起。' };
-      case 'm15': {
+      case 'state': {
         if (ctx.input.role !== 'program') return { text: '好' };
         const line = learnerLine(ctx.input.text, '有点累');
         return {
@@ -90,7 +90,7 @@ async function settled(app: App, id: string): Promise<NumberedRecord[]> {
 
 async function stateSessions(app: App) {
   return (await getJson<ListSessionsResponse>(app, '/sessions')).sessions
-    .filter((s) => s.kind === 'm15')
+    .filter((s) => s.kind === 'state')
     .sort((a, b) => a.sessionId.localeCompare(b.sessionId));
 }
 
@@ -152,7 +152,7 @@ describe('学习者状态在后台整理', () => {
     await post(app, '/cards/request', { projectId: mainId });
     const again = await newCard(app, mainId, before);
     if (again.record.type !== 'choice_card') throw new Error('不是选项');
-    const m05 = await settled(app, again.record.m05SessionId);
+    const m05 = await settled(app, again.record.navSessionId);
     const query = m05.find((r) => r.record.type === 'tool_call' && r.record.name === 'query_state');
     expect(query?.record.type === 'tool_call' && query.record.result).toContain(STATE);
 

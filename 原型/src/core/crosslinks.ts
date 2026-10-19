@@ -1,5 +1,5 @@
 // 资料的来源说明（批 10b）：每本书 / 笔记的类型、层次、作者、适用范围、转写质量（学习者报错数与有没有原件）。
-// 程序能算的算，其余学习者或模型补一句（只追加）。对应 M07:20。
+// 程序能算的算，其余学习者或模型补一句（只追加）。对应 `docs/设计/记录/资料.md`。
 import { randomBytes } from 'node:crypto';
 import { z } from 'zod';
 import {
@@ -10,9 +10,9 @@ import {
   type SourceNoteView,
 } from '../shared/protocol.ts';
 import { NotFoundError } from './hub.ts';
-import type { Library } from './knowledge/m07.ts';
-import type { Originals } from './knowledge/m07-originals.ts';
-import type { SourceReports } from './knowledge/m07-reports.ts';
+import type { Library } from './knowledge/library.ts';
+import type { Originals } from './knowledge/originals.ts';
+import type { SourceReports } from './knowledge/source-reports.ts';
 import type { SourceNotes } from './knowledge/source-notes.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import { BadRequestError } from './studium.ts';

@@ -46,7 +46,7 @@ function Quotes(props: { quotes: QuoteView[]; sessionId: string }) {
 }
 
 function Objections(props: {
-  kind: 'm10' | 'm15';
+  kind: 'pedagogy' | 'state';
   recordId: string;
   objections: ObjectionView[];
   onDone: () => void;
@@ -83,7 +83,7 @@ function OpenLoop(props: { sessionId: string }) {
 // ───────────── 我的状态 ─────────────
 
 export function StateView() {
-  const r = useLoad('m15', () => api.state());
+  const r = useLoad('state', () => api.state());
   const [view, setView] = useState<'list' | 'timeline'>('list');
   if (!r.data) return <Loading error={r.error} />;
   const { current, records } = r.data;
@@ -140,7 +140,7 @@ function StateRecord(props: { record: StateRecordView; onObjected: () => void })
   const s = props.record;
   const after = s.afterTeaching;
   return (
-    <Card id={`m15-${s.id}`} className="flex flex-col gap-3">
+    <Card id={`state-${s.id}`} className="flex flex-col gap-3">
       <div className="flex flex-wrap items-center gap-1.5">
         <Badge
           tone={s.sourceLevel === '已确认' ? 'good' : s.sourceLevel === '推断' ? 'warn' : 'neutral'}
@@ -179,7 +179,12 @@ function StateRecord(props: { record: StateRecordView; onObjected: () => void })
       ))}
       <ModelLine model={s.model} />
       <StateVerdict record={s} onDone={props.onObjected} />
-      <Objections kind="m15" recordId={s.id} objections={s.objections} onDone={props.onObjected} />
+      <Objections
+        kind="state"
+        recordId={s.id}
+        objections={s.objections}
+        onDone={props.onObjected}
+      />
     </Card>
   );
 }
@@ -273,7 +278,7 @@ function StateVerdict(props: { record: StateRecordView; onDone: () => void }) {
 // ───────────── 教法记录 ─────────────
 
 export function TeachingView() {
-  const r = useLoad('m10', () => api.strategies());
+  const r = useLoad('pedagogy', () => api.strategies());
   if (!r.data) return <Loading error={r.error} />;
   const records = [...r.data.records].reverse();
   return (
@@ -333,7 +338,12 @@ function Strategy(props: { record: StrategyView; onObjected: () => void }) {
       <Quotes quotes={s.quotes} sessionId={s.loopSessionId} />
       <OpenLoop sessionId={s.loopSessionId} />
       <ModelLine model={s.model} />
-      <Objections kind="m10" recordId={s.id} objections={s.objections} onDone={props.onObjected} />
+      <Objections
+        kind="pedagogy"
+        recordId={s.id}
+        objections={s.objections}
+        onDone={props.onObjected}
+      />
     </Card>
   );
 }

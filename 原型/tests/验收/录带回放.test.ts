@@ -34,7 +34,7 @@ function responder(ctx: FakeContext): FakeStep | undefined {
         };
       }
       return goalTalkResponder(ctx);
-    case 'm05':
+    case 'nav':
       return {
         calls: [
           { name: 'query_state', args: {} },
@@ -87,7 +87,7 @@ function responder(ctx: FakeContext): FakeStep | undefined {
           },
         ],
       };
-    case 'm15':
+    case 'state':
       return ctx.input.role === 'program'
         ? {
             calls: [
@@ -98,7 +98,7 @@ function responder(ctx: FakeContext): FakeStep | undefined {
             ],
           }
         : undefined;
-    case 'm10':
+    case 'pedagogy':
       return ctx.input.role === 'program'
         ? {
             calls: [

@@ -126,7 +126,7 @@ describe('状态标注与教法自查', () => {
     expect(stateOpening, '开场不再给强度变化编号').not.toContain('变化编号');
 
     // 指到学习者行的标注被退回；指到教学行的收下
-    const state = await getJson<StateResponse>(app, '/m15/state');
+    const state = await getJson<StateResponse>(app, '/state/records');
     expect(state.records, '只记下一条（指错的那次被退回）').toHaveLength(1);
     const rec = state.records[0];
     const after = (rec as unknown as { afterTeaching?: AfterTeachingLoose } | undefined)
@@ -137,16 +137,16 @@ describe('状态标注与教法自查', () => {
     const id = rec?.id ?? '';
 
     // 确认：只追加，原记录不动；来源档“已确认”
-    const file = join(dataRoot, 'knowledge', 'm15', 'records.jsonl');
+    const file = join(dataRoot, 'knowledge', 'state', 'records.jsonl');
     const before = await readFile(file, 'utf8');
     expect(
-      (await post(app, '/m15/confirmations', { recordId: id, verdict: 'confirm' })).status,
+      (await post(app, '/state/confirmations', { recordId: id, verdict: 'confirm' })).status,
     ).toBe(201);
     expect(await readFile(file, 'utf8'), '确认不改原记录').toBe(before);
-    let now = (await getJson<StateResponse>(app, '/m15/state')).records[0];
+    let now = (await getJson<StateResponse>(app, '/state/records')).records[0];
     expect(now?.sourceLevel).toBe('已确认');
-    await post(app, '/m15/confirmations', { recordId: id, verdict: 'deny', note: '其实不累' });
-    now = (await getJson<StateResponse>(app, '/m15/state')).records[0];
+    await post(app, '/state/confirmations', { recordId: id, verdict: 'deny', note: '其实不累' });
+    now = (await getJson<StateResponse>(app, '/state/records')).records[0];
     expect(
       now?.confirmations.map((c) => c.verdict),
       '确认 / 否认都留着',

@@ -55,11 +55,11 @@ export async function crossRoute(
     send(res, 201, { note } satisfies SourceNoteResponse);
     return true;
   }
-  if (a === 'm15' && b === 'timeline' && n === 3 && method === 'GET') {
+  if (a === 'state' && b === 'timeline' && n === 3 && method === 'GET') {
     send(res, 200, (await svc.lookback.timeline()) satisfies StateTimelineResponse);
     return true;
   }
-  if (a === 'm15' && b === 'records' && d === 'explanations' && n === 5 && method === 'POST') {
+  if (a === 'state' && b === 'records' && d === 'explanations' && n === 5 && method === 'POST') {
     const body = (await readJson(req)) as Partial<AddExplanationRequest>;
     if (typeof body.text !== 'string') throw new BadRequestError('text 要是字符串');
     const explanation = await studium.addStateExplanation(c ?? '', body.text);

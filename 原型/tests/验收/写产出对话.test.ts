@@ -9,7 +9,7 @@ import type {
   LiteratureListResponse,
   OutputResponse,
   VersionsResponse,
-} from '../../src/shared/m14.ts';
+} from '../../src/shared/output.ts';
 import type { NumberedRecord } from '../../src/shared/records.ts';
 import type { App } from '../../src/core/app.ts';
 import type { FakeContext, FakeStep } from '../../src/core/model/fake.ts';

@@ -618,7 +618,7 @@ export const W = {
     review: '复盘',
     other: '提醒',
   } as const,
-  reminderBy: { m05: '安排学习时记的', learner: '你加的' } as const,
+  reminderBy: { nav: '安排学习时记的', learner: '你加的' } as const,
   reminderAdd: '加一条提醒',
   reminderWhat: '做什么',
   reminderWhatKind: {

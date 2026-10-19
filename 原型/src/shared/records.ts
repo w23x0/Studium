@@ -13,11 +13,21 @@ export type * from './records-longterm.ts';
 export type * from './records-cross.ts';
 
 /**
- * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 守卫 · m05 出选择卡（导航）
- * · retrieve 检索子代理（导航派的）· m15 整理学习者状态 · m10 记教法效果 · output 写产出（M14 任务对话）
+ * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 守卫 · nav 出选择卡（导航）
+ * · retrieve 检索子代理（导航派的）· state 整理学习者状态 · pedagogy 记教法效果 · output 写产出对话
  */
-export type ConversationKind =
-  'main' | 'talk' | 'loop' | 'guard' | 'm05' | 'retrieve' | 'm15' | 'm10' | 'output';
+export const CONVERSATION_KINDS = [
+  'main',
+  'talk',
+  'loop',
+  'guard',
+  'nav',
+  'retrieve',
+  'state',
+  'pedagogy',
+  'output',
+] as const;
+export type ConversationKind = (typeof CONVERSATION_KINDS)[number];
 
 /** 出发点的来源：学过的记录 / 自述 / 假定（只是来源标注，不是证据）。 */
 export const START_SOURCES = ['学过的记录', '自述', '假定'] as const;
@@ -42,7 +52,7 @@ export interface Ticket {
   resumeOf?: string;
   /** 跨领域的单子：补习型 / 对比链接型；同领域内的没有。 */
   crossDomain?: CrossDomain;
-  /** 阶段验收闭环（批 9）：闭环里的练习都标阶段验收、默认不给提示；守卫照常判。没有 = 日常闭环。 */
+  /** 阶段验收（批 9）：这次学习里的练习都标阶段验收、默认不给提示；守卫照常判。没有 = 日常学习。 */
   stageCheck?: boolean;
 }
 
@@ -52,12 +62,12 @@ export interface SessionOpened {
   sessionId: string;
   kind: ConversationKind;
   title: string;
-  /** 从哪个会话开出来的（闭环对话 → 主对话；守卫 → 闭环对话）。 */
+  /** 从哪个会话开出来的（学习对话 → 主对话；守卫 → 学习对话）。 */
   parent?: string;
   ticket?: Ticket;
   /** 挂在父会话的哪一行下（畅谈对话 → 主对话里那条学习者消息）。 */
   anchorLine?: number;
-  /** 这个闭环是接着一个没合上的闭环学的（批 6）：记着原闭环，原闭环的正本不改。 */
+  /** 这次学习是接着一次没合上的学习学的（批 6）：记着原来那次，原来那次的正本不改。 */
   resumeOf?: ResumeOrigin;
   /** 这是一次阶段复盘（畅谈类会话的另一种活，批 6）：回看的时间窗口。 */
   review?: ReviewWindow;
@@ -67,9 +77,9 @@ export interface UserMessage {
   type: 'user_message';
   at: string;
   text: string;
-  /** 有这一项 = 这句话是学习者对本闭环里第 toLine 行守卫判定提出的异议（原话照记，带标记）。 */
+  /** 有这一项 = 这句话是学习者对本次学习里第 toLine 行守卫判定提出的异议（原话照记，带标记）。 */
   objection?: { toLine: number };
-  /** 随这句话附的图片（拍照 / 手写，批 4）：转写文字已并进 text（教学只读文字，M02:19），这里记原图与转写的来历。 */
+  /** 随这句话附的图片（拍照 / 手写，批 4）：转写文字已并进 text（教学只读文字，不读原图），这里记原图与转写的来历。 */
   images?: ImageInput[];
 }
 
@@ -282,15 +292,15 @@ export interface ChoiceOption {
   sources?: string[];
 }
 
-/** M05 出的选择卡，贴在主对话里。 */
+/** 导航出的选择卡，贴在主对话里。 */
 export interface ChoiceCard {
   type: 'choice_card';
   at: string;
   cardId: string;
-  m05SessionId: string;
+  navSessionId: string;
   options: ChoiceOption[];
   recommended: number;
-  /** 触发原因：学习者要下一步 / 闭环合上 / 没合上就结束。 */
+  /** 触发原因：学习者要下一步 / 学习合上 / 没合上就结束。 */
   trigger: string;
 }
 
@@ -313,7 +323,7 @@ export interface RouteDecision {
   supersedes?: number;
 }
 
-/** 学习者在选择卡上选定（M01 存成路线事实），并开出闭环对话。 */
+/** 学习者在选择卡上选定（存成路线事实），并开出学习对话。 */
 export interface ChoiceMade {
   type: 'choice_made';
   at: string;
@@ -322,7 +332,7 @@ export interface ChoiceMade {
   loopSessionId: string;
 }
 
-/** 主对话开出一个任务对话（畅谈对话），挂在某条学习者消息下（M01 会话关系）。 */
+/** 主对话开出一个任务对话（畅谈对话），挂在某条学习者消息下（`docs/设计/会话/主对话.md`）。 */
 export interface TaskOpened {
   type: 'task_opened';
   at: string;
@@ -352,7 +362,7 @@ export interface TalkEnded {
   review?: ReviewWindow;
 }
 
-/** 主对话把学习者指向某个已有对话（跟进某个闭环时）。 */
+/** 主对话把学习者指向某个已有对话（跟进某次学习时）。 */
 export interface ConversationPointer {
   type: 'conversation_pointer';
   at: string;
@@ -379,14 +389,14 @@ export interface ProjectDeadline {
   note?: string;
 }
 
-/** 学习者把闭环搁置（可恢复；与“结束（没合上）”不同）。 */
+/** 学习者把这次学习搁置（可恢复；与“结束（没合上）”不同）。 */
 export interface LoopShelved {
   type: 'loop_shelved';
   at: string;
   note: string;
 }
 
-/** 搁置的闭环恢复（学习者点“接着学”，或在里面又说话）。 */
+/** 搁置的学习恢复（学习者点“接着学”，或在里面又说话）。 */
 export interface LoopResumed {
   type: 'loop_resumed';
   at: string;
@@ -425,14 +435,14 @@ export type LogRecord =
   | ReminderAdded
   | ReminderClosed;
 
-/** 学习者异议指向什么：守卫的一次判定（学习会话 + 判定所在行），或 M10 / M15 的一条记录（记录 id）。 */
+/** 学习者异议指向什么：守卫的一次判定（学习会话 + 判定所在行），或教法记录 / 状态记录的一条（记录 id）。 */
 export type ObjectionTarget =
   | { kind: 'guard_verdict'; loopSessionId: string; line: number }
-  | { kind: 'm10' | 'm15'; recordId: string };
+  | { kind: 'pedagogy' | 'state'; recordId: string };
 
 /**
  * 学习者异议：只追加的一条独立记录，指向原记录，不改原记录（异议按自述来源记录，不覆盖可观察事实）。
- * 存在知识层的异议存放处（不在会话正本里）；对还开着的闭环里守卫判定的异议则作为带标记的学习者原话进闭环正本。
+ * 存在知识层的异议存放处（不在会话正本里）；对还开着的那次学习里守卫判定的异议则作为带标记的学习者原话进正本。
  */
 export interface LearnerObjection {
   id: string;
@@ -445,7 +455,7 @@ export const SOURCE_REPORT_KINDS = ['转录错', '公式错', '定位错', '其�
 export type SourceReportKind = (typeof SOURCE_REPORT_KINDS)[number];
 
 /**
- * 学习者对某段教材原文的报错（转录错、公式错、定位错……）。只追加；先只记录，回 M06 修正是后续的事（M07:20）。
+ * 学习者对某段教材原文的报错（转录错、公式错、定位错……）。只追加；先只记录，回资料修订是后续的事（`docs/设计/记录/资料.md`）。
  * quote 是报错当时那几行原文的快照，之后原文被重新转录也还能对上。
  */
 export interface SourceReport {

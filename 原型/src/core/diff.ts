@@ -1,5 +1,5 @@
-// 逐行差异（M14 修订比较）：最长公共子序列，先剥掉相同的头尾。纯函数。
-import type { DiffLine } from '../shared/m14.ts';
+// 逐行差异（产出物修订比较）：最长公共子序列，先剥掉相同的头尾。纯函数。
+import type { DiffLine } from '../shared/output.ts';
 
 /** 行数乘积超过这个就不做完整 LCS（只剥头尾，中间整段当作删旧加新）。 */
 const MAX_CELLS = 4_000_000;

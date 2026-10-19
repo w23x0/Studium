@@ -1,5 +1,5 @@
 // 资料报错存放处：学习者对某段教材原文报的错（转录错、公式错、定位错……）。只追加，不改书库里的任何文件。
-// 回 M06 修正是后续的事；现在先记下来、能列出（M07:20）。
+// 回资料修订是后续的事；现在先记下来、能列出（`docs/设计/记录/资料.md`）。
 import { join } from 'node:path';
 import type { SourceReport } from '../../shared/records.ts';
 import { appendJsonl, readJsonl } from './jsonl.ts';

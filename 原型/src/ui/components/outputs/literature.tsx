@@ -7,7 +7,7 @@ import {
   type LiteratureView,
   type OutputView,
   type RelationKind,
-} from '../../../shared/m14.ts';
+} from '../../../shared/output.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';

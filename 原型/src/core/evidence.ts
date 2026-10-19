@@ -1,4 +1,4 @@
-// 依据可见：把守卫判定、诊断、单子与出处、M10 / M15 记录整理成界面能直接读的只读视图。
+// 依据可见：把守卫判定、诊断、单子与出处、教法记录 / 状态记录整理成界面能直接读的只读视图。
 // 只读：不写任何记录；异议的写入在 studium.ts。
 import {
   CONVERSATION_KIND_LABELS,
@@ -47,8 +47,8 @@ import { currentTicket } from './ticket.ts';
 /** 批 8 起新增的会话类：外发披露里单列在 laterSessions。 */
 const LATER_KINDS: ConversationKind[] = ['output', 'retrieve'];
 import { foldLoop, LOAD_HEAVY, PARKING_PILE } from './loop-state.ts';
-import type { M10 } from './knowledge/m10.ts';
-import type { M15 } from './knowledge/m15.ts';
+import type { PedagogyStore } from './knowledge/pedagogy.ts';
+import type { StateStore } from './knowledge/state.ts';
 import type { Objections } from './knowledge/objections.ts';
 import type { Inputs } from './inputs.ts';
 import type { Sources } from './sources.ts';
@@ -59,8 +59,8 @@ export interface EvidenceDeps {
   hub: Hub;
   /** 学过的记录（按层读；项目概览的积压数从这里取）。 */
   learned: Learned;
-  m10: M10;
-  m15: M15;
+  pedagogy: PedagogyStore;
+  state: StateStore;
   objections: Objections;
   /** 回查书里的出处（批 2a）。 */
   sources: Sources;
@@ -251,7 +251,7 @@ export class Evidence {
     rd: RouteDecision,
   ): Promise<RouteDecisionView> {
     const card = mainRecs.find(
-      (r) => r.record.type === 'choice_card' && r.record.m05SessionId === rd.navSessionId,
+      (r) => r.record.type === 'choice_card' && r.record.navSessionId === rd.navSessionId,
     )?.record;
     return {
       line,
@@ -284,7 +284,7 @@ export class Evidence {
     )?.record;
     if (card?.type !== 'choice_card') return undefined;
     const rd = mainRecs.find(
-      (r) => r.record.type === 'route_decision' && r.record.navSessionId === card.m05SessionId,
+      (r) => r.record.type === 'route_decision' && r.record.navSessionId === card.navSessionId,
     );
     if (rd?.record.type !== 'route_decision') return undefined;
     return this.routeDecisionView(mainRecs, rd.line, rd.record);
@@ -336,7 +336,7 @@ export class Evidence {
       });
     }
     const decisionAt = recs.find(
-      (r) => r.record.type === 'route_decision' && r.record.navSessionId === card.m05SessionId,
+      (r) => r.record.type === 'route_decision' && r.record.navSessionId === card.navSessionId,
     );
     const decision = decisionAt?.record.type === 'route_decision' ? decisionAt.record : undefined;
     return {
@@ -349,8 +349,8 @@ export class Evidence {
         ? { routeDecision: await this.routeDecisionView(recs, decisionAt.line, decision) }
         : {}),
       recommended: card.recommended,
-      m05SessionId: card.m05SessionId,
-      model: await this.d.hub.modelInfo(card.m05SessionId),
+      navSessionId: card.navSessionId,
+      model: await this.d.hub.modelInfo(card.navSessionId),
       ...(made !== undefined
         ? { chosen: { option: made.option, loopSessionId: made.loopSessionId } }
         : {}),
@@ -529,11 +529,11 @@ export class Evidence {
     };
   }
 
-  // ───────────── M10 / M15 ─────────────
+  // ───────────── 教法记录 / 状态记录 ─────────────
 
   async strategies(loopId?: string): Promise<StrategyView[]> {
     const out: StrategyView[] = [];
-    for (const r of this.d.m10
+    for (const r of this.d.pedagogy
       .all()
       .filter((x) => loopId === undefined || x.loopSessionId === loopId)) {
       out.push({
@@ -549,7 +549,7 @@ export class Evidence {
         ...(r.toolUses ? { toolUses: r.toolUses } : {}),
         ...(r.selfCheck ? { selfCheck: r.selfCheck } : {}),
         model: modelInfoOf(r.model),
-        objections: this.d.objections.forRecord('m10', r.id).map(storedView),
+        objections: this.d.objections.forRecord('pedagogy', r.id).map(storedView),
       });
     }
     return out;
@@ -557,7 +557,7 @@ export class Evidence {
 
   async state(): Promise<{ current?: CurrentStateView; records: StateRecordView[] }> {
     const records: StateRecordView[] = [];
-    for (const r of this.d.m15.allRecords()) {
+    for (const r of this.d.state.allRecords()) {
       const refs: StateRecordView['refs'] = [];
       for (const x of r.refs) {
         refs.push({
@@ -566,25 +566,25 @@ export class Evidence {
           quotes: await this.quotes(x.sessionId, x.lines),
         });
       }
-      const verdict = this.d.m15.verdictOf(r.id);
+      const verdict = this.d.state.verdictOf(r.id);
       records.push({
         id: r.id,
         at: r.at,
         text: r.text,
         source: r.source,
-        sourceLevel: this.d.m15.sourceLevel(r),
+        sourceLevel: this.d.state.sourceLevel(r),
         output: r.output,
         timeRange: r.timeRange,
         refs,
         ...(r.afterTeaching ? { afterTeaching: r.afterTeaching } : {}),
-        confirmations: this.d.m15.confirmationsFor(r.id),
+        confirmations: this.d.state.confirmationsFor(r.id),
         ...(verdict ? { learnerVerdict: verdict.verdict } : {}),
-        m15SessionId: r.m15SessionId,
+        stateSessionId: r.stateSessionId,
         model: modelInfoOf(r.model),
-        objections: this.d.objections.forRecord('m15', r.id).map(storedView),
+        objections: this.d.objections.forRecord('state', r.id).map(storedView),
       });
     }
-    const cur = this.d.m15.current();
+    const cur = this.d.state.current();
     return {
       ...(cur !== undefined
         ? {
@@ -593,7 +593,7 @@ export class Evidence {
               text: cur.text,
               stage: cur.stage,
               basisSpan: cur.basisSpan,
-              m15SessionId: cur.m15SessionId,
+              stateSessionId: cur.stateSessionId,
               model: modelInfoOf(cur.model),
             },
           }

@@ -71,7 +71,7 @@ function system(bad: boolean) {
     }
     if (has(ctx, 'request_close')) {
       if (bad)
-        return { text: '答案是：位移就是终点减起点，这个闭环到此。你明白了吗？还有问题吗？' };
+        return { text: '答案是：位移就是终点减起点，这个单子到此。你明白了吗？还有问题吗？' };
       return ctx.input.role === 'program'
         ? { text: '我们从你会的位置说起。你觉得位移是什么？' }
         : { text: '说说看：走一圈回到原点，位移是多少？' };

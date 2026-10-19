@@ -28,7 +28,7 @@ describe('状态表态', () => {
     timeRange: '',
     refs: [],
     confirmations: [],
-    m15SessionId: '',
+    stateSessionId: '',
     model: { name: 'm', known: true },
     objections: [],
   };

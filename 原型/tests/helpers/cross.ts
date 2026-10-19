@@ -1,4 +1,4 @@
-// 批 10b（来源说明 / 跨领域闭环）的测试夹具：两个领域（大学物理、线性代数）、物理里有两本书讲同一处。
+// 批 10b（来源说明 / 跨领域学习）的测试夹具：两个领域（大学物理、线性代数）、物理里有两本书讲同一处。
 // 每个测试一个临时目录。
 import { mkdir, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';

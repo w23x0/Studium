@@ -1,10 +1,15 @@
-// M14 知识产出物存放处（M14 审查单）：学习者自己的产出物对象、版本链、相关文献、“写产出”对话的绑定。
+// 知识产出物存放处（`docs/设计/记录/知识产出.md`）：学习者自己的产出物对象、版本链、相关文献、“写产出”对话的绑定。
 // 每类一个只追加的 JSONL，永不改写；每次保存 = 新版本。
 import { join } from 'node:path';
-import type { LiteratureEntry, OutputObject, OutputTask, OutputVersion } from '../../shared/m14.ts';
+import type {
+  LiteratureEntry,
+  OutputObject,
+  OutputTask,
+  OutputVersion,
+} from '../../shared/output.ts';
 import { appendJsonl, readJsonl } from './jsonl.ts';
 
-export class M14 {
+export class OutputStore {
   /** 写入排队：同一产出物的版本号靠它保证连续、不重。 */
   private chain: Promise<unknown> = Promise.resolve();
 
@@ -16,8 +21,8 @@ export class M14 {
     private readonly tasks: OutputTask[],
   ) {}
 
-  static async load(dir: string): Promise<M14> {
-    return new M14(
+  static async load(dir: string): Promise<OutputStore> {
+    return new OutputStore(
       dir,
       await readJsonl<OutputObject>(join(dir, 'outputs.jsonl')),
       await readJsonl<OutputVersion>(join(dir, 'versions.jsonl')),

@@ -15,10 +15,19 @@ const DISP = {
 const AVG = {
   new_point: '平均速度：位移除以所用的时间',
   clause: '用刚学过的位移，除以走过这段用的时间',
-  start_points: [{ point: '位移：一段时间内位置的变化量', source: '学过的记录' }],
+  start_points: [{ point: '位移：一段时间内位置的变化量，只看起点和终点', source: '学过的记录' }],
   route_action: '继续主线',
   title: '平均速度',
   reason: '用刚学会的位移算一段时间的快慢',
+  sources: ['导航现场说出'],
+};
+const ACC = {
+  new_point: '加速度：速度变化的快慢',
+  clause: '用刚学会的平均速度，看它在时间里怎么变',
+  start_points: [{ point: '平均速度：位移除以所用的时间', source: '学过的记录' }],
+  route_action: '继续主线',
+  title: '加速度',
+  reason: '接着平均速度往下学',
   sources: ['导航现场说出'],
 };
 
@@ -62,13 +71,13 @@ function system(leak: boolean) {
       };
     }
     if (has('submit_choice_card')) {
-      // 开场里学过的记录已经有一条合上的学习时，下一张卡改推平均速度
-      const option = /- \S+「[^」]*」合上/.test(text) ? AVG : DISP;
+      // 开场里学过的记录已经有一条合上的学习（位移）时，下一张卡改推平均速度与加速度
+      const options = /- \S+「[^」]*」合上/.test(text) ? [AVG, ACC] : [DISP, AVG];
       return {
         calls: [
           {
             name: 'submit_choice_card',
-            args: { options: [option], recommended: 0, route_decision: navRoute(ctx) },
+            args: { options, recommended: 0, route_decision: navRoute(ctx) },
           },
         ],
       };
@@ -127,7 +136,7 @@ function system(leak: boolean) {
     }
     if (has('request_close')) {
       const say = leak
-        ? '这个闭环我们从出发点说起。你觉得位移是什么？'
+        ? '这个单子我们从出发点说起。你觉得位移是什么？'
         : ctx.input.role === 'program'
           ? '我们从你会的位置说起。你觉得位移是什么？'
           : '说说看：走一圈回到原点，位移是多少？';

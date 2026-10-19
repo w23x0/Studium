@@ -1,5 +1,5 @@
-// 跨闭环长期功能（批 6）的验收测试共用：可拨的时钟、在闭环中途那套应答上叠一层“按测试改写”的应答、
-// 学完一个闭环（说一句 → 收口 → 确认）的步骤。
+// 跨多次学习的长期功能（批 6）的验收测试共用：可拨的时钟、在一次学习中途那套应答上叠一层“按测试改写”的应答、
+// 学完一次（说一句 → 收口 → 确认）的步骤。
 import { createApp, type App } from '../../src/core/app.ts';
 import { FakeModel, type FakeContext, type FakeStep } from '../../src/core/model/fake.ts';
 import { post, TOKEN } from './http.ts';

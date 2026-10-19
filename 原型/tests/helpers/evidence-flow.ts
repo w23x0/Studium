@@ -27,7 +27,7 @@ export function responder(state: FlowState) {
   return (ctx: FakeContext): FakeStep | undefined => {
     const line = learnerLine(ctx.input.text, '终点减起点');
     switch (roleOf(ctx)) {
-      case 'm05':
+      case 'nav':
         return {
           calls: [
             {
@@ -93,7 +93,7 @@ export function responder(state: FlowState) {
             },
           ],
         };
-      case 'm10': {
+      case 'pedagogy': {
         if (ctx.input.role !== 'program') return { text: '好' };
         return {
           calls: [
@@ -109,7 +109,7 @@ export function responder(state: FlowState) {
           ],
         };
       }
-      case 'm15': {
+      case 'state': {
         if (ctx.input.role !== 'program') return { text: '好' };
         const sessionId = /一段学习 (\S+)「/.exec(ctx.input.text)?.[1] ?? '';
         const tired = learnerLine(ctx.input.text, '有点累');
@@ -198,7 +198,7 @@ export async function requestClose(app: App, loopId: string, nth: number): Promi
   await settled(app, loopId);
 }
 
-/** 确认合上，并等后台（下一张卡、M15、M10）都跑完。 */
+/** 确认合上，并等后台（下一张卡、状态整理、教法记录整理）都跑完。 */
 export async function confirmAndSettle(app: App, loopId: string): Promise<void> {
   expect((await post(app, `/sessions/${loopId}/confirm-close`)).status).toBe(202);
   await app.studium.settled();

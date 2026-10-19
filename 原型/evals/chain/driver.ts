@@ -1,6 +1,6 @@
 // 链路评测的驱动：一个模拟学生在一个全新的核心上走完整条链——开项目 → 主对话说想学什么 → 畅谈谈出方向 →
 // 下一步 → 选择卡 → 学习对话（第 2 句起的一次中途插话）→ 我觉得懂了（守卫）→ 学完了 / 先到这里 → 下一张卡，
-// 后台 M15 / M10 跑完才算完。学习者的每个动作都经本地服务的 HTTP 接口做（录带只录经接口的动作，回放才对得上）；
+// 后台状态整理、教法记录整理跑完才算完。学习者的每个动作都经本地服务的 HTTP 接口做（录带只录经接口的动作，回放才对得上）；
 // 学生只看到界面按 thread-model 转出来的文字，看不到系统提示、诊断记录、工具调用、程序事实。
 // 驱动只在学生不动或轮数用完时代点，代点一律记进步骤日志，报告里标“驱动”。
 import { randomBytes } from 'node:crypto';
@@ -9,11 +9,12 @@ import { mkdir } from 'node:fs/promises';
 import { join } from 'node:path';
 import { z } from 'zod';
 import { createApp, type App } from '../../src/core/app.ts';
-import { M10, type StrategyRecord } from '../../src/core/knowledge/m10.ts';
-import { M15 } from '../../src/core/knowledge/m15.ts';
+import { PedagogyStore, type StrategyRecord } from '../../src/core/knowledge/pedagogy.ts';
+import { StateStore } from '../../src/core/knowledge/state.ts';
 import type { ModelAdapter, ModelConversation } from '../../src/core/model/port.ts';
 import type {
   ChooseResponse,
+  Learning,
   ListProjectsResponse,
   ProjectResponse,
   RecordsResponse,
@@ -64,9 +65,11 @@ export interface ChainRun {
   /** 单子、新点、子句的文字（给判分器）。 */
   ticketText?: string;
   sessions: SessionSnapshot[];
-  m10: StrategyRecord[];
-  m15Records: number;
-  m15Current: string | undefined;
+  pedagogy: StrategyRecord[];
+  stateRecords: number;
+  stateCurrent: string | undefined;
+  /** 这次学习按学过的记录那一层取一份（与 `GET /api/learned/<学习 id>` 同一个函数）。 */
+  learning?: Learning;
   interjection?: InterjectionObs;
   studentTurns: number;
   studentErrors: string[];
@@ -458,7 +461,7 @@ async function chain(d: Driver, run: ChainRun, http: Http, app: App): Promise<vo
     await d.press(loopId, 'end', '评测驱动：轮数用完，代点“先到这里”');
   }
 
-  // ⑥ 结束后的清单（下一张卡、M15 / M10）跑完
+  // ⑥ 结束后的清单（下一张卡、状态整理、教法记录整理）跑完
   await d.settle();
   const after = await d.records(mainId);
   const next = pendingCard(after);
@@ -481,9 +484,9 @@ export async function runStudent(
     tapePath,
     steps: [],
     sessions: [],
-    m10: [],
-    m15Records: 0,
-    m15Current: undefined,
+    pedagogy: [],
+    stateRecords: 0,
+    stateCurrent: undefined,
     studentTurns: 0,
     studentErrors: [],
     usage,
@@ -531,10 +534,12 @@ async function snapshot(app: App, run: ChainRun): Promise<void> {
     run.sessions.push({ ...s, records: await app.hub.records(s.sessionId) });
   }
   const k = join(app.dataDir.root, 'knowledge');
-  run.m10 = (await M10.load(join(k, 'm10'))).all();
-  const m15 = await M15.load(join(k, 'm15'));
-  run.m15Records = m15.allRecords().length;
-  run.m15Current = m15.current()?.text;
+  run.pedagogy = (await PedagogyStore.load(join(k, 'pedagogy'))).all();
+  const state = await StateStore.load(join(k, 'state'));
+  run.stateRecords = state.allRecords().length;
+  run.stateCurrent = state.current()?.text;
+  // 这次学习按学过的记录那一层的形状取一份（与 GET /api/learned/<学习 id> 同一个函数）
+  if (run.loopId !== undefined) run.learning = await app.studium.learned.one(run.loopId);
 }
 
 /** 读录带里的插话行（被并进正在跑的那一轮的才有）。 */

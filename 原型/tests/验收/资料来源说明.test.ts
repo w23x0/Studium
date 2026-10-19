@@ -138,7 +138,7 @@ describe('验收：资料来源说明', () => {
   it('模型也能补一句（须写依据，标“模型”、记在哪个会话）；闭环 / M05 查资料的结果带这条说明', async () => {
     const r = await bootCross({ model: new FakeModel() });
     apps.push(r.app);
-    const add = toolOf(r.app, 'm05', r.mainId, 'add_source_note');
+    const add = toolOf(r.app, 'nav', r.mainId, 'add_source_note');
     const done = await add.run({
       book: PHYS_B,
       field: 'level',
@@ -160,18 +160,18 @@ describe('验收：资料来源说明', () => {
     expect(() => toolOf(r.app, 'guard', r.mainId, 'add_source_note')).toThrow();
 
     // 查资料的工具结果末尾带来源说明
-    const search = await toolOf(r.app, 'm05', r.mainId, 'search_textbook').run({
+    const search = await toolOf(r.app, 'nav', r.mainId, 'search_textbook').run({
       query: '位移',
       all: true,
     });
     expect(search.text).toContain('来源说明');
     expect(search.text).toContain('层次：入门');
-    const read = await toolOf(r.app, 'm05', r.mainId, 'read_source').run({
+    const read = await toolOf(r.app, 'nav', r.mainId, 'read_source').run({
       book: PHYS_B,
       file: 'ch01/sec-1.md',
     });
     expect(read.text).toContain('来源说明');
-    const idx = await toolOf(r.app, 'm05', r.mainId, 'textbook_index').run({ book: PHYS_B });
+    const idx = await toolOf(r.app, 'nav', r.mainId, 'textbook_index').run({ book: PHYS_B });
     expect(idx.text).toContain('来源说明');
   });
 });

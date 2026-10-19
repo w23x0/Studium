@@ -2,7 +2,7 @@
 // （逐行差异 + 引用的增减，引用画成和正文里一样的小标签）。
 import { useState } from 'react';
 import { GitCompareArrowsIcon, MessageSquareIcon } from 'lucide-react';
-import type { DiffLine, OutputView, VersionSummary } from '../../../shared/m14.ts';
+import type { DiffLine, OutputView, VersionSummary } from '../../../shared/output.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';

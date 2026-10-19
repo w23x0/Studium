@@ -10,7 +10,7 @@ import { W } from '../../wording.ts';
 import { Badge, Field, Loading, Quote, Section, Time } from './parts.tsx';
 
 export function StateTimeline() {
-  const r = useLoad('m15:timeline', () => api.stateTimeline());
+  const r = useLoad('state:timeline', () => api.stateTimeline());
   const [mode, setMode] = useState<ColorMode>('stage');
   if (!r.data) return <Loading error={r.error} />;
   const { entries, stages } = r.data;
