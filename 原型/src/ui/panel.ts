@@ -5,11 +5,14 @@ import type { BBox } from '../shared/protocol.ts';
 /** 面板里能看的东西。 */
 export type PanelTarget =
   | { kind: 'home' }
-  /** verdictLine：滚到这次判断；noteLine：滚到这一轮老师的观察（从“出现在某段教学之后”点进来）。 */
-  | { kind: 'loop'; loopId: string; verdictLine?: number; noteLine?: number }
+  /**
+   * verdictLine：滚到这次判断；noteLine：滚到这一轮老师的观察（从“出现在某段教学之后”点进来）；
+   * editTicket：打开就展开改单子。
+   */
+  | { kind: 'loop'; loopId: string; verdictLine?: number; noteLine?: number; editTicket?: true }
   | { kind: 'card'; cardId: string; option?: number }
-  /** 我学会的：不给 = 全部；point = 这个点的经过；recordId = 那条记录所在点的经过。 */
-  | { kind: 'learned'; recordId?: string; point?: string }
+  /** 我学会的：不给 = 全部；给 loopId = 直接展开那一次学习。 */
+  | { kind: 'learned'; loopId?: string }
   | { kind: 'state' }
   | { kind: 'teaching' }
   /** 教法（教学工具）：不给名字 = 列表；给名字 = 这一份的全文。 */

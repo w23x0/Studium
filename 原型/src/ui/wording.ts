@@ -1,5 +1,5 @@
 // 界面上给学习者看的叫法，统一放这里（以后改叫法只改这一处）。
-// 内部词（闭环、选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里；
+// 内部词（选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里；
 // wording.test.ts 会查。对照：右边注释是内部叫法，只给写代码的人看。
 import type { LoopStatus, SourceReportKind, StateRecordView } from '../shared/protocol.ts';
 import { WS } from './wording-sidebar.ts';
@@ -16,7 +16,7 @@ export const W = {
   goalMissing: '还没谈定。在项目对话里说说你想学什么。',
   backToChat: '回到项目对话',
   nextStep: '下一步学什么',
-  learnTasks: '学习', // 闭环对话列表
+  learnTasks: '学习', // 学习对话列表
   talkTasks: '谈话', // 畅谈对话
   noneYet: '还没有',
   groups: {
@@ -52,7 +52,7 @@ export const W = {
   panelClose: '关上',
   panelBack: '返回',
   panelHome: '可以看的东西',
-  loopBasis: '这次学习的依据', // 闭环依据
+  loopBasis: '这次学习的依据', // 学习依据
   status: {
     in_progress: '进行中',
     closed: '学完了',
@@ -60,14 +60,14 @@ export const W = {
   } satisfies Record<LoopStatus, string>,
   plan: '这次学什么', // 开场单子
   point: '哪个点',
-  newPoint: '这次要学的', // 新点
-  clause: '预期理解', // 出发点怎么接到新点
-  startPoints: '从你已有的出发', // 出发点
-  routeAction: '这一步的安排', // 路线动作
-  sourceCheck: '对资料核过的',
-  modelAdded: '资料里没有，模型补的',
+  newPoint: '要学的', // 新点
+  clause: '学完应该能', // 预期理解
+  startPoints: '从这些已有的出发', // 出发点
+  routeAction: '这次怎么走', // 路线动作
+  sourceCheck: '对过资料',
+  modelAdded: '模型补的，资料里没有',
   startSource: {
-    学过的记录: '你之前学会的',
+    学过的记录: '你之前学过的',
     自述: '你自己说会的',
     假定: '先假定你会的',
   } as const,
@@ -107,7 +107,7 @@ export const W = {
 
   // ── 记录 ──
   learned: '我学会的',
-  myState: '我的状态', // M15
+  myState: '我的状态', // 状态记录
   myStateEmpty: '还没整理过。',
   currentState: '现在的状态',
   stage: '所处阶段',
@@ -122,7 +122,7 @@ export const W = {
     string
   >,
   timeRange: '时间范围',
-  teaching: '对我用过的教法', // M10 个人策略记录（与下面的“教学方法库”分开叫）
+  teaching: '对我用过的教法', // 教法记录（与下面的“教学方法库”分开叫）
   teachingEmpty: '还没有对你用过的教法记录。',
   conditions: '当时的情况',
   strategies: '用了什么教法',
@@ -151,7 +151,7 @@ export const W = {
   effort: '思考强度',
 
   // ── 书里的原文与原件（资料） ──
-  library: '资料', // M07 资料浏览
+  library: '资料', // 资料浏览
   libraryHint: '书的目录、原文和原件页面',
   libraryEmpty: '书库里还没有书。',
   books: '书',
@@ -284,9 +284,6 @@ export const W = {
   noteImagesMissing: (n: number) => `${String(n)} 张图片没找到（原文里会标出来）：`,
   noteSkipped: '没读的文件：',
   notePrevious: '这个路径以前导入过；这次是新的一份，旧的那份不动。',
-  noteExtract: '让系统从笔记里找出我写过的知识点',
-  noteExtractStarted: '开始找了。找到的会放进“我学会的”，标作还没核实。',
-  noteExtractOpen: '去看“我学会的”',
   noteMine: '你自己的笔记',
   noteMineHint: '这是你自己写的笔记，不是书上的原文。',
   noteImageMissing: (ref: string) => `（图片找不到：${ref}）`,
@@ -347,15 +344,75 @@ export const W = {
   searchScopeAll: '在全部资料里搜',
   searchAll: '查全部资料',
 
-  // ── 我学会的：分档 ──
-  learnedUnverified: '还没核实的',
-  learnedUnverifiedHint: '没经过学习验证，只作参考；真学过一遍之后，以学过的记录为准。',
-  learnedSelf: '你自己说会的',
-  learnedFromNotes: '笔记里看到的',
-  unverified: '未核实',
-  grade: '到什么程度',
-  whyGraded: '为什么这么看',
-  noteSpot: '看笔记里这一处',
+  // ── 单子：按文字显示、学习者可改（W6） ──
+  ticketRevisit: '回头看',
+  revisitLine: (kind: string) => `回看以前那次（${kind}）`,
+  ticketReturnTo: '学完回到',
+  ticketReturnToText: '补上这一块，回到原来那次学习',
+  ticketResumeOf: '接着学',
+  ticketResumeOfText: '接着以前没学完的那次',
+  ticketEdited: '你改了这次要学的内容。',
+  ticketEdits: '改过的',
+  ticketEditSee: '看那一行',
+  ticketEdit: '改一改',
+  ticketEditOpen: '改一改再开始',
+  ticketEditTitle: '改这次要学的',
+  ticketEditHint: '改过之后，这次就按改后的来；原来记下的不改。',
+  ticketEditSave: '保存改动',
+  ticketEditCancel: '算了',
+  ticketEditDone: '改好了，这次按改后的来。',
+  ticketEditAddStart: '再加一个',
+  ticketEditRemoveStart: '去掉',
+  ticketEditEmpty: '要写点什么。',
+
+  // ── 判定里的实际理解与证据强度（W6） ──
+  understanding: '学到的样子',
+  understandingHint: '判断这次学会没有时顺带记下的：你实际表现出的理解，以及当时是怎么做出来的。',
+  independence: {
+    独立: '自己做出来',
+    提示后: '提示后做出来',
+    答案暴露后: '看过答案后做出来',
+  } as const,
+  durability: {
+    仅当场: '只在当场',
+    含变式: '换个问法也行',
+    含延迟: '隔一段时间也行',
+  } as const,
+
+  // ── 路线决定（W6） ──
+  routeDecision: '这次怎么定的',
+  routeDecisionSuperseded: '后来改了路线',
+  routeDecisionBasis: '依据',
+  diagnosesJump: '看那一行',
+
+  // ── 我学会的：按学习列（W6） ──
+  learnedEmpty: '还没有学过。',
+  learnedStatus: { 进行中: '还在学', 合上: '学会了', 没合上: '先放下了' } as const,
+  learnedOpen: '看看这次',
+  learnedClose: '收起',
+  learnedUpper: '这次打算学什么',
+  learnedMiddle: '学成什么样',
+  learnedTranscript: '看这次的对话原文',
+  learnedImports: '从别处学到的',
+  learnedImportsHint: '不是在这里学的，没经过验证，只作参考。',
+  importChannel: { 畅谈: '谈方向时你说的', 笔记: '你的笔记' } as const,
+
+  // ── 方向目标按块显示（W6） ──
+  goalTitle: '这个方向',
+  goalAbility: '学成后能',
+  goalOrderHint: '大概的顺序',
+  goalProvisional: '这一版',
+  goalText: '要学成什么',
+  goalConfirmedReason: (reason: string) => `你确认时说的：${reason}`,
+  provisionalGoal: '临时的，谈过方向后会换成你确认的',
+  unclosedLine: '停下时说的',
+
+  // ── 外发披露：会联网搜索的对话（W6） ──
+  disclosureWebSearch: '会联网搜索的对话',
+  disclosureWebSearchNone: '没有',
+
+  // ── 外部导入 ──
+  unverified: '未验证',
 
   // ── 学到一半：先放一放 ──
   thatPart: '那一段',
@@ -384,7 +441,7 @@ export const W = {
   originUnknown: '记不清从哪来',
 
   // ── 教法：老师可以取用的教学方法、每轮的教法强度、状态确认（批 7） ──
-  tools: '教学方法库', // 教学工具库（M10 通用策略知识层）
+  tools: '教学方法库', // 教学工具库（通用策略知识层）
   toolsHint:
     '老师教的时候可以取用的做法。每份写了什么时候用、怎么做、怎么看出学会没有、要注意什么。',
   toolsEmpty: '还没有可用的教法。',
@@ -483,7 +540,7 @@ export const W = {
   outputPreview: '预览',
   outputWriteMode: '写',
   outputEditorHint:
-    '可以用 Markdown 和公式（$…$）。正文里引用书里的原文和知识点，会显示成可以点开的小标签；和老师一起写时，老师会帮你加。',
+    '可以用 Markdown 和公式（$…$）。正文里引用书里的原文，会显示成可以点开的小标签；和老师一起写时，老师会帮你加。',
   outputNoNote: '没写改了什么',
   outputGone: '找不到这份了。',
   refsCount: (n: number) => `引用了 ${String(n)} 处`,
@@ -584,15 +641,14 @@ export const W = {
   reminderAdd: '加一条提醒',
   reminderWhat: '做什么',
   reminderWhatKind: {
-    recheck: '复检一个学过的知识点',
+    recheck: '复检以前学过的一块',
     resume: '接着一段没学完的',
     deadline: '为期限做准备',
     other: '别的事',
   } as const,
-  reminderPickPoint: '哪个知识点',
+  reminderPickPoint: '复检哪一块（写一句话）',
   reminderPickLoop: '哪一段',
   reminderPick: '选一个',
-  reminderNoPoints: '还没有学会的知识点可以复检。',
   reminderNoLoops: '没有没学完的。',
   reminderWhen: '什么时候',
   reminderOnDate: '某一天',
@@ -646,8 +702,6 @@ export const W = {
   reviewEnded: '复盘好了，交回项目了。',
   reviewEndedLine: (summary: string) => `复盘交回项目了：${summary}`,
   reviewTask: '一起复盘这段时间',
-  // 我学会的（W2 起先留空壳，W6 做按学习列）
-  learnedPlaceholder: '这里以后按每次学习列出来（学会了什么、学成什么样），还没做。',
   // 路线偏差（现算的三类，只说事实）
   deviations: '没按推荐走的时候',
   deviationsHint: '只记下事实，给你自己回头看；不代表学得好不好。',

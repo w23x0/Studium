@@ -51,7 +51,7 @@ export class M10 {
 
   describe(r: StrategyRecord): string {
     return [
-      `${r.id}（${r.at.slice(0, 10)}，闭环 ${r.loopSessionId}，模型 ${r.model}）`,
+      `${r.id}（${r.at.slice(0, 10)}，这次学习 ${r.loopSessionId}，模型 ${r.model}）`,
       `  条件：${r.conditions}`,
       `  做法：${r.strategies}`,
       `  之后：${r.followedBy}`,

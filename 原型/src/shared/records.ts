@@ -206,6 +206,18 @@ export interface GuardVerdict {
   problem?: string;
 }
 
+/**
+ * 学习者改这次学习的单子（记录/单子与路线.md「单子」规矩“可见可改”）：只追加一条，
+ * 记改前、改后与时间；`session_opened` 里那张与卡上的那张都不改。
+ */
+export interface TicketEdited {
+  type: 'ticket_edited';
+  at: string;
+  by: 'learner';
+  before: Ticket;
+  after: Ticket;
+}
+
 /** 一次学习结束：合上（学习者确认）或没合上就结束。 */
 export interface LoopEnded {
   type: 'loop_ended';
@@ -394,6 +406,7 @@ export type LogRecord =
   | TurnFailed
   | CloseRequested
   | GuardVerdict
+  | TicketEdited
   | LoopEnded
   | AfterLoopStep
   | ProjectGoal

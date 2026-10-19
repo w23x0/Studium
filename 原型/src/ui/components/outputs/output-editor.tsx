@@ -28,7 +28,7 @@ interface Draft {
   base: number;
 }
 
-/** 没存的稿子：面板翻到知识点、原文再回来时还在；存好或丢掉时清掉。 */
+/** 没存的稿子：面板翻到别处再回来时还在；存好或丢掉时清掉。 */
 const drafts = new Map<string, Draft>();
 
 function freshDraft(o: OutputView): Draft {

@@ -10,8 +10,10 @@ export interface Learning {
   /** 结束了才有。 */
   endedAt?: string;
   status: '进行中' | '合上' | '没合上';
-  /** 上层：单子。 */
+  /** 上层：单子（现在的这张：改过就是改后的）。 */
   ticket: Ticket;
+  /** 学习者改过单子：每次改动在正本里的行号与时间（没改过就不带）。 */
+  ticketEdits?: { line: number; at: string }[];
   /** 没合上：学习者为什么结束的原话。 */
   endNote?: string;
   /** 没合上：导航读那次对话出下一张卡时写的路线决定。 */

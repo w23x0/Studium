@@ -6,6 +6,7 @@ import { timingSafeEqual } from 'node:crypto';
 import type {
   ChooseRequest,
   ChooseResponse,
+  TicketEditRequest,
   LoopRelationsResponse,
   ShelveRequest,
   CreateSessionResponse,
@@ -384,6 +385,12 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
                 ...(r.line !== undefined ? { line: r.line } : {}),
               },
             } satisfies ObjectionResponse);
+            return;
+          }
+          case 'ticket-edit': {
+            // 学习者改这次学习的单子（工单 W6 §4.1）：合格回改后的整张单子
+            const b = body as Partial<TicketEditRequest>;
+            send(res, 200, await studium.editTicket(id, b));
             return;
           }
           case 'confirm-close':
