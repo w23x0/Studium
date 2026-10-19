@@ -1,8 +1,8 @@
-// 项目概览（照 Claude 项目的 Overview：按状态分组）：想学的方向与期限；学习按 等你选 · 进行中 · 等补完回来的 ·
-// 先放一放的 · 学完了 · 先放下的（没学完）分组，没学完的带“缺在哪、打算何时从哪接上”；同时开着太多时顶部提醒；
-// 岔开过的话列出学习之间的来龙去脉；“我的产出”列出自己写的东西（批 8b）。旁边一栏是项目资料（照 Claude 项目的“项目知识”）。
-// 批 6：顶部“今天该做的”；没学完的可“接着学”，续上的与原来那段互相指；复习 / 复检标出；旁栏加提醒与阶段复盘。
-import { useState, type ReactNode } from 'react';
+// 项目概览（照 Claude 项目的 Overview：按状态分组）：想学的方向与期限；学习按 等你选 · 进行中 ·
+// 先放一放的 · 学完了 · 先放下的（没学完）分组；同时开着太多时顶部提醒；
+// 接着学的与原来那段互相指（缩进列在“学习之间的来龙去脉”里）；“我的产出”列出自己写的东西（批 8b）。
+// 旁边一栏是项目资料（照 Claude 项目的“项目知识”）。批 6：顶部“今天该做的”；复习 / 复检标出；旁栏加提醒与阶段复盘。
+import { type ReactNode } from 'react';
 import {
   BookCheckIcon,
   CircleCheckIcon,
@@ -11,7 +11,6 @@ import {
   CirclePauseIcon,
   ClipboardListIcon,
   CornerDownRightIcon,
-  GitForkIcon,
   InfoIcon,
   GaugeIcon,
   LayersIcon,
@@ -24,7 +23,6 @@ import type {
   LoopBrief,
   LoopLoad,
   LoopStatus,
-  ParkingView,
   ProjectOverview,
   SessionSummary,
 } from '../../shared/protocol.ts';
@@ -34,7 +32,7 @@ import { shortTime } from '../evidence-model.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { useOpenSession } from '../open-session.ts';
 import { usePanel } from '../panel.ts';
-import { hasForks, relationRows } from '../relations-model.ts';
+import { hasResumes, relationRows } from '../relations-model.ts';
 import { learnerShelveNote } from '../thread-model.ts';
 import { W } from '../wording.ts';
 import { crossOf } from '../cross-model.ts';
@@ -44,7 +42,7 @@ import { OutputsSection } from './outputs/outputs-section.tsx';
 import { Badge, Loading } from './evidence/parts.tsx';
 import { RemindersSection } from './longterm/reminders.tsx';
 import { ReviewsSection } from './longterm/reviews.tsx';
-import { TodaySection, useGoOnWith } from './longterm/today.tsx';
+import { TodaySection } from './longterm/today.tsx';
 import { PracticeOverview } from './practice/practice-review.tsx';
 import { ProjectChats } from './project-chats.tsx';
 import { useSetting } from '../settings.ts';
@@ -160,13 +158,10 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
   const g = props.overview.groups;
   // 各组里出现的学习的名字（“从哪岔出来”“在那边”用）
   const titles = new Map(
-    [
-      ...g.inProgress,
-      ...g.closed,
-      ...g.unclosed,
-      ...(g.shelved ?? []),
-      ...(g.waitingFork ?? []),
-    ].map((l) => [l.sessionId, l.title]),
+    [...g.inProgress, ...g.closed, ...g.unclosed, ...(g.shelved ?? [])].map((l) => [
+      l.sessionId,
+      l.title,
+    ]),
   );
   return (
     <div className="flex flex-col gap-6">
@@ -203,18 +198,6 @@ function Groups(props: { overview: ProjectOverview; onError: (e: unknown) => voi
         onError={props.onError}
         testId="group-in-progress"
       />
-      {g.waitingFork !== undefined && g.waitingFork.length > 0 && (
-        <LoopGroup
-          icon={<GitForkIcon className="text-primary" />}
-          title={W.groups.waitingFork}
-          hint={W.groupHints.waitingFork}
-          loops={g.waitingFork}
-          titles={titles}
-          overview={props.overview}
-          onError={props.onError}
-          testId="group-waiting-fork"
-        />
-      )}
       {g.shelved !== undefined && g.shelved.length > 0 && (
         <LoopGroup
           icon={<CirclePauseIcon className="text-amber-600" />}
@@ -316,18 +299,9 @@ function LoopRow(props: {
 }) {
   const open = useOpenSession();
   const panel = usePanel();
-  const goOn = useGoOnWith(props.onError);
-  const [continuing, setContinuing] = useState(false);
   const l = props.loop;
   const resumedBy = l.resumedBy ?? [];
-  // 没学完就停下、还没接着学的：可以接着学（开一段新的）
-  const canContinue = l.status === 'unclosed' && resumedBy.length === 0;
   const shelvedNote = l.shelved !== undefined ? learnerShelveNote(l.shelved.note) : undefined;
-  // 停车记录：没学完就停下的都显示；先放一放的显示它放下时记的
-  const parking =
-    l.parking !== undefined && (l.status === 'unclosed' || l.shelved !== undefined)
-      ? l.parking
-      : undefined;
   return (
     <div className="bg-card hover:border-foreground/20 group flex items-stretch rounded-xl border shadow-xs transition-colors">
       <button
@@ -356,23 +330,11 @@ function LoopRow(props: {
             )}
           </span>
         )}
-        {l.forkOf !== undefined && (
-          <span className="text-muted-foreground flex items-center gap-1 text-xs">
-            <CornerDownRightIcon className="size-3" />
-            {W.forkOfLine(props.titles.get(l.forkOf.loopSessionId) ?? W.thatPart)}
-          </span>
-        )}
-        {l.waitingFork !== undefined && (
-          <span className="text-primary text-xs">
-            {W.waitingLine(l.waitingFork.title ?? W.thatPart)}
-          </span>
-        )}
         {shelvedNote !== undefined && (
           <span className="text-muted-foreground text-xs">
             {W.shelvedNote}：{shelvedNote}
           </span>
         )}
-        {parking !== undefined && <ParkingLines parking={parking} />}
         {resumedBy.map((x) => (
           <span key={x.loopSessionId} className="text-primary text-xs">
             {W.resumedByLine(x.title ?? props.titles.get(x.loopSessionId) ?? W.thatPart)}
@@ -391,22 +353,6 @@ function LoopRow(props: {
           {l.lastVerdict !== undefined && <span>{W.lastJudgement(l.lastVerdict.closed)}</span>}
         </span>
       </button>
-      {canContinue && (
-        <div className="flex items-center border-s px-2">
-          <Button
-            variant="outline"
-            size="xs"
-            data-testid="continue-loop"
-            disabled={continuing}
-            onClick={() => {
-              setContinuing(true);
-              void goOn(props.overview, l.sessionId).finally(() => setContinuing(false));
-            }}
-          >
-            {continuing ? W.continuing : W.continueLoop}
-          </Button>
-        </div>
-      )}
       <button
         type="button"
         title={W.loopBasis}
@@ -420,56 +366,30 @@ function LoopRow(props: {
   );
 }
 
-/** 停车记录：缺在哪、打算何时、从哪接上。 */
-function ParkingLines(props: { parking: ParkingView }) {
-  const p = props.parking;
-  return (
-    <span
-      data-testid="parking-note"
-      className="bg-muted/60 mt-1 flex flex-col gap-0.5 rounded-lg px-2.5 py-1.5 text-xs"
-    >
-      {p.missing.length > 0 && (
-        <span>
-          <span className="text-muted-foreground">{W.parkingMissing}：</span>
-          {p.missing.map((m) => m.text).join('；')}
-        </span>
-      )}
-      <span>
-        <span className="text-muted-foreground">{W.parkingWhen}：</span>
-        {p.when}
-      </span>
-      <span>
-        <span className="text-muted-foreground">{W.parkingFrom}：</span>
-        {p.resumeFrom}
-      </span>
-    </span>
-  );
-}
-
 const STATUS_TONE: Record<LoopStatus, 'good' | 'warn' | 'accent'> = {
   closed: 'good',
   unclosed: 'warn',
   in_progress: 'accent',
 };
 
-/** 学习之间的来龙去脉：每段从哪来、岔出去的、回来没有。只在岔开过时显示。 */
+/** 学习之间的来龙去脉：每段从哪来（选择卡 / 接着以前那次学习）。只在有接着学时显示。 */
 function Relations(props: { projectId: string }) {
   const r = useLoad(`relations:${props.projectId}`, () => api.loopRelations(props.projectId));
   const open = useOpenSession();
   const panel = usePanel();
   const relations = r.data?.relations ?? [];
-  if (!hasForks(relations)) return null;
+  if (!hasResumes(relations)) return null;
   return (
     <section data-testid="loop-relations" className="flex flex-col gap-2">
       <div className="flex items-baseline gap-2 [&_svg]:size-4 [&_svg]:self-center">
-        <GitForkIcon className="text-muted-foreground" />
+        <CornerDownRightIcon className="text-muted-foreground" />
         <h2 className="font-medium">{W.relations}</h2>
         <span className="text-muted-foreground ms-2 hidden text-xs @lg:inline">
           {W.relationsHint}
         </span>
       </div>
       <ul className="bg-card flex flex-col rounded-xl border py-1 shadow-xs">
-        {relationRows(relations).map(({ rel, depth, back }) => (
+        {relationRows(relations).map(({ rel, depth }) => (
           <li
             key={rel.loopSessionId}
             className="hover:bg-accent/40 flex items-center gap-2 py-1.5 pe-2 text-sm"
@@ -484,21 +404,8 @@ function Relations(props: { projectId: string }) {
               {rel.title}
             </button>
             <Badge tone={STATUS_TONE[rel.status]}>
-              {rel.shelved === true
-                ? W.shelvedBadge
-                : rel.waitingFork !== undefined
-                  ? W.waitingBadge
-                  : W.status[rel.status]}
+              {rel.shelved === true ? W.shelvedBadge : W.status[rel.status]}
             </Badge>
-            {back !== undefined && (
-              <span className="text-muted-foreground text-xs">
-                {back.returned === undefined
-                  ? W.forkOut
-                  : back.returned.closed
-                    ? W.forkBackDone
-                    : W.forkBackNot}
-              </span>
-            )}
             {rel.origin.kind === 'resume' && (
               <span className="text-muted-foreground hidden text-xs @lg:inline">
                 {W.resumeOfLine(

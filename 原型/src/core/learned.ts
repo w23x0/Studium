@@ -193,20 +193,89 @@ export class Learned {
     return { line: rd.line, decision: rd.record.decision, reason: rd.record.reason };
   }
 
-  /** 一行一句话（导航开场、主对话的 list_learned 用）：上层 + 中层。 */
-  describe(l: Learning): string {
-    const parts = [`${l.loopId}「${l.title}」${l.status}`];
-    parts.push(`新点：${l.ticket.newPoint}；预期理解：${l.ticket.clause}`);
-    if (l.verdict !== undefined) {
-      const u = l.verdict.understanding
-        .map((x) => `${x.text}（${x.independence}、${x.durability}）`)
-        .join('；');
-      if (u !== '') parts.push(`实际表现出的理解：${u}`);
+  /**
+   * 停车场：没合上、还没补上的那些学习（导航开场、项目概览、复盘用），带结束原话所在行号。
+   * 一条不算积压 = 有一次以它为 `resumeOf` 的学习已合上，或之后有过一次新点文字相同的合上。
+   */
+  async parked(project: string): Promise<ParkedLearning[]> {
+    const learnings = (await this.list(project)).learnings;
+    const everything = await this.all();
+    const hub = this.o.hub();
+    const resumedClosed = new Set<string>();
+    for (const s of hub.listSessions().filter((x) => x.kind === 'loop')) {
+      const opened = await hub.opened(s.sessionId);
+      if (opened.resumeOf === undefined) continue;
+      const ended = (await hub.records(s.sessionId)).find((r) => r.record.type === 'loop_ended');
+      if (ended?.record.type === 'loop_ended' && ended.record.closed) {
+        resumedClosed.add(opened.resumeOf.fromLoop);
+      }
     }
-    if (l.endNote !== undefined) parts.push(`结束原话：${l.endNote}`);
+    const out: ParkedLearning[] = [];
+    for (const l of learnings) {
+      if (l.status !== '没合上') continue;
+      if (resumedClosed.has(l.loopId)) continue;
+      const madeUp = everything.some(
+        (x) =>
+          x.status === '合上' && x.ticket.newPoint === l.ticket.newPoint && x.openedAt > l.openedAt,
+      );
+      if (madeUp) continue;
+      const ended = (await hub.records(l.loopId)).find((r) => r.record.type === 'loop_ended');
+      out.push({ learning: l, ...(ended !== undefined ? { endLine: ended.line } : {}) });
+    }
+    return out;
+  }
+
+  /** 停车场里的一条：没合上那次的「上层」（单子 + 结束原话带行号 + 当时的路线决定）。 */
+  parkedLine(p: ParkedLearning): string {
+    const l = p.learning;
+    const parts = [`${l.loopId}「${l.title}」：${ticketText(l.ticket)}`];
+    parts.push(
+      `结束原话${p.endLine !== undefined ? `（L${String(p.endLine)}）` : ''}：${l.endNote ?? ''}`,
+    );
     if (l.routeDecision !== undefined) {
-      parts.push(`当时的路线决定：${l.routeDecision.decision}（${l.routeDecision.reason}）`);
+      parts.push(
+        `当时的路线决定（L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（${l.routeDecision.reason}）`,
+      );
     }
     return parts.join('；');
   }
+
+  /** 一次学习一行（导航开场、复盘、主对话的 list_learned 用）：上层 + 中层（记录/学过的记录.md「分层」）。 */
+  line(l: Learning): string {
+    const start = l.openedAt.slice(0, 10);
+    const span = l.endedAt !== undefined ? `${start}–${l.endedAt.slice(0, 10)}` : start;
+    const parts = [`${l.loopId}「${l.title}」${l.status}，${span}：${ticketText(l.ticket)}`];
+    if (l.verdict !== undefined) {
+      parts.push(`判定 L${String(l.verdict.line)}：${l.verdict.basis}`);
+      const u = l.verdict.understanding
+        .map(
+          (x) =>
+            `${x.text}（${x.independence}，${x.durability}${x.lines.length > 0 ? `，L${x.lines.join('、')}` : ''}）`,
+        )
+        .join('；');
+      if (u !== '') parts.push(`实际理解：${u}`);
+    }
+    if (l.endNote !== undefined) parts.push(`结束原话：${l.endNote}`);
+    if (l.routeDecision !== undefined) {
+      parts.push(
+        `当时的路线决定（L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（${l.routeDecision.reason}）`,
+      );
+    }
+    return parts.join('；');
+  }
+}
+
+/** 停车场里的一条：没合上那次的「上层」（记录/单子与路线.md「没合上那次的上层」）。 */
+export interface ParkedLearning {
+  learning: Learning;
+  /** 结束原话（loop_ended）在那次学习正本里的行号。 */
+  endLine?: number;
+}
+
+/** 单子的一句话：新点 + 预期理解 + 出发点各注来源。 */
+export function ticketText(t: Ticket): string {
+  const starts = t.startPoints
+    .map((s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`)
+    .join('；');
+  return `新点 ${t.newPoint}；预期理解 ${t.clause}；出发点 ${starts || '（无）'}`;
 }

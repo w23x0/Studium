@@ -4,12 +4,11 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import type {
   AddReminderRequest,
   CloseReminderRequest,
-  ContinueLoopResponse,
-  DeviationsResponse,
   RemindersResponse,
   ReviewRequest,
   ReviewResponse,
   ReviewsResponse,
+  RouteDeviationsResponse,
   TodayView,
 } from '../../shared/protocol.ts';
 import { REMINDER_KINDS } from '../../shared/records-longterm.ts';
@@ -28,18 +27,14 @@ export async function longtermRoute(
   const [, a, b, c, d] = parts;
   const n = parts.length;
 
-  if (a === 'm05' && b === 'deviations' && n === 3 && method === 'GET') {
-    send(res, 200, {
-      records: lt.deviationViews(q.get('project') ?? undefined),
-    } satisfies DeviationsResponse);
-    return true;
-  }
-  if (a === 'sessions' && d === undefined && n === 4 && c === 'continue' && method === 'POST') {
-    const loopSessionId = await lt.continueLoop(b ?? '');
-    send(res, 201, { loopSessionId } satisfies ContinueLoopResponse);
-    return true;
-  }
   if (a !== 'projects' || b === undefined) return false;
+  if (c === 'deviations' && n === 4 && method === 'GET') {
+    send(res, 200, {
+      mainSessionId: b,
+      deviations: await studium.routeDeviations(b),
+    } satisfies RouteDeviationsResponse);
+    return true;
+  }
   if (c === 'today' && n === 4 && method === 'GET') {
     send(res, 200, (await lt.todayView(b)) satisfies TodayView);
     return true;
@@ -55,8 +50,11 @@ export async function longtermRoute(
       return true;
     }
     if (n === 4 && method === 'POST') {
-      const body = (await readJson(req)) as Partial<AddReminderRequest>;
+      const body = (await readJson(req)) as Partial<AddReminderRequest> & { point?: unknown };
       if (typeof body.text !== 'string') throw new BadRequestError('text 要是字符串');
+      if ('point' in body) {
+        throw new BadRequestError('提醒不再存知识点；复检请指以前那次学习（loopSessionId）');
+      }
       if (body.kind !== undefined && !(REMINDER_KINDS as readonly unknown[]).includes(body.kind)) {
         throw new BadRequestError(`kind 只能是 ${REMINDER_KINDS.join(' / ')}`);
       }
@@ -69,7 +67,6 @@ export async function longtermRoute(
             ? { beforeDeadlineDays: body.beforeDeadlineDays }
             : {}),
           ...(body.kind !== undefined ? { kind: body.kind } : {}),
-          ...(typeof body.point === 'string' ? { point: body.point } : {}),
           ...(typeof body.loopSessionId === 'string' ? { loopSessionId: body.loopSessionId } : {}),
         },
         'learner',

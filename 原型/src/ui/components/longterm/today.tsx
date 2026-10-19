@@ -26,20 +26,16 @@ function readLater(key: string): string[] {
 /** 项目里一段学习的概要（各分组里找）。 */
 export function findLoop(o: ProjectOverview, id: string): LoopBrief | undefined {
   const g = o.groups;
-  return [
-    ...g.inProgress,
-    ...g.closed,
-    ...g.unclosed,
-    ...(g.shelved ?? []),
-    ...(g.waitingFork ?? []),
-  ].find((l) => l.sessionId === id);
+  return [...g.inProgress, ...g.closed, ...g.unclosed, ...(g.shelved ?? [])].find(
+    (l) => l.sessionId === id,
+  );
 }
 
 /**
- * “接着学某段”：没学完就停下、还没人接着学的，开一段新的接着学；已经有人接着学的去最新那段；
- * 还开着的直接打开。
+ * “接着学某段”：已经有人接着学的去最新那段；还开着的 / 没合上的直接打开（接着学经导航的卡，W6 做界面）。
  */
-export function useGoOnWith(onError: (e: unknown) => void) {
+export function useGoOnWith() {
+  // 现在的“接着学”只打开那段（接着学经导航的卡，W6 做界面）
   const open = useOpenSession();
   return (o: ProjectOverview | undefined, loopId: string): Promise<void> => {
     const brief = o !== undefined ? findLoop(o, loopId) : undefined;
@@ -49,7 +45,6 @@ export function useGoOnWith(onError: (e: unknown) => void) {
         open(next.loopSessionId);
         return Promise.resolve();
       }
-      return api.continueLoop(loopId).then((r) => open(r.loopSessionId), onError);
     }
     open(loopId);
     return Promise.resolve();
@@ -68,7 +63,7 @@ export function TodaySection(props: {
   const [later, setLater] = useState<string[]>(() => readLater(storageKey));
   const [busy, setBusy] = useState<string | undefined>();
   const open = useOpenSession();
-  const goOn = useGoOnWith(onError);
+  const goOn = useGoOnWith();
   if (today === undefined) return null;
   const items = visibleToday(today.items, later);
   if (items.length === 0) return null;
@@ -218,7 +213,7 @@ function doLabel(item: TodayItem): string | undefined {
     case 'review':
       return W.reviewStart;
     case 'resume':
-      return item.reminder.loopSessionId !== undefined ? W.continueLoop : undefined;
+      return item.reminder.loopSessionId !== undefined ? W.resume : undefined;
     case 'recheck':
       return W.todayDo;
     // 写着“别的事 / 期限”的提醒没有固定的去处：只能标做完了或跳过

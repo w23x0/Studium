@@ -1,6 +1,5 @@
-// 长期功能界面用的纯转换：没按推荐走的日常说法、“今天该做的”里今天先不看的项。单测覆盖。
-import type { DeviationView, TodayItem } from '../shared/protocol.ts';
-import { W } from './wording.ts';
+// 长期功能界面用的纯转换：路线偏差的日常说法、“今天该做的”里今天先不看的项。单测覆盖。
+import type { RouteDeviationView, TodayItem } from '../shared/protocol.ts';
 
 /** 记录时间 → 本地日期 YYYY-MM-DD（已是日期的原样给）。 */
 export function dayOf(at: string): string {
@@ -18,35 +17,9 @@ export function addDays(date: string, days: number): string {
   return new Date(t + days * 86_400_000).toISOString().slice(0, 10);
 }
 
-/** 路线偏差 → 给学习者看的一句日常话（只说事实）。 */
-export function deviationLine(
-  d: DeviationView,
-  titleOf?: (id: string) => string | undefined,
-): string {
-  const rec = d.recommended?.title ?? W.thatPart;
-  const chosen = d.chosen?.title ?? W.thatPart;
-  switch (d.kind) {
-    case 'not_recommended':
-      return W.devNotRecommended(rec, chosen);
-    case 'ended_unclosed': {
-      const title =
-        (d.loopSessionId !== undefined ? titleOf?.(d.loopSessionId) : undefined) ??
-        d.chosen?.title ??
-        W.thatPart;
-      const f = d.facts;
-      const facts =
-        f !== undefined
-          ? `（${W.devEndedFacts(f.learnerMessages, f.minutes)}${f.quickDrop === true ? `，${W.devQuick}` : ''}）`
-          : '';
-      return `${W.devEnded(title)}${facts}`;
-    }
-    case 'detour_choice':
-      return d.recommended !== undefined &&
-        d.chosen !== undefined &&
-        d.recommended.option !== d.chosen.option
-        ? W.devDetour(rec, chosen)
-        : W.devDetourSame(chosen);
-  }
+/** 路线偏差 → 给学习者看的一句日常话（现算的三类，只说事实）。 */
+export function deviationLine(d: RouteDeviationView): string {
+  return `${dayOf(d.at)} ${d.kind}：${d.text}`;
 }
 
 /** “今天该做的”里一项的键：提醒按 id，期限与复盘各一个（今天先不看时按它记）。 */

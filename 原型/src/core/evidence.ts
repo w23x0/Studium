@@ -6,14 +6,9 @@ import {
   type CardOptionView,
   type CardView,
   type CurrentStateView,
-  type DetourCardView,
   type DisclosureResponse,
-  type ForkLinkView,
-  type ForkOriginView,
   type LoopLoad,
   type LoopRelationView,
-  type ParkingView,
-  type RouteSignalView,
   type GuardVerdictView,
   type LoopBrief,
   type LoopEvidence,
@@ -33,18 +28,17 @@ import type {
   ChoiceCard,
   ChoiceMade,
   ConversationKind,
-  ForkOrigin,
   LearnerObjection,
   NumberedRecord,
-  ParkingNote,
   Ticket,
 } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
+import type { Learned } from './learned.ts';
 import { locate } from './locate.ts';
 
 /** 批 8 起新增的会话类：外发披露里单列在 laterSessions。 */
-const LATER_KINDS: ConversationKind[] = ['output'];
-import { foldLoop, LOAD_HEAVY, PARKING_PILE, type LoopFlags } from './loop-state.ts';
+const LATER_KINDS: ConversationKind[] = ['output', 'retrieve'];
+import { foldLoop, LOAD_HEAVY, PARKING_PILE } from './loop-state.ts';
 import type { M10 } from './knowledge/m10.ts';
 import type { M15 } from './knowledge/m15.ts';
 import type { Objections } from './knowledge/objections.ts';
@@ -55,6 +49,8 @@ import { BadRequestError, foldDeadline, foldMaterials } from './studium.ts';
 
 export interface EvidenceDeps {
   hub: Hub;
+  /** 学过的记录（按层读；项目概览的积压数从这里取）。 */
+  learned: Learned;
   m10: M10;
   m15: M15;
   objections: Objections;
@@ -139,29 +135,6 @@ export class Evidence {
       ...(flags.shelved !== undefined
         ? { shelved: { at: flags.shelved.at, note: flags.shelved.note } }
         : {}),
-      ...(flags.waitingFork !== undefined ? { waitingFork: flags.waitingFork } : {}),
-      ...(opened.fork !== undefined ? { fork: await this.forkView(opened.fork) } : {}),
-      forks: await this.forkLinks(flags),
-      signals: recs.flatMap((r) =>
-        r.record.type === 'route_signal'
-          ? [
-              {
-                line: r.line,
-                at: r.record.at,
-                kind: r.record.kind,
-                ...(r.record.missingPoint !== undefined
-                  ? { missingPoint: this.pointRef(r.record.missingPoint) }
-                  : {}),
-                missingText: r.record.missingText,
-                basisLines: r.record.basisLines,
-                quotes: quotesOf(recs, r.record.basisLines),
-                ...(r.record.note !== undefined ? { note: r.record.note } : {}),
-              } satisfies RouteSignalView,
-            ]
-          : [],
-      ),
-      detours: await this.detourViews(recs),
-      ...(flags.parking !== undefined ? { parking: this.parkingView(flags.parking) } : {}),
     };
   }
 
@@ -174,100 +147,7 @@ export class Evidence {
     }
   }
 
-  private async forkView(f: ForkOrigin): Promise<ForkOriginView> {
-    const title = await this.titleOf(f.fromLoop);
-    return {
-      fromLoop: f.fromLoop,
-      ...(title !== undefined ? { fromTitle: title } : {}),
-      kind: f.kind,
-      reason: f.reason,
-      ...(f.missingPoint !== undefined ? { missingPoint: this.pointRef(f.missingPoint) } : {}),
-      basisLines: f.basisLines,
-      signalLine: f.signalLine,
-      returnCondition: f.returnCondition,
-      ...(f.scope !== undefined ? { scope: f.scope } : {}),
-    };
-  }
-
-  private async forkLinks(flags: LoopFlags): Promise<ForkLinkView[]> {
-    const out: ForkLinkView[] = [];
-    for (const f of flags.forks) {
-      const o = await this.d.hub.opened(f.forkLoopSessionId);
-      out.push({
-        forkLoopSessionId: f.forkLoopSessionId,
-        title: o.title,
-        openedAt: o.at,
-        ...(f.returned !== undefined
-          ? {
-              returned: {
-                at: f.returned.at,
-                closed: f.returned.closed,
-                delivered: f.returned.delivered,
-              },
-            }
-          : {}),
-      });
-    }
-    return out;
-  }
-
-  private parkingView(p: ParkingNote & { line: number }): ParkingView {
-    return {
-      line: p.line,
-      at: p.at,
-      reason: p.reason,
-      missing: p.missing.map((m) => ({
-        ...(m.point !== undefined ? { point: this.pointRef(m.point) } : {}),
-        text: m.text,
-      })),
-      when: p.when,
-      resumeFrom: p.resumeFrom,
-      basisLines: p.basisLines,
-      m05SessionId: p.m05SessionId,
-    };
-  }
-
-  private async detourViews(recs: NumberedRecord[]): Promise<DetourCardView[]> {
-    const out: DetourCardView[] = [];
-    for (const r of recs) {
-      if (r.record.type !== 'detour_card') continue;
-      const c = r.record;
-      const made = recs.find(
-        (x) => x.record.type === 'detour_made' && x.record.cardId === c.cardId,
-      )?.record;
-      out.push({
-        cardId: c.cardId,
-        line: r.line,
-        at: c.at,
-        signalLine: c.signalLine,
-        options: c.options.map((o) => ({
-          kind: o.kind,
-          title: o.title,
-          reason: o.reason,
-          ...(o.ticket !== undefined ? { ticket: this.ticket(o.ticket) } : {}),
-          ...(o.scope !== undefined ? { scope: o.scope } : {}),
-        })),
-        recommended: c.recommended,
-        m05SessionId: c.m05SessionId,
-        model: await this.d.hub.modelInfo(c.m05SessionId),
-        ...(made?.type === 'detour_made'
-          ? {
-              chosen: {
-                option: made.option,
-                choice: made.choice,
-                at: made.at,
-                ...(made.forkLoopSessionId !== undefined
-                  ? { forkLoopSessionId: made.forkLoopSessionId }
-                  : {}),
-              },
-            }
-          : {}),
-      });
-    }
-    return out;
-  }
-
-  /** 项目下闭环之间的关系：每个闭环从哪来（选择卡 / 分叉）、开出去哪些分叉、回来没有。 */
+  /** 项目下一次学习之间的关系：每次从哪来（选择卡 / 接着以前那次学习）。 */
   async loopRelations(mainId: string): Promise<LoopRelationView[]> {
     const main = await this.d.hub.opened(mainId);
     if (main.kind !== 'main') throw new BadRequestError('这不是一个项目。');
@@ -286,17 +166,13 @@ export class Evidence {
         loopSessionId: l.sessionId,
         title: opened.title,
         origin:
-          opened.fork !== undefined
-            ? { kind: 'fork', fork: await this.forkView(opened.fork) }
-            : opened.resumeOf !== undefined
-              ? { kind: 'resume', fromLoop: opened.resumeOf.fromLoop }
-              : made?.type === 'choice_made'
-                ? { kind: 'card', cardId: made.cardId }
-                : { kind: 'unknown' },
+          opened.resumeOf !== undefined
+            ? { kind: 'resume', fromLoop: opened.resumeOf.fromLoop }
+            : made?.type === 'choice_made'
+              ? { kind: 'card', cardId: made.cardId }
+              : { kind: 'unknown' },
         status: statusOf(recs),
         ...(flags.shelved !== undefined ? { shelved: true } : {}),
-        ...(flags.waitingFork !== undefined ? { waitingFork: flags.waitingFork } : {}),
-        forks: await this.forkLinks(flags),
       });
     }
     return out;
@@ -500,30 +376,20 @@ export class Evidence {
       .filter((s) => s.kind === 'loop' && s.parent === mainId)) {
       const brief = await this.brief(l.sessionId);
       if (brief.status === 'in_progress') {
-        // 搁置、等分叉回来各自成组，不混在“进行中”里；没有就不出现这一项
+        // 搁置的单列一组，不混在“进行中”里；没有就不出现这一项
         if (brief.shelved !== undefined) (groups.shelved ??= []).push(brief);
-        else if (brief.waitingFork !== undefined) (groups.waitingFork ??= []).push(brief);
         else groups.inProgress.push(brief);
       } else if (brief.status === 'closed') groups.closed.push(brief);
       else groups.unclosed.push(brief);
     }
-    // 积压 = 没合上、且之后没有新点文字相同的一次合上的学习
-    const parked = groups.unclosed.filter(
-      (b) =>
-        b.newPoint === undefined ||
-        !groups.closed.some((c) => c.newPoint?.id === b.newPoint?.id && c.openedAt > b.openedAt),
-    ).length;
-    const counts = {
+    // 积压（停车场）：没合上、还没补上的那些次（学过的记录同一套取数）
+    const parked = (await this.d.learned.parked(mainId)).length;
+    const load: LoopLoad = {
       inProgress: groups.inProgress.length,
       shelved: groups.shelved?.length ?? 0,
-      waitingFork: groups.waitingFork?.length ?? 0,
-    };
-    const unfinished = counts.inProgress + counts.shelved + counts.waitingFork;
-    const load: LoopLoad = {
-      ...counts,
       parked,
-      unfinished,
-      heavy: unfinished >= LOAD_HEAVY,
+      unfinished: groups.inProgress.length + (groups.shelved?.length ?? 0),
+      heavy: groups.inProgress.length + (groups.shelved?.length ?? 0) >= LOAD_HEAVY,
       parkingPile: parked >= PARKING_PILE,
     };
     const chosen = new Set(
@@ -552,8 +418,6 @@ export class Evidence {
     const ended = recs.find((r) => r.record.type === 'loop_ended');
     const verdict = recs.filter((r) => r.record.type === 'guard_verdict').at(-1);
     const flags = foldLoop(recs);
-    const waitTitle =
-      flags.waitingFork !== undefined ? await this.titleOf(flags.waitingFork) : undefined;
     return {
       sessionId: loopId,
       title: opened.title,
@@ -561,18 +425,6 @@ export class Evidence {
       ...(flags.shelved !== undefined
         ? { shelved: { at: flags.shelved.at, note: flags.shelved.note } }
         : {}),
-      ...(flags.waitingFork !== undefined
-        ? {
-            waitingFork: {
-              forkLoopSessionId: flags.waitingFork,
-              ...(waitTitle !== undefined ? { title: waitTitle } : {}),
-            },
-          }
-        : {}),
-      ...(opened.fork !== undefined
-        ? { forkOf: { loopSessionId: opened.fork.fromLoop, reason: opened.fork.reason } }
-        : {}),
-      ...(flags.parking !== undefined ? { parking: this.parkingView(flags.parking) } : {}),
       ...(opened.resumeOf !== undefined
         ? {
             resumeOf: {

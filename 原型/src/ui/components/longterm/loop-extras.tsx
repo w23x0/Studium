@@ -1,6 +1,5 @@
 // 对话顶部与底部的长期功能（批 6）：复习 / 复检的说明、“接着《原来那段》学”（可点回去）、
 // 原来那段上的“已接着在《新的》学”、没学完就停下的那段底部“接着学”；阶段复盘对话顶部的时间段。
-import { useState } from 'react';
 import { CornerDownRightIcon, HistoryIcon, RotateCcwIcon } from 'lucide-react';
 import type { ReviewWindow } from '../../../shared/records.ts';
 import { Button } from '@/components/ui/button';
@@ -97,7 +96,6 @@ export function UnclosedEndBar(props: {
 }) {
   const r = useLoad(`overview:${props.projectId}`, () => api.overview(props.projectId));
   const open = useOpenSession();
-  const [busy, setBusy] = useState(false);
   const brief = r.data !== undefined ? findLoop(r.data.overview, props.loopId) : undefined;
   const next = brief?.resumedBy?.at(-1);
   return (
@@ -106,27 +104,11 @@ export function UnclosedEndBar(props: {
       <Button variant="outline" size="sm" onClick={props.onBack}>
         回到{props.projectTitle || '项目'}
       </Button>
-      {brief !== undefined &&
-        (next !== undefined ? (
-          <Button variant="ghost" size="sm" onClick={() => open(next.loopSessionId)}>
-            {W.resumedByLine(next.title ?? W.thatPart)}
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            data-testid="continue-loop"
-            disabled={busy}
-            onClick={() => {
-              setBusy(true);
-              api
-                .continueLoop(props.loopId)
-                .then((x) => open(x.loopSessionId), props.onError)
-                .finally(() => setBusy(false));
-            }}
-          >
-            {busy ? W.continuing : W.continueLoop}
-          </Button>
-        ))}
+      {brief !== undefined && next !== undefined && (
+        <Button variant="ghost" size="sm" onClick={() => open(next.loopSessionId)}>
+          {W.resumedByLine(next.title ?? W.thatPart)}
+        </Button>
+      )}
     </div>
   );
 }

@@ -14,7 +14,6 @@ export interface ReminderView {
   due: string;
   kind: ReminderKind;
   text: string;
-  point?: PointName;
   loopSessionId?: string;
   by: 'm05' | 'learner';
   addedAt: string;
@@ -30,7 +29,6 @@ export interface AddReminderRequest {
   beforeDeadlineDays?: number;
   text: string;
   kind?: ReminderKind;
-  point?: string;
   loopSessionId?: string;
 }
 
@@ -55,30 +53,19 @@ export interface TodayView {
   items: TodayItem[];
 }
 
-/** 路线偏差记录（M05:23）：只记计划偏差的事实，不形成对学习者水平的结论。 */
-export type DeviationKind = 'not_recommended' | 'ended_unclosed' | 'detour_choice';
-
-export interface DeviationView {
-  id: string;
+/** 路线偏差（现算，不另存）：只记计划偏差的事实，不形成对学习者水平的结论。 */
+export interface RouteDeviationView {
+  kind: '没选推荐项' | '没合上就结束' | '中途改线';
   at: string;
+  loopId?: string;
+  text: string;
+  /** 每条 `会话 id:行号`。 */
+  refs: string[];
+}
+
+export interface RouteDeviationsResponse {
   mainSessionId: string;
-  kind: DeviationKind;
-  loopSessionId?: string;
-  cardId?: string;
-  /** 推荐项与学习者选的项（标题与新点）。 */
-  recommended?: { option: number; title: string; newPoint?: PointName };
-  chosen?: { option: number; title: string; newPoint?: PointName; kind?: string };
-  /** 事实：学习者说了几句、开了多久（分钟）、很快放下吗。 */
-  facts?: { learnerMessages: number; minutes: number; quickDrop?: boolean; note?: string };
-}
-
-export interface DeviationsResponse {
-  records: DeviationView[];
-}
-
-/** 接着没合上的闭环学：开一个新闭环续接原闭环。 */
-export interface ContinueLoopResponse {
-  loopSessionId: string;
+  deviations: RouteDeviationView[];
 }
 
 export interface ReviewRequest {

@@ -33,14 +33,12 @@ import type {
   ProjectDeadlineResponse,
   NoteImportResponse,
   NotesResponse,
-  DetourChooseResponse,
   LoopRelationsResponse,
   TeachingToolsResponse,
   TeachingToolResponse,
   ConfirmationResponse,
   AddReminderRequest,
-  ContinueLoopResponse,
-  DeviationsResponse,
+  RouteDeviationsResponse,
   LearnedResponse,
   LearningResponse,
   ReminderView,
@@ -133,12 +131,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ note: '学习者在界面上点了“结束（没合上）”' }),
     }),
-  // ── 学到一半：小卡、先放一放、接着学（批 5） ──
-  detour: (loopId: string, cardId: string, option: number) =>
-    call<DetourChooseResponse>(`/sessions/${loopId}/detour`, {
-      method: 'POST',
-      body: JSON.stringify({ cardId, option }),
-    }),
+  // ── 学到一半：先放一放、恢复 ──
   shelve: (loopId: string, note?: string) =>
     call<object>(`/sessions/${loopId}/shelve`, {
       method: 'POST',
@@ -295,9 +288,6 @@ export const api = {
   /** 学过的记录：按层读每次学习（上层单子 / 中层判定）与外部导入。 */
   learned: (project?: string) => call<LearnedResponse>(`/learned?${qs({ project })}`),
   learning: (loopId: string) => call<LearningResponse>(`/learned/${encodeURIComponent(loopId)}`),
-  /** 接着没学完的那段学：开一段新的学习。 */
-  continueLoop: (loopId: string) =>
-    call<ContinueLoopResponse>(`/sessions/${loopId}/continue`, { method: 'POST', body: '{}' }),
   today: (projectId: string) => call<TodayView>(`/projects/${projectId}/today`),
   reminders: (projectId: string, open?: boolean) =>
     call<RemindersResponse>(
@@ -313,7 +303,9 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ outcome }),
     }),
-  deviations: (project?: string) => call<DeviationsResponse>(`/m05/deviations?${qs({ project })}`),
+  /** 路线偏差：从已有记录现算（没选推荐项、没合上就结束、中途改线）。 */
+  deviations: (projectId: string) =>
+    call<RouteDeviationsResponse>(`/projects/${projectId}/deviations`),
   /** 开一段阶段复盘；since（YYYY-MM-DD）不给 = 从上次复盘起。 */
   startReview: (projectId: string, since?: string) =>
     call<ReviewResponse>(`/projects/${projectId}/review`, {

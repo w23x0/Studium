@@ -39,6 +39,7 @@ const KIND_LABEL: Record<ConversationKind, string> = {
   loop: '学习对话',
   guard: '守卫',
   m05: 'M05 出卡',
+  retrieve: '检索子代理',
   m15: 'M15 整理',
   m10: 'M10 记录',
   output: '写产出',
