@@ -1617,7 +1617,8 @@ export class Studium {
     const deadline = foldDeadline(records.map((r) => r.record));
     const messages: string[] = [];
     for (const { line, record } of records) {
-      if (line >= inputLine) continue;
+      // 本轮这条输入与排在它后面的输入不算“前面说过的”；排队时上一轮的回复会落在本轮输入之后，照给
+      if (line >= inputLine && record.type !== 'assistant_message') continue;
       if (
         record.type !== 'user_message' &&
         record.type !== 'assistant_message' &&
