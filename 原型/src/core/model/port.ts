@@ -44,6 +44,8 @@ export interface ConversationSpec {
   resumeToken?: string;
   /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
   session?: { id: string; kind: ConversationKind };
+  /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
+  webSearch?: boolean;
 }
 
 /** 沙盒里的一个动作，程序当场记（不靠模型自报）。`content` 只有写类动作填。 */
@@ -66,6 +68,8 @@ export interface SandboxActionEvent {
 export interface TurnInput {
   role: 'learner' | 'program';
   text: string;
+  /** 本轮之前程序从记录重建的开场（主对话每轮新开时用）；不算进 text。 */
+  preface?: string;
 }
 
 export type ModelEvent =
@@ -143,4 +147,14 @@ export interface ImageTranscriber {
 /** 程序事实在各家模型那里都以一条用户消息送达，用固定标记与学习者的话区分。 */
 export function formatProgramFact(text: string): string {
   return `<程序事实>\n${text}\n</程序事实>`;
+}
+
+/**
+ * 模型实际看到的一条输入：有 preface 时先给程序事实形式的开场（空一行），再接这条输入本身
+ * （程序事实包标记；学习者的话原样）。适配器与假模型都只经这里拼，录带与回放的口径一致。
+ */
+export function modelText(input: TurnInput): string {
+  const preface = input.preface !== undefined ? `${formatProgramFact(input.preface)}\n\n` : '';
+  const body = input.role === 'program' ? formatProgramFact(input.text) : input.text;
+  return preface + body;
 }

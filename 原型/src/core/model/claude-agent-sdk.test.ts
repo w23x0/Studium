@@ -53,6 +53,21 @@ describe('由 spec 算 SDK options', () => {
     expect(o.settingSources).toEqual([]);
   });
 
+  it('webSearch 为真：tools 与 allowedTools 只多出 WebSearch、WebFetch；为假或没带：两处都没有', () => {
+    const list = (v: unknown): string[] =>
+      Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : [];
+    const off = sdkOptionsFor(spec(), { cwd: DATA_CWD });
+    const on = sdkOptionsFor({ ...spec(), webSearch: true }, { cwd: DATA_CWD });
+    expect(list(on.tools)).toEqual([...list(off.tools), 'WebSearch', 'WebFetch']);
+    expect(list(on.allowedTools)).toEqual([...list(off.allowedTools), 'WebSearch', 'WebFetch']);
+    for (const s of [spec(), { ...spec(), webSearch: false }]) {
+      const o = sdkOptionsFor(s, { cwd: DATA_CWD });
+      expect(list(o.tools)).toEqual([]);
+      expect(list(o.allowedTools)).not.toContain('WebSearch');
+      expect(list(o.allowedTools)).not.toContain('WebFetch');
+    }
+  });
+
   it('有沙盒：开六个通用工具、cwd 落到工作区、只读目录进 additionalDirectories（去重）、不联网收紧', () => {
     const o = sdkOptionsFor(spec(sb), { cwd: DATA_CWD });
     expect(o.tools).toEqual(['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash']);

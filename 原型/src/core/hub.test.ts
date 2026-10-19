@@ -1,7 +1,7 @@
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import { tempDir } from '../../tests/helpers/tmp.ts';
-import { Hub, NotFoundError } from './hub.ts';
+import { Hub, NotFoundError, type KindConfig } from './hub.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { DataDir } from './log/data-dir.ts';
 import { FakeModel, type FakeOptions } from './model/fake.ts';
@@ -11,7 +11,7 @@ afterEach(async () => {
   for (const h of open.splice(0)) await h.close();
 });
 
-async function setup(fake: FakeOptions = {}, root?: string) {
+async function setup(fake: FakeOptions = {}, root?: string, kinds?: () => KindConfig) {
   const dataDir = await DataDir.acquire(root ?? (await tempDir()));
   const model = new FakeModel(fake);
   const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
@@ -19,7 +19,7 @@ async function setup(fake: FakeOptions = {}, root?: string) {
     dataDir,
     index,
     model,
-    kinds: () => ({ systemPrompt: '测试提示', tools: () => [] }),
+    kinds: kinds ?? (() => ({ systemPrompt: '测试提示', tools: () => [] })),
   });
   open.push(hub);
   return { dataDir, model, hub };
@@ -95,6 +95,48 @@ describe('Hub', () => {
       await b.hub.send(s.sessionId, learner('二'))
     ).done;
     expect(b.model.opened[0]?.resumeToken).toBe('fake-1');
+  });
+
+  it('带 rebuild 的种类每轮新开、不续接、先记 turn_context；本轮结束丢掉模型对话', async () => {
+    const { hub, model } = await setup({}, undefined, () => ({
+      systemPrompt: '测试提示',
+      tools: () => [],
+      rebuild: (_id, line) => Promise.resolve(`开场：这是第 ${String(line)} 行之前的事实`),
+    }));
+    const s = await hub.createSession('main', { title: '主对话' });
+    await (
+      await hub.send(s.sessionId, learner('一'))
+    ).done;
+    await (
+      await hub.send(s.sessionId, learner('二'))
+    ).done;
+    expect(model.opened, '每一轮一个新模型对话').toHaveLength(2);
+    expect(
+      model.opened.every((x) => x.resumeToken === undefined),
+      '不续接旧的模型会话',
+    ).toBe(true);
+    const recs = await hub.records(s.sessionId);
+    const userLines = recs.filter((r) => r.record.type === 'user_message').map((r) => r.line);
+    const ctx = recs.filter((r) => r.record.type === 'turn_context');
+    expect(
+      ctx.map((r) => (r.record.type === 'turn_context' ? r.record.forLine : 0)),
+      'turn_context 指向这一轮输入的行',
+    ).toEqual(userLines);
+    expect(model.inputs[1]?.text, '模型看到本轮开场 + 学习者这句').toBe(
+      `<程序事实>\n开场：这是第 ${String(userLines[1])} 行之前的事实\n</程序事实>\n\n[第 ${String(userLines[1])} 行] 二`,
+    );
+  });
+
+  it('不带 rebuild 的种类照旧续接同一个模型对话', async () => {
+    const { hub, model } = await setup();
+    const s = await hub.createSession('main', { title: '主对话' });
+    await (
+      await hub.send(s.sessionId, learner('一'))
+    ).done;
+    await (
+      await hub.send(s.sessionId, learner('二'))
+    ).done;
+    expect(model.opened, '两轮共用一个模型对话').toHaveLength(1);
   });
 
   it('不存在的会话报 NotFound', async () => {
