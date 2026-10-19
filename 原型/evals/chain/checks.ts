@@ -6,6 +6,7 @@ import type { ModelAdapter } from '../../src/core/model/port.ts';
 import type { Profiles } from '../../src/core/model/profiles.ts';
 import { learnerLines, renderTranscript } from '../../src/core/transcript.ts';
 import {
+  DIAGNOSIS_TAG,
   DURABILITY,
   INDEPENDENCE,
   type ChoiceCard,
@@ -245,7 +246,7 @@ function diagnosisEveryTurn(run: ChainRun): CheckResult {
     if (firstMsg >= 0) {
       turns++;
       const diag = seg.findIndex(
-        (r) => r.record.type === 'sandbox_action' && r.record.tag === '诊断',
+        (r) => r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG,
       );
       if (diag >= 0) withDiag++;
       else missing.push(seg[0]?.line ?? 0);
@@ -596,7 +597,9 @@ function backgroundModules(run: ChainRun): CheckResult {
   const m15 = sessionsOf(run, 'm15');
   if (m15.length === 0) problems.push('M15 没整理');
   const notes = (session(run, run.loopId)?.records ?? []).flatMap((r) =>
-    r.record.type === 'sandbox_action' && r.record.tag === '诊断' ? [r.record.content ?? ''] : [],
+    r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG
+      ? [r.record.content ?? '']
+      : [],
   );
   for (const s of m15) {
     const opening = s.records.flatMap((r) =>

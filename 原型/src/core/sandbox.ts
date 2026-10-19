@@ -30,6 +30,7 @@ const WHAT: Record<string, string> = {
 
 /** 开场里的沙盒说明：逐项列虚拟路径 → 实际路径 → 是什么、能否写（工单 W4 §5.5）。 */
 export function describeSandbox(sb: SandboxSpec): string {
+  const books = sb.readOnly.filter((e) => e.name.startsWith('资料/'));
   return [
     '沙盒（这次的执行环境；用通用的读写与命令自己取，只读区写不进去）：',
     `- 工作区（可写）：${sb.workdir} —— 你自己的笔记；每轮的分析追加在 诊断.md`,
@@ -37,6 +38,8 @@ export function describeSandbox(sb: SandboxSpec): string {
       (e) =>
         `- 只读/${e.name}（只读）→ ${e.path}${WHAT[e.name] !== undefined ? ` —— ${WHAT[e.name]}` : e.name.startsWith('资料/') ? ' —— 教材原文' : ''}`,
     ),
+    // 缺料要写明，不中止（记录/读写权限.md「缺料与冲突」）
+    ...(books.length === 0 ? ['（这次没有可用的资料：缺资料依据）'] : []),
   ].join('\n');
 }
 

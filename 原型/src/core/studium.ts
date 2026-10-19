@@ -2260,7 +2260,7 @@ export class Studium {
         '',
         `诊断记录（模型在工作区里写的 诊断.md，未经守卫）：\n${notes.join('\n') || '（无）'}`,
         '',
-        `教学工具使用记录（程序从沙盒动作里记的）：${toolUses.map((u) => `L${String(u.line)} ${u.name}`).join('、') || '这次学习没读教学工具，只能从对话原文看用了什么做法'}`,
+        `教学工具使用记录（程序从沙盒动作里记的）：${toolUses.map((u) => `L${String(u.line)} 教学工具:${u.name}`).join('、') || '这次学习没读教学工具，只能从对话原文看用了什么做法'}`,
         '',
         ...(annotated.length > 0
           ? [

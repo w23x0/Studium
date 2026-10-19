@@ -31,8 +31,8 @@ export interface StateRecord {
   /** 指回 M01 正本：哪个会话的哪几行。 */
   refs: { sessionId: string; lines: number[] }[];
   /**
-   * 这条状态出现在某段学习里某句教学之后（M15 审查单「策略造成的状态须标注来源」）：
-   * 会话与行号由程序核对（确是一句教学），M15 只引用位置；旧记录没有。
+   * 这条状态出现在某段学习里某句教学之后（状态记录「策略造成的状态须标注来源」）：
+   * 会话与行号由程序核对（确是一句教学），这里只引用位置；旧记录没有。
    */
   afterTeaching?: { loopSessionId: string; line: number; text: string };
   m15SessionId: string;

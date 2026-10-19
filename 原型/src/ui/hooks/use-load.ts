@@ -17,6 +17,8 @@ const RELOAD_ON = new Set([
   'project_material',
   'project_deadline',
   'tool_call',
+  // 沙盒动作：诊断写在工作区的 诊断.md 里，写进来时依据面板的诊断区要重读
+  'sandbox_action',
   'user_message',
   // 学到一半（批 5）：先放一放 / 接着学
   'loop_shelved',
