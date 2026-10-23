@@ -8,7 +8,7 @@ import { sessionFrom } from '../hub.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 4;
+const SCHEMA_VERSION = 5;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -65,6 +65,11 @@ export class DerivedIndex {
           record.at,
           record.at,
         );
+    } else if (record.type === 'session_withdrawn') {
+      // 收掉的会话：正本留着，列表里不再出现
+      this.db
+        .prepare('UPDATE sessions SET withdrawn = 1, last_at = ? WHERE session_id = ?')
+        .run(record.at, sessionId);
     } else if (record.type === 'project_title') {
       // 项目名随方向变：正本开头那行不改，派生层取最新一条
       this.db
@@ -85,7 +90,7 @@ export class DerivedIndex {
   listSessions(): SessionSummary[] {
     const rows = this.db
       .prepare(
-        'SELECT session_id, kind, title, parent, from_kind, from_loop, opened_at, last_at FROM sessions ORDER BY opened_at DESC',
+        'SELECT session_id, kind, title, parent, from_kind, from_loop, opened_at, last_at FROM sessions WHERE withdrawn = 0 ORDER BY opened_at DESC',
       )
       .all() as {
       session_id: string;
@@ -157,7 +162,8 @@ function createSchema(db: DatabaseSync): void {
       from_kind TEXT,
       from_loop TEXT,
       opened_at TEXT NOT NULL,
-      last_at TEXT NOT NULL
+      last_at TEXT NOT NULL,
+      withdrawn INTEGER NOT NULL DEFAULT 0
     );
     CREATE TABLE records (
       session_id TEXT NOT NULL,

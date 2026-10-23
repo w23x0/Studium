@@ -556,6 +556,7 @@ export class Studium {
     });
     const picked = card.options[0];
     const loopSessionId = await this.openPlanned(record.cardId);
+    await this.withdrawUntouched(mainId, loopSessionId);
     return {
       kind: 'opened',
       loopSessionId,
@@ -563,6 +564,24 @@ export class Studium {
       reason: picked?.reason ?? '',
       navSessionId: nav.sessionId,
     };
+  }
+
+  /**
+   * 学习者要换一个时：之前定下、学习者还没开口的学习对话直接收掉（不算搁着、不进停车场）；
+   * 学习者在里面说过话的不动，照常算一次学习。
+   */
+  private async withdrawUntouched(mainId: string, keep: string): Promise<void> {
+    for (const s of this.hub.listSessions()) {
+      if (s.kind !== 'loop' || s.parent !== mainId || s.sessionId === keep) continue;
+      const recs = await this.hub.records(s.sessionId);
+      if (recs.some((r) => r.record.type === 'user_message' || r.record.type === 'loop_ended'))
+        continue;
+      await this.hub.record(s.sessionId, {
+        type: 'session_withdrawn',
+        at: this.iso(),
+        reason: '学习者还没开始就换了一个',
+      });
+    }
   }
 
   private inRouteOrder<T>(mainId: string, f: () => Promise<T>): Promise<T> {

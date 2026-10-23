@@ -236,6 +236,13 @@ export interface LoopEnded {
   note: string;
 }
 
+/** 收掉一个学习者还没开口的学习对话（学习者要换一个时）：正本留着，会话列表里不再出现。 */
+export interface SessionWithdrawn {
+  type: 'session_withdrawn';
+  at: string;
+  reason: string;
+}
+
 /** 一次学习结束之后的清单出错时记一条；card_ready 是 10-23 前自动出选择卡留下的旧记录。 */
 export interface AfterLoopStep {
   type: 'after_loop_step';
@@ -404,6 +411,7 @@ export interface LoopResumed {
 
 export type LogRecord =
   | SessionOpened
+  | SessionWithdrawn
   | UserMessage
   | AssistantMessage
   | ProgramFact
