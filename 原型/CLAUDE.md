@@ -2,18 +2,15 @@
 
 > 在 `原型/` 里写代码时读这页。产品结论与技术设计不在这里：设计以 `../docs/设计/` 为准（会话怎么跑看 `会话/`，
 > 存什么看 `记录/`），选型以 `../docs/设计/实现选型.md` 为准。
-> 进度看 `工单/README.md` 与 `工单/进度/`；功能是否做完看 `功能清单.json`（`npm run features`）。
+> 进度看 `工单/README.md` 与 `工单/进度/`。
 
 ## 规矩（每次都适用）
 
-- 改完跑 `npm run check`（类型 · lint · 格式 · 测试）；不过不算完。Stop hook 也会跑它。
-- 程序测试一律用假模型（`src/core/model/fake.ts`），不调真模型。
-- 模型 SDK 只能在 `src/core/model/` 的适配器里引用；界面与核心只经 `src/shared/` 相通（`tests/architecture.test.ts` 会查）。
+- 改完跑 `npm run check`（类型 · lint · 格式）；不过不算完。Stop hook 也会跑它。
+- 不写自动测试、不用假模型（10-23 产品负责人定：假模型只证明程序按剧本走，证明不了真模型能用）；改完用真模型实际跑一遍改到的那段，自己看结果再交。
+- 模型 SDK 只能在 `src/core/model/` 的适配器里引用；界面与核心只经 `src/shared/` 相通。
 - 正本 JSONL 只追加、永不改写：不写任何改旧行、删行、重排的代码；格式升级只产出新文件或派生层。
-- `tests/验收/` 里已有的测试不许改（hook 会拦）；新功能先在 `功能清单.json` 加一条、新建验收测试，初始是失败的。
 - 不写空 catch、不吞异常；确实要忽略的写明理由。
-- 测试改动单独提交；CI 会列出删改了哪些断言。
-- 不做：覆盖率门槛、模型原文快照测试、界面截图检查。
 
 ## 会话种类
 
@@ -37,7 +34,7 @@
 | --------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `src/shared/`                                                                           | 正本记录类型（`records.ts` `records-longterm.ts` `records-cross.ts`）、核心↔界面协议（`protocol.ts` `protocol-learned.ts` `protocol-longterm.ts` `protocol-cross.ts`）、出处标记（`citation.ts`）、知识产出类型（`output.ts`）、左栏（`sidebar.ts`） |
 | `src/core/log/`                                                                         | 正本读写（`session-log.ts`，一个写者、只追加、fsync）与数据目录锁、数据版本（`data-dir.ts`）                                                                                                                                                         |
-| `src/core/model/`                                                                       | 模型接口 `port.ts` + 适配器：`claude-agent-sdk.ts`（真模型）、`fake.ts`（假模型）；`profiles.ts`（按会话类配模型与强度）、`sandbox-paths.ts`（沙盒里的路径）                                                                                         |
+| `src/core/model/`                                                                       | 模型接口 `port.ts` + 适配器：`claude-agent-sdk.ts`（真模型）；`profiles.ts`（按会话类配模型与强度）、`sandbox-paths.ts`（沙盒里的路径）                                                                                                              |
 | `src/core/main.ts` `app.ts`                                                             | `main.ts` 读环境变量起服务；`app.ts` 组装核心：数据目录锁 → 派生索引 → 知识层 → Studium + Hub → 本地服务（main 与验收测试都从这里起）                                                                                                                |
 | `src/core/hub.ts`                                                                       | 会话管理：一次一轮、事件推送、重启后按正本里的续接凭据接上                                                                                                                                                                                           |
 | `src/core/studium.ts`                                                                   | 事件串联：主对话、畅谈、导航、学习对话、守卫、状态整理、教法记录整理；各会话的工具                                                                                                                                                                   |
@@ -58,10 +55,7 @@
 | `dist/`                                                                                 | 构建出来的界面（`npm start` 生成；不进 git）                                                                                                                                                                                                         |
 | `教学工具/`                                                                             | 官方教学工具（教法记录里的通用策略知识层，agent 起草）：一份一个 Markdown，格式见其 README；核心 `src/core/teaching-tools.ts` 装载（学习者自己的在 `<数据>/teaching-tools/`）                                                                        |
 | `样例/`                                                                                 | 没有真书时用的小样例：一本自写力学入门                                                                                                                                                                                                               |
-| `tests/`                                                                                | 依赖方向测试、`验收/`（只经 HTTP 验功能）、`helpers/`                                                                                                                                                                                                |
-| `e2e/`                                                                                  | Playwright 功能主路径（`npm run e2e`，假模型）                                                                                                                                                                                                       |
-| `evals/`                                                                                | 行为评测（假模型，不进门禁）与 `chain/` 链路评测（真模型 `npm run eval:real`；录带在 `tapes/`、不进 git，报告在 `reports/`）                                                                                                                         |
-| `scripts/`                                                                              | 检查命令、lint 一行格式、hooks、CI 用的测试改动报告、功能清单                                                                                                                                                                                        |
+| `scripts/`                                                                              | 检查命令、lint 一行格式、hooks、独立审查                                                                                                                                                                                                             |
 | `工单/`                                                                                 | 原型改造工单与施工进度（`README.md`、`W1`–`W7`、`进度/`）                                                                                                                                                                                            |
 
 ## 正本记录
@@ -93,20 +87,15 @@
 
 ## 命令
 
-| 命令                                                             | 做什么                                                                                                |
-| ---------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| `npm start`                                                      | 构建界面并启动核心；终端打印带口令的地址，浏览器打开它                                                |
-| `npm run dev`                                                    | 只起核心（改代码自动重启）；界面另开 `npx vite`                                                       |
-| `npm run check`                                                  | 类型 · lint · 格式 · 测试，CI 跑同一条                                                                |
-| `npm run e2e`                                                    | 浏览器主路径；浏览器版本对不上时加 `PW_CHROMIUM_PATH=<chromium>`（云端：`/opt/pw-browsers/chromium`） |
-| `npm run features`                                               | 跑被引用的测试，刷新 `功能清单.json` 的状态                                                           |
-| `npm run features -- --check`                                    | 只核对功能清单（字段、id、验证指向的文件 / 命令），不跑测试                                           |
-| `npm run replay -- <录带>`                                       | 在临时空目录里只凭录带回放、不调模型，列出与录带不一致之处                                            |
-| `npm run eval [-- --k 3]`                                        | 跑行为评测目录（假模型），k 次全过才算过                                                              |
-| `npm run eval:real [-- --k 1 --students 全懂,半懂 --parallel 2]` | 链路评测：真模型带模拟学生走完整链路，录带 + 报告（花订阅额度；不碰 4317 与 `var/`）                  |
-| `npm run review [-- --dry-run]`                                  | 独立审查：全新上下文、换模型（默认 Sonnet）、只读，只报正确性与需求缺口                               |
+| 命令                            | 做什么                                                                  |
+| ------------------------------- | ----------------------------------------------------------------------- |
+| `npm start`                     | 构建界面并启动核心；终端打印带口令的地址，浏览器打开它                  |
+| `npm run dev`                   | 只起核心（改代码自动重启）；界面另开 `npx vite`                         |
+| `npm run check`                 | 类型 · lint · 格式，CI 跑同一条                                         |
+| `npm run replay -- <录带>`      | 在临时空目录里只凭录带回放、不调模型，列出与录带不一致之处              |
+| `npm run review [-- --dry-run]` | 独立审查：全新上下文、换模型（默认 Sonnet）、只读，只报正确性与需求缺口 |
 
-环境变量：`STUDIUM_MODEL=claude|fake`（默认 claude）· `STUDIUM_CLAUDE_MODEL`（全局默认模型）·
+环境变量：`STUDIUM_CLAUDE_MODEL`（全局默认模型）·
 `STUDIUM_PROFILES`（按会话类覆盖模型 / 强度的 JSON，可用键同会话种类，如 `{"loop":{"effort":"max"},"nav":{"effort":"high"}}`；
 默认见 `src/core/model/profiles.ts`）· `STUDIUM_DATA`（默认 `原型/var/`）· `STUDIUM_PORT`（默认 4317）· `STUDIUM_TOKEN` ·
 `STUDIUM_LIBRARY`（书库根目录，默认 `样例/书库`）· `STUDIUM_TAPE`（录带文件；录的时候配一个新的空 `STUDIUM_DATA`）。

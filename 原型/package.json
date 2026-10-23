@@ -4,7 +4,6 @@
   "type": "module",
   "devDependencies": {
     "@eslint/js": "^10.0.1",
-    "@playwright/test": "^1.64.0",
     "@tailwindcss/vite": "^4.3.3",
     "@types/node": "^26.6.4",
     "@types/react": "^19.3.0",
@@ -17,8 +16,7 @@
     "tsx": "^4.23.15",
     "typescript": "~6.0",
     "typescript-eslint": "^8.71.1",
-    "vite": "^8.3.3",
-    "vitest": "^5.0.3"
+    "vite": "^8.3.3"
   },
   "dependencies": {
     "@anthropic-ai/claude-agent-sdk": "^0.3.293",
@@ -53,15 +51,10 @@
     "lint": "eslint . --max-warnings 0 --format ./scripts/eslint-oneline.cjs",
     "format": "prettier --write .",
     "format:check": "prettier --check . --log-level warn",
-    "test": "vitest run",
     "build:ui": "vite build",
     "start": "vite build && tsx src/core/main.ts",
     "dev": "tsx watch src/core/main.ts",
-    "features": "node scripts/features.mjs",
-    "e2e": "playwright test",
     "replay": "tsx src/core/tape/cli.ts",
-    "eval": "tsx evals/cli.ts",
-    "eval:real": "tsx evals/chain/cli.ts",
     "review": "node scripts/review.mjs"
   }
 }

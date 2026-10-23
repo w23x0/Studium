@@ -1,4 +1,4 @@
-// 一条检查命令：类型（严格）· lint · 格式 · 测试。本地、hooks、CI 都跑这一条。
+// 一条检查命令：类型（严格）· lint · 格式。本地、hooks、CI 都跑这一条。
 // 每步失败只打印该步输出（报错一行一条），最后汇总。
 import { spawnSync } from 'node:child_process';
 
@@ -10,7 +10,6 @@ const steps = [
     ['eslint', '.', '--max-warnings', '0', '--format', './scripts/eslint-oneline.cjs'],
   ],
   ['格式', 'npx', ['prettier', '--list-different', '.']],
-  ['测试', 'npx', ['vitest', 'run', '--reporter', 'dot']],
 ];
 
 const failed = [];
