@@ -29,6 +29,11 @@ const RELOAD_ON = new Set([
   'reminder_closed',
   'talk_ended',
   'task_opened',
+  // 导入入口与项目页（工单 W9）：分流、改判；项目说明；找资料的候选与存所选
+  'upload_routed',
+  'project_instructions',
+  'find_candidates',
+  'candidates_picked',
 ]);
 
 function relevant(e: ServerEvent): boolean {

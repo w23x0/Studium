@@ -1,8 +1,7 @@
-// 项目概览（照 Claude 项目的 Overview）：方向目标（逐块带理由与确认理由，临时版标“临时”）与期限；
-// 学习按 等你选 · 进行中 · 学完了 · 先放下的（没合上）分组（从 /api/learned 按学习列，没合上的带
-// 结束原话与当时的路线决定）；同时开着太多时顶部提醒；“我的产出”列出自己写的东西。
-// 旁边一栏是项目资料。顶部“今天该做的”；旁栏加提醒与阶段复盘。
-import { type ReactNode } from 'react';
+// 项目页（照 Claude 项目；工单 W9 §4.7）：顶上项目名、方向与齿轮（设置：名字、期限），下面三个页签——
+// 学习（默认：今天该做的 · 学习分组 · 提醒 · 阶段复盘）· 资料（本项目资料、添加入口、我导入的学过的、我的产出）
+// · 记着什么（项目说明、方向、学过的、状态）。记住上次停在哪个页签。
+import { useState, type ReactNode } from 'react';
 import {
   BookCheckIcon,
   CircleCheckIcon,
@@ -14,6 +13,7 @@ import {
   InfoIcon,
   LibraryIcon,
   MessageCircleIcon,
+  SettingsIcon,
   ShieldCheckIcon,
 } from 'lucide-react';
 import type {
@@ -24,6 +24,8 @@ import type {
 } from '../../shared/protocol.ts';
 import type { Learning } from '../../shared/protocol-learned.ts';
 import { Button } from '@/components/ui/button';
+import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
+import { cn } from '@/lib/utils';
 import { api } from '../api.ts';
 import { goalRows } from '../goal-model.ts';
 import { useLoad } from '../hooks/use-load.ts';
@@ -32,8 +34,8 @@ import { useOpenSession } from '../open-session.ts';
 import { usePanel } from '../panel.ts';
 import { hasResumes, relationRows } from '../relations-model.ts';
 import { W } from '../wording.ts';
-import { DeadlineLine, ProjectMaterials } from './project-materials.tsx';
-import { OutputsSection } from './outputs/outputs-section.tsx';
+import { DeadlineLine, MaterialsTab } from './project-materials.tsx';
+import { MemoryTab } from './project-memory.tsx';
 import { Badge, Loading } from './evidence/parts.tsx';
 import { RemindersSection } from './longterm/reminders.tsx';
 import { ReviewsSection } from './longterm/reviews.tsx';
@@ -41,60 +43,130 @@ import { TodaySection } from './longterm/today.tsx';
 import { ProjectChats } from './project-chats.tsx';
 import { useSetting } from '../settings.ts';
 
+type Tab = 'learn' | 'library' | 'memory';
+const TABS: readonly Tab[] = ['learn', 'library', 'memory'];
+const TAB_KEY = 'studium-project-tab';
+
+/** 上次停在哪个页签（只是本机的方便，读不到就回默认）。 */
+function savedTab(): Tab {
+  try {
+    const v = localStorage.getItem(TAB_KEY);
+    return TABS.includes(v as Tab) ? (v as Tab) : 'learn';
+  } catch {
+    return 'learn';
+  }
+}
+
+function saveTab(t: Tab): void {
+  try {
+    localStorage.setItem(TAB_KEY, t);
+  } catch {
+    // 存不了就算了：下次回默认页签
+  }
+}
+
 export function ProjectHome(props: {
   projectId: string;
-  /** 这个项目里的学习、谈话、写产出对话（列在“这个项目里的对话”）。 */
+  /** 这个项目里的学习、谈话、写产出、找资料对话（列在“这个项目里的对话”）。 */
   tasks: SessionSummary[];
   header: ReactNode;
   onOpenChat: () => void;
+  onRename: (title: string) => void;
   onError: (e: unknown) => void;
 }) {
   const r = useLoad(`overview:${props.projectId}`, () => api.overview(props.projectId));
   const o = r.data?.overview;
   const [devMode] = useSetting('devMode');
+  const [tab, setTab] = useState<Tab>(savedTab);
+  const [settings, setSettings] = useState(false);
+  const pick = (t: Tab) => {
+    setTab(t);
+    saveTab(t);
+  };
   return (
     <div data-testid="project-home" className="@container flex h-full flex-col">
       {props.header}
       <div className="flex-1 overflow-y-auto">
-        <div className="mx-auto flex w-full max-w-5xl flex-col gap-8 px-6 pt-6 pb-16">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-6 px-6 pt-6 pb-16">
           {!o ? (
             <Loading error={r.error} />
           ) : (
             <>
               <Head
                 overview={o}
-                projectId={props.projectId}
                 onOpenChat={props.onOpenChat}
-                onError={props.onError}
+                onSettings={() => setSettings((x) => !x)}
               />
-              <TodaySection
-                key={o.today?.date ?? ''}
-                overview={o}
-                projectId={props.projectId}
-                onOpenChat={props.onOpenChat}
-                onError={props.onError}
-              />
-              {/* 宽时两栏：左边学习分组，右边项目资料；窄时资料排在分组下面 */}
-              <div className="grid grid-cols-1 gap-8 @4xl:grid-cols-[minmax(0,1fr)_18rem]">
-                <div className="flex min-w-0 flex-col gap-8">
-                  <LoadNotice load={o.load} />
-                  <ProjectChats projectId={props.projectId} tasks={props.tasks} />
-                  <Groups projectId={props.projectId} overview={o} onError={props.onError} />
-                  <OutputsSection projectId={props.projectId} />
-                  <Relations projectId={props.projectId} />
-                  {/* 资料、记录、教法这些入口：开发者模式关掉时不显示 */}
-                  {devMode && <AboutMe />}
-                </div>
-                <aside className="flex min-w-0 flex-col gap-6">
-                  <ProjectMaterials projectId={props.projectId} onError={props.onError} />
-                  <RemindersSection
-                    projectId={props.projectId}
+              {settings && (
+                <Settings
+                  projectId={props.projectId}
+                  title={o.title}
+                  onRename={props.onRename}
+                  onClose={() => setSettings(false)}
+                  onError={props.onError}
+                />
+              )}
+              <nav role="tablist" className="flex gap-1 border-b">
+                {TABS.map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === t}
+                    data-testid={`tab-${t}`}
+                    className={cn(
+                      '-mb-px border-b-2 px-3 py-2 text-sm transition-colors',
+                      tab === t
+                        ? 'border-foreground text-foreground font-medium'
+                        : 'text-muted-foreground hover:text-foreground border-transparent',
+                    )}
+                    onClick={() => pick(t)}
+                  >
+                    {W.tabs[t]}
+                  </button>
+                ))}
+              </nav>
+              {tab === 'learn' && (
+                <>
+                  <TodaySection
+                    key={o.today?.date ?? ''}
                     overview={o}
+                    projectId={props.projectId}
+                    onOpenChat={props.onOpenChat}
                     onError={props.onError}
                   />
-                  <ReviewsSection projectId={props.projectId} onError={props.onError} />
-                </aside>
-              </div>
+                  {/* 宽时两栏：左边学习分组，右边提醒与复盘；窄时排在分组下面 */}
+                  <div className="grid grid-cols-1 gap-8 @4xl:grid-cols-[minmax(0,1fr)_18rem]">
+                    <div className="flex min-w-0 flex-col gap-8">
+                      <LoadNotice load={o.load} />
+                      <ProjectChats projectId={props.projectId} tasks={props.tasks} />
+                      <Groups projectId={props.projectId} overview={o} onError={props.onError} />
+                      <Relations projectId={props.projectId} />
+                      {/* 资料、记录、教法这些入口：开发者模式关掉时不显示 */}
+                      {devMode && <AboutMe />}
+                    </div>
+                    <aside className="flex min-w-0 flex-col gap-6">
+                      <RemindersSection
+                        projectId={props.projectId}
+                        overview={o}
+                        onError={props.onError}
+                      />
+                      <ReviewsSection projectId={props.projectId} onError={props.onError} />
+                    </aside>
+                  </div>
+                </>
+              )}
+              {tab === 'library' && (
+                <MaterialsTab projectId={props.projectId} onError={props.onError} />
+              )}
+              {tab === 'memory' && (
+                <MemoryTab
+                  projectId={props.projectId}
+                  overview={o}
+                  onOpenChat={props.onOpenChat}
+                  onError={props.onError}
+                />
+              )}
             </>
           )}
         </div>
@@ -103,18 +175,75 @@ export function ProjectHome(props: {
   );
 }
 
-/** 方向目标：结构化时逐块显示（能力、为什么学、你确认时的理由、顺序参考、临时版）；期限照旧。 */
+/** 设置（齿轮）：项目名、期限。模型配置不在这里（开发者面板）。 */
+function Settings(props: {
+  projectId: string;
+  title: string;
+  onRename: (title: string) => void;
+  onClose: () => void;
+  onError: (e: unknown) => void;
+}) {
+  const [name, setName] = useState(props.title);
+  return (
+    <div
+      data-testid="project-settings"
+      className="bg-muted/40 flex flex-col gap-3 rounded-2xl border p-4"
+    >
+      <div className="flex items-center gap-2">
+        <h2 className="font-medium">{W.settings}</h2>
+        <Button variant="ghost" size="xs" className="ms-auto" onClick={props.onClose}>
+          {W.settingsClose}
+        </Button>
+      </div>
+      <form
+        className="flex flex-wrap items-center gap-2 text-sm"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (name.trim() !== '' && name.trim() !== props.title) props.onRename(name.trim());
+        }}
+      >
+        <span className="text-muted-foreground">{W.settingsName}</span>
+        <input
+          aria-label={W.settingsName}
+          className="bg-background min-w-48 flex-1 rounded-md border px-2 py-1"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+        />
+        <Button
+          type="submit"
+          size="sm"
+          disabled={name.trim() === '' || name.trim() === props.title}
+        >
+          {W.settingsSave}
+        </Button>
+      </form>
+      <DeadlineLine projectId={props.projectId} onError={props.onError} />
+    </div>
+  );
+}
+
+/** 项目名、方向目标（结构化时逐块显示：能力、为什么学、你确认时的理由、顺序参考、临时版）、回项目对话、齿轮。 */
 function Head(props: {
   overview: ProjectOverview;
-  projectId: string;
   onOpenChat: () => void;
-  onError: (e: unknown) => void;
+  onSettings: () => void;
 }) {
   const o = props.overview;
   const rows = goalRows(o.goalView);
   return (
     <div className="flex flex-col gap-4">
-      <h1 className="font-serif text-3xl tracking-tight">{o.title}</h1>
+      <div className="flex items-center gap-2">
+        <h1 className="font-serif text-3xl tracking-tight">{o.title}</h1>
+        {o.deadline !== undefined && <Badge tone="neutral">{`${W.deadline} ${o.deadline}`}</Badge>}
+        <TooltipIconButton
+          tooltip={W.settings}
+          data-testid="project-settings-button"
+          className="ms-auto size-8"
+          onClick={props.onSettings}
+        >
+          <SettingsIcon />
+        </TooltipIconButton>
+      </div>
       <div className="bg-card flex flex-col gap-3 rounded-2xl border p-4 shadow-xs">
         <div>
           <div className="text-muted-foreground mb-1 text-xs">{W.goal}</div>
@@ -140,9 +269,6 @@ function Head(props: {
               ))}
             </div>
           )}
-        </div>
-        <div className="border-t pt-3">
-          <DeadlineLine projectId={props.projectId} onError={props.onError} />
         </div>
       </div>
       <div>

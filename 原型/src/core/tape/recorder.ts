@@ -17,7 +17,7 @@ import { IdTokens } from './ids.ts';
 
 /**
  * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
- * “outputs.” 是知识产出物的、“notes.” 是个人笔记的（本地服务拿到的都是录带包过的那一份）。
+ * “outputs.” 是知识产出物的（本地服务拿到的都是录带包过的那一份）。
  */
 export const ACTIONS = [
   'createProject',
@@ -28,10 +28,19 @@ export const ACTIONS = [
   'objectToVerdict',
   'objectToRecord',
   'confirmRecord',
-  // 批 3a：项目资料、期限、笔记导入
+  // 批 3a：项目资料、期限
   'changeMaterials',
   'setDeadline',
-  'notes.import',
+  // W8 / W9：加资料、删、重试、从别的项目拿、上传改判、删导入、项目说明、存找到的候选
+  // （上传本身带文件内容，不进录带）
+  'addMaterial',
+  'removeMaterial',
+  'retryMaterial',
+  'copyMaterial',
+  'reroute',
+  'removeImport',
+  'setInstructions',
+  'pickCandidates',
   // 批 5：搁置、恢复
   'shelveLoop',
   'resumeLoop',

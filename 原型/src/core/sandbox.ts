@@ -30,6 +30,7 @@ const WHAT: Record<string, string> = {
   状态记录: '学习者的状态与条件',
   教法记录: '这个学习者的教法记录',
   '本次对话.md': '本次学习的对话原文，带行号（压缩后按行号读回）',
+  '项目说明.md': '学习者写给这个项目的长期要求（项目说明）；与学习者当场说的冲突时以当场说的为准',
   [MATERIAL_INDEX_NAME]:
     '本项目资料的目录：每份一行（id、标题、种类、版本、日期、状态、角色）；引用写 资料id/文件:行号',
 };
@@ -63,6 +64,8 @@ export interface SandboxDeps {
   dataDir: string;
   /** 所属项目的资料（资料归项目；没有 = 空）；同 studium.scopeOf。 */
   scopeOf: (sessionId: string) => Promise<string[]>;
+  /** 所属项目的项目说明（没写 = 空串）；守卫、后台整理不经这里拿（工单 W9 §4.6）。 */
+  instructionsOf: (sessionId: string) => Promise<string>;
 }
 
 export class Sandboxes {
@@ -84,6 +87,7 @@ export class Sandboxes {
         ...(await this.bookEntries(loopId)),
         ...this.dirEntries(loopId, [TEACHING_TOOLS_DIR, '学过的记录', '状态记录', '教法记录']),
         { name: '本次对话.md', path: join(this.root(loopId), '只读', '本次对话.md') },
+        { name: '项目说明.md', path: join(this.root(loopId), '只读', '项目说明.md') },
       ],
       network: false,
     };
@@ -103,6 +107,12 @@ export class Sandboxes {
     await mkdir(join(readOnly, '教法记录'), { recursive: true });
     await writeFile(join(readOnly, '教法记录', '教法记录.md'), this.strategyText(), 'utf8');
     await writeFile(join(readOnly, '本次对话.md'), renderTranscript(records), 'utf8');
+    const instructions = await this.o.instructionsOf(loopId);
+    await writeFile(
+      join(readOnly, '项目说明.md'),
+      `# 项目说明（学习者明确的长期要求；与当场说的冲突以当场为准）\n\n${instructions !== '' ? instructions : '（学习者还没写）'}\n`,
+      'utf8',
+    );
   }
 
   /** 检索子代理的沙盒：只读的学过的记录与导航所属项目范围内的资料；不写。 */
@@ -146,7 +156,8 @@ export class Sandboxes {
   }
 
   /**
-   * 只读/学过的记录/：每次以往的学习两个文件（上层 + 中层 / 下层对话）+ 索引 + 外部导入。
+   * 只读/学过的记录/：每次以往的学习两个文件（上层 + 中层 / 下层对话）+ 索引 + 外部导入
+   * （外部导入.md 列条目；笔记与对话记录的 md 放 外部导入/<导入 id>.md）。
    * `exclude` = 本次（本次学习不进“学过的记录”）。
    */
   private async learnedFiles(
@@ -172,6 +183,10 @@ export class Sandboxes {
       ].join('\n'),
     });
     files.push({ name: '外部导入.md', text: await this.importsText() });
+    for (const x of await this.o.learned.imports()) {
+      const text = await this.o.learned.importText(x);
+      if (text !== undefined) files.push({ name: `外部导入/${x.id}.md`, text });
+    }
     return files;
   }
 
@@ -234,9 +249,9 @@ export class Sandboxes {
     if (imports.length === 0) return '# 外部导入\n\n（暂无）';
     const rows = await Promise.all(imports.map((x) => this.importText(x)));
     return [
-      '# 外部导入（学习者在系统之外学到的：畅谈里说的 / 笔记里写的）',
+      '# 外部导入（学习者在系统之外学到的：畅谈里说的 / 笔记里写的 / 别处跟 AI 学的对话）',
       '',
-      '未验证，可信度低于学习记录：学习里的证据永远优先，可以怀疑，不算“已合上过”。',
+      '未验证，可信度低于学习记录：学习里的证据永远优先，可以怀疑，不算“已合上过”。笔记与对话记录的全文在 外部导入/<id>.md；对话记录里只有学习者说的、做的算证据，AI 讲的不算学习者会。',
       '',
       ...rows,
     ].join('\n');
@@ -244,7 +259,8 @@ export class Sandboxes {
 
   private async importText(x: Import): Promise<string> {
     const at = `${x.id}（${x.at.slice(0, 16).replace('T', ' ')}，${x.channel}）`;
-    if (!('session' in x.ref)) return `- ${at}：笔记 ${x.ref.note}（未验证）`;
+    if (!('session' in x.ref))
+      return `- ${at}：《${x.title ?? x.id}》→ 外部导入/${x.id}.md（未验证）`;
     const { session, lines } = x.ref;
     const recs = await this.o
       .hub()
@@ -322,6 +338,7 @@ async function writeDir(dir: string, files: { name: string; text: string }[]): P
   for (const f of files) {
     if (written.has(f.name)) continue; // 同名以先写的为准（官方的教学工具在前）
     written.add(f.name);
+    await mkdir(dirname(join(dir, f.name)), { recursive: true });
     await writeFile(join(dir, f.name), f.text, 'utf8');
   }
 }

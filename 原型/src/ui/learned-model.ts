@@ -136,10 +136,11 @@ export interface ImportRow {
   /** 都标“未验证”。 */
   unverified: string;
   jump?: JumpRef;
-  note?: string;
+  /** 笔记 / 对话记录：标题（点开看全文）。 */
+  title?: string;
 }
 
-/** 外部导入：从新到旧；畅谈的能跳回学习者那几句，笔记的写明是哪一份。 */
+/** 外部导入：从新到旧；畅谈的能跳回学习者那几句，笔记与对话记录写明是哪一份。 */
 export function importRows(is: readonly Import[]): ImportRow[] {
   return [...is]
     .sort((a, b) => (a.at === b.at ? 0 : a.at < b.at ? 1 : -1))
@@ -153,6 +154,6 @@ export function importRows(is: readonly Import[]): ImportRow[] {
       };
       return 'session' in x.ref
         ? { ...base, jump: { sessionId: x.ref.session, lines: x.ref.lines } }
-        : { ...base, note: x.ref.note };
+        : { ...base, title: x.title ?? x.id };
     });
 }

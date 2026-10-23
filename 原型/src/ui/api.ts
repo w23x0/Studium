@@ -30,8 +30,10 @@ import type {
   ProjectMaterialsResponse,
   ProjectMaterialsRequest,
   ProjectDeadlineResponse,
-  NoteImportResponse,
   NotesResponse,
+  UploadsResponse,
+  ProjectInstructionsResponse,
+  ImportTextResponse,
   LoopRelationsResponse,
   TeachingToolsResponse,
   TeachingToolResponse,
@@ -247,10 +249,64 @@ export const api = {
       body: JSON.stringify(note !== undefined ? { deadline, note } : { deadline }),
     }),
   notes: () => call<NotesResponse>('/library/notes'),
-  importNote: (path: string, title?: string) =>
-    call<NoteImportResponse>('/library/notes/import', {
+  // ── 导入入口（工单 W9）：上传、改判、从别的项目拿、重试、删、外部导入、项目说明 ──
+  /** 上传一批文件（文件夹按相对路径传）；核心收下后分流，回这次每份分到了哪。 */
+  upload: async (projectId: string, files: { file: File; path: string }[]) => {
+    const form = new FormData();
+    for (const f of files) form.append('files', f.file, f.file.name);
+    form.append('paths', JSON.stringify(files.map((f) => f.path)));
+    const res = await fetch(`/api/projects/${projectId}/uploads`, {
       method: 'POST',
-      body: JSON.stringify(title !== undefined && title !== '' ? { path, title } : { path }),
+      headers: { authorization: `Bearer ${TOKEN}` },
+      body: form,
+    });
+    const body = (await res.json()) as UploadsResponse & { error?: string };
+    if (!res.ok) throw new Error(body.error ?? `上传失败：${String(res.status)}`);
+    return body;
+  },
+  uploads: (projectId: string) => call<UploadsResponse>(`/projects/${projectId}/uploads`),
+  reroute: (projectId: string, upload: string, file: string, to: '资料' | '学过的') =>
+    call<UploadsResponse>(`/projects/${projectId}/uploads/reroute`, {
+      method: 'POST',
+      body: JSON.stringify({ upload, file, to }),
+    }),
+  addMaterial: (
+    projectId: string,
+    req: { kind: 'web' | 'repo'; origin: string; commit?: string },
+  ) =>
+    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`, {
+      method: 'POST',
+      body: JSON.stringify(req),
+    }),
+  copyMaterial: (projectId: string, fromProject: string, material: string) =>
+    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials/copy`, {
+      method: 'POST',
+      body: JSON.stringify({ fromProject, material }),
+    }),
+  retryMaterial: (projectId: string, material: string) =>
+    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials/retry`, {
+      method: 'POST',
+      body: JSON.stringify({ material }),
+    }),
+  removeImport: (projectId: string, id: string) =>
+    call<object>(`/projects/${projectId}/imports/remove`, {
+      method: 'POST',
+      body: JSON.stringify({ id }),
+    }),
+  importText: (id: string) =>
+    call<ImportTextResponse>(`/learned/imports/${encodeURIComponent(id)}`),
+  instructions: (projectId: string) =>
+    call<ProjectInstructionsResponse>(`/projects/${projectId}/instructions`),
+  setInstructions: (projectId: string, text: string) =>
+    call<ProjectInstructionsResponse>(`/projects/${projectId}/instructions`, {
+      method: 'PUT',
+      body: JSON.stringify({ text }),
+    }),
+  /** 找资料对话里存所选的候选。 */
+  pickCandidates: (sessionId: string, forLine: number, picked: number[]) =>
+    call<object>(`/sessions/${sessionId}/candidates`, {
+      method: 'POST',
+      body: JSON.stringify({ forLine, picked }),
     }),
   /** 笔记里引用的图片（给 <img src>）。 */
   noteAssetUrl: (book: string, ref: string) =>

@@ -16,6 +16,9 @@ import { ArrowDownIcon, ArrowRightIcon, CheckIcon, ChevronRightIcon, CopyIcon } 
 import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
+import type { PickedFile } from '@/components/project-materials';
+import { CandidateList } from '@/components/find-candidates';
+import type { CandidatesView } from '@/thread-model';
 import { ImageViewer } from '@/components/input/modal';
 import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
@@ -31,6 +34,7 @@ interface MessageMeta {
   verdict?: { closed: boolean };
   objection?: { toLine: number; label: string };
   images?: string[];
+  candidates?: CandidatesView;
 }
 
 function useMeta(): MessageMeta {
@@ -53,6 +57,8 @@ export const Thread: FC<{
   placeholder?: string;
   /** 发一条消息（文字 + 附图）。 */
   onSend: SendInput;
+  /** 拖进非图片文件时（只有主对话给）：走项目的上传，回一句给学习者看的话。 */
+  onFiles?: (files: PickedFile[]) => Promise<string>;
 }> = ({
   welcome = '今天想学点什么？',
   header,
@@ -60,6 +66,7 @@ export const Thread: FC<{
   disabled = false,
   placeholder = '回复…',
   onSend,
+  onFiles,
 }) => {
   const isEmpty = useAuiState((s) => s.thread.messages.length === 0);
   return (
@@ -113,7 +120,13 @@ export const Thread: FC<{
               </TooltipIconButton>
             </ThreadPrimitive.ScrollToBottom>
             {footer}
-            {!disabled && <InputComposer placeholder={placeholder} onSend={onSend} />}
+            {!disabled && (
+              <InputComposer
+                placeholder={placeholder}
+                onSend={onSend}
+                {...(onFiles !== undefined ? { onOtherFiles: onFiles } : {})}
+              />
+            )}
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -238,13 +251,15 @@ const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, verdict, line } = useMeta();
+  const { link, verdict, line, candidates } = useMeta();
   const open = useOpenSession();
   const panel = usePanel();
   const sessionId = useCurrentSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
-      {verdict !== undefined && sessionId !== undefined && line !== undefined ? (
+      {candidates !== undefined && sessionId !== undefined ? (
+        <CandidateList view={candidates} sessionId={sessionId} />
+      ) : verdict !== undefined && sessionId !== undefined && line !== undefined ? (
         <button
           type="button"
           data-testid="judgement"

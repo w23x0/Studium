@@ -188,8 +188,8 @@ function ImportsSection(props: { rows: ImportRow[] }) {
           <Card key={x.id} className="flex flex-wrap items-center gap-2">
             <Badge tone="warn">{x.unverified}</Badge>
             <span>{x.channel}</span>
-            {x.note !== undefined && (
-              <span className="text-muted-foreground text-xs">{x.note}</span>
+            {x.title !== undefined && (
+              <span className="text-muted-foreground text-xs">{x.title}</span>
             )}
             <span className="text-muted-foreground ms-auto text-xs">{x.time}</span>
             {x.jump !== undefined && <JumpButton jump={x.jump} label={W.jumpTo} />}

@@ -1,6 +1,12 @@
 // 正本记录 → 界面上的消息列表与对话状态。纯函数，单测覆盖。
 // 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示，守卫判定、结束等只显示一句结果。
-import type { ChoiceCard, NumberedRecord, ReviewWindow, RevisitKind } from '../shared/records.ts';
+import type {
+  ChoiceCard,
+  FindCandidate,
+  NumberedRecord,
+  ReviewWindow,
+  RevisitKind,
+} from '../shared/records.ts';
 import { parseReviewReturned } from '../shared/records-longterm.ts';
 import { judgementLine, W } from './wording.ts';
 
@@ -21,6 +27,15 @@ export interface UiMessage {
   link?: { sessionId: string; label: string };
   /** 学习者随这句话附的图片（原图 id），对话里显示缩略图、可点开。 */
   images?: string[];
+  /** 找资料对话交回的候选清单（勾了才存）。 */
+  candidates?: CandidatesView;
+}
+
+/** 找资料的候选清单：清单所在行、各份候选；存过了带勾了哪些、存成了哪些资料。 */
+export interface CandidatesView {
+  line: number;
+  items: FindCandidate[];
+  picked?: { picked: number[]; materials: string[] };
 }
 
 export interface UiContext {
@@ -40,6 +55,11 @@ export function toUiMessages(
   const out: UiMessage[] = [];
   const push = (m: UiMessage) => out.push(m);
   const cards = new Map<string, ChoiceCard>();
+  const picks = new Map<number, { picked: number[]; materials: string[] }>();
+  for (const { record: r } of records) {
+    if (r.type === 'candidates_picked')
+      picks.set(r.forLine, { picked: r.picked, materials: r.materials });
+  }
   for (const { line, record: r } of records) {
     const id = `l${String(line)}`;
     switch (r.type) {
@@ -106,15 +126,32 @@ export function toUiMessages(
             ? `一起写：${r.title.replace(/^写：/, '')}`
             : r.kind === 'nav'
               ? `${r.title} · ${W.watchNav}`
-              : ctx.isReview?.(r.sessionId) === true
-                ? W.reviewTask
-                : '单独谈谈你想学什么';
+              : r.kind === 'find'
+                ? W.findTask
+                : ctx.isReview?.(r.sessionId) === true
+                  ? W.reviewTask
+                  : '单独谈谈你想学什么';
         push({ id, role: 'system', text: label, line, link: { sessionId: r.sessionId, label } });
         break;
       }
       case 'choice_card':
         cards.set(r.cardId, r);
         break;
+      case 'project_instructions':
+        // 主对话代写的项目说明：显示一行，学习者知道改了、去哪看（学习者自己在项目页改的不显示）
+        if (r.by === 'main') push({ id, role: 'system', text: W.instructionsChangedLine, line });
+        break;
+      case 'find_candidates': {
+        const picked = picks.get(line);
+        push({
+          id,
+          role: 'system',
+          text: W.candidatesTitle,
+          line,
+          candidates: { line, items: r.candidates, ...(picked !== undefined ? { picked } : {}) },
+        });
+        break;
+      }
       case 'choice_made': {
         const title = cards.get(r.cardId)?.options[r.option]?.title;
         const label = title !== undefined ? `开始学：${title}` : '开始学';

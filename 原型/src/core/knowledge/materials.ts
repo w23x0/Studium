@@ -6,7 +6,17 @@
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { constants } from 'node:fs';
-import { access, cp, mkdir, readdir, readFile, rename, stat, writeFile } from 'node:fs/promises';
+import {
+  access,
+  cp,
+  mkdir,
+  readdir,
+  readFile,
+  rename,
+  rm,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { basename, dirname, extname, join, normalize, relative } from 'node:path';
 import { promisify } from 'node:util';
 import type {
@@ -163,6 +173,17 @@ export class Materials implements SourceReader {
       status: '处理中',
     };
     await this.write(dir, src);
+    this.run(dir, src, req, fromLibrary);
+    return src;
+  }
+
+  /** 在后台处理；失败写进 source.json（状态“失败”带原因），不伪装可用。 */
+  private run(
+    dir: string,
+    src: MaterialSource,
+    req: AddMaterialRequest,
+    fromLibrary: BookInfo | undefined,
+  ): void {
     const job = this.process(dir, src, req, fromLibrary)
       .catch(async (err: unknown) => {
         await this.write(dir, {
@@ -172,10 +193,55 @@ export class Materials implements SourceReader {
         });
       })
       .finally(() => {
-        this.pending.delete(id);
-        this.invalidate(id);
+        this.pending.delete(src.id);
+        this.invalidate(src.id);
       });
-    this.pending.set(id, job);
+    this.pending.set(src.id, job);
+  }
+
+  /**
+   * 重试一份失败 / 有问题的资料（工单 W9 §4.4）：清掉上次的产物（原件、正文、按页段的转换结果），
+   * 按原来的来源再处理一遍。处理中的不重试。
+   */
+  async retry(id: string): Promise<MaterialSource> {
+    const e = await this.entry(id);
+    if (e === undefined) throw new MaterialError(`没有这份资料：${id}`);
+    if (e.src.status === '处理中') throw new MaterialError('这份还在处理，等它跑完再说');
+    for (const name of await readdir(e.dir)) {
+      if (name !== SOURCE_FILE) await rm(join(e.dir, name), { recursive: true, force: true });
+    }
+    const src: MaterialSource = { ...e.src, status: '处理中', fetchedAt: this.now().toISOString() };
+    delete src.problems;
+    delete src.bodyPath;
+    delete src.converter;
+    await this.write(e.dir, src);
+    const fromLibrary =
+      src.kind === 'pdf'
+        ? await this.o.library.info(src.origin).then((i) => (i?.kind === 'book' ? i : undefined))
+        : undefined;
+    this.run(e.dir, src, { kind: src.kind, origin: src.origin, title: src.title }, fromLibrary);
+    return src;
+  }
+
+  /**
+   * 从别的项目拿一份（工单 W9 §4.1）：整份目录复制进本项目、换新 id，记 copiedFrom；
+   * 从书库挑的书照旧指向书的切分目录（bodyPath 不变）。处理中的不拿。
+   */
+  async copy(id: string, toMain: string): Promise<MaterialSource> {
+    const e = await this.entry(id);
+    if (e === undefined) throw new MaterialError(`没有这份资料：${id}`);
+    if (e.src.status === '处理中') throw new MaterialError('这份还在处理，等它跑完再拿');
+    const newId = await this.freshId(e.src.title);
+    const dir = join(this.projectDir(toMain), newId);
+    await mkdir(dirname(dir), { recursive: true });
+    await cp(e.dir, dir, { recursive: true });
+    const src: MaterialSource = {
+      ...e.src,
+      id: newId,
+      copiedFrom: { project: e.main, material: e.id },
+    };
+    delete src.role; // 角色是在原项目里判的，这里重新判
+    await this.write(dir, src);
     return src;
   }
 
@@ -500,8 +566,27 @@ export class Materials implements SourceReader {
       }
       case 'web':
       case 'search': {
-        const res = await fetch(src.origin, { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) });
+        const res = await fetch(src.origin, {
+          signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+        }).catch((e: unknown) => {
+          throw new Error(
+            `抓不到这个网址（网络不通、网站拒绝或超时）：${e instanceof Error ? e.message : String(e)}`,
+          );
+        });
         if (!res.ok) throw new Error(`抓取失败：HTTP ${String(res.status)}`);
+        if ((res.headers.get('content-type') ?? '').includes('application/pdf')) {
+          // 网址指向的是 PDF（找资料交回的讲义多是这样）：存原件，照新 PDF 转（工单 W9 进度页有记）
+          await mkdir(original, { recursive: true });
+          const name = basename(new URL(src.origin).pathname) || '原件';
+          const pdf = join(original, name.toLowerCase().endsWith('.pdf') ? name : `${name}.pdf`);
+          await writeFile(pdf, Buffer.from(await res.arrayBuffer()));
+          const version = await hashFile(pdf);
+          const problem = await this.convertPdf(pdf, dir, body);
+          if (problem !== undefined) {
+            return this.write(dir, { ...src, version, status: '失败', problems: [problem] });
+          }
+          return done({ version, fetchedAt: this.now().toISOString(), converter: 'mineru' });
+        }
         const html = await res.text();
         await mkdir(original, { recursive: true });
         await writeFile(join(original, '快照.html'), html, 'utf8');
