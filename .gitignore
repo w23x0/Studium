@@ -8,6 +8,7 @@
 
 # Runtime data
 var/
+var-备份/
 runtime/
 uploads/
 *.db

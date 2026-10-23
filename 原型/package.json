@@ -55,6 +55,7 @@
     "start": "vite build && tsx src/core/main.ts",
     "dev": "tsx watch src/core/main.ts",
     "replay": "tsx src/core/tape/cli.ts",
-    "review": "node scripts/review.mjs"
+    "review": "node scripts/review.mjs",
+    "backup": "node scripts/backup.mjs"
   }
 }

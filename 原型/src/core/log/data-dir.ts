@@ -1,10 +1,16 @@
 // 数据目录：sessions/<id>.jsonl 是正本；.lock 保证同一时刻只有一个核心进程在写。
-import { mkdir, open, readdir, readFile, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { cp, mkdir, open, readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { basename, join } from 'node:path';
 import { isNotFound } from './session-log.ts';
 
-/** 当前数据目录的版本（`原型/CLAUDE.md`「存放处」）；单子与记录的形状变了就加一，旧目录不能直接开。 */
+/** 当前数据目录的版本（`原型/CLAUDE.md`「存放处」）；单子与记录的形状变了就加一，同时在 MIGRATIONS 里写迁移。 */
 export const DATA_VERSION = '3';
+
+/**
+ * 数据迁移：键 = 旧版本，值 = 把目录从这一版改到下一版（版本号加一）。
+ * 10-23 起正式使用：改了记录形状就在这里加一步，不再让学习者删数据重来。
+ */
+const MIGRATIONS: Record<string, (root: string) => Promise<void>> = {};
 
 async function sessionFileNames(root: string): Promise<string[]> {
   try {
@@ -15,30 +21,47 @@ async function sessionFileNames(root: string): Promise<string[]> {
   }
 }
 
-/**
- * 启动核对（取锁之前）：有会话正本、而 data-version 不是当前版本 → 报错。
- * 空目录 / 新目录照常开。
- */
-export async function checkDataVersion(root: string): Promise<void> {
-  if ((await sessionFileNames(root)).length === 0) return;
-  let version: string | undefined;
+async function versionOf(root: string): Promise<string | undefined> {
   try {
-    version = (await readFile(join(root, 'data-version'), 'utf8')).trim();
+    return (await readFile(join(root, 'data-version'), 'utf8')).trim();
   } catch (err) {
-    if (!isNotFound(err)) throw err;
-  }
-  if (version !== DATA_VERSION) {
-    throw new Error(
-      `数据目录 ${root} 是旧版本的（单子与记录的形状变了，旧记录读不了）：删掉 var/ 重来，或换一个 STUDIUM_DATA`,
-    );
+    if (isNotFound(err)) return undefined;
+    throw err;
   }
 }
 
 /**
- * 取锁之后写版本文件。核对已过：要么还没有会话，要么已是当前版本，所以直接写当前版本
- * （只有旧版本文件、还没有会话的目录也随之升上来，不然有了会话下次启动会报旧版本）。
+ * 启动时（取锁之后）把数据目录升到当前版本：空目录直接写版本；旧版本先整份备份到
+ * `<数据>-备份/<时间>-v<旧版本>/`，再按 MIGRATIONS 一步步升；缺哪一步就报错、不动数据。
  */
-export async function writeDataVersion(root: string): Promise<void> {
+export async function upgradeDataDir(root: string): Promise<void> {
+  const version = await versionOf(root);
+  if (version !== DATA_VERSION && (await sessionFileNames(root)).length > 0) {
+    if (Number(version) > Number(DATA_VERSION)) {
+      throw new Error(
+        `数据目录 ${root} 是第 ${String(version)} 版，比这份程序新：先更新程序（git pull）`,
+      );
+    }
+    const steps: ((root: string) => Promise<void>)[] = [];
+    for (let v = version ?? '0'; v !== DATA_VERSION; v = String(Number(v) + 1)) {
+      const step = MIGRATIONS[v];
+      if (step === undefined) {
+        throw new Error(
+          `数据目录 ${root} 是第 ${version ?? '0'} 版，程序没有从第 ${v} 版往上升的迁移；数据没动。换回旧版程序，或换一个 STUDIUM_DATA`,
+        );
+      }
+      steps.push(step);
+    }
+    const backup = join(
+      `${root.replace(/[/\\]+$/, '')}-备份`,
+      `${new Date().toISOString().replace(/[:.]/g, '-')}-v${version ?? '0'}`,
+    );
+    await cp(root, backup, { recursive: true, filter: (p) => basename(p) !== '.lock' });
+    for (const step of steps) await step(root);
+    console.log(
+      `数据目录已从第 ${version ?? '0'} 版升到第 ${DATA_VERSION} 版，升级前的备份在 ${backup}`,
+    );
+  }
   await writeFile(join(root, 'data-version'), `${DATA_VERSION}\n`);
 }
 

@@ -22,7 +22,7 @@ import { StateStore } from './knowledge/state.ts';
 import { Objections } from './knowledge/objections.ts';
 import { SourceNotes } from './knowledge/source-notes.ts';
 import { Outputs } from './outputs.ts';
-import { checkDataVersion, DataDir, writeDataVersion } from './log/data-dir.ts';
+import { DataDir, upgradeDataDir } from './log/data-dir.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
 import { SidebarStore } from './sidebar.ts';
@@ -83,9 +83,13 @@ export async function createApp(opts: AppOptions): Promise<App> {
     if (wired.model === undefined) throw new Error('模型接口还没接上');
     return wired.model;
   };
-  await checkDataVersion(opts.dataRoot);
   const dataDir = await DataDir.acquire(opts.dataRoot);
-  await writeDataVersion(dataDir.root);
+  try {
+    await upgradeDataDir(dataDir.root);
+  } catch (err) {
+    await dataDir.release();
+    throw err;
+  }
   const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
   const pedagogy = await PedagogyStore.load(join(dataDir.root, 'knowledge', 'pedagogy'));
   const state = await StateStore.load(join(dataDir.root, 'knowledge', 'state'));
