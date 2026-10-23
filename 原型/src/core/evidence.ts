@@ -443,7 +443,6 @@ export class Evidence {
     const dl = foldDeadline(mainLog);
     const groups: ProjectOverview['groups'] = {
       inProgress: [],
-      awaitingChoice: [],
       closed: [],
       unclosed: [],
     };
@@ -468,14 +467,6 @@ export class Evidence {
       heavy: groups.inProgress.length + (groups.shelved?.length ?? 0) >= LOAD_HEAVY,
       parkingPile: parked >= PARKING_PILE,
     };
-    const chosen = new Set(
-      mainRecs.flatMap((r) => (r.record.type === 'choice_made' ? [r.record.cardId] : [])),
-    );
-    for (const r of [...mainRecs].reverse()) {
-      if (r.record.type === 'choice_card' && !chosen.has(r.record.cardId)) {
-        groups.awaitingChoice.push(await this.cardView(mainId, r.line, r.record, mainRecs));
-      }
-    }
     return {
       mainSessionId: mainId,
       title: title?.type === 'project_title' ? title.title : main.title,

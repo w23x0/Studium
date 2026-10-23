@@ -1,12 +1,11 @@
-// 一组“接下来学哪个”的选项：卡头是这次的路线决定（决定、理由、依据可点开）；每项为什么推荐、
-// 单子按文字逐行（出处可点开）、出处；每项可以“改一改再开始”。
-import { useEffect, useState } from 'react';
+// 导航定下的下一次学习：头上是这次的路线决定（决定、理由、依据可点开）；下面是为什么是它、
+// 单子按文字逐行（出处可点开）、出处。单子要改在那次学习里改。
+import { useEffect } from 'react';
 import type { CardOptionView, RouteDecisionView, SourceView } from '../../../shared/protocol.ts';
 import { api } from '../../api.ts';
 import { sourceText } from '../../evidence-model.ts';
 import { bookLineTarget } from '../../source-model.ts';
 import { useLoad } from '../../hooks/use-load.ts';
-import { useOpenSession } from '../../open-session.ts';
 import { usePanel } from '../../panel.ts';
 import { ticketRows } from '../../ticket-model.ts';
 import { W } from '../../wording.ts';
@@ -27,7 +26,7 @@ export function CardEvidence(props: { cardId: string; option?: number | undefine
   return (
     <div className="flex flex-col gap-5">
       <div className="flex flex-col gap-1">
-        <h2 className="font-serif text-lg">{W.pickOne}</h2>
+        <h2 className="font-serif text-lg">{W.whyNext}</h2>
         <Time at={card.at} />
         {card.trigger !== '' && (
           <Field label={W.cardTrigger}>
@@ -38,13 +37,7 @@ export function CardEvidence(props: { cardId: string; option?: number | undefine
         <ModelLine model={card.model} />
       </div>
       {card.options.map((o) => (
-        <OptionBlock
-          key={o.index}
-          cardId={cardId}
-          option={o}
-          active={o.index === option}
-          canEdit={card.chosen === undefined}
-        />
+        <OptionBlock key={o.index} option={o} active={o.index === option} />
       ))}
     </div>
   );
@@ -76,38 +69,11 @@ function RouteDecision(props: { view: RouteDecisionView }) {
   );
 }
 
-function OptionBlock(props: {
-  cardId: string;
-  option: CardOptionView;
-  active: boolean;
-  /** 这组选项还没选过：选过以后不能再选，也就不给“改一改再开始”。 */
-  canEdit: boolean;
-}) {
+function OptionBlock(props: { option: CardOptionView; active: boolean }) {
   const o = props.option;
-  const open = useOpenSession();
-  const panel = usePanel();
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  /** 先选定，再打开这次学习并把改单子的表单展开。 */
-  const editFirst = () => {
-    setBusy(true);
-    setError(undefined);
-    api
-      .choose(props.cardId, o.index)
-      .then((r) => {
-        open(r.loopSessionId);
-        panel.show({ kind: 'loop', loopId: r.loopSessionId, editTicket: true });
-      })
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setBusy(false));
-  };
   return (
     <Card id={`option-${String(o.index)}`} active={props.active} className="flex flex-col gap-3">
-      <div className="flex flex-wrap items-center gap-2">
-        <span className="font-medium">{o.title}</span>
-        {o.recommended && <Badge tone="accent">{W.recommended}</Badge>}
-        {o.chosen && <Badge tone="good">{W.chosen}</Badge>}
-      </div>
+      <div className="font-medium">{o.title}</div>
       {o.reason !== '' && <div>{o.reason}</div>}
       <TicketRowList rows={ticketRows(o.ticket, o.ticket.refs)} />
       <Section title={W.sources}>
@@ -121,19 +87,6 @@ function OptionBlock(props: {
           </ul>
         )}
       </Section>
-      {props.canEdit && (
-        <div className="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            disabled={busy}
-            className="text-primary text-xs hover:underline disabled:opacity-60"
-            onClick={editFirst}
-          >
-            {W.ticketEditOpen}
-          </button>
-          {error !== undefined && <span className="text-destructive text-xs">{error}</span>}
-        </div>
-      )}
     </Card>
   );
 }

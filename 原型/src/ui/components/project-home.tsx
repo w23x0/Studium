@@ -15,10 +15,8 @@ import {
   LibraryIcon,
   MessageCircleIcon,
   ShieldCheckIcon,
-  SparklesIcon,
 } from 'lucide-react';
 import type {
-  CardView,
   LoopLoad,
   LoopStatus,
   ProjectOverview,
@@ -34,8 +32,6 @@ import { useOpenSession } from '../open-session.ts';
 import { usePanel } from '../panel.ts';
 import { hasResumes, relationRows } from '../relations-model.ts';
 import { W } from '../wording.ts';
-import { crossOf } from '../cross-model.ts';
-import { ChoiceCardBox, revisitOf } from './choice-card.tsx';
 import { DeadlineLine, ProjectMaterials } from './project-materials.tsx';
 import { OutputsSection } from './outputs/outputs-section.tsx';
 import { Badge, Loading } from './evidence/parts.tsx';
@@ -188,26 +184,8 @@ function Groups(props: {
   const shelvedIds = (props.overview.groups.shelved ?? []).map((l) => l.sessionId);
   const g = projectGroups(learnings, shelvedIds);
   const byId = new Map(learnings.map((l) => [l.loopId, l]));
-  const cards = props.overview.groups.awaitingChoice;
   return (
     <div className="flex flex-col gap-6">
-      <Group
-        icon={<SparklesIcon className="text-primary" />}
-        title={W.groups.awaitingChoice}
-        hint={W.groupHints.awaitingChoice}
-        count={cards.length}
-        testId="group-awaiting"
-      >
-        {cards.map((c) => (
-          <ChoiceCardBox
-            key={c.cardId}
-            cardId={c.cardId}
-            recommended={c.recommended}
-            options={cardOptions(c)}
-            onError={props.onError}
-          />
-        ))}
-      </Group>
       {!r.data ? (
         <Loading error={r.error} />
       ) : (
@@ -240,16 +218,6 @@ function Groups(props: {
       )}
     </div>
   );
-}
-
-function cardOptions(c: CardView) {
-  return c.options.map((o) => ({
-    title: o.title,
-    reason: o.reason,
-    revisit: revisitOf(o),
-    cross: crossOf(o),
-    stageCheck: o.ticket.stageCheck === true,
-  }));
 }
 
 function Group(props: {

@@ -42,10 +42,11 @@ export interface KindConfig {
   /** 每轮发给模型之前调用（插话不调）：刷新沙盒里那些每轮重渲染的只读文件。 */
   beforeTurn?(sessionId: string): Promise<void>;
   /**
-   * 每轮从记录重建的开场（主对话用）：给了就不再续接模型会话，每轮新开一个、先记一条 turn_context，
-   * 本轮结束（成或败）关掉。inputLine = 这条输入在正本里的行号。
+   * 每轮附在输入前的当前事实（主对话用）：先记一条 turn_context 再发；模型对话照常续接、靠压缩变长。
+   * fresh = 这一轮是新开的模型对话（没有可续接的），这时开场还要从记录补上前面说过的（重建只作后备）。
+   * inputLine = 这条输入在正本里的行号。
    */
-  rebuild?(sessionId: string, inputLine: number): Promise<string>;
+  preface?(sessionId: string, inputLine: number, fresh: boolean): Promise<string>;
   /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
   webSearch?: boolean;
 }
@@ -279,20 +280,18 @@ export class Hub {
       // 沙盒里每轮重渲染的只读文件（如本次对话）在这里刷新；插话不走这里（工单 W4 §5.3）
       await cfg.beforeTurn?.(sessionId);
       let delivered = input;
-      if (cfg.rebuild !== undefined) {
-        // 主对话：每轮从记录重建开场，新开模型对话、不续接（工单 W5 §4.4）
-        const text = await cfg.rebuild(sessionId, inputLine);
+      const fresh = live.conversation === undefined && !(await this.resumable(sessionId));
+      live.conversation ??= await this.openConversation(sessionId, live.kind, cfg);
+      if (cfg.preface !== undefined) {
+        // 主对话：连续上下文，每轮附上当前事实（会话/主对话.md「每轮附上的事实」）
+        const text = await cfg.preface(sessionId, inputLine, fresh);
         await this.append(sessionId, {
           type: 'turn_context',
           at: this.iso(),
           forLine: inputLine,
           text,
         });
-        await live.conversation?.close();
-        live.conversation = await this.openConversation(sessionId, live.kind, cfg, true);
         delivered = { ...input, preface: text };
-      } else {
-        live.conversation ??= await this.openConversation(sessionId, live.kind, cfg);
       }
       for await (const ev of live.conversation.send(delivered)) {
         switch (ev.kind) {
@@ -367,29 +366,28 @@ export class Hub {
       // 模型侧对话可能已坏：丢掉，下一轮按正本里的续接凭据重开
       await live.conversation?.close();
       live.conversation = undefined;
-    } finally {
-      // 每轮重建的种类（主对话）本轮结束就丢掉模型对话，下一轮重新从记录给开场
-      if (cfg.rebuild !== undefined) {
-        await live.conversation?.close();
-        live.conversation = undefined;
-      }
     }
+  }
+
+  /** 正本里有没有这个模型服务的续接凭据。 */
+  private async resumable(sessionId: string): Promise<boolean> {
+    const adapter = this.opts.model.name;
+    return (await this.records(sessionId)).some(
+      (r) => r.record.type === 'model_session' && r.record.adapter === adapter,
+    );
   }
 
   private async openConversation(
     sessionId: string,
     kind: ConversationKind,
     cfg: KindConfig,
-    fresh = false,
   ): Promise<ModelConversation> {
     const records = await this.records(sessionId);
     const adapter = this.opts.model.name;
-    const resume = fresh
-      ? undefined
-      : records
-          .map((r) => r.record)
-          .filter((r) => r.type === 'model_session' && r.adapter === adapter)
-          .at(-1);
+    const resume = records
+      .map((r) => r.record)
+      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
+      .at(-1);
     const sandbox = await cfg.sandbox?.(sessionId);
     return this.opts.model.open({
       systemPrompt: cfg.systemPrompt,

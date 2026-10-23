@@ -80,7 +80,7 @@ export function TodaySection(props: {
     setLater(next);
   };
   const nextStep = () =>
-    api.requestCard(projectId).then(() => {
+    api.send(projectId, W.askNext).then(() => {
       props.onOpenChat();
     });
 

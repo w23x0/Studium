@@ -168,29 +168,19 @@ export class Learned {
   }
 
   /**
-   * 没合上那次的路线决定：那次学习里 card_ready 的卡号 → 项目主对话里那张卡 → 同一导航会话的路线决定。
+   * 没合上那次的路线决定：那次结束之后、项目主对话里导航作出的第一条路线决定（导航下次定下一步时读它写的）。
    * 找不到就不给这一栏。
    */
   private async routeDecisionOf(
     loopId: string,
     records: NumberedRecord[],
   ): Promise<Learning['routeDecision']> {
-    const cardId = records
-      .filter((r) => r.record.type === 'after_loop_step' && r.record.step === 'card_ready')
-      .map((r) => (r.record.type === 'after_loop_step' ? r.record.detail : ''))
-      .at(-1);
-    if (cardId === undefined || cardId === '') return undefined;
+    const ended = records.find((r) => r.record.type === 'loop_ended')?.record;
+    if (ended?.type !== 'loop_ended') return undefined;
     const opened = await this.o.hub().opened(loopId);
     if (opened.parent === undefined) return undefined;
     const main = await this.o.hub().records(opened.parent);
-    const card = main.find(
-      (r) => r.record.type === 'choice_card' && r.record.cardId === cardId,
-    )?.record;
-    if (card?.type !== 'choice_card') return undefined;
-    const nav = card.navSessionId;
-    const rd = main.find(
-      (r) => r.record.type === 'route_decision' && r.record.navSessionId === nav,
-    );
+    const rd = main.find((r) => r.record.type === 'route_decision' && r.record.at >= ended.at);
     if (rd?.record.type !== 'route_decision') return undefined;
     return { line: rd.line, decision: rd.record.decision, reason: rd.record.reason };
   }

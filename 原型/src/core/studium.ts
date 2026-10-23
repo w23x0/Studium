@@ -54,6 +54,11 @@ import { guardView, learnerLines, renderTranscript } from './transcript.ts';
 
 export class BadRequestError extends Error {}
 
+/** 定下一步的结果：导航定了、已开学习对话；或导航要先问学习者一件事。 */
+export type PlanResult =
+  | { kind: 'opened'; loopSessionId: string; title: string; reason: string; navSessionId: string }
+  | { kind: 'question'; question: string; navSessionId: string };
+
 /** 出发点的来源（学过的记录 / 自述 / 假定）。 */
 type StartSource = (typeof START_SOURCES)[number];
 
@@ -195,7 +200,8 @@ export class Studium {
     systemPrompt: this.o.prompts[kind],
     ...(kind === 'main'
       ? {
-          rebuild: (sessionId: string, inputLine: number) => this.mainPreface(sessionId, inputLine),
+          preface: (sessionId: string, inputLine: number, fresh: boolean) =>
+            this.mainPreface(sessionId, inputLine, fresh),
         }
       : {}),
     // 畅谈与导航可联网搜索；其余会话不放开（工单 W5 §4.6）
@@ -227,13 +233,14 @@ export class Studium {
         case 'guard':
           return [...this.readTools(sessionId), this.verdictTool(sessionId)];
         case 'nav':
-          // 导航：出下一次学习的选择卡（会话/导航.md「能读什么 · 工具」）
+          // 导航：定下一次学什么（会话/导航.md「能读什么 · 工具」）
           return [
             ...this.readTools(sessionId),
             this.readSessionTool(),
             this.stateQueryTool(),
             this.retrieveTool(sessionId),
             this.cardTool(sessionId),
+            this.askLearnerTool(sessionId),
             ...this.longterm.reminderTools(sessionId),
             this.o.cross.addNoteTool(sessionId),
           ];
@@ -493,20 +500,35 @@ export class Studium {
     await this.hub.send(sessionId, { role: 'learner', text }, meta);
   }
 
-  /** 导航出选择卡，贴进主对话。trigger 写明为什么要卡。 */
-  async requestCard(trigger: string, projectId?: string): Promise<ChoiceCard> {
+  /**
+   * 定下一次学什么（会话/导航.md）：开导航会话、全自动跑完；导航定了就存单子与路线决定、直接开学习对话，
+   * 要问学习者就交回问题（由主对话顺口问）。导航会话挂在主对话下，学习者可点进去看它怎么想的。
+   */
+  async planNext(trigger: string, projectId?: string): Promise<PlanResult> {
     const mainId = projectId ?? (await this.ensureMain());
-    const nav = await this.hub.createSession('nav', { title: '出选择卡', parent: mainId });
+    const title = '想下一步学什么';
+    const nav = await this.hub.createSession('nav', { title, parent: mainId });
+    const mainRecs = await this.hub.records(mainId);
+    await this.hub.record(mainId, {
+      type: 'task_opened',
+      at: this.iso(),
+      sessionId: nav.sessionId,
+      kind: 'nav',
+      title,
+      anchorLine: mainRecs.filter((r) => r.record.type === 'user_message').at(-1)?.line ?? 0,
+    });
     await this.hub.send(nav.sessionId, {
       role: 'program',
       text: await this.navOpening(trigger, mainId),
     });
     await this.hub.idle(nav.sessionId);
+    const question = this.navQuestions.get(nav.sessionId);
+    if (question !== undefined) return { kind: 'question', question, navSessionId: nav.sessionId };
     const card = this.cards.get(nav.sessionId);
-    if (!card) throw new Error('导航没有提交选择卡（见该会话记录）');
-    // 每次出卡先写一条路线决定，紧接着写卡（记录/单子与路线.md「路线决定与理由」）；
-    // 同一主对话的几次出卡排队写，决定与卡才相邻、取代链不断
-    return this.inRouteOrder(mainId, async () => {
+    if (!card) throw new Error('导航没有交回下一步（见该会话记录）');
+    // 先写路线决定，紧接着写导航定的单子（记录/单子与路线.md「路线决定与理由」）；
+    // 同一主对话的几次排队写，决定与单子才相邻、取代链不断
+    const record = await this.inRouteOrder(mainId, async () => {
       const before = await this.hub.records(mainId);
       const last = [...before].reverse().find((r) => r.record.type === 'route_decision');
       const decision: RouteDecision = {
@@ -520,18 +542,46 @@ export class Studium {
         ...(last !== undefined ? { supersedes: last.line } : {}),
       };
       await this.hub.record(mainId, decision);
-      const record: ChoiceCard = {
+      const planned: ChoiceCard = {
         type: 'choice_card',
         at: this.iso(),
         cardId: this.newId('card'),
         navSessionId: nav.sessionId,
         options: card.options,
-        recommended: card.recommended,
+        recommended: 0,
         trigger,
       };
-      await this.hub.record(mainId, record);
-      return record;
+      await this.hub.record(mainId, planned);
+      return planned;
     });
+    const picked = card.options[0];
+    const loopSessionId = await this.openPlanned(record.cardId);
+    await this.withdrawUntouched(mainId, loopSessionId);
+    return {
+      kind: 'opened',
+      loopSessionId,
+      title: picked?.title ?? '',
+      reason: picked?.reason ?? '',
+      navSessionId: nav.sessionId,
+    };
+  }
+
+  /**
+   * 学习者要换一个时：之前定下、学习者还没开口的学习对话直接收掉（不算搁着、不进停车场）；
+   * 学习者在里面说过话的不动，照常算一次学习。
+   */
+  private async withdrawUntouched(mainId: string, keep: string): Promise<void> {
+    for (const s of this.hub.listSessions()) {
+      if (s.kind !== 'loop' || s.parent !== mainId || s.sessionId === keep) continue;
+      const recs = await this.hub.records(s.sessionId);
+      if (recs.some((r) => r.record.type === 'user_message' || r.record.type === 'loop_ended'))
+        continue;
+      await this.hub.record(s.sessionId, {
+        type: 'session_withdrawn',
+        at: this.iso(),
+        reason: '学习者还没开始就换了一个',
+      });
+    }
   }
 
   private inRouteOrder<T>(mainId: string, f: () => Promise<T>): Promise<T> {
@@ -543,8 +593,9 @@ export class Studium {
     return run;
   }
 
-  /** 学习者在选择卡上选定：存路线事实，开学习对话，交开场。 */
-  async choose(cardId: string, option: number): Promise<string> {
+  /** 导航定下之后：存路线事实，开学习对话，交开场。 */
+  private async openPlanned(cardId: string): Promise<string> {
+    const option = 0;
     let mainId = '';
     let recs: LogRecord[] = [];
     let card: LogRecord | undefined;
@@ -558,20 +609,20 @@ export class Studium {
         break;
       }
     }
-    if (card?.type !== 'choice_card') throw new BadRequestError('找不到这组选项，刷新一下再选。');
+    if (card?.type !== 'choice_card') throw new Error(`找不到导航定的单子：${cardId}`);
     if (recs.some((r) => r.type === 'choice_made' && r.cardId === cardId)) {
-      throw new BadRequestError('这组选项已经选过了。');
+      throw new Error(`这张单子已经开过学习了：${cardId}`);
     }
     const picked = card.options[option];
-    if (!picked) throw new BadRequestError(`没有第 ${String(option + 1)} 个选项。`);
+    if (!picked) throw new Error(`导航定的单子是空的：${cardId}`);
 
     // 接着学：带上原学习（原学习正本不改）
     let resumeOf: { fromLoop: string; endedAt: string } | undefined;
     if (picked.ticket.resumeOf !== undefined) {
       const origId = picked.ticket.resumeOf;
-      // 出卡后可能已经从别的卡接着学了（同一次没合上的学习出现在两张卡上）
+      // 导航定下后可能已经从别处接着学了
       const bad = await this.resumeProblem(origId, mainId);
-      if (bad !== undefined) throw new BadRequestError(bad);
+      if (bad !== undefined) throw new Error(bad);
       const ended = (await this.hub.records(origId)).find((r) => r.record.type === 'loop_ended');
       const at =
         ended?.record.type === 'loop_ended' ? ended.record.at : (await this.hub.opened(origId)).at;
@@ -899,26 +950,18 @@ export class Studium {
   // ───────────── 清单 ─────────────
 
   /**
-   * 一次学习结束（01-流程.md §3）：① 存盘（已在 loop_ended）② 主对话里说一句 ③ 导航出选择卡
-   * ④ ③ 之后（成或败）再起后台：状态整理与教法记录整理，不等它们。合上与没合上走同一条，只是触发原因不同。
+   * 一次学习结束（01-流程.md §3）：① 存盘（已在 loop_ended）② 主对话里说一句，不自动开下一次
+   * （开新学习由学习者主动，主对话只提醒）③ 后台：状态整理与教法记录整理，不等它们。
    */
   private async afterLoop(loopId: string, closed: boolean): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const mainId = opened.parent ?? (await this.ensureMain());
-    const trigger = this.loopEndTrigger(opened.title, loopId, closed, opened.ticket?.returnTo);
     try {
       await this.hub.send(mainId, {
         role: 'program',
         text: closed
-          ? `“${opened.title}”合上了（学习者已确认）。下一张卡正在出，出好会贴在这里。`
-          : `“${opened.title}”没合上就结束了。下一张卡正在出，出好会贴在这里。`,
-      });
-      const card = await this.requestCard(trigger, mainId);
-      await this.hub.record(loopId, {
-        type: 'after_loop_step',
-        at: this.iso(),
-        step: 'card_ready',
-        detail: card.cardId,
+          ? `“${opened.title}”学完了（学习者已确认结束）。`
+          : `“${opened.title}”没学完就结束了，先搁着。`,
       });
     } catch (err) {
       console.error(`一次学习（${loopId}）结束后的清单失败：`, err);
@@ -931,19 +974,6 @@ export class Studium {
     }
     this.organizeStateLater(`一段学习（${loopId}）结束了`, loopId);
     this.background('教法记录整理', () => this.recordStrategy(loopId));
-  }
-
-  /** 触发原因（工单 §4.4）：补前置合上 / 合上 / 没合上，各带那次学习的标题与 id。 */
-  private loopEndTrigger(
-    title: string,
-    loopId: string,
-    closed: boolean,
-    returnTo: string | undefined,
-  ): string {
-    if (!closed) return `没合上：${title}（${loopId}）`;
-    return returnTo !== undefined
-      ? `补前置合上：${title}（${loopId}）`
-      : `合上：${title}（${loopId}）`;
   }
 
   // ───────────── 守卫 ─────────────
@@ -1059,15 +1089,17 @@ export class Studium {
     string,
     {
       options: ChoiceOption[];
-      recommended: number;
       routeDecision: { decision: string; reason: string; basis: string[] };
     }
   >();
 
+  /** 导航交回的、要问学习者的问题（导航会话 id → 问题）。 */
+  private readonly navQuestions = new Map<string, string>();
+
   /**
-   * 导航开场（会话/导航.md「开场给什么」；工单 §4.3）：触发原因、方向目标、期限、资料范围、
-   * 路线事实（最近 5 张卡与路线决定）、停车场、学过的记录上 / 中层、其他。
-   * 没合上触发时附那次完整对话；补前置合上触发时附原学习的上层。
+   * 导航开场（会话/导航.md「开场给什么」）：触发原因、方向目标、期限、资料范围、各次学习现在的样子、
+   * 主对话原文、路线事实（最近 5 次定下的与路线决定）、停车场、学过的记录上 / 中层、其他。
+   * 用时现算，读当时最新的记录，不提前备好。
    */
   private async navOpening(trigger: string, mainId: string): Promise<string> {
     const records = await this.hub.records(mainId);
@@ -1081,7 +1113,7 @@ export class Studium {
     const deadline = foldDeadline(main).deadline;
     const elsewhere = (await this.learned.all()).length - learned.learnings.length;
 
-    // ── 路线事实：最近 5 张卡（卡、它的路线决定、各选项、学习者选了哪项）──
+    // ── 路线事实：最近 5 次定下的（路线决定、单子、开了哪次学习）──
     const cardLines: string[] = [];
     for (const { line, record } of records
       .filter((r) => r.record.type === 'choice_card')
@@ -1093,24 +1125,15 @@ export class Studium {
       const made = records.find(
         (r) => r.record.type === 'choice_made' && r.record.cardId === record.cardId,
       );
+      const o = record.options[made?.record.type === 'choice_made' ? made.record.option : 0];
       cardLines.push(
-        `- 卡 ${record.cardId}（主对话 L${String(line)}，${record.at.slice(0, 10)}）触发：${record.trigger}`,
+        `- ${record.at.slice(0, 10)}（主对话 L${String(line)}）触发：${record.trigger}；定下「${o?.title ?? ''}」${o?.ticket.newPoint ?? ''}${made?.record.type === 'choice_made' ? ` → 学习 ${made.record.loopSessionId}` : ''}`,
       );
       if (rd?.record.type === 'route_decision') {
         cardLines.push(
           `  路线决定 L${String(rd.line)}：${rd.record.decision}（理由：${rd.record.reason}；依据：${rd.record.basis.join('、')}）`,
         );
       }
-      record.options.forEach((o, i) => {
-        const chosen =
-          made?.record.type === 'choice_made' && made.record.option === i
-            ? `；学习者选了 → 学习 ${made.record.loopSessionId}`
-            : '';
-        cardLines.push(
-          `  ${String(i)}「${o.title}」${o.ticket.newPoint}${i === record.recommended ? '（推荐）' : ''}${chosen}`,
-        );
-      });
-      if (made?.record.type !== 'choice_made') cardLines.push('  还没选');
     }
 
     // ── 学过的记录：最近 20 次 + 总数；别的项目里的学习也要能看到（不按项目划界）──
@@ -1127,31 +1150,6 @@ export class Studium {
     const elseLine =
       elsewhere > 0 ? [`别的项目里还有 ${String(elsewhere)} 次学习，要用时用 retrieve 查`] : [];
 
-    const appended: string[] = [];
-    const unclosedId = /^没合上：.*（([A-Za-z0-9_-]+)）\s*$/.exec(trigger)?.[1];
-    if (unclosedId !== undefined) {
-      appended.push(
-        '',
-        `── 那次学习的完整对话（${unclosedId}，带行号）──`,
-        renderTranscript(await this.hub.records(unclosedId)),
-      );
-    }
-    const returnedId = /^补前置合上：.*（([A-Za-z0-9_-]+)）\s*$/.exec(trigger)?.[1];
-    if (returnedId !== undefined) {
-      const returnTo = (await this.hub.opened(returnedId)).ticket?.returnTo;
-      if (returnTo !== undefined) {
-        const endLine = (await this.hub.records(returnTo)).find(
-          (r) => r.record.type === 'loop_ended',
-        )?.line;
-        const orig = await this.learned.one(returnTo);
-        appended.push(
-          '',
-          `── 原来那次学习（${returnTo}）的上层 ──`,
-          `- ${this.learned.parkedLine({ learning: orig, ...(endLine !== undefined ? { endLine } : {}) })}`,
-        );
-      }
-    }
-
     return [
       `触发原因：${trigger}`,
       '',
@@ -1163,10 +1161,16 @@ export class Studium {
       '',
       `资料范围：${scope !== undefined ? `项目选用了 ${String(scope.length)} 份资料：${scope.join('、')}。教材查询工具默认只在这些里查；学习者或你明确要时，传 all=true 查全库。` : '项目没选资料：查全库。'}`,
       '',
-      '── 路线事实（最近 5 张卡）──',
+      '── 各次学习现在的样子 ──',
+      ...(await this.learningsNow(mainId)),
+      '',
+      '── 主对话原文（学习者在主对话里说过的，最近的）──',
+      this.recentMessages(records, Number.POSITIVE_INFINITY, 60, 600) || '（还没有）',
+      '',
+      '── 路线事实（最近 5 次定下的）──',
       cardLines.join('\n') || '（还没有）',
       '',
-      '── 停车场（没合上的学习，上层）──',
+      '── 停车场（没合上的学习，上层；完整对话用 read_session 读）──',
       parked.map((p) => `- ${this.learned.parkedLine(p)}`).join('\n') || '空',
       '',
       '── 学过的记录（上层 / 中层）──',
@@ -1204,7 +1208,6 @@ export class Studium {
           ]
         : []),
       '学习者状态：要用时用 query_state 查；没有记录按无状态约束。',
-      ...appended,
     ].join('\n');
   }
 
@@ -1287,11 +1290,11 @@ export class Studium {
         ),
     });
     return {
-      name: 'submit_choice_card',
-      description: '交回 2–4 个候选单子与这次的路线决定，推荐其中一个（从 0 数）。只提交一次。',
+      name: 'submit_next',
+      description:
+        '交回定下的下一次学习（一张单子）与这次的路线决定；交回后程序直接开这次学习。只提交一次。',
       input: {
-        options: z.array(ticketShape).min(2).max(4),
-        recommended: z.number().int().min(0),
+        next: ticketShape,
         route_decision: z.object({
           decision: z.string().describe('这次走哪条路（含“维持”），一句话'),
           reason: z.string().describe('为什么这样定'),
@@ -1302,9 +1305,10 @@ export class Studium {
         }),
       },
       run: async (a) => {
-        if (this.cards.has(sessionId)) return err('已经提交过选择卡');
+        if (this.cards.has(sessionId)) return err('已经交回过了');
+        if (this.navQuestions.has(sessionId)) return err('已经交回了要问学习者的问题');
         // 假模型直接调 run、不经 zod（工单 README §4.2）：这里按“字段可能缺”的宽松形状收，逐条核
-        const raw = a.options as {
+        const raw = [a.next] as {
           new_point?: string;
           clause?: string;
           start_points?: { point?: string; source?: string; ref?: string }[];
@@ -1323,8 +1327,7 @@ export class Studium {
           { decision?: string; reason?: string; basis?: string[] } | undefined;
         const problems: string[] = [];
         const blank = (s: unknown): boolean => typeof s !== 'string' || s.trim() === '';
-        // 选项数 2–4 由上面的参数形状管（真模型经它）；这里只挡缺参数，免得下面读空
-        if (!Array.isArray(raw)) return err('缺 options（2–4 个候选单子）');
+        if (a.next === undefined || a.next === null) return err('缺 next（定下的那张单子）');
 
         // 路线决定：必有，决定与理由非空，依据至少一条且每条都能定位
         const basis = Array.isArray(decision?.basis) ? decision.basis : [];
@@ -1338,7 +1341,7 @@ export class Studium {
 
         const options: ChoiceOption[] = [];
         for (const [i, o] of raw.entries()) {
-          const n = `第 ${String(i + 1)} 项`;
+          const n = i === 0 ? '单子' : `第 ${String(i + 1)} 项`;
           const textFields: [string | undefined, string][] = [
             [o.new_point, 'new_point（新点）'],
             [o.clause, 'clause（预期理解）'],
@@ -1456,21 +1459,33 @@ export class Studium {
             ticket,
           });
         }
-        const recommended = a.recommended as number;
-        if (!Number.isInteger(recommended) || recommended < 0 || recommended >= raw.length) {
-          problems.push('推荐的序号超出选项范围（从 0 数）');
-        }
         if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
         this.cards.set(sessionId, {
           options,
-          recommended,
           routeDecision: {
             decision: decision?.decision ?? '',
             reason: decision?.reason ?? '',
             basis: [...basis],
           },
         });
-        return ok('选择卡已收到');
+        return ok('收到，程序这就开这次学习');
+      },
+    };
+  }
+
+  /** 导航缺一个只有学习者知道的事实时：交回一个问题，由主对话顺口问（会话/导航.md「交回什么」）。 */
+  private askLearnerTool(sessionId: string): ToolSpec {
+    return {
+      name: 'ask_learner',
+      description:
+        '缺一个只有学习者知道、又会改变下一步的事实时（比如应用外最近学到哪）调用：交回一个问题，主对话会顺口问，问到后再开一次导航。和 submit_next 二选一，只调一次。',
+      input: { question: z.string().describe('要问学习者的事，一句日常话') },
+      run: (a) => {
+        if (this.cards.has(sessionId)) return err('已经交回过下一步了');
+        const q = (a.question as string | undefined)?.trim() ?? '';
+        if (q === '') return err('问题不能是空的');
+        this.navQuestions.set(sessionId, q);
+        return ok('问题已交回主对话');
       },
     };
   }
@@ -1705,17 +1720,70 @@ export class Studium {
   }
 
   /**
-   * 主对话每轮的开场（工单 W5 §4.4）：从记录重建，不靠长上下文。方向目标、期限、最近 12 条消息、
-   * 最新路线决定与最近 3 张卡；这一轮需要的就这些，其余经 list_learned 按需读。
+   * 主对话每轮附上的当前事实（会话/主对话.md「每轮附上的事实」）：方向说明、期限、各次学习现在的样子、
+   * 最新路线决定。主对话上下文是连续的；只有新开模型对话（没有可续接的）时才从记录补上最近的消息。
    */
-  private async mainPreface(mainId: string, inputLine: number): Promise<string> {
+  private async mainPreface(mainId: string, inputLine: number, fresh: boolean): Promise<string> {
     const records = await this.hub.records(mainId);
     const goal = currentGoal(records);
     const deadline = foldDeadline(records.map((r) => r.record));
+    const decision = records.filter((r) => r.record.type === 'route_decision').at(-1);
+    const out = [
+      '程序附上的当前事实（每轮刷新，以这里为准）',
+      goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
+      `期限：${deadline.deadline !== undefined ? this.deadlineText(deadline) : '没有记'}`,
+      '── 各次学习现在的样子 ──',
+      ...(await this.learningsNow(mainId)),
+      decision?.record.type === 'route_decision'
+        ? `最新路线决定 L${String(decision.line)}：${decision.record.decision}（理由：${decision.record.reason}）`
+        : '还没有路线决定',
+    ];
+    if (fresh) {
+      out.push(
+        '── 前面说过的（这次是新接上的对话，从记录补上最近的）──',
+        this.recentMessages(records, inputLine, 30, 300) || '（还没有）',
+      );
+    }
+    return out.join('\n');
+  }
+
+  /** 本项目各次学习现在的样子：在学 / 搁着 / 学完（记录/单子与路线.md「全局」）。 */
+  private async learningsNow(mainId: string): Promise<string[]> {
+    const { learnings } = await this.learned.list(mainId);
+    const parked = new Set((await this.learned.parked(mainId)).map((p) => p.learning.loopId));
+    const shelved = new Set<string>();
+    for (const l of learnings) {
+      if (l.status === '进行中' && foldLoop(await this.hub.records(l.loopId)).shelved !== undefined)
+        shelved.add(l.loopId);
+    }
+    const row = (l: (typeof learnings)[number]): string =>
+      `- ${l.loopId}「${l.title}」${l.openedAt.slice(0, 10)}：${l.ticket.newPoint}`;
+    const inProgress = learnings.filter((l) => l.status === '进行中' && !shelved.has(l.loopId));
+    const waiting = learnings.filter((l) => shelved.has(l.loopId) || parked.has(l.loopId));
+    const done = learnings.filter((l) => l.status === '合上').slice(-8);
+    if (learnings.length === 0) return ['还没有开过学习'];
+    return [
+      `在学（${String(inProgress.length)}）：`,
+      ...inProgress.map(row),
+      `搁着（${String(waiting.length)}）：`,
+      ...waiting.map(
+        (l) => `${row(l)}${l.endNote !== undefined ? `；停下时说：${l.endNote}` : ''}`,
+      ),
+      `学完（共 ${String(learnings.filter((l) => l.status === '合上').length)}，最近的）：`,
+      ...done.map(row),
+    ];
+  }
+
+  /** 主对话里 inputLine 之前的学习者 / 主对话 / 程序消息，取最后 n 条。 */
+  private recentMessages(
+    records: NumberedRecord[],
+    inputLine: number,
+    n: number,
+    cut: number,
+  ): string {
     const messages: string[] = [];
     for (const { line, record } of records) {
-      // 本轮这条输入与排在它后面的输入不算“前面说过的”；排队时上一轮的回复会落在本轮输入之后，照给
-      if (line >= inputLine && record.type !== 'assistant_message') continue;
+      if (line >= inputLine) continue;
       if (
         record.type !== 'user_message' &&
         record.type !== 'assistant_message' &&
@@ -1727,38 +1795,12 @@ export class Studium {
         record.type === 'user_message'
           ? '学习者'
           : record.type === 'assistant_message'
-            ? '你'
+            ? '主对话'
             : '程序';
-      const text = record.text.length > 300 ? `${record.text.slice(0, 300)}…` : record.text;
+      const text = record.text.length > cut ? `${record.text.slice(0, cut)}…` : record.text;
       messages.push(`L${String(line)} ${who}：${text}`);
     }
-    const recent = messages.slice(-12);
-    const decision = records.filter((r) => r.record.type === 'route_decision').at(-1);
-    const cards = records.filter((r) => r.record.type === 'choice_card').slice(-3);
-    const cardLines = cards.map(({ line, record }) => {
-      if (record.type !== 'choice_card') return '';
-      const made = records.find(
-        (r) => r.record.type === 'choice_made' && r.record.cardId === record.cardId,
-      );
-      const chosen =
-        made?.record.type === 'choice_made'
-          ? `学习者选了第 ${String(made.record.option + 1)} 项 → 学习 ${made.record.loopSessionId}`
-          : '还没选';
-      const options = record.options.map((o, i) => `${String(i + 1)}「${o.title}」`).join('、');
-      return `- 卡 ${record.cardId}（L${String(line)}）：${options}，推荐第 ${String(record.recommended + 1)} 项；${chosen}`;
-    });
-    return [
-      '主对话开场（程序每轮从记录重给；以这里为准，前面的轮次你看不到）',
-      goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
-      `期限：${deadline.deadline !== undefined ? this.deadlineText(deadline) : '没有记'}`,
-      '── 最近的消息 ──',
-      recent.join('\n') || '（还没有）',
-      '── 路线记录 ──',
-      decision?.record.type === 'route_decision'
-        ? `最新路线决定 L${String(decision.line)}：${decision.record.decision}（理由：${decision.record.reason}）`
-        : '还没有路线决定',
-      ...cardLines,
-    ].join('\n');
+    return messages.slice(-n).join('\n');
   }
 
   private mainTools(mainId: string): ToolSpec[] {
@@ -1767,7 +1809,7 @@ export class Studium {
       {
         name: 'open_goal_talk',
         description:
-          '学习者说出新的学习方向、或想改方向时调用：在他刚才这条消息下开一个单独谈方向的对话。主对话自己不谈方向。',
+          '学习者说出新的学习方向、想改方向，或学了几次之后远处能看清一层、要把方向往远推时调用：在他刚才这条消息下开一个单独谈方向的对话。主对话自己不谈方向。',
         input: {},
         run: async () => {
           const recs = await this.hub.records(mainId);
@@ -1787,13 +1829,17 @@ export class Studium {
               `学习者在主对话里说（主对话第 ${String(asked.line)} 行）：${asked.record.text}`,
               ...(goal !== undefined
                 ? [
-                    `已有方向目标（主对话 L${String(goal.line)}）：`,
+                    `已有方向（主对话 L${String(goal.line)}，${goal.goal.at.slice(0, 10)}）：`,
                     describeGoal(goal.goal),
                     ...(deadline !== undefined ? [`期限：${deadline}`] : []),
+                    '── 各次学习现在的样子 ──',
+                    ...(await this.learningsNow(mainId)),
                   ]
                 : []),
               '',
-              '接着学习者这句话谈。',
+              goal !== undefined
+                ? '接着学习者这句话谈：在已有方向上接着推，不推倒重来。'
+                : '接着学习者这句话谈。',
             ].join('\n'),
           });
           await this.hub.record(mainId, {
@@ -1808,17 +1854,19 @@ export class Studium {
         },
       },
       {
-        name: 'request_card',
-        description: '请导航出下一次学习的选择卡；出好后贴在主对话里，由学习者选。',
-        input: { reason: z.string() },
+        name: 'plan_next',
+        description:
+          '学习者要下一步时调用：另开一个会话把下一次学什么想清楚、定下来并直接开这次学习（要几分钟，学习者可点进去看它怎么想的）；它也可能先要问学习者一件事。学习者不想学上次定的那个时，同样调用，把他的话写进 reason。',
+        input: { reason: z.string().describe('学习者怎么说的、为什么现在要下一步，一两句') },
         run: async (a) => {
-          const card = await this.requestCard(
-            `学习者在主对话里要下一步：${a.reason as string}`,
-            mainId,
-          );
-          return ok(
-            `选择卡已贴出（${String(card.options.length)} 个选项，推荐第 ${String(card.recommended + 1)} 个）。学习者会在卡上选。`,
-          );
+          const r = await this.planNext(`学习者在主对话里要下一步：${a.reason as string}`, mainId);
+          return r.kind === 'opened'
+            ? ok(
+                `定下了，学习对话已开：「${r.title}」。为什么是它：${r.reason}。跟学习者说一句学什么、为什么，入口已经放在主对话里。`,
+              )
+            : ok(
+                `想下一步之前要先问学习者一件事：${r.question}。顺口问他；他答了再调用 plan_next，把他的回答写进 reason。`,
+              );
         },
       },
       this.listLearnedTool(mainId),

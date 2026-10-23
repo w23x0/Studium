@@ -18,9 +18,9 @@
 | ---------- | ------------ | ------------- | ---------------------------------- |
 | `main`     | 主对话       | `main.md`     | 一个项目一条，学习者在这里说话     |
 | `talk`     | 畅谈         | `talk.md`     | 谈方向，或阶段复盘（主对话里点开） |
-| `loop`     | 学习对话     | `loop.md`     | 选卡后开；在沙盒里跑，只有两个命令 |
-| `guard`    | 守卫         | `guard.md`    | 学习者申请收口时开，判这次学会没有 |
-| `nav`      | 导航         | `nav.md`      | 要下一步 / 上次结束后出选择卡      |
+| `loop`     | 学习对话     | `loop.md`     | 导航定了后开；在沙盒里跑，两个命令 |
+| `guard`    | 守卫         | `guard.md`    | 申请收口时开，写这次学到了什么     |
+| `nav`      | 导航         | `nav.md`      | 要下一步时主对话开，定了直接开学习 |
 | `state`    | 状态整理     | `state.md`    | 一段学习结束、隔很久回来时在后台跑 |
 | `pedagogy` | 教法记录整理 | `pedagogy.md` | 一次学习结束后在后台跑             |
 | `retrieve` | 检索子代理   | `retrieve.md` | 导航答不了细节时派出去找证据       |
@@ -66,9 +66,9 @@
 `program_fact` · `tool_call` · `sandbox_action`（沙盒里的读 / 写 / 跑命令；`tag` 由程序按路径打：`教学工具:<文件名>`）·
 `close_requested` `guard_verdict`（含 `understanding` 与这一轮实际执行的 `model`）`loop_ended` `after_loop_step`
 （搁置与恢复 `loop_shelved` `loop_resumed`）· `ticket_edited` ·
-`project_goal` `project_title`（项目名随方向变，开头那行不改）· `turn_context`（主对话每轮从记录重建的开场，`forLine` 指那轮输入的行）·
+`project_goal` `project_title`（项目名随方向变，开头那行不改）· `turn_context`（主对话每轮附上的当前事实，`forLine` 指那轮输入的行）·
 `task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `project_material` `project_deadline`（项目资料与期限）·
-`choice_card` `choice_made` `route_decision`（路线决定，理由必标行号）·
+`choice_card`（导航定的单子，10-23 起只有一项）`choice_made`（程序随即开学习）`route_decision`（路线决定，理由必标行号）·
 长期功能（`reminder_added` `reminder_closed`；`session_opened.resumeOf` `review`、`Ticket.revisit` `returnTo` `resumeOf` `stageCheck`）。
 加类型只能加，不改旧字段的意思。
 
