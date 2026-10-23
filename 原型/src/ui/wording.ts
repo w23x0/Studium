@@ -19,26 +19,22 @@ export const W = {
   noneYet: '还没有',
   groups: {
     inProgress: '进行中',
-    awaitingChoice: '等你选',
     closed: '学完了', // 合上
     unclosed: '先放下的（没学完）', // 没合上（停车场）
     shelved: '先放一放的', // 搁置
   },
   groupHints: {
     inProgress: '正在学、还没学完的',
-    awaitingChoice: '接下来学哪个，挑一个就开始',
     closed: '判断过你已经学会、你也确认了的',
     unclosed: '没学完就先停下的，以后可以再接着学',
     shelved: '暂时放下的，点“接着学”或在里面说句话就能接上',
   },
 
-  // ── 选项 ──
-  pickOne: '接下来学哪个？挑一个开始',
-  recommended: '推荐',
-  chosen: '已选',
-  opening: '正在开…',
-  whyThis: '为什么推荐 · 出处',
-  cardTrigger: '为什么现在给这些选项',
+  // ── 下一步 ──
+  askNext: '下一步学什么？',
+  whyNext: '为什么接下来学这个',
+  watchNav: '看看是怎么想的',
+  cardTrigger: '为什么现在想下一步',
   sources: '出处',
   noSources: '这一项没有记出处。',
 

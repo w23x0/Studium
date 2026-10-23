@@ -236,7 +236,7 @@ export interface LoopEnded {
   note: string;
 }
 
-/** 合上之后 / 没合上就结束之后，各步的进度（只有出选择卡一步）。 */
+/** 一次学习结束之后的清单出错时记一条；card_ready 是 10-23 前自动出选择卡留下的旧记录。 */
 export interface AfterLoopStep {
   type: 'after_loop_step';
   at: string;
@@ -273,11 +273,11 @@ export interface ProjectGoal {
   supersedes?: number;
 }
 
-/** 本轮给模型的开场（主对话每轮从记录重建），可回查。 */
+/** 本轮附在输入前的当前事实（主对话每轮从记录给），可回查。 */
 export interface TurnContext {
   type: 'turn_context';
   at: string;
-  /** 这条开场是为哪条输入重建的（主对话里那条输入的行号）。 */
+  /** 这条事实是附在哪条输入前的（主对话里那条输入的行号）。 */
   forLine: number;
   text: string;
 }

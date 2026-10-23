@@ -18,8 +18,6 @@ import {
 import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import type { NumberedRecord } from '../shared/records.ts';
 import { api } from './api.ts';
-import { crossOf } from './cross-model.ts';
-import { ChoiceCardBox, revisitOf } from './components/choice-card.tsx';
 import { OutputTaskBar } from './components/outputs/outputs-section.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
 import { ProjectHome } from './components/project-home.tsx';
@@ -49,7 +47,6 @@ import {
 import {
   loopSide,
   loopState,
-  pendingCard,
   reviewWindow,
   talkEnded,
   toUiMessages,
@@ -447,32 +444,33 @@ function Conversation(props: {
   const review = kind === 'talk' ? reviewWindow(records) : undefined;
   const ended =
     kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
-  const footer =
-    kind === 'main' ? (
-      <MainBar projectId={props.projectId} records={records} running={running} onError={onError} />
-    ) : kind === 'output' ? (
-      <OutputTaskBar sessionId={sessionId} projectId={props.projectId} />
-    ) : kind === 'talk' ? (
-      ended ? (
-        <EndedBar
-          text={review !== undefined ? W.reviewEnded : '方向谈好了。'}
-          onBack={props.onBack}
-          backLabel={props.projectTitle}
-        />
-      ) : undefined
-    ) : (
-      <LoopBar
-        sessionId={sessionId}
-        records={records}
-        side={side ?? NO_SIDE}
-        titleOf={titleOf}
-        running={running}
-        onError={onError}
+  // 导航会话只给学习者看它怎么想的，不交互（会话/导航.md「会话形态」）
+  const watchOnly = kind === 'nav';
+  const footer = watchOnly ? undefined : kind === 'main' ? (
+    <MainBar projectId={props.projectId} running={running} onError={onError} />
+  ) : kind === 'output' ? (
+    <OutputTaskBar sessionId={sessionId} projectId={props.projectId} />
+  ) : kind === 'talk' ? (
+    ended ? (
+      <EndedBar
+        text={review !== undefined ? W.reviewEnded : '方向谈好了。'}
         onBack={props.onBack}
-        projectId={props.projectId}
-        projectTitle={props.projectTitle}
+        backLabel={props.projectTitle}
       />
-    );
+    ) : undefined
+  ) : (
+    <LoopBar
+      sessionId={sessionId}
+      records={records}
+      side={side ?? NO_SIDE}
+      titleOf={titleOf}
+      running={running}
+      onError={onError}
+      onBack={props.onBack}
+      projectId={props.projectId}
+      projectTitle={props.projectTitle}
+    />
+  );
   const header = (
     <div className="shrink-0">
       <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
@@ -529,7 +527,7 @@ function Conversation(props: {
                     : '马上开始…'
             }
             footer={footer}
-            disabled={ended}
+            disabled={ended || watchOnly}
             placeholder={
               side?.shelved !== undefined
                 ? W.shelvedPlaceholder
@@ -582,29 +580,8 @@ function EndedBar(props: { text: string; backLabel: string; onBack: () => void }
   );
 }
 
-function MainBar(props: {
-  projectId: string;
-  records: NumberedRecord[];
-  running: boolean;
-  onError: (e: unknown) => void;
-}) {
-  const card = pendingCard(props.records);
+function MainBar(props: { projectId: string; running: boolean; onError: (e: unknown) => void }) {
   const [busy, setBusy] = useState(false);
-  if (card)
-    return (
-      <ChoiceCardBox
-        cardId={card.cardId}
-        recommended={card.recommended}
-        options={card.options.map((o) => ({
-          title: o.title,
-          reason: o.reason,
-          revisit: revisitOf(o),
-          cross: crossOf(o),
-          stageCheck: o.ticket.stageCheck === true,
-        }))}
-        onError={props.onError}
-      />
-    );
   return (
     <div className="flex justify-end">
       <Button
@@ -614,12 +591,12 @@ function MainBar(props: {
         onClick={() => {
           setBusy(true);
           api
-            .requestCard(props.projectId)
+            .send(props.projectId, W.askNext)
             .catch(props.onError)
             .finally(() => setBusy(false));
         }}
       >
-        {busy ? '正在想下一步…' : W.nextStep}
+        {W.nextStep}
       </Button>
     </div>
   );

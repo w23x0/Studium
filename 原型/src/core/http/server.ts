@@ -4,8 +4,6 @@ import { readFile } from 'node:fs/promises';
 import { extname, join, normalize } from 'node:path';
 import { timingSafeEqual } from 'node:crypto';
 import type {
-  ChooseRequest,
-  ChooseResponse,
   TicketEditRequest,
   LoopRelationsResponse,
   ShelveRequest,
@@ -305,21 +303,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         send(res, 201, { mainSessionId: id } satisfies ProjectResponse);
         return;
       }
-    }
-    if (method === 'POST' && parts[1] === 'cards' && parts[2] === 'request' && parts.length === 3) {
-      const body = (await readJson(req)) as { projectId?: unknown };
-      const projectId = typeof body.projectId === 'string' ? body.projectId : undefined;
-      if (projectId !== undefined) await hub.opened(projectId);
-      background('出选择卡', () => studium.requestCard('学习者在界面上点了“下一步”', projectId));
-      send(res, 202, {});
-      return;
-    }
-    if (method === 'POST' && parts[1] === 'cards' && parts[3] === 'choose' && parts.length === 4) {
-      const body = (await readJson(req)) as Partial<ChooseRequest>;
-      if (typeof body.option !== 'number') throw new BadRequest('option 要是数字');
-      const loopSessionId = await studium.choose(parts[2] ?? '', body.option);
-      send(res, 201, { loopSessionId } satisfies ChooseResponse);
-      return;
     }
     if (parts[1] !== 'sessions') {
       send(res, 404, { error: '没有这个接口' });

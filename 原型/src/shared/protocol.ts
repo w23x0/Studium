@@ -49,14 +49,6 @@ export interface ListProjectsResponse {
   projects: ProjectSummary[];
 }
 
-export interface ChooseRequest {
-  option: number;
-}
-
-export interface ChooseResponse {
-  loopSessionId: string;
-}
-
 /** 学习者改这次学习的单子（记录/单子与路线.md「单子」规矩“可见可改”）：至少给一项。 */
 export interface TicketEditRequest {
   newPoint?: string;
@@ -333,8 +325,6 @@ export interface ProjectOverview {
   groups: {
     /** 进行中。 */
     inProgress: LoopBrief[];
-    /** 等你选：有还没选的选择卡。 */
-    awaitingChoice: CardView[];
     /** 合上。 */
     closed: LoopBrief[];
     /** 没合上（停车场）。 */

@@ -1,7 +1,6 @@
 // 与核心通话：口令从地址栏 ?token= 取一次，存进 sessionStorage。
 import type {
   CardResponse,
-  ChooseResponse,
   DisclosureResponse,
   LoopEvidenceResponse,
   ObjectionResponse,
@@ -114,13 +113,6 @@ export const api = {
   sidebar: () => call<SidebarResponse>('/sidebar'),
   sidebarAct: (req: SidebarActionRequest) =>
     call<SidebarResponse>('/sidebar', { method: 'POST', body: JSON.stringify(req) }),
-  requestCard: (projectId: string) =>
-    call<object>('/cards/request', { method: 'POST', body: JSON.stringify({ projectId }) }),
-  choose: (cardId: string, option: number) =>
-    call<ChooseResponse>(`/cards/${cardId}/choose`, {
-      method: 'POST',
-      body: JSON.stringify({ option }),
-    }),
   requestClose: (id: string) =>
     call<object>(`/sessions/${id}/close-request`, { method: 'POST', body: '{}' }),
   confirmClose: (id: string) =>

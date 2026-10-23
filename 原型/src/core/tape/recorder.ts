@@ -1,5 +1,5 @@
 // 真实运行录带（04「质量」P1）：把一次运行里模型侧发生的一切（每轮输入、流式事件、工具调用与结果、中途插话）
-// 和学习者的动作（发话、选卡、申请收口……）按发生顺序记进一个 JSONL 文件，供离线回放。
+// 和学习者的动作（发话、申请收口……）按发生顺序记进一个 JSONL 文件，供离线回放。
 // 录带不是正本：正本照常写；录带只为回放与回归比较。编号一律换成稳定记号（ids.ts）。
 import { appendFileSync, mkdirSync } from 'node:fs';
 import { dirname } from 'node:path';
@@ -22,8 +22,6 @@ import { IdTokens } from './ids.ts';
 export const ACTIONS = [
   'createProject',
   'learnerSays',
-  'requestCard',
-  'choose',
   'requestClose',
   'confirmClose',
   'endUnclosed',

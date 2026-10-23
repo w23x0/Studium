@@ -100,13 +100,15 @@ export function toUiMessages(
         });
         break;
       case 'task_opened': {
-        // 写产出的对话（批 8b）标题是“写：某某”；阶段复盘（批 6）；别的是谈方向的对话
+        // 写产出的对话（批 8b）标题是“写：某某”；阶段复盘（批 6）；想下一步（导航，只看不聊）；别的是谈方向的对话
         const label =
           r.kind === 'output'
             ? `一起写：${r.title.replace(/^写：/, '')}`
-            : ctx.isReview?.(r.sessionId) === true
-              ? W.reviewTask
-              : '单独谈谈你想学什么';
+            : r.kind === 'nav'
+              ? `${r.title} · ${W.watchNav}`
+              : ctx.isReview?.(r.sessionId) === true
+                ? W.reviewTask
+                : '单独谈谈你想学什么';
         push({ id, role: 'system', text: label, line, link: { sessionId: r.sessionId, label } });
         break;
       }
@@ -200,16 +202,6 @@ export function reviewWindow(records: NumberedRecord[]): ReviewWindow | undefine
 /** 畅谈对话交回了没有。 */
 export function talkEnded(records: NumberedRecord[]): boolean {
   return records.some((r) => r.record.type === 'talk_ended');
-}
-
-/** 主对话里还没选的最新一张选择卡。 */
-export function pendingCard(records: NumberedRecord[]): ChoiceCard | undefined {
-  const chosen = new Set(
-    records.flatMap((r) => (r.record.type === 'choice_made' ? [r.record.cardId] : [])),
-  );
-  const cards = records.flatMap((r) => (r.record.type === 'choice_card' ? [r.record] : []));
-  const last = cards.at(-1);
-  return last && !chosen.has(last.cardId) ? last : undefined;
 }
 
 /** 界面上点“先放一放”没写原因时发的备注（核心照存；显示时不当成学习者的话）。 */
