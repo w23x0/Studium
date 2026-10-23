@@ -1,7 +1,7 @@
 // 批 10b 的接口类型：资料的来源说明、跨领域单子的显示、状态回看与学习者解释。
 // protocol.ts 把它们 re-export，界面从 protocol.ts 取。
 import type { CrossKind } from './records-cross.ts';
-import type { StateRecordView } from './protocol.ts';
+import type { MaterialKind, StateRecordView } from './protocol.ts';
 
 // ───────────── 来源可靠性与适用性说明（`docs/设计/记录/资料.md`） ─────────────
 
@@ -30,7 +30,7 @@ export interface SourceNoteAddition {
 export interface SourceNoteView {
   book: string;
   title: string;
-  kind: 'book' | 'note';
+  kind: 'book' | 'note' | MaterialKind;
   /** 教材 / 讲义 / 个人笔记 / 网页；程序只会认出“个人笔记”，其余要补。 */
   type?: NoteItem;
   /** 层次（入门 / 进阶 / 研究生 …），自由写，不打分。 */

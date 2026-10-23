@@ -376,14 +376,17 @@ export interface ConversationPointer {
 }
 
 /**
- * 项目选用 / 去掉一份资料（书或个人笔记，book = 书库里的书 id）。只追加：当前选了哪些 = 按顺序折叠这些记录。
- * 一份都没选 = 不限定范围（资料工具查全库）。
+ * 项目加 / 去掉一份资料。只追加：当前有哪些 = 按顺序折叠这些记录。资料归项目：没有资料就是缺资料依据，
+ * 不查别处（工单 W8）。`add` 时资料已建在项目资料区里。
  */
 export interface ProjectMaterial {
   type: 'project_material';
   at: string;
   op: 'add' | 'remove';
-  book: string;
+  /** 资料 id（项目资料区里的一份，工单 W8）。 */
+  material?: string;
+  /** W8 之前：选用书库里的书 id；读的时候当资料 id。 */
+  book?: string;
 }
 
 /** 项目期限（可不填）。deadline 为 null = 清掉期限；取最新一条。 */

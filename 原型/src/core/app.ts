@@ -12,6 +12,7 @@ import { Lookback } from './lookback.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { Library } from './knowledge/library.ts';
+import { Materials } from './knowledge/materials.ts';
 import { Notes } from './knowledge/notes.ts';
 import { Originals } from './knowledge/originals.ts';
 import { SourceReports } from './knowledge/source-reports.ts';
@@ -93,16 +94,23 @@ export async function createApp(opts: AppOptions): Promise<App> {
     library,
     opts.now ?? (() => new Date()),
   );
-  const originals = new Originals(library, join(dataDir.root, 'cache', 'pages'));
+  // 项目资料（工单 W8）：读原文都经它，认不出的 id 退回书库；个人笔记仍在书库那边（W9 分流）
+  const materials = new Materials({
+    root: join(dataDir.root, 'projects'),
+    library,
+    pdfTool: join(here, '../../../书库处理'),
+    ...(opts.now !== undefined ? { now: opts.now } : {}),
+  });
+  const originals = new Originals(materials, join(dataDir.root, 'cache', 'pages'));
   const reports = await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports'));
   const sources = new Sources({
-    library,
+    library: materials,
     originals,
     reports,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const cross = new Crosslinks({
-    library,
+    library: materials,
     reports,
     originals,
     notes: await SourceNotes.load(join(dataDir.root, 'knowledge', 'source-notes')),
@@ -111,13 +119,14 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const outputs = new Outputs({
     store: await OutputStore.load(join(dataDir.root, 'knowledge', 'output')),
     sources,
-    library,
+    library: materials,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
   const studium = new Studium({
     prompts: await loadPrompts(),
-    library,
+    library: materials,
+    materials,
     sources,
     dataDir: dataDir.root,
     pedagogy,

@@ -232,6 +232,12 @@ function MaterialRow(props: {
           )}
         </button>
         {missing && <Badge tone="warn">{W.materialMissing}</Badge>}
+        {!missing && m.status !== undefined && m.status !== '可用' && (
+          <Badge tone="warn" title={m.problems?.join('；') ?? m.status}>
+            {m.status}
+          </Badge>
+        )}
+        {m.role !== undefined && <Badge tone="accent">{m.role.value}</Badge>}
         {m.kind === 'note' && !missing && <Badge>{W.noteKind}</Badge>}
         <TooltipIconButton
           tooltip={W.materialRemove}

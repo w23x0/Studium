@@ -1,6 +1,6 @@
-// 教材出处标记：学习对话里引用教材时附在那句话后面。核心与界面共用这一个格式定义。
-// 形态：【教材|书名|小节文件|L起行-止行】，如 【教材|力学入门样例|ch01/sec-1.2.md|L5-9】；单行写 L5。
-// 书名、小节文件照 textbook_index / read_source 给的写；行号 = read_source 印出的行号（从 1 数、含两端）。
+// 资料出处标记：学习对话里引用资料时附在那句话后面。核心与界面共用这一个格式定义。
+// 形态：【资料|资料id|文件|L起行-止行】，如 【资料|力学入门样例|ch01/sec-1.2.md|L5-9】；单行写 L5。
+// W8 之前写的是【教材|…】，照样认。资料 id、文件照 textbook_index / read_source 给的写；行号 = read_source 印出的行号（从 1 数、含两端）。
 // 竖线用半角 | 或全角 ｜ 都认；括号是全角。
 
 export interface CitationRef {
@@ -20,7 +20,7 @@ export interface CitationMatch extends CitationRef {
 
 const SEP = '[|｜]';
 const CITATION_RE = new RegExp(
-  `【教材${SEP}([^|｜】]+)${SEP}([^|｜】]+)${SEP}\\s*L?\\s*(\\d+)(?:\\s*[-–—~～]\\s*L?(\\d+))?\\s*】`,
+  `【(?:教材|资料)${SEP}([^|｜】]+)${SEP}([^|｜】]+)${SEP}\\s*L?\\s*(\\d+)(?:\\s*[-–—~～]\\s*L?(\\d+))?\\s*】`,
   'g',
 );
 
@@ -34,7 +34,7 @@ export function formatCitation(c: {
     throw new Error('书名或文件名里有竖线或右括号，没法写成出处标记');
   }
   const to = c.to ?? c.from;
-  return `【教材|${c.book}|${c.file}|L${String(c.from)}${to !== c.from ? `-${String(to)}` : ''}】`;
+  return `【资料|${c.book}|${c.file}|L${String(c.from)}${to !== c.from ? `-${String(to)}` : ''}】`;
 }
 
 /** 找出文本里所有教材出处标记，按出现顺序。行段写反（止行 < 起行）的按起止对调。 */

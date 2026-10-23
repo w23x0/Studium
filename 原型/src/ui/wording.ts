@@ -229,8 +229,8 @@ export const W = {
 
   // ── 资料范围（批 3b）：项目资料、期限、个人笔记 ──
   materials: '项目资料', // 项目选用的书与笔记（Claude 的项目知识）
-  materialsHint: '学习时查资料、排下一步，默认只在这些里查',
-  materialsAll: '还没选资料：现在查全部资料。',
+  materialsHint: '学习时查资料、排下一步，只在本项目的资料里查',
+  materialsAll: '还没有资料：学习时缺资料依据（资料归项目，不查别处）。',
   materialMissing: '书库里找不到了',
   materialRemove: '从项目资料里去掉',
   materialAdd: '从书库加',

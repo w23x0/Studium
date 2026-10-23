@@ -2,19 +2,23 @@
 // 模型在里面用通用读写与命令自己取。工作区建一次、从不清空；只读的渲染每轮前整份重写。
 // 设计：会话/学习对话.md §2；记录/读写权限.md「执行方式」「权限表」。
 import { mkdir, rm, writeFile } from 'node:fs/promises';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { NumberedRecord } from '../shared/records.ts';
 import type { Import, Learning } from '../shared/protocol-learned.ts';
 import type { Hub } from './hub.ts';
 import { NotFoundError } from './hub.ts';
 import type { Learned } from './learned.ts';
-import { BOOK_DIR, type Library } from './knowledge/library.ts';
+import type { Materials } from './knowledge/materials.ts';
 import type { PedagogyStore } from './knowledge/pedagogy.ts';
 import type { StateStore } from './knowledge/state.ts';
 import type { Objections } from './knowledge/objections.ts';
 import type { TeachingTools } from './teaching-tools.ts';
 import type { SandboxSpec } from './model/port.ts';
 import { renderTranscript } from './transcript.ts';
+
+/** 只读区里的资料目录（程序渲染）。 */
+const MATERIAL_INDEX = '资料/目录.md';
+const MATERIAL_INDEX_NAME: string = MATERIAL_INDEX;
 
 /** 只读区里教学工具那一项在记录里的虚拟路径前缀。 */
 const TEACHING_TOOLS_DIR = '教学工具';
@@ -26,17 +30,19 @@ const WHAT: Record<string, string> = {
   状态记录: '学习者的状态与条件',
   教法记录: '这个学习者的教法记录',
   '本次对话.md': '本次学习的对话原文，带行号（压缩后按行号读回）',
+  [MATERIAL_INDEX_NAME]:
+    '本项目资料的目录：每份一行（id、标题、种类、版本、日期、状态、角色）；引用写 资料id/文件:行号',
 };
 
 /** 开场里的沙盒说明：逐项列虚拟路径 → 实际路径 → 是什么、能否写（工单 W4 §5.5）。 */
 export function describeSandbox(sb: SandboxSpec): string {
-  const books = sb.readOnly.filter((e) => e.name.startsWith('资料/'));
+  const books = sb.readOnly.filter((e) => e.name.startsWith('资料/') && e.name !== MATERIAL_INDEX);
   return [
     '沙盒（这次的执行环境；用通用的读写与命令自己取，只读区写不进去）：',
     `- 工作区（可写）：${sb.workdir} —— 你自己的草稿，想记才记`,
     ...sb.readOnly.map(
       (e) =>
-        `- 只读/${e.name}（只读）→ ${e.path}${WHAT[e.name] !== undefined ? ` —— ${WHAT[e.name]}` : e.name.startsWith('资料/') ? ' —— 教材原文' : ''}`,
+        `- 只读/${e.name}（只读）→ ${e.path}${WHAT[e.name] !== undefined ? ` —— ${WHAT[e.name]}` : e.name.startsWith('资料/') ? ' —— 本项目的一份资料（种类见 资料/目录.md）' : ''}`,
     ),
     // 缺料要写明，不中止（记录/读写权限.md「缺料与冲突」）
     ...(books.length === 0 ? ['（这次没有可用的资料：缺资料依据）'] : []),
@@ -46,15 +52,17 @@ export function describeSandbox(sb: SandboxSpec): string {
 export interface SandboxDeps {
   hub: () => Hub;
   learned: Learned;
-  library: Library;
+  materials: Materials;
+  /** 资料清单的行（同 studium.materialLines）。 */
+  materialLines: (ids: string[]) => Promise<string[]>;
   pedagogy: PedagogyStore;
   state: StateStore;
   objections: Objections;
   teaching: TeachingTools;
   /** 数据目录；沙盒在 <数据>/sandbox/<会话 id>/。 */
   dataDir: string;
-  /** 项目选用的资料（没选 = 全库）；同 studium.scopeOf。 */
-  scopeOf: (sessionId: string) => Promise<string[] | undefined>;
+  /** 所属项目的资料（资料归项目；没有 = 空）；同 studium.scopeOf。 */
+  scopeOf: (sessionId: string) => Promise<string[]>;
 }
 
 export class Sandboxes {
@@ -115,16 +123,22 @@ export class Sandboxes {
 
   // ───────────── 只读区的内容 ─────────────
 
-  /** 每本可用的书一项：`资料/<书 id>` → 这本书的切分目录。 */
+  /** 本项目每份能用的资料一项：`资料/<资料 id>` → 它的正文目录；外加程序渲染的 `资料/目录.md`。 */
   private async bookEntries(sessionId: string): Promise<{ name: string; path: string }[]> {
-    const scope = await this.o.scopeOf(sessionId);
-    const books = scope ?? (await this.o.library.books());
-    return Promise.all(
-      books.map(async (b) => ({
-        name: `资料/${b}`,
-        path: join(await this.o.library.bookDir(b), BOOK_DIR),
-      })),
+    const ids = await this.o.scopeOf(sessionId);
+    const index = join(this.root(sessionId), '只读', '资料目录.md');
+    await mkdir(dirname(index), { recursive: true });
+    await writeFile(
+      index,
+      ids.length > 0
+        ? `# 本项目的资料\n\n每份：id｜标题｜种类｜版本｜日期｜状态｜角色。正文在 只读/资料/<id>/；引用写 资料id/文件:行号。代码仓库在这里只读，要跑就把需要的部分拷进工作区再跑。\n\n${(await this.o.materialLines(ids)).join('\n')}\n`
+        : '# 本项目的资料\n\n还没有能用的资料（缺资料依据）。\n',
+      'utf8',
     );
+    const entries = await Promise.all(
+      ids.map(async (b) => ({ name: `资料/${b}`, path: await this.o.materials.bodyDir(b) })),
+    );
+    return [{ name: MATERIAL_INDEX, path: index }, ...entries];
   }
 
   private dirEntries(sessionId: string, names: string[]): { name: string; path: string }[] {

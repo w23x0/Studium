@@ -16,7 +16,7 @@ export interface ComparedMethod {
   boundary: string;
   /** 各维度上的情况；键必须是 comparison.dimensions 里的维度。 */
   values: Record<string, string>;
-  /** 证据与出处：可写出处标记（【教材|…】）和一句话说明。 */
+  /** 证据与出处：可写出处标记（【资料|…】）和一句话说明。 */
   evidence: string[];
 }
 

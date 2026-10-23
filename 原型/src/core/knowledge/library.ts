@@ -4,6 +4,7 @@ import { readdir, readFile } from 'node:fs/promises';
 import { dirname, join, normalize } from 'node:path';
 import type {
   BookSummary,
+  MaterialKind,
   NumberedLine,
   PageSpan,
   SearchHit,
@@ -28,13 +29,13 @@ export interface SearchResult {
   total: number;
 }
 
-interface IndexedFile {
+export interface IndexedFile {
   entry: TocEntry;
   lines: string[];
   lower: string[];
 }
 
-interface BookCache {
+export interface BookCache {
   title: string;
   entries: TocEntry[];
   files?: IndexedFile[];
@@ -61,7 +62,8 @@ export interface BookInfo {
   dir: string;
   /** 学科目录（相对书库根，/ 隔开）；平铺的书为空。 */
   subject: string;
-  kind: 'book' | 'note';
+  /** 书库里只有 book / note；项目资料（materials.ts）给它自己的种类。 */
+  kind: 'book' | 'note' | MaterialKind;
   meta?: NoteMeta;
 }
 
@@ -267,77 +269,12 @@ export class Library {
 
   /** 全文检索：所有词（空白隔开）都出现在同一段里才算命中；命中按整句匹配 / 标题含词 / 词频排序。 */
   async search(query: string, opt: SearchOptions = {}): Promise<SearchResult> {
-    const terms = query
-      .toLowerCase()
-      .split(/\s+/)
-      .filter((t) => t !== '');
-    if (terms.length === 0) return { hits: [], total: 0 };
-    const limit = Math.min(Math.max(opt.limit ?? 20, 1), 100);
-    const perSection = Math.max(opt.perSection ?? 3, 1);
-    const phrase = terms.join(' ');
     const books = opt.book !== undefined ? [opt.book] : (opt.books ?? (await this.books()));
-    const scored: { hit: SearchHit; score: number; order: number }[] = [];
-    let order = 0;
+    const sets: SearchSet[] = [];
     for (const book of books) {
-      const b = await this.load(book);
-      for (const f of await this.files(book)) {
-        const titleLower = f.entry.title.toLowerCase();
-        for (const para of paragraphs(f.lower)) {
-          const text = f.lower.slice(para.from, para.to + 1).join('\n');
-          if (!terms.every((t) => text.includes(t))) continue;
-          const first = terms[0] ?? '';
-          // 报哪一行：有整句就取含整句的那行，否则取含词最多的那行（并列取靠前的）
-          let at = para.from;
-          let best = -1;
-          for (let i = para.from; i <= para.to; i++) {
-            const l = f.lower[i] ?? '';
-            const n = (l.includes(phrase) ? 100 : 0) + terms.filter((t) => l.includes(t)).length;
-            if (n > best) {
-              best = n;
-              at = i;
-            }
-          }
-          const score =
-            (text.includes(phrase) ? 3 : 0) +
-            (terms.some((t) => titleLower.includes(t)) ? 2 : 0) +
-            Math.min(
-              terms.reduce((s, t) => s + text.split(t).length - 1, 0),
-              5,
-            ) *
-              0.2;
-          scored.push({
-            score,
-            order: order++,
-            hit: {
-              book,
-              bookTitle: b.title,
-              file: f.entry.file ?? '',
-              num: f.entry.num,
-              title: f.entry.title,
-              line: at + 1,
-              snippet: snippet(
-                f.lines[at] ?? '',
-                f.lower[at] ?? '',
-                terms.find((t) => (f.lower[at] ?? '').includes(t)) ?? first,
-              ),
-              ...(f.entry.pdfPages !== undefined ? { pdfPage: f.entry.pdfPages.from } : {}),
-            },
-          });
-        }
-      }
+      sets.push({ book, title: (await this.load(book)).title, files: await this.files(book) });
     }
-    scored.sort((a, c) => c.score - a.score || a.order - c.order);
-    const perFile = new Map<string, number>();
-    const hits: SearchHit[] = [];
-    for (const s of scored) {
-      const key = `${s.hit.book}\0${s.hit.file}`;
-      const used = perFile.get(key) ?? 0;
-      if (used >= perSection) continue;
-      perFile.set(key, used + 1);
-      hits.push(s.hit);
-      if (hits.length >= limit) break;
-    }
-    return { hits, total: scored.length };
+    return searchSets(sets, query, opt);
   }
 
   /** 书的全部有正文的小节（读进内存，检索用）。 */
@@ -409,7 +346,91 @@ async function hasIndex(dir: string): Promise<boolean> {
   }
 }
 
-function splitLines(text: string): string[] {
+/** 检索的一份：资料 id、标题、读进内存的正文文件。 */
+export interface SearchSet {
+  book: string;
+  title: string;
+  files: IndexedFile[];
+}
+
+/** 全文检索（书库与项目资料共用）：所有词都出现在同一段里才算命中。 */
+export function searchSets(
+  sets: SearchSet[],
+  query: string,
+  opt: SearchOptions = {},
+): SearchResult {
+  const terms = query
+    .toLowerCase()
+    .split(/\s+/)
+    .filter((t) => t !== '');
+  if (terms.length === 0) return { hits: [], total: 0 };
+  const limit = Math.min(Math.max(opt.limit ?? 20, 1), 100);
+  const perSection = Math.max(opt.perSection ?? 3, 1);
+  const phrase = terms.join(' ');
+  const scored: { hit: SearchHit; score: number; order: number }[] = [];
+  let order = 0;
+  for (const set of sets) {
+    for (const f of set.files) {
+      const titleLower = f.entry.title.toLowerCase();
+      for (const para of paragraphs(f.lower)) {
+        const text = f.lower.slice(para.from, para.to + 1).join('\n');
+        if (!terms.every((t) => text.includes(t))) continue;
+        const first = terms[0] ?? '';
+        // 报哪一行：有整句就取含整句的那行，否则取含词最多的那行（并列取靠前的）
+        let at = para.from;
+        let best = -1;
+        for (let i = para.from; i <= para.to; i++) {
+          const l = f.lower[i] ?? '';
+          const n = (l.includes(phrase) ? 100 : 0) + terms.filter((t) => l.includes(t)).length;
+          if (n > best) {
+            best = n;
+            at = i;
+          }
+        }
+        const score =
+          (text.includes(phrase) ? 3 : 0) +
+          (terms.some((t) => titleLower.includes(t)) ? 2 : 0) +
+          Math.min(
+            terms.reduce((s, t) => s + text.split(t).length - 1, 0),
+            5,
+          ) *
+            0.2;
+        scored.push({
+          score,
+          order: order++,
+          hit: {
+            book: set.book,
+            bookTitle: set.title,
+            file: f.entry.file ?? '',
+            num: f.entry.num,
+            title: f.entry.title,
+            line: at + 1,
+            snippet: snippet(
+              f.lines[at] ?? '',
+              f.lower[at] ?? '',
+              terms.find((t) => (f.lower[at] ?? '').includes(t)) ?? first,
+            ),
+            ...(f.entry.pdfPages !== undefined ? { pdfPage: f.entry.pdfPages.from } : {}),
+          },
+        });
+      }
+    }
+  }
+  scored.sort((a, c) => c.score - a.score || a.order - c.order);
+  const perFile = new Map<string, number>();
+  const hits: SearchHit[] = [];
+  for (const s of scored) {
+    const key = `${s.hit.book}\0${s.hit.file}`;
+    const used = perFile.get(key) ?? 0;
+    if (used >= perSection) continue;
+    perFile.set(key, used + 1);
+    hits.push(s.hit);
+    if (hits.length >= limit) break;
+  }
+  return { hits, total: scored.length };
+}
+
+export function splitLines(text: string): string[] {
   const lines = text.split('\n');
   // 文件以换行结尾时 split 多出一个空串：它不是一行
   if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop();
@@ -450,7 +471,7 @@ export function indexTitle(name: string): string {
   return `# M07 索引：${name}`;
 }
 
-function parseIndex(text: string): BookCache {
+export function parseIndex(text: string): BookCache {
   const title = (INDEX_TITLE.exec(text)?.[1] ?? '').replace(/\s*\.pdf$/i, '');
   let header: string[] | undefined;
   const entries: TocEntry[] = [];

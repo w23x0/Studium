@@ -5,6 +5,8 @@ import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
 import { CONVERSATION_KIND_LABELS } from '../shared/protocol.ts';
 import type {
+  AddMaterialRequest,
+  MaterialSource,
   ProjectDeadlineResponse,
   ProjectMaterialsResponse,
   ProjectMaterialView,
@@ -39,7 +41,7 @@ import { routeDeviations } from './route-deviations.ts';
 import { REVISIT_KINDS } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { foldLoop } from './loop-state.ts';
-import type { Library } from './knowledge/library.ts';
+import { MaterialError, type Materials, type SourceReader } from './knowledge/materials.ts';
 import type { Sources } from './sources.ts';
 import type { PedagogyStore } from './knowledge/pedagogy.ts';
 import type { Objections } from './knowledge/objections.ts';
@@ -71,7 +73,10 @@ const TEACHING_EXCERPT = 160;
 
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
-  library: Library;
+  /** 读原文：项目资料，认不出的退回书库（工单 W8）。 */
+  library: SourceReader;
+  /** 项目资料区：建资料、角色、正文目录。 */
+  materials: Materials;
   /** 数据目录（学过的记录的导入存放处在其下）。 */
   dataDir: string;
   pedagogy: PedagogyStore;
@@ -119,13 +124,14 @@ export class Studium {
     this.sandboxes = new Sandboxes({
       hub: () => this.hub,
       learned: this.learned,
-      library: o.library,
+      materials: o.materials,
       pedagogy: o.pedagogy,
       state: o.state,
       objections: o.objections,
       teaching: o.teaching,
       dataDir: o.dataDir,
       scopeOf: (id) => this.scopeOf(id),
+      materialLines: (ids) => this.materialLines(ids),
     });
     this.longterm = new LongTerm({
       hub: () => this.hub,
@@ -335,17 +341,34 @@ export class Studium {
     return (await this.hub.records(mainId)).map((r) => r.record);
   }
 
-  /** 项目当前选用的资料（按选用顺序）：把 project_material 记录从头折叠。 */
+  /** 项目当前的资料 id（按加入顺序）：把 project_material 记录从头折叠。 */
   async selectedBooks(mainId: string): Promise<{ book: string; addedAt: string }[]> {
     return foldMaterials(await this.requireProject(mainId));
   }
 
-  /** 项目资料的视图：每份带书名 / 类型 / 学科；书库里现在找不到的标 missing。 */
+  /** 项目资料的视图：每份带种类 / 版本 / 日期 / 处理状态 / 模型判断的角色；读不到的标 missing。 */
   async materials(mainId: string): Promise<ProjectMaterialsResponse> {
     const recs = await this.requireProject(mainId);
     const chosen = foldMaterials(recs);
     const views: ProjectMaterialView[] = [];
     for (const c of chosen) {
+      const src = await this.o.materials.source(c.book);
+      if (src !== undefined) {
+        views.push({
+          book: c.book,
+          title: src.title,
+          kind: src.kind,
+          addedAt: c.addedAt,
+          origin: src.origin,
+          ...(src.version !== '' ? { version: src.version } : {}),
+          fetchedAt: src.fetchedAt,
+          status: src.status,
+          ...(src.problems !== undefined ? { problems: src.problems } : {}),
+          ...(src.role !== undefined ? { role: src.role } : {}),
+        });
+        continue;
+      }
+      // W8 之前选用的书库里的书：照旧按书库读
       const info = await this.o.library.info(c.book);
       views.push({
         book: c.book,
@@ -353,26 +376,59 @@ export class Studium {
         kind: info?.kind ?? 'book',
         ...(info !== undefined && info.subject !== '' ? { subject: info.subject } : {}),
         addedAt: c.addedAt,
-        ...(info === undefined ? { missing: true } : {}),
+        ...(info === undefined ? { missing: true } : { status: '可用' as const }),
       });
     }
     const d = foldDeadline(recs);
     return {
       mainSessionId: mainId,
       materials: views,
-      restricted: views.some((v) => v.missing !== true),
+      restricted: true,
       ...(d.deadline !== undefined ? { deadline: d.deadline } : {}),
       ...(d.note !== undefined ? { deadlineNote: d.note } : {}),
     };
   }
 
-  /** 加 / 去项目资料：只追加记录；已选的再加、没选的去，当作没发生。书库里没有的书整批拒绝。 */
+  /**
+   * 加一份资料（工单 W8 §4.2；入口归 W9）：在项目资料区里建好、记 project_material，转换在后台跑，
+   * 状态随处理更新。
+   */
+  async addMaterial(
+    mainId: string,
+    req: Partial<AddMaterialRequest>,
+  ): Promise<ProjectMaterialsResponse> {
+    await this.requireProject(mainId);
+    if (typeof req.kind !== 'string' || typeof req.origin !== 'string') {
+      throw new BadRequestError('kind 与 origin 要是字符串');
+    }
+    let src: MaterialSource;
+    try {
+      src = await this.o.materials.add(mainId, {
+        kind: req.kind,
+        origin: req.origin,
+        ...(typeof req.title === 'string' ? { title: req.title } : {}),
+        ...(typeof req.commit === 'string' ? { commit: req.commit } : {}),
+      });
+    } catch (err) {
+      if (err instanceof MaterialError) throw new BadRequestError(err.message);
+      throw err;
+    }
+    await this.hub.record(mainId, {
+      type: 'project_material',
+      at: this.iso(),
+      op: 'add',
+      material: src.id,
+    });
+    return this.materials(mainId);
+  }
+
+  /** 从书库加书 / 去掉资料：只追加记录；书库里没有的书整批拒绝，已有的同一本不重复加。 */
   async changeMaterials(
     mainId: string,
     change: { add?: string[]; remove?: string[] },
   ): Promise<ProjectMaterialsResponse> {
     const recs = await this.requireProject(mainId);
-    const have = new Set(foldMaterials(recs).map((m) => m.book));
+    const have = foldMaterials(recs).map((m) => m.book);
     const lib = await this.o.library.books();
     const resolve = (name: string): string | undefined =>
       lib.includes(name) ? name : lib.find((b) => b.trim() === name.trim());
@@ -380,37 +436,49 @@ export class Studium {
     for (const name of change.add ?? []) {
       const id = resolve(name);
       if (id === undefined) throw new BadRequestError(`书库里没有这份资料：${name}`);
-      if (!have.has(id) && !adds.includes(id)) adds.push(id);
+      // 同一本书已在本项目（W8 之前按书 id 选的，或之后从书库挑的）就不再建
+      let already = have.includes(id);
+      for (const m of have) {
+        if ((await this.o.materials.source(m))?.origin === id) already = true;
+      }
+      if (!already && !adds.includes(id)) adds.push(id);
     }
     const removes: string[] = [];
     for (const name of change.remove ?? []) {
-      // 去掉的可以是已经从书库里消失的（missing），所以不查书库
-      const id = [...have].find((b) => b === name || b.trim() === name.trim());
+      const id = have.find((b) => b === name || b.trim() === name.trim());
       if (id !== undefined && !removes.includes(id)) removes.push(id);
     }
-    const at = this.iso();
-    for (const book of removes) {
-      await this.hub.record(mainId, { type: 'project_material', at, op: 'remove', book });
+    for (const id of removes) {
+      await this.hub.record(mainId, {
+        type: 'project_material',
+        at: this.iso(),
+        op: 'remove',
+        material: id,
+      });
     }
     for (const book of adds) {
-      await this.hub.record(mainId, { type: 'project_material', at, op: 'add', book });
+      await this.addMaterial(mainId, { kind: 'pdf', origin: book });
     }
     return this.materials(mainId);
   }
 
   /**
-   * 资料工具默认查哪些书：项目选用的（书库里还在的）；没选 / 选的都不在了 / 会话不属于任何项目 = 不限（全库）。
-   * all = true 是学习者或模型明确要全库。
+   * 这个会话能读的资料：它所属项目的资料（处理好了的）。资料归项目：没有就是空（缺资料依据），
+   * 不查全库，也不跨项目读（工单 W8 §4.2）。
    */
-  async scopeOf(sessionId: string, all = false): Promise<string[] | undefined> {
-    if (all) return undefined;
+  async scopeOf(sessionId: string): Promise<string[]> {
     const main = await this.projectOf(sessionId);
-    if (main === undefined) return undefined;
-    const chosen = await this.selectedBooks(main);
-    if (chosen.length === 0) return undefined;
-    const lib = new Set(await this.o.library.books());
-    const still = chosen.map((c) => c.book).filter((b) => lib.has(b));
-    return still.length > 0 ? still : undefined;
+    if (main === undefined) return [];
+    const out: string[] = [];
+    for (const c of await this.selectedBooks(main)) {
+      const src = await this.o.materials.source(c.book);
+      if (src !== undefined) {
+        if (src.status === '可用' || src.status === '部分可用') out.push(c.book);
+      } else if ((await this.o.library.info(c.book)) !== undefined) {
+        out.push(c.book);
+      }
+    }
+    return out;
   }
 
   /** 学习者给项目改名（左栏“重命名”）：主对话里追加一条 project_title，开头那行不改。 */
@@ -1159,7 +1227,9 @@ export class Studium {
       '',
       `期限：${deadline !== undefined ? this.deadlineText(foldDeadline(main)) : '没有记'}`,
       '',
-      `资料范围：${scope !== undefined ? `项目选用了 ${String(scope.length)} 份资料：${scope.join('、')}。教材查询工具默认只在这些里查；学习者或你明确要时，传 all=true 查全库。` : '项目没选资料：查全库。'}`,
+      scope.length > 0
+        ? `本项目的资料（资料定范围：这个人要学会什么；每份 id｜标题｜种类｜版本｜日期｜状态｜角色）：\n${(await this.materialLines(scope)).join('\n')}`
+        : '本项目还没有能用的资料（缺资料依据）：按方向说明与学过的记录推，候选里资料核不了的标“模型补的”。',
       '',
       '── 各次学习现在的样子 ──',
       ...(await this.learningsNow(mainId)),
@@ -1240,7 +1310,7 @@ export class Studium {
         .array(
           z.object({
             claim: z.string().describe('对资料核过的一条说法'),
-            at: z.string().optional().describe('教材出处“书/文件:行号”'),
+            at: z.string().optional().describe('教材出处“资料id/文件:行号”'),
             model_added: z.boolean().optional().describe('资料里没有、模型补的'),
           }),
         )
@@ -1301,8 +1371,19 @@ export class Studium {
           basis: z
             .array(z.string())
             .min(1)
-            .describe('理由的依据，每条“会话 id:行号”或“书/文件:行号”'),
+            .describe('理由的依据，每条“会话 id:行号”或“资料id/文件:行号”'),
         }),
+        roles: z
+          .array(
+            z.object({
+              material: z.string().describe('资料 id'),
+              value: z.enum(['主资料', '参考资料']),
+            }),
+          )
+          .optional()
+          .describe(
+            '可选：你读过的资料在这个项目里是主资料（目标所在、定范围）还是参考资料（补讲法与细节）；界面会显示',
+          ),
       },
       run: async (a) => {
         if (this.cards.has(sessionId)) return err('已经交回过了');
@@ -1335,7 +1416,7 @@ export class Studium {
         if (blank(decision?.reason)) problems.push('路线决定的 reason 不能是空的');
         if (basis.length === 0) problems.push('路线决定的 basis 至少给一条依据');
         for (const b of basis) {
-          const at = await locate(b, this.locateDeps());
+          const at = await locate(b, this.locateDeps(sessionId));
           if (!at.ok) problems.push(`路线决定的依据 ${b} 定位不了`);
         }
 
@@ -1365,7 +1446,7 @@ export class Studium {
               problems.push(`${n}的出发点来源 ${sp.source} 不在 ${START_SOURCES.join(' / ')} 里`);
             }
             if (sp.ref !== undefined && sp.ref.trim() !== '') {
-              const at = await locate(sp.ref, this.locateDeps());
+              const at = await locate(sp.ref, this.locateDeps(sessionId));
               if (!at.ok) problems.push(`${n}的出发点依据 ${sp.ref} 定位不了`);
             }
             startPoints.push({
@@ -1378,9 +1459,9 @@ export class Studium {
           for (const c of o.source_check ?? []) {
             if (blank(c.claim)) problems.push(`${n}的对资料核的结果缺 claim（核过的那条说法）`);
             if (c.at !== undefined && c.at.trim() !== '') {
-              const at = await locate(c.at, this.locateDeps());
+              const at = await locate(c.at, this.locateDeps(sessionId));
               if (at.kind !== 'book')
-                problems.push(`${n}的出处 ${c.at} 不是书里的一行（要写 书/文件:行号）`);
+                problems.push(`${n}的出处 ${c.at} 不是资料里的一行（要写 资料id/文件:行号）`);
               else if (!at.ok) problems.push(`${n}的出处 ${c.at} 定位不了`);
             }
             sourceCheck.push({
@@ -1459,7 +1540,23 @@ export class Studium {
             ticket,
           });
         }
+        const roles = (a.roles ?? []) as { material?: string; value?: string }[];
+        const scope = await this.scopeOf(sessionId);
+        for (const r of roles) {
+          if (r.material === undefined || !scope.includes(r.material)) {
+            problems.push(`roles 里的 ${r.material ?? '（空）'} 不是本项目的资料`);
+          } else if (r.value !== '主资料' && r.value !== '参考资料') {
+            problems.push(`roles 里 ${r.material} 的 value 要是 主资料 / 参考资料`);
+          }
+        }
         if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
+        for (const r of roles) {
+          await this.o.materials.setRole(
+            r.material ?? '',
+            r.value as '主资料' | '参考资料',
+            sessionId,
+          );
+        }
         this.cards.set(sessionId, {
           options,
           routeDecision: {
@@ -1490,8 +1587,13 @@ export class Studium {
     };
   }
 
-  private locateDeps(): LocateDeps {
-    return { hub: this.hub, sources: this.o.sources };
+  /** 定位依据串；给了 sessionId 时资料须属于这个会话所在的项目（工单 W8 §4.4）。 */
+  private locateDeps(sessionId?: string): LocateDeps {
+    return {
+      hub: this.hub,
+      sources: this.o.sources,
+      ...(sessionId !== undefined ? { scope: () => this.scopeOf(sessionId) } : {}),
+    };
   }
 
   /** 学习者给一本书 / 笔记补一句来源说明（只追加）。 */
@@ -1633,7 +1735,7 @@ export class Studium {
       '只为导航的一个问题找底层证据：从上面的上层（单子、判定）出发，到沙盒里读——每次学习的对话原文在 只读/学过的记录/<学习 id>-对话.md（带行号），教材在 只读/资料/<书 id>/，定位到原文行。',
       describeSandbox(sb),
       '',
-      '用 submit_findings 交回至多 5 条，每条一句话 + 能定位的 ref（会话 id:行号 / 书/文件:行号）；没找到交空数组；只交一次。不下结论、不出路线。',
+      '用 submit_findings 交回至多 5 条，每条一句话 + 能定位的 ref（会话 id:行号 / 资料id/文件:行号）；没找到交空数组；只交一次。不下结论、不出路线。',
     );
     return lines.join('\n');
   }
@@ -1655,12 +1757,12 @@ export class Studium {
     return {
       name: 'submit_findings',
       description:
-        '交回找到的几条（至多 5 条）：每条一句话 + 能定位的 ref（会话 id:行号 / 书/文件:行号）；没找到交空数组。只交一次。',
+        '交回找到的几条（至多 5 条）：每条一句话 + 能定位的 ref（会话 id:行号 / 资料id/文件:行号）；没找到交空数组。只交一次。',
       input: {
         findings: z.array(
           z.object({
             text: z.string().describe('一句话：找到了什么'),
-            ref: z.string().describe('会话 id:行号 或 书/文件:行号'),
+            ref: z.string().describe('会话 id:行号 或 资料id/文件:行号'),
           }),
         ),
       },
@@ -1672,7 +1774,7 @@ export class Studium {
         const out: { text: string; ref: string }[] = [];
         for (const f of raw) {
           if ((f.text ?? '').trim() === '') problems.push('有一条没写 text');
-          const at = await locate(f.ref ?? '', this.locateDeps());
+          const at = await locate(f.ref ?? '', this.locateDeps(sessionId));
           if (!at.ok) problems.push(`ref ${f.ref ?? ''} 定位不了`);
           out.push({ text: (f.text ?? '').trim(), ref: f.ref ?? '' });
         }
@@ -2673,69 +2775,69 @@ export class Studium {
     if (ended) throw new BadRequestError('这部分已经结束了。');
   }
 
-  /** 资料范围的说明，接在工具结果后面：只搜了项目选用的，要全库传 all。 */
-  private scopeHint(scope: string[] | undefined): string {
-    return scope !== undefined
-      ? `\n（只在项目选用的 ${String(scope.length)} 份资料里查；要查全库传 all=true）`
-      : '';
+  /** 资料范围的说明，接在工具结果后面。 */
+  private scopeHint(scope: string[]): string {
+    return `\n（只在本项目的 ${String(scope.length)} 份资料里查）`;
   }
 
-  /** 只读查询工具：资料原文与出处（按记录/读写权限.md）；默认只查项目选的资料（没选 = 全库）。 */
+  /** 资料清单：每份一行（id、标题、种类、版本、日期、状态、角色），给工具与沙盒目录共用。 */
+  async materialLines(ids: string[]): Promise<string[]> {
+    const out: string[] = [];
+    for (const id of ids) {
+      const s = await this.o.materials.source(id);
+      if (s === undefined) {
+        out.push(`- ${id}｜${await this.o.library.title(id)}｜书（W8 之前从书库选的）`);
+        continue;
+      }
+      out.push(
+        `- ${id}｜${s.title}｜${s.kind}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}`,
+      );
+    }
+    return out;
+  }
+
+  /** 只读查询工具：本项目资料的原文与出处（按记录/读写权限.md）；资料归项目，不查别处。 */
   private readTools(sessionId: string): ToolSpec[] {
-    const allParam = z
-      .boolean()
-      .optional()
-      .describe('true = 查整个书库，不限项目选用的资料（学习者或你明确要时才用）');
+    const inScope = async (book: string): Promise<string | undefined> => {
+      const scope = await this.scopeOf(sessionId);
+      return scope.includes(book)
+        ? undefined
+        : `本项目没有这份资料：${book}（资料归项目，不读别处）`;
+    };
     const tools: ToolSpec[] = [];
     tools.push(
       {
         name: 'textbook_index',
         description:
-          '不给书名：列出项目选用的资料（书和个人笔记，按学科分组；项目没选就是整个书库），all=true 列整个书库；给书名：读这本书的目录。',
-        input: { book: z.string().optional(), all: allParam },
+          '不给资料 id：列出本项目的资料（书、网页、代码仓库、字幕、文字等，每份一行：id、标题、种类、版本、日期、状态、角色）；给资料 id：读这份资料的目录（书 = 章节表，其余 = 文件清单）。',
+        input: { book: z.string().optional().describe('资料 id') },
         run: async (a) => {
           const book = a.book as string | undefined;
           if (book === undefined || book === '') {
-            const lib = await this.o.library.books();
-            if (lib.length === 0) return ok('书库是空的（缺资料依据）');
-            const scope = await this.scopeOf(sessionId, a.all === true);
-            const shown = scope ?? lib;
-            const groups = new Map<string, string[]>();
-            for (const id of shown) {
-              const subject = (await this.o.library.info(id))?.subject ?? '';
-              groups.set(subject, [...(groups.get(subject) ?? []), id]);
-            }
-            const lines: string[] = [];
-            for (const [subject, ids] of [...groups.entries()].sort((x, y) =>
-              x[0].localeCompare(y[0], 'zh-CN'),
-            )) {
-              if (subject !== '') lines.push(`【${subject}】`);
-              lines.push(...ids);
-            }
-            const rest = lib.length - shown.length;
-            return ok(
-              lines.join('\n') +
-                (scope !== undefined
-                  ? `\n\n（这是项目选用的资料；书库里另有 ${String(rest)} 份没选，要看全库传 all=true）`
-                  : ''),
-            );
+            const scope = await this.scopeOf(sessionId);
+            if (scope.length === 0) return ok('本项目还没有能用的资料（缺资料依据）');
+            return ok((await this.materialLines(scope)).join('\n'));
           }
+          const bad = await inScope(book);
+          if (bad !== undefined) return err(bad);
           return ok((await this.o.library.index(book)) + (await this.o.cross.noteLines([book])));
         },
       },
       {
         name: 'read_source',
         description:
-          '读资料里一个小节文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
+          '读资料里一个文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
         input: {
-          book: z.string(),
-          file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md'),
+          book: z.string().describe('资料 id'),
+          file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md 或 src/main.py'),
           from_line: z.number().int().optional(),
           to_line: z.number().int().optional(),
         },
         run: async (a) => {
           const book = a.book as string;
           const file = a.file as string;
+          const bad = await inScope(book);
+          if (bad !== undefined) return err(bad);
           const r = await this.o.library.lines(
             book,
             file,
@@ -2746,7 +2848,7 @@ export class Studium {
           return ok(
             (r.lines.length === 0
               ? `（这个文件共 ${String(r.total)} 行，没有第 ${String((a.from_line as number | undefined) ?? 1)} 行起的内容）`
-              : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ book, file, from: r.from, to: r.to })}，行段按你实际引用的缩小）`) +
+              : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ book, file, from: r.from, to: r.to })}；依据串写 ${book}/${file}:${String(r.from)}，行段按你实际引用的缩小）`) +
               (await this.o.cross.noteLines([book])),
           );
         },
@@ -2754,17 +2856,20 @@ export class Studium {
       {
         name: 'search_textbook',
         description:
-          '在教材原文里全文检索（词用空白隔开，要同时出现在同一段里），默认只搜项目选用的资料。返回书、小节、行号、片段和可直接用的出处标记。想引用教材原文、核对教材怎么说时用。',
+          '在本项目资料的原文里全文检索（词用空白隔开，要同时出现在同一段里）。返回资料、文件、行号、片段和可直接用的出处标记。想引用原文、核对资料怎么说时用；搜不到就是资料里没有。',
         input: {
           query: z.string(),
-          book: z.string().optional().describe('只搜这一本（明确指定的书不受项目资料限制）'),
+          book: z.string().optional().describe('只搜这一份（资料 id）'),
           limit: z.number().int().optional().describe('最多几条，默认 10'),
-          all: allParam,
         },
         run: async (a) => {
           const book = (a.book as string | undefined) || undefined;
-          const scope =
-            book !== undefined ? undefined : await this.scopeOf(sessionId, a.all === true);
+          if (book !== undefined) {
+            const bad = await inScope(book);
+            if (bad !== undefined) return err(bad);
+          }
+          const scope = await this.scopeOf(sessionId);
+          if (scope.length === 0) return ok('本项目还没有能用的资料（缺资料依据）');
           const r = await this.o.sources.search(
             a.query as string,
             book,
@@ -2822,15 +2927,17 @@ function formatDuration(ms: number): string {
   return `${String(Math.round(h / 24))} 天`;
 }
 
-/** 把 project_material 记录折叠成当前选用的资料（按选用顺序）。 */
+/** 把 project_material 记录折叠成项目当前的资料（按加入顺序）；W8 之前的记录用 book 当资料 id。 */
 export function foldMaterials(recs: LogRecord[]): { book: string; addedAt: string }[] {
   const out = new Map<string, string>();
   for (const r of recs) {
     if (r.type !== 'project_material') continue;
+    const id = r.material ?? r.book;
+    if (id === undefined) continue;
     if (r.op === 'add') {
-      if (!out.has(r.book)) out.set(r.book, r.at);
+      if (!out.has(id)) out.set(id, r.at);
     } else {
-      out.delete(r.book);
+      out.delete(id);
     }
   }
   return [...out.entries()].map(([book, addedAt]) => ({ book, addedAt }));
