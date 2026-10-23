@@ -416,15 +416,13 @@ class SdkConversation implements ModelConversation {
         const failed = msg.subtype !== 'success' || msg.is_error;
         if (this.pending.length > 0) {
           // 还有插话没并进本轮：SDK 会接着为它另跑一轮，读到它的结果再收尾
-          if (failed) yield { kind: 'turn_error', reason: `Agent SDK 本轮失败：${msg.subtype}` };
+          if (failed) yield { kind: 'turn_error', reason: failReason(msg) };
           stamped = false;
           continue;
         }
         // 同步收尾：此后的插话由核心按新一轮发
         this.turnActive = false;
-        yield failed
-          ? { kind: 'turn_error', reason: `Agent SDK 本轮失败：${msg.subtype}` }
-          : { kind: 'turn_end' };
+        yield failed ? { kind: 'turn_error', reason: failReason(msg) } : { kind: 'turn_end' };
         return;
       }
     }
@@ -549,6 +547,13 @@ export async function listModelCapabilities(cwd?: string): Promise<ModelCapabili
     input.end();
     q.close();
   }
+}
+
+/** 本轮失败的原因：带上 SDK 给的错误原文（如沙盒缺依赖、续接不到会话），只写 subtype 看不出哪里坏了。 */
+function failReason(msg: { subtype: string; errors?: string[] }): string {
+  const detail =
+    msg.errors !== undefined && msg.errors.length > 0 ? `（${msg.errors.join('；')}）` : '';
+  return `Agent SDK 本轮失败：${msg.subtype}${detail}`;
 }
 
 function cleanEnv(): Record<string, string> {

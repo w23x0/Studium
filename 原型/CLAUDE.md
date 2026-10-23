@@ -122,7 +122,7 @@
 
 ## 本机试用
 
-1. `cd 原型 && npm ci`；本机 `claude` 登录过一次。
+1. `cd 原型 && npm ci`；本机 `claude` 登录过一次；Linux 还要装 `bubblewrap` 与 `socat`（`sudo apt install bubblewrap socat`），没装时学习对话与检索子代理一开就失败（沙盒起不来），macOS 不用装。
 2. `npm start`，打开终端打印的地址。
 3. 主对话里说想学什么 → 点“单独谈谈你想学什么”进畅谈、谈定后项目改名 → 回项目点“下一步学什么” →
    选一项开学习 → 学（模型的工作区在 `var/sandbox/<学习 id>/工作区/`，诊断写在 `诊断.md`）→ “我觉得懂了”（守卫判）→
