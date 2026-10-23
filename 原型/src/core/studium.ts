@@ -694,7 +694,7 @@ export class Studium {
     return out;
   }
 
-  /** 申请收口：开守卫、核对引用行、记判定。学习者申请时把结论作为事实追加回学习对话。 */
+  /** 申请收口：开守卫写收尾记录、核对引用行、记下。学习者申请时把记录作为事实追加回学习对话。 */
   async requestClose(
     loopId: string,
     by: 'model' | 'learner',
@@ -715,15 +715,15 @@ export class Studium {
     return verdict;
   }
 
-  /** 守卫判合上后，学习者确认结束 → 合上之后的清单。 */
+  /** 守卫写好收尾记录后，学习者确认结束 → 合上之后的清单。 */
   async confirmClose(loopId: string, note: string): Promise<void> {
     await this.assertActiveLoop(loopId);
     const recs = (await this.hub.records(loopId)).map((r) => r.record);
     const verdict = recs.filter((r) => r.type === 'guard_verdict').at(-1);
     if (verdict?.type !== 'guard_verdict' || !verdict.closed) {
-      // 守卫还没判合上，不能确认结束；没合上要结束走“先到这里”
+      // 收尾记录还没写好，不能确认结束；没学完要结束走“先到这里”
       throw new BadRequestError(
-        '还没确认你掌握了这部分：先点“我觉得懂了”；想先停下就点“先到这里”。',
+        '这次学到了什么还没整理：先点“我觉得懂了”；想先停下就点“先到这里”。',
       );
     }
     await this.hub.record(loopId, {
@@ -953,16 +953,16 @@ export class Studium {
   private async runGuard(loopId: string): Promise<GuardVerdict> {
     const records = await this.hub.records(loopId);
     const guard = await this.hub.createSession('guard', {
-      title: '检查这次学会没有',
+      title: '整理这次学到了什么',
       parent: loopId,
     });
     this.guardTarget.set(guard.sessionId, records);
-    // 守卫按收口那一刻的单子判：学习者改过就用改后的（工单 W6 §9）
+    // 守卫按收口那一刻的单子写：学习者改过就用改后的（工单 W6 §9）
     const ticket = currentTicket(records);
     await this.hub.send(guard.sessionId, {
       role: 'program',
       text: [
-        '要判的这次学习的单子：',
+        '这次学习的单子：',
         ticket ? this.describeTicket(ticket) : '（缺单子）',
         '',
         '这次学习的对话（L 后是行号；只放双方对话；程序事实、模型一侧的沙盒动作不给）：',
@@ -980,9 +980,9 @@ export class Studium {
       ...(v ?? {
         guardSessionId: guard.sessionId,
         closed: false,
-        basis: '守卫没有提交判定',
+        basis: '守卫没有交回收尾记录',
         lines: [],
-        problem: '守卫没有提交判定',
+        problem: '守卫没有交回收尾记录',
       }),
       model,
     };
@@ -993,10 +993,10 @@ export class Studium {
   private verdictTool(guardId: string): ToolSpec {
     return {
       name: 'submit_verdict',
-      description: '交回这次学习是否合上，并写下学习者实际表现出的理解。引用的行只能是学习者的行。',
+      description:
+        '交回这次学习的收尾记录：学习者实际表现出的理解，每条指回他的行；证据薄的如实写薄。引用的行只能是学习者的行。',
       input: {
-        closed: z.boolean(),
-        basis: z.string().describe('一段话，引用写行号'),
+        basis: z.string().describe('一段话总述这次实际学到了什么、哪里还薄，引用写行号'),
         evidence_lines: z.array(z.number().int()).describe('学习者的行号'),
         understanding: z
           .array(
@@ -1007,15 +1007,13 @@ export class Studium {
               durability: z.enum(DURABILITY),
             }),
           )
-          .optional()
-          .describe('判合上时至少一条；判没合上时可写可不写'),
+          .describe('学习者实际表现出的理解；对话里看不出来就交空数组并在总述里说明'),
       },
       run: (a) => {
-        const closed = a.closed as boolean;
         const basis = a.basis as string;
         const lines = a.evidence_lines as number[];
-        const raw = a.understanding as Understanding[] | undefined;
-        if (this.verdicts.has(guardId)) return err('已经提交过判定');
+        const raw = a.understanding as Understanding[];
+        if (this.verdicts.has(guardId)) return err('已经提交过收尾记录');
         const target = this.guardTarget.get(guardId) ?? [];
         const learner = learnerLines(target);
         const bad = lines.filter((l) => !learner.has(l));
@@ -1025,13 +1023,8 @@ export class Studium {
             `第 ${bad.join('、')} 行不是学习者说的话，不能当证据；只引学习者的行，重新提交`,
           );
         }
-        if (closed && lines.length === 0) return err('判合上必须引至少一行学习者的话作证据');
         // 实际理解：行号核对同证据行；一条不过整次退回，什么都不收
-        const understanding = raw ?? [];
-        if (closed && understanding.length === 0) {
-          return err('判合上必须写下学习者实际表现出的理解（understanding，至少一条）');
-        }
-        for (const u of understanding) {
+        for (const u of raw) {
           if (u.text.trim() === '') return err('每条理解都要写清学习者实际表现出的理解');
           if (u.lines.length === 0) return err('每条理解都要指回至少一行学习者的话');
           const notLearner = u.lines.filter((l) => !learner.has(l));
@@ -1049,12 +1042,13 @@ export class Studium {
         }
         this.verdicts.set(guardId, {
           guardSessionId: guardId,
-          closed,
+          // 守卫不再把关（10-23）：学到没有由学习对话与学习者定，这里只写收尾记录
+          closed: true,
           basis,
           lines,
-          ...(raw === undefined ? {} : { understanding: raw }),
+          understanding: raw,
         });
-        return ok('判定已收到');
+        return ok('收尾记录已收到');
       },
     };
   }
@@ -2014,7 +2008,8 @@ export class Studium {
     return [
       {
         name: 'request_close',
-        description: '判断新点已沿预期理解合上时调用：程序开独立守卫判，返回守卫结论。',
+        description:
+          '你和学习者都觉得这次学完了时调用：程序另开一个独立会话，只按学习者实际说的、做的写下这次学到了什么；写好后请学习者确认结束。',
         input: { reason: z.string() },
         run: async (a) => {
           const v = await this.requestClose(loopId, 'model', a.reason as string);
@@ -2760,10 +2755,8 @@ function excerpt(r: NumberedRecord): string {
 }
 
 function verdictFact(v: GuardVerdict): string {
-  if (v.problem !== undefined) return `守卫判定：未合上（${v.problem}）。接着教。`;
-  return v.closed
-    ? `守卫判定：合上。依据：${v.basis}\n请学习者确认结束；学习者在界面上确认后这次学习结束。`
-    : `守卫判定：未合上。依据：${v.basis}\n接着教。`;
+  if (v.problem !== undefined) return `收尾记录没写成（${v.problem}）。可以再申请一次。`;
+  return `收尾记录：${v.basis}\n请学习者确认结束；学习者在界面上确认后这次学习结束。`;
 }
 
 function ok(text: string): Promise<ToolResult> {
