@@ -62,8 +62,8 @@ export interface App {
 /** 全部会话种类（提示词一个种类一份，按这个名单装载）。 */
 const KINDS: readonly ConversationKind[] = CONVERSATION_KINDS;
 
-/** 用同一套证据标准的会话：提示词后面接 prompts/evidence.md（只写一处）。 */
-const EVIDENCE_KINDS: ConversationKind[] = ['guard', 'loop'];
+/** 用证据标准的会话：提示词后面接 prompts/evidence.md。只给守卫：学习对话拿到这把尺子会照着去造证据（10-23）。 */
+const EVIDENCE_KINDS: ConversationKind[] = ['guard'];
 
 export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
   const evidence = await readFile(join(here, 'prompts/evidence.md'), 'utf8');

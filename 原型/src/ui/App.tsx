@@ -731,7 +731,7 @@ function LoopBar(props: {
         disabled={props.running || state.closeRequested}
         onClick={() => act(() => api.requestClose(props.sessionId))}
       >
-        {state.closeRequested ? '正在看你掌握得怎么样…' : '我觉得懂了'}
+        {state.closeRequested ? '正在整理这次学到了什么…' : '我觉得懂了'}
       </Button>
       <Button
         variant="ghost"

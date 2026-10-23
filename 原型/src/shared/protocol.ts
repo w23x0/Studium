@@ -234,12 +234,6 @@ export interface GuardVerdictView {
   objections: ObjectionView[];
 }
 
-export interface DiagnosisView {
-  line: number;
-  at: string;
-  text: string;
-}
-
 /** 一次学习里取用的一份教学工具：哪份、在那份正本的哪一行（程序从工具调用里记的）。 */
 export interface TeachingToolUseView {
   name: string;
@@ -260,10 +254,9 @@ export interface LoopEvidence {
   ticket?: TicketView;
   /** 没合上就结束：导航读那次对话出下一张卡时写的路线决定与理由。 */
   routeDecision?: RouteDecisionView;
-  /** 学习对话（教学侧）用的模型；诊断记录由它写。 */
+  /** 学习对话（教学侧）用的模型。 */
   model: ModelInfo;
   verdicts: GuardVerdictView[];
-  diagnoses: DiagnosisView[];
   /** 这次学习取用过的教学工具（按取用顺序，含重复取用）。 */
   teachingToolsUsed: TeachingToolUseView[];
   /** 这次学习里的全部异议（含已结束后记在异议存放处的）。 */

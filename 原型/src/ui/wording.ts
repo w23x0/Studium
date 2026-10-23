@@ -66,9 +66,6 @@ export const W = {
     自述: '你自己说会的',
     假定: '先假定你会的',
   } as const,
-  notes: '老师的观察记录', // 诊断记录
-  notesHint: '学的过程中记下的观察，不写进回复，只放在这里供你查看。',
-  noNotes: '还没有记。',
   judgements: '是否学会的判断', // 守卫判定
   noJudgements: '还没判断过。',
   judgedYes: '判断：已经掌握',
@@ -370,7 +367,6 @@ export const W = {
   routeDecision: '这次怎么定的',
   routeDecisionSuperseded: '后来改了路线',
   routeDecisionBasis: '依据',
-  diagnosesJump: '看那一行',
 
   // ── 我学会的：按学习列（W6） ──
   learnedEmpty: '还没有学过。',

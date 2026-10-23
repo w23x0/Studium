@@ -1,5 +1,5 @@
 // 启动核心：npm start（先构建界面）或 npm run dev。
-// 环境变量：STUDIUM_MODEL=claude|fake（默认 claude）· STUDIUM_CLAUDE_MODEL · STUDIUM_PROFILES · STUDIUM_DATA · STUDIUM_PORT · STUDIUM_TOKEN
+// 环境变量：STUDIUM_CLAUDE_MODEL · STUDIUM_PROFILES · STUDIUM_DATA · STUDIUM_PORT · STUDIUM_TOKEN
 // · STUDIUM_LIBRARY（书库根目录，默认样例教材）
 // · STUDIUM_TAPE（录带文件：给了就录这次运行，供 npm run replay 离线回放；宜配一个新的空 STUDIUM_DATA）
 import { randomBytes } from 'node:crypto';
@@ -8,25 +8,19 @@ import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.ts';
 import { ClaudeAgentSdkModel } from './model/claude-agent-sdk.ts';
-import { FakeModel } from './model/fake.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { mergeProfiles } from './model/profiles.ts';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '../..');
 
 function pickModel(dataRoot: string): ModelAdapter {
-  const which = process.env.STUDIUM_MODEL ?? 'claude';
-  if (which === 'fake') return new FakeModel();
-  if (which === 'claude') {
-    const model = process.env.STUDIUM_CLAUDE_MODEL;
-    const raw = process.env.STUDIUM_PROFILES;
-    return new ClaudeAgentSdkModel({
-      cwd: dataRoot,
-      profiles: mergeProfiles(raw === undefined ? undefined : (JSON.parse(raw) as unknown)),
-      ...(model !== undefined ? { model } : {}),
-    });
-  }
-  throw new Error(`STUDIUM_MODEL 只能是 claude 或 fake，收到 ${which}`);
+  const model = process.env.STUDIUM_CLAUDE_MODEL;
+  const raw = process.env.STUDIUM_PROFILES;
+  return new ClaudeAgentSdkModel({
+    cwd: dataRoot,
+    profiles: mergeProfiles(raw === undefined ? undefined : (JSON.parse(raw) as unknown)),
+    ...(model !== undefined ? { model } : {}),
+  });
 }
 
 const uiDir = join(root, 'dist/ui');

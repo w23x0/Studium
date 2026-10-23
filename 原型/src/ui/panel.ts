@@ -6,10 +6,10 @@ import type { BBox } from '../shared/protocol.ts';
 export type PanelTarget =
   | { kind: 'home' }
   /**
-   * verdictLine：滚到这次判断；noteLine：滚到这一轮老师的观察（从“出现在某段教学之后”点进来）；
+   * verdictLine：滚到这次判断；
    * editTicket：打开就展开改单子。
    */
-  | { kind: 'loop'; loopId: string; verdictLine?: number; noteLine?: number; editTicket?: true }
+  | { kind: 'loop'; loopId: string; verdictLine?: number; editTicket?: true }
   | { kind: 'card'; cardId: string; option?: number }
   /** 我学会的：不给 = 全部；给 loopId = 直接展开那一次学习。 */
   | { kind: 'learned'; loopId?: string }

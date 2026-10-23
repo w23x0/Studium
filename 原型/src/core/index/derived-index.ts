@@ -184,7 +184,7 @@ function searchableText(r: LogRecord): string {
     case 'program_fact':
     case 'project_goal':
       return r.text;
-    // 沙盒动作只在写诊断时有内容（读 / 跑命令没有）
+    // 沙盒动作只在写文件时有内容（读 / 跑命令没有）
     case 'sandbox_action':
       return r.content ?? '';
     case 'session_opened':

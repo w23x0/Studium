@@ -165,9 +165,7 @@ function StateRecord(props: { record: StateRecordView; onObjected: () => void })
           <button
             type="button"
             className="text-primary hover:underline"
-            onClick={() =>
-              panel.show({ kind: 'loop', loopId: after.loopSessionId, noteLine: after.line })
-            }
+            onClick={() => panel.jump(after.loopSessionId, [after.line])}
           >
             {W.afterTeachingGo}
           </button>

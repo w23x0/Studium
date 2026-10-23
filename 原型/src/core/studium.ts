@@ -14,7 +14,6 @@ import type {
 } from '../shared/protocol.ts';
 import { CROSS_KINDS } from '../shared/records-cross.ts';
 import {
-  DIAGNOSIS_TAG,
   DURABILITY,
   INDEPENDENCE,
   START_SOURCES,
@@ -695,7 +694,7 @@ export class Studium {
     return out;
   }
 
-  /** 申请收口：开守卫、核对引用行、记判定。学习者申请时把结论作为事实追加回学习对话。 */
+  /** 申请收口：开守卫写收尾记录、核对引用行、记下。学习者申请时把记录作为事实追加回学习对话。 */
   async requestClose(
     loopId: string,
     by: 'model' | 'learner',
@@ -716,15 +715,15 @@ export class Studium {
     return verdict;
   }
 
-  /** 守卫判合上后，学习者确认结束 → 合上之后的清单。 */
+  /** 守卫写好收尾记录后，学习者确认结束 → 合上之后的清单。 */
   async confirmClose(loopId: string, note: string): Promise<void> {
     await this.assertActiveLoop(loopId);
     const recs = (await this.hub.records(loopId)).map((r) => r.record);
     const verdict = recs.filter((r) => r.type === 'guard_verdict').at(-1);
     if (verdict?.type !== 'guard_verdict' || !verdict.closed) {
-      // 守卫还没判合上，不能确认结束；没合上要结束走“先到这里”
+      // 收尾记录还没写好，不能确认结束；没学完要结束走“先到这里”
       throw new BadRequestError(
-        '还没确认你掌握了这部分：先点“我觉得懂了”；想先停下就点“先到这里”。',
+        '这次学到了什么还没整理：先点“我觉得懂了”；想先停下就点“先到这里”。',
       );
     }
     await this.hub.record(loopId, {
@@ -954,19 +953,19 @@ export class Studium {
   private async runGuard(loopId: string): Promise<GuardVerdict> {
     const records = await this.hub.records(loopId);
     const guard = await this.hub.createSession('guard', {
-      title: '检查这次学会没有',
+      title: '整理这次学到了什么',
       parent: loopId,
     });
     this.guardTarget.set(guard.sessionId, records);
-    // 守卫按收口那一刻的单子判：学习者改过就用改后的（工单 W6 §9）
+    // 守卫按收口那一刻的单子写：学习者改过就用改后的（工单 W6 §9）
     const ticket = currentTicket(records);
     await this.hub.send(guard.sessionId, {
       role: 'program',
       text: [
-        '要判的这次学习的单子：',
+        '这次学习的单子：',
         ticket ? this.describeTicket(ticket) : '（缺单子）',
         '',
-        '这次学习的对话（L 后是行号；只放双方对话；程序事实、模型一侧的诊断与沙盒动作不给）：',
+        '这次学习的对话（L 后是行号；只放双方对话；程序事实、模型一侧的沙盒动作不给）：',
         guardView(records),
       ].join('\n'),
     });
@@ -981,9 +980,9 @@ export class Studium {
       ...(v ?? {
         guardSessionId: guard.sessionId,
         closed: false,
-        basis: '守卫没有提交判定',
+        basis: '守卫没有交回收尾记录',
         lines: [],
-        problem: '守卫没有提交判定',
+        problem: '守卫没有交回收尾记录',
       }),
       model,
     };
@@ -994,10 +993,10 @@ export class Studium {
   private verdictTool(guardId: string): ToolSpec {
     return {
       name: 'submit_verdict',
-      description: '交回这次学习是否合上，并写下学习者实际表现出的理解。引用的行只能是学习者的行。',
+      description:
+        '交回这次学习的收尾记录：学习者实际表现出的理解，每条指回他的行；证据薄的如实写薄。引用的行只能是学习者的行。',
       input: {
-        closed: z.boolean(),
-        basis: z.string().describe('一段话，引用写行号'),
+        basis: z.string().describe('一段话总述这次实际学到了什么、哪里还薄，引用写行号'),
         evidence_lines: z.array(z.number().int()).describe('学习者的行号'),
         understanding: z
           .array(
@@ -1008,15 +1007,13 @@ export class Studium {
               durability: z.enum(DURABILITY),
             }),
           )
-          .optional()
-          .describe('判合上时至少一条；判没合上时可写可不写'),
+          .describe('学习者实际表现出的理解；对话里看不出来就交空数组并在总述里说明'),
       },
       run: (a) => {
-        const closed = a.closed as boolean;
         const basis = a.basis as string;
         const lines = a.evidence_lines as number[];
-        const raw = a.understanding as Understanding[] | undefined;
-        if (this.verdicts.has(guardId)) return err('已经提交过判定');
+        const raw = a.understanding as Understanding[];
+        if (this.verdicts.has(guardId)) return err('已经提交过收尾记录');
         const target = this.guardTarget.get(guardId) ?? [];
         const learner = learnerLines(target);
         const bad = lines.filter((l) => !learner.has(l));
@@ -1026,13 +1023,8 @@ export class Studium {
             `第 ${bad.join('、')} 行不是学习者说的话，不能当证据；只引学习者的行，重新提交`,
           );
         }
-        if (closed && lines.length === 0) return err('判合上必须引至少一行学习者的话作证据');
         // 实际理解：行号核对同证据行；一条不过整次退回，什么都不收
-        const understanding = raw ?? [];
-        if (closed && understanding.length === 0) {
-          return err('判合上必须写下学习者实际表现出的理解（understanding，至少一条）');
-        }
-        for (const u of understanding) {
+        for (const u of raw) {
           if (u.text.trim() === '') return err('每条理解都要写清学习者实际表现出的理解');
           if (u.lines.length === 0) return err('每条理解都要指回至少一行学习者的话');
           const notLearner = u.lines.filter((l) => !learner.has(l));
@@ -1050,12 +1042,13 @@ export class Studium {
         }
         this.verdicts.set(guardId, {
           guardSessionId: guardId,
-          closed,
+          // 守卫不再把关（10-23）：学到没有由学习对话与学习者定，这里只写收尾记录
+          closed: true,
           basis,
           lines,
-          ...(raw === undefined ? {} : { understanding: raw }),
+          understanding: raw,
         });
-        return ok('判定已收到');
+        return ok('收尾记录已收到');
       },
     };
   }
@@ -1509,7 +1502,7 @@ export class Studium {
     return {
       name: 'read_session',
       description:
-        '读某个会话（项目主对话 / 谈方向 / 一次学习）里学习者与教学的对话原文，带行号与时间；不含诊断记录与判定。',
+        '读某个会话（项目主对话 / 谈方向 / 一次学习）里学习者与教学的对话原文，带行号与时间；不含沙盒动作与判定。',
       input: {
         session: z.string(),
         from_line: z.number().int().optional(),
@@ -2009,13 +2002,14 @@ export class Studium {
 
   /**
    * 学习对话的工具：只有两个命令（工单 W4 §5.5）。资料、学过的记录、状态、教法记录与教学工具
-   * 都在沙盒里当只读文件读，不再各挂一个工具；诊断写在工作区的 `诊断.md`（沙盒动作，程序当场记）。
+   * 都在沙盒里当只读文件读，不再各挂一个工具；工作区是模型自己的草稿（沙盒动作，程序当场记）。
    */
   private loopTools(loopId: string): ToolSpec[] {
     return [
       {
         name: 'request_close',
-        description: '判断新点已沿预期理解合上时调用：程序开独立守卫判，返回守卫结论。',
+        description:
+          '你和学习者都觉得这次学完了时调用：程序另开一个独立会话，只按学习者实际说的、做的写下这次学到了什么；写好后请学习者确认结束。',
         input: { reason: z.string() },
         run: async (a) => {
           const v = await this.requestClose(loopId, 'model', a.reason as string);
@@ -2266,7 +2260,7 @@ export class Studium {
 
   /**
    * 交给状态整理的事实（与守卫取不同的字段，`docs/设计/会话/后台整理.md`）——时间、间隔、停顿、中断与停下的地方、
-   * 学习者的话（含紧邻的前一句教学作前序事件）。不给诊断记录、守卫判定，也不给“合上没有”。
+   * 学习者的话（含紧邻的前一句教学作前序事件）。不给模型一侧的沙盒动作、守卫判定，也不给“合上没有”。
    */
   private async stateFacts(covered: Record<string, number>) {
     const sessions = this.hub
@@ -2364,7 +2358,7 @@ export class Studium {
     };
   }
 
-  /** 状态整理会话的工具：读学习对话（不含诊断与判定）、读自己的底层，只写自己的两层。 */
+  /** 状态整理会话的工具：读学习对话（不含沙盒动作与判定）、读自己的底层，只写自己的两层。 */
   private stateTools(stateId: string): ToolSpec[] {
     return [
       this.readSessionTool(),
@@ -2495,17 +2489,12 @@ export class Studium {
     }
   >();
 
-  /** 一次学习结束后记“这次教法管不管用”：对话原文 + 诊断（沙盒动作）+ 守卫判定 + 教学工具使用记录 + 单子。 */
+  /** 一次学习结束后记“这次教法管不管用”：对话原文 + 守卫判定 + 教学工具使用记录 + 单子。 */
   private async recordStrategy(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
     // 学习者改过单子就按改后的记（工单 W6 §4.1：凡“现在的单子”都走 currentTicket）
     const now = currentTicket(records);
-    const notes = records.flatMap((r) =>
-      r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok
-        ? [`L${String(r.line)} ${r.record.content ?? ''}`]
-        : [],
-    );
     const verdicts = records.flatMap((r) =>
       r.record.type === 'guard_verdict'
         ? [
@@ -2539,8 +2528,6 @@ export class Studium {
         '',
         `守卫判定：\n${verdicts.join('\n') || '（没申请过收口）'}`,
         '',
-        `诊断记录（模型在工作区里写的 诊断.md，未经守卫）：\n${notes.join('\n') || '（无）'}`,
-        '',
         `教学工具使用记录（程序从沙盒动作里记的）：${toolUses.map((u) => `L${String(u.line)} 教学工具:${u.name}`).join('、') || '这次学习没读教学工具，只能从对话原文看用了什么做法'}`,
         '',
         ...(annotated.length > 0
@@ -2561,7 +2548,7 @@ export class Studium {
     return {
       name: 'write_strategy_record',
       description:
-        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这次学习的行号。单次记录不证明因果。',
+        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时学习者的表现与状态条件、用了哪些做法、之后表现怎么变；引用写这次学习的行号。单次记录不证明因果。',
       input: {
         conditions: z.string(),
         strategies: z.string(),
@@ -2768,10 +2755,8 @@ function excerpt(r: NumberedRecord): string {
 }
 
 function verdictFact(v: GuardVerdict): string {
-  if (v.problem !== undefined) return `守卫判定：未合上（${v.problem}）。接着教。`;
-  return v.closed
-    ? `守卫判定：合上。依据：${v.basis}\n请学习者确认结束；学习者在界面上确认后这次学习结束。`
-    : `守卫判定：未合上。依据：${v.basis}\n接着教。`;
+  if (v.problem !== undefined) return `收尾记录没写成（${v.problem}）。可以再申请一次。`;
+  return `收尾记录：${v.basis}\n请学习者确认结束；学习者在界面上确认后这次学习结束。`;
 }
 
 function ok(text: string): Promise<ToolResult> {

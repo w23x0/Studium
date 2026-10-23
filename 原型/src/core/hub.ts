@@ -10,7 +10,6 @@ import {
   type ServerEvent,
 } from '../shared/protocol.ts';
 import {
-  DIAGNOSIS_TAG,
   TEACHING_TOOL_TAG,
   type ConversationKind,
   type ImageInput,
@@ -468,13 +467,11 @@ export class Hub {
 const TEACHING_TOOLS_PREFIX = '只读/教学工具/';
 
 /**
- * 程序按路径给沙盒动作打的标签（工单 W4 §5.3）：写工作区的 `诊断.md` → 诊断；
- * 读 `只读/教学工具/<文件>` → `教学工具:<文件名>`。其余不打（Bash 里 cat 的拿不准，先不打）。
+ * 程序按路径给沙盒动作打的标签（工单 W4 §5.3）：读 `只读/教学工具/<文件>` → `教学工具:<文件名>`。其余不打（Bash 里 cat 的拿不准，先不打）。
  */
 function sandboxTag(action: SandboxActionEvent['action']): string | undefined {
   const path = action.path;
   if (path === undefined) return undefined;
-  if (action.op === 'write' && path === '诊断.md') return DIAGNOSIS_TAG;
   if (action.op === 'read' && path.startsWith(TEACHING_TOOLS_PREFIX)) {
     return `${TEACHING_TOOL_TAG}${path.slice(TEACHING_TOOLS_PREFIX.length)}`;
   }

@@ -1,4 +1,4 @@
-// 教法记录：这位学习者在哪次学习、诊断与状态条件下用过什么做法，之后诊断怎么变（`docs/设计/记录/教法记录与教学工具.md`）。
+// 教法记录：这位学习者在哪次学习、什么表现与状态条件下用过什么做法，之后表现怎么变（`docs/设计/记录/教法记录与教学工具.md`）。
 // 自己的记录；单次记录不证明因果。只追加。
 import { join } from 'node:path';
 import { appendJsonl, readJsonl } from './jsonl.ts';
@@ -8,11 +8,11 @@ export interface StrategyRecord {
   at: string;
   /** 学习对话的会话 id；行号指它的正本。 */
   loopSessionId: string;
-  /** 当时的诊断与状态条件。 */
+  /** 当时学习者的表现与状态条件。 */
   conditions: string;
   /** 用了哪些做法。 */
   strategies: string;
-  /** 之后的诊断变化与证据。 */
+  /** 之后表现的变化与证据。 */
   followedBy: string;
   evidenceLines: number[];
   /** 程序记下的教学工具使用（工具调用记录里读了哪几份，按首次取用顺序、去重）；没用教学工具时为空。 */

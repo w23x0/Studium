@@ -1,4 +1,4 @@
-// 依据可见：把守卫判定、诊断、单子与出处、教法记录 / 状态记录整理成界面能直接读的只读视图。
+// 依据可见：把守卫判定、单子与出处、教法记录 / 状态记录整理成界面能直接读的只读视图。
 // 只读：不写任何记录；异议的写入在 studium.ts。
 import {
   CONVERSATION_KIND_LABELS,
@@ -28,7 +28,6 @@ import {
   type TicketView,
 } from '../shared/protocol.ts';
 import {
-  DIAGNOSIS_TAG,
   type ChoiceCard,
   type ChoiceMade,
   type ConversationKind,
@@ -75,7 +74,7 @@ export interface EvidenceDeps {
 export class Evidence {
   constructor(private readonly d: EvidenceDeps) {}
 
-  // ───────────── 一次学习：守卫判定、诊断、单子 ─────────────
+  // ───────────── 一次学习：守卫判定、单子 ─────────────
 
   async loop(loopId: string): Promise<LoopEvidence> {
     const opened = await this.d.hub.opened(loopId);
@@ -146,12 +145,6 @@ export class Evidence {
       ...(unclosedDecision !== undefined ? { routeDecision: unclosedDecision } : {}),
       model: await this.d.hub.modelInfo(loopId),
       verdicts,
-      // 诊断 = 模型在工作区里写的 诊断.md（沙盒动作，程序按路径打标签）
-      diagnoses: recs.flatMap((r) =>
-        r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok
-          ? [{ line: r.line, at: r.record.at, text: r.record.content ?? '' }]
-          : [],
-      ),
       teachingToolsUsed: toolUsesOf(recs),
       objections,
       ...(flags.shelved !== undefined

@@ -122,13 +122,12 @@ export interface ToolCall {
   isError: boolean;
 }
 
-/** 沙盒动作的两个标签（程序按路径打，不看模型说什么；工单 W4 §5.3）。 */
-export const DIAGNOSIS_TAG = '诊断';
+/** 沙盒动作的标签（程序按路径打，不看模型说什么；工单 W4 §5.3）。 */
 export const TEACHING_TOOL_TAG = '教学工具:';
 
 /**
  * 沙盒里的一个动作（读 / 写 / 跑命令……），由程序当场记（记录/对话与事件记录.md §3），不靠模型自报。
- * `path` 是虚拟路径；`tag` 由程序按路径打（写工作区的 诊断.md → 诊断；读 只读/教学工具/<文件> → 教学工具:<文件名>）。
+ * `path` 是虚拟路径；`tag` 由程序按路径打（读 只读/教学工具/<文件> → 教学工具:<文件名>）。
  */
 export interface SandboxAction {
   type: 'sandbox_action';
