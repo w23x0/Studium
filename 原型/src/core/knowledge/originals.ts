@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { promisify } from 'node:util';
 import type { BBox, LineLocation, PageBlock } from '../../shared/protocol.ts';
 import { isNotFound } from '../log/session-log.ts';
-import type { Library } from './library.ts';
+import type { SourceReader } from './materials.ts';
 
 const run = promisify(execFile);
 
@@ -54,7 +54,7 @@ export class Originals {
   private tool: Promise<boolean> | undefined;
 
   constructor(
-    private readonly lib: Library,
+    private readonly lib: SourceReader,
     /** 渲染图的缓存目录（派生数据，删了会重新渲染）。 */
     private readonly cacheDir: string,
   ) {}

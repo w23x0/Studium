@@ -397,7 +397,7 @@ export class Evidence {
   }
 
   private async bookSource(raw: string): Promise<SourceView | undefined> {
-    const cited = await this.d.sources.bookLine(raw);
+    const cited = await this.d.sources.materialLine(raw);
     if (cited === undefined) return undefined;
     if (!cited.resolved || cited.lines === undefined) {
       return {

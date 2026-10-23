@@ -318,7 +318,7 @@ export interface ProjectOverview {
   /** 期限（YYYY-MM-DD）与备注；没记就没有。 */
   deadline?: string;
   deadlineNote?: string;
-  /** 项目选了几份资料（0 = 没限定，资料工具查全库）。 */
+  /** 项目有几份资料（0 = 还没有，缺资料依据；资料归项目，不查别处）。 */
   materialCount?: number;
   /** 今天该做的：到期的提醒、期限临近、该做阶段复盘了（批 6）。 */
   today?: TodayView;
@@ -578,8 +578,8 @@ export interface BookSummary {
   hasOriginal: boolean;
   /** 在书库里的学科目录（相对书库根，如 大学物理/力学）；个人笔记是“个人笔记”；平铺的书没有。 */
   subject?: string;
-  /** book = 书库里的书 · note = 学习者的个人笔记（导入到数据目录自己的区）。 */
-  kind?: 'book' | 'note';
+  /** book = 书库里的书 · note = 学习者的个人笔记（导入到数据目录自己的区）· 其余 = 项目资料的种类。 */
+  kind?: 'book' | 'note' | MaterialKind;
   /** 个人笔记：作者（学习者）、来源（个人笔记）、导入时的原路径。 */
   author?: string;
   source?: string;
@@ -819,26 +819,68 @@ export interface InputDisclosure {
 // ───────────── 批 3a：资料范围（书库多层、项目资料、个人笔记、外部导入、期限）─────────────
 
 /** 项目选用的一份资料。missing = 书库里现在找不到它了（被移走 / 改名）。 */
+// ───────────── 项目资料（工单 W8；设计 docs/设计/记录/资料.md） ─────────────
+
+/** 资料的种类：pdf · 网页 · 字幕 · 代码仓库 · 联网查来的 · md / 纯文字。 */
+export const MATERIAL_KINDS = ['pdf', 'web', 'subtitle', 'repo', 'search', 'md'] as const;
+export type MaterialKind = (typeof MATERIAL_KINDS)[number];
+export type MaterialStatus = '处理中' | '可用' | '部分可用' | '失败';
+
+/** 每份资料的 source.json：md 正文 + 指回原件 + 固定版本 + 来源与日期；不存摘要、路线、标签。 */
+export interface MaterialSource {
+  id: string;
+  title: string;
+  kind: MaterialKind;
+  /** 原路径 / URL / 仓库地址 / 书库里的书 id。 */
+  origin: string;
+  /** pdf：文件哈希；web / search：抓取时间；repo：提交号；md / subtitle：内容哈希。 */
+  version: string;
+  fetchedAt: string;
+  converter?: string;
+  status: MaterialStatus;
+  /** 失败或有问题的地方，不伪装成可用。 */
+  problems?: string[];
+  /** 模型检索时判断的角色；界面可见。 */
+  role?: { value: '主资料' | '参考资料'; by: 'model'; at: string; sessionId: string };
+  /** 正文不在本资料目录的 正文/ 里时（从书库挑的书 = 它的切分目录），正文的绝对路径。 */
+  bodyPath?: string;
+}
+
+export interface AddMaterialRequest {
+  kind: MaterialKind;
+  origin: string;
+  title?: string;
+  /** 仓库：固定到哪次提交；不给 = 当时的 HEAD。 */
+  commit?: string;
+}
+
 export interface ProjectMaterialView {
+  /** 资料 id（引用写 `资料id/文件:行号`）；字段名沿用 book。 */
   book: string;
   title: string;
-  kind: 'book' | 'note';
+  kind: 'book' | 'note' | MaterialKind;
   subject?: string;
   addedAt: string;
   missing?: boolean;
+  origin?: string;
+  version?: string;
+  fetchedAt?: string;
+  status?: MaterialStatus;
+  problems?: string[];
+  role?: MaterialSource['role'];
 }
 
 export interface ProjectMaterialsResponse {
   mainSessionId: string;
   materials: ProjectMaterialView[];
-  /** true = 项目选了资料，学习 / 导航 / 学习者检索默认只在这些里查；false = 没选任何资料，查全库。 */
+  /** 恒为 true：资料归项目，学习 / 导航 / 检索只在本项目资料里查（没有资料就是缺资料依据，不查全库）。 */
   restricted: boolean;
   deadline?: string;
   deadlineNote?: string;
 }
 
 export interface ProjectMaterialsRequest {
-  /** 要加进来的书 / 笔记 id（书库里 books 的 id）。 */
+  /** 要从书库加进来的书 id（书库里 books 的 id）：在项目里建一份 kind=pdf 的资料。 */
   add?: string[];
   /** 要去掉的。 */
   remove?: string[];

@@ -10,7 +10,7 @@ import {
   type SourceNoteView,
 } from '../shared/protocol.ts';
 import { NotFoundError } from './hub.ts';
-import type { Library } from './knowledge/library.ts';
+import type { SourceReader } from './knowledge/materials.ts';
 import type { Originals } from './knowledge/originals.ts';
 import type { SourceReports } from './knowledge/source-reports.ts';
 import type { SourceNotes } from './knowledge/source-notes.ts';
@@ -21,7 +21,7 @@ import { BadRequestError } from './studium.ts';
 const NOTE_MAX = 300;
 
 export interface CrosslinksDeps {
-  library: Library;
+  library: SourceReader;
   reports: SourceReports;
   originals: Originals;
   notes: SourceNotes;

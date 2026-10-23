@@ -19,14 +19,14 @@ import type {
   TocResponse,
 } from '../shared/protocol.ts';
 import { NotFoundError } from './hub.ts';
-import type { Library } from './knowledge/library.ts';
+import type { SourceReader } from './knowledge/materials.ts';
 import type { Originals } from './knowledge/originals.ts';
 import type { SourceReports } from './knowledge/source-reports.ts';
 import { isNotFound } from './log/session-log.ts';
 import { BadRequestError } from './studium.ts';
 
 export interface SourcesDeps {
-  library: Library;
+  library: SourceReader;
   originals: Originals;
   reports: SourceReports;
   now?: () => Date;
@@ -160,8 +160,8 @@ export class Sources {
     return out;
   }
 
-  /** 选择卡出处里的“书名/文件:行号”回查成原文；认不出（没有书名、没有这本书）返回空。 */
-  async bookLine(raw: string): Promise<CitationView | undefined> {
+  /** 依据串里的“资料id/文件:行号”回查成原文；认不出（没有资料 id、没有这份资料）返回空。 */
+  async materialLine(raw: string): Promise<CitationView | undefined> {
     const ref = parseBookLineRef(raw, await this.d.library.books());
     return ref ? { ...(await this.cite(ref)), raw, start: 0, end: raw.length } : undefined;
   }
@@ -170,7 +170,7 @@ export class Sources {
     const base = { book: ref.book, file: ref.file, from: ref.from, to: ref.to };
     const id = await this.findBook(ref.book);
     if (id === undefined) {
-      return view(base, { problem: `书库里没有这本书：${ref.book}` });
+      return view(base, { problem: `没有这份资料：${ref.book}` });
     }
     let total: number;
     let lines;
@@ -185,7 +185,7 @@ export class Sources {
       lines = r.lines;
     } catch (err) {
       if (err instanceof NotFoundError)
-        return view({ ...base, book: id }, { problem: `这本书里没有这个文件：${ref.file}` });
+        return view({ ...base, book: id }, { problem: `这份资料里没有这个文件：${ref.file}` });
       throw err;
     }
     const b = { ...base, book: id };

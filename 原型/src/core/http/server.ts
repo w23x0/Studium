@@ -18,6 +18,7 @@ import type {
   ProjectDeadlineRequest,
   ProjectDeadlineResponse,
   ProjectMaterialsRequest,
+  AddMaterialRequest,
   ProjectMaterialsResponse,
   DisclosureResponse,
   LearnedResponse,
@@ -252,7 +253,17 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         return;
       }
       if (parts[3] === 'materials' && method === 'POST') {
-        const body = (await readJson(req)) as Partial<ProjectMaterialsRequest>;
+        const body = (await readJson(req)) as Partial<ProjectMaterialsRequest> &
+          Partial<AddMaterialRequest>;
+        // 加一份资料（工单 W8 §4.2）：{ kind, origin, title?, commit? }，后台处理，状态随处理更新
+        if (body.kind !== undefined) {
+          send(
+            res,
+            200,
+            (await studium.addMaterial(mainId, body)) satisfies ProjectMaterialsResponse,
+          );
+          return;
+        }
         for (const k of ['add', 'remove'] as const) {
           const v = body[k];
           if (v !== undefined && !(Array.isArray(v) && v.every((x) => typeof x === 'string'))) {
@@ -479,12 +490,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           );
           return true;
         case 'search': {
-          // project 给了：默认只搜项目选用的资料；all=1 或明确给 book 时不限
+          // project 给了：只搜本项目的资料；all=1 或明确给 book 时不限项目（学习者自己浏览用）
           const project = q.get('project');
           const book = q.get('book') ?? undefined;
           const scope =
-            project !== null && project !== '' && (book === undefined || book === '')
-              ? await studium.scopeOf(project, q.get('all') === '1')
+            project !== null &&
+            project !== '' &&
+            (book === undefined || book === '') &&
+            q.get('all') !== '1'
+              ? await studium.scopeOf(project)
               : undefined;
           send(
             res,
