@@ -78,6 +78,11 @@ export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
 }
 
 export async function createApp(opts: AppOptions): Promise<App> {
+  const wired: { model?: ModelAdapter } = {};
+  const modelRef = (): ModelAdapter => {
+    if (wired.model === undefined) throw new Error('模型接口还没接上');
+    return wired.model;
+  };
   await checkDataVersion(opts.dataRoot);
   const dataDir = await DataDir.acquire(opts.dataRoot);
   await writeDataVersion(dataDir.root);
@@ -89,12 +94,9 @@ export async function createApp(opts: AppOptions): Promise<App> {
     opts.library ?? join(SAMPLE_DIR, '书库'),
     join(dataDir.root, 'knowledge', 'notes'),
   );
-  const notes = new Notes(
-    join(dataDir.root, 'knowledge', 'notes'),
-    library,
-    opts.now ?? (() => new Date()),
-  );
-  // 项目资料（工单 W8）：读原文都经它，认不出的 id 退回书库；个人笔记仍在书库那边（W9 分流）
+  // W9 之前导入的个人笔记：只读（列表、图片）；新笔记从上传进学过的
+  const notes = new Notes(library);
+  // 项目资料（工单 W8）：读原文都经它，认不出的 id 退回书库
   const materials = new Materials({
     root: join(dataDir.root, 'projects'),
     library,
@@ -123,8 +125,11 @@ export async function createApp(opts: AppOptions): Promise<App> {
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
+  const routePrompt = await readFile(join(here, 'prompts/route.md'), 'utf8');
   const studium = new Studium({
     prompts: await loadPrompts(),
+    // 上传分流：拿不准的交模型判一次（工单 W9 §4.2）；model 在下面才组装好，这里取用时再拿
+    judge: (name, sample) => judgeUpload(modelRef(), routePrompt, name, sample),
     library: materials,
     materials,
     sources,
@@ -146,6 +151,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
         })
       : undefined;
   const model = recorder ? recorder.wrapModel(inner) : inner;
+  wired.model = model;
   const inputs = await Inputs.load({
     dir: join(dataDir.root, 'inputs'),
     model,
@@ -212,4 +218,40 @@ export async function createApp(opts: AppOptions): Promise<App> {
       await dataDir.release();
     },
   };
+}
+
+/**
+ * 上传分流的一次判断（工单 W9 §4.2）：一问一答、不给工具，只回“资料 / 学过的：笔记 / 学过的：对话记录”
+ * 加一句理由；回得不像样就报错，由调用方按扩展名兜底。
+ */
+async function judgeUpload(
+  model: ModelAdapter,
+  instructions: string,
+  name: string,
+  sample: string,
+): Promise<{ to: '资料' | '学过的'; channel?: '笔记' | '对话记录'; reason: string }> {
+  const conv = model.open({
+    systemPrompt: instructions,
+    tools: [],
+    session: { id: `route-${name}`, kind: 'main' },
+  });
+  let text = '';
+  try {
+    for await (const e of conv.send({
+      role: 'program',
+      text: `文件名：${name}\n\n开头一段：\n${sample}`,
+    })) {
+      if (e.kind === 'assistant_text') text += e.text;
+      if (e.kind === 'turn_error') throw new Error(e.reason);
+    }
+  } finally {
+    await conv.close();
+  }
+  const [first = '', ...rest] = text.trim().split('\n');
+  const reason = rest.join(' ').trim().slice(0, 80) || '模型判的';
+  if (first.includes('学过的')) {
+    return { to: '学过的', channel: first.includes('对话') ? '对话记录' : '笔记', reason };
+  }
+  if (first.includes('资料')) return { to: '资料', reason };
+  throw new Error(`分流回答看不懂：${text.slice(0, 80)}`);
 }

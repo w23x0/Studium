@@ -1,6 +1,7 @@
 // Studium：按事件跑清单（`docs/设计/01-流程.md`；一次学习之外的流程见 `docs/设计/会话/` 各页，收口与守卫见 `会话/守卫.md`）。
 // 每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（`docs/设计/记录/读写权限.md`）。
 import { randomBytes } from 'node:crypto';
+import { join } from 'node:path';
 import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
 import { CONVERSATION_KIND_LABELS } from '../shared/protocol.ts';
@@ -8,6 +9,7 @@ import type {
   AddMaterialRequest,
   MaterialSource,
   ProjectDeadlineResponse,
+  ProjectInstructionsResponse,
   ProjectMaterialsResponse,
   ProjectMaterialView,
   RouteDeviationView,
@@ -22,6 +24,7 @@ import {
   type ChoiceCard,
   type ChoiceOption,
   type ConversationKind,
+  type FindCandidate,
   type GoalAbility,
   type GuardVerdict,
   type ImageInput,
@@ -53,6 +56,7 @@ import type { Outputs } from './outputs.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
 import { currentTicket } from './ticket.ts';
 import { guardView, learnerLines, renderTranscript } from './transcript.ts';
+import { Uploads, type RouteJudge } from './uploads.ts';
 
 export class BadRequestError extends Error {}
 
@@ -70,6 +74,10 @@ const AWAY_MS = 30 * 60 * 1000;
 const LONG_AWAY_MS = 12 * 3600 * 1000;
 /** 状态整理开场里教学行只放开头一段（作紧邻前序事件），全文用 read_session 查。 */
 const TEACHING_EXCERPT = 160;
+/** 项目说明上限（字；参照 Claude，`docs/设计/记录/项目说明.md`）。 */
+export const INSTRUCTIONS_LIMIT = 16000;
+/** 找资料一次最多交回几份候选（`docs/设计/会话/找资料.md`）。 */
+const MAX_CANDIDATES = 10;
 
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
@@ -91,6 +99,8 @@ export interface StudiumOptions {
   outputs: Outputs;
   /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
   cross: Crosslinks;
+  /** 上传分流里拿不准的交模型判一次（工单 W9 §4.2）；不给 = 按扩展名默认。 */
+  judge?: RouteJudge;
   now?: () => Date;
 }
 
@@ -113,6 +123,9 @@ export class Studium {
   /** 学习对话与检索子代理的沙盒（只读的资料与记录、可写的工作区）。 */
   private readonly sandboxes: Sandboxes;
 
+  /** 上传与分流（工单 W9）。 */
+  private readonly uploads: Uploads;
+
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
     this.learned = new Learned({
@@ -132,6 +145,25 @@ export class Studium {
       dataDir: o.dataDir,
       scopeOf: (id) => this.scopeOf(id),
       materialLines: (ids) => this.materialLines(ids),
+      instructionsOf: async (id) => {
+        const main = await this.projectOf(id);
+        return main === undefined ? '' : (await this.instructions(main)).text;
+      },
+    });
+    this.uploads = new Uploads({
+      root: join(o.dataDir, 'projects'),
+      newId: (prefix) => this.newId(prefix),
+      iso: () => this.iso(),
+      ...(o.judge !== undefined ? { judge: o.judge } : {}),
+      addMaterial: async (mainId, req) => (await this.newMaterial(mainId, req)).id,
+      removeMaterial: (mainId, id) => this.removeMaterial(mainId, id),
+      importLearned: async (mainId, x) =>
+        (await this.learned.importFile({ ...x, project: mainId })).id,
+      removeImport: (id) => this.learned.removeImport(id),
+      record: async (mainId, r) => {
+        await this.hub.record(mainId, { type: 'upload_routed', at: this.iso(), ...r });
+      },
+      records: async (mainId) => (await this.hub.records(mainId)).map((r) => r.record),
     });
     this.longterm = new LongTerm({
       hub: () => this.hub,
@@ -210,8 +242,8 @@ export class Studium {
             this.mainPreface(sessionId, inputLine, fresh),
         }
       : {}),
-    // 畅谈与导航可联网搜索；其余会话不放开（工单 W5 §4.6）
-    ...(kind === 'talk' || kind === 'nav' ? { webSearch: true } : {}),
+    // 畅谈、导航、找资料可联网搜索；其余会话不放开（工单 W5 §4.6、W9 §4.5）
+    ...(kind === 'talk' || kind === 'nav' || kind === 'find' ? { webSearch: true } : {}),
     ...(kind === 'loop'
       ? {
           sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
@@ -260,6 +292,9 @@ export class Studium {
         case 'output':
           // 写产出对话只读资料；写产出新版本的工具由 Outputs 给
           return [...this.readTools(sessionId), ...this.o.outputs.sessionTools(sessionId)];
+        case 'find':
+          // 找资料：联网搜（模型服务自带），只挂交回候选这一个工具（会话/找资料.md）
+          return [this.candidatesTool(sessionId)];
       }
     },
   });
@@ -365,6 +400,7 @@ export class Studium {
           status: src.status,
           ...(src.problems !== undefined ? { problems: src.problems } : {}),
           ...(src.role !== undefined ? { role: src.role } : {}),
+          ...(src.copiedFrom !== undefined ? { copiedFrom: src.copiedFrom } : {}),
         });
         continue;
       }
@@ -397,18 +433,80 @@ export class Studium {
     mainId: string,
     req: Partial<AddMaterialRequest>,
   ): Promise<ProjectMaterialsResponse> {
-    await this.requireProject(mainId);
     if (typeof req.kind !== 'string' || typeof req.origin !== 'string') {
       throw new BadRequestError('kind 与 origin 要是字符串');
     }
+    await this.newMaterial(mainId, {
+      kind: req.kind,
+      origin: req.origin,
+      ...(typeof req.title === 'string' ? { title: req.title } : {}),
+      ...(typeof req.commit === 'string' ? { commit: req.commit } : {}),
+    });
+    return this.materials(mainId);
+  }
+
+  /** 在项目资料区建一份、记 project_material；返回建好时的 source.json。 */
+  private async newMaterial(mainId: string, req: AddMaterialRequest): Promise<MaterialSource> {
+    await this.requireProject(mainId);
     let src: MaterialSource;
     try {
-      src = await this.o.materials.add(mainId, {
-        kind: req.kind,
-        origin: req.origin,
-        ...(typeof req.title === 'string' ? { title: req.title } : {}),
-        ...(typeof req.commit === 'string' ? { commit: req.commit } : {}),
-      });
+      src = await this.o.materials.add(mainId, req);
+    } catch (err) {
+      if (err instanceof MaterialError) throw new BadRequestError(err.message);
+      throw err;
+    }
+    await this.hub.record(mainId, {
+      type: 'project_material',
+      at: this.iso(),
+      op: 'add',
+      material: src.id,
+    });
+    return src;
+  }
+
+  /** 删掉本项目的一份资料（工单 W9 §4.4）：只追加 remove；已有引用照旧能定位，依据面板标“资料已删”。 */
+  async removeMaterial(mainId: string, id: string): Promise<void> {
+    const have = foldMaterials(await this.requireProject(mainId)).map((m) => m.book);
+    if (!have.includes(id)) throw new BadRequestError(`本项目没有这份资料：${id}`);
+    await this.hub.record(mainId, {
+      type: 'project_material',
+      at: this.iso(),
+      op: 'remove',
+      material: id,
+    });
+  }
+
+  /** 重试一份失败 / 有问题的资料。 */
+  async retryMaterial(mainId: string, id: string): Promise<ProjectMaterialsResponse> {
+    const have = foldMaterials(await this.requireProject(mainId)).map((m) => m.book);
+    if (!have.includes(id)) throw new BadRequestError(`本项目没有这份资料：${id}`);
+    try {
+      await this.o.materials.retry(id);
+    } catch (err) {
+      if (err instanceof MaterialError) throw new BadRequestError(err.message);
+      throw err;
+    }
+    return this.materials(mainId);
+  }
+
+  /** 从别的项目拿一份（工单 W9 §4.1）：复制进本项目，各算一份。 */
+  async copyMaterial(
+    mainId: string,
+    fromProject: string,
+    material: string,
+  ): Promise<ProjectMaterialsResponse> {
+    await this.requireProject(mainId);
+    if (fromProject === mainId) throw new BadRequestError('这份已经在本项目里了');
+    const there = foldMaterials(await this.requireProject(fromProject)).map((m) => m.book);
+    if (!there.includes(material)) throw new BadRequestError(`那个项目里没有这份资料：${material}`);
+    if ((await this.o.materials.source(material)) === undefined) {
+      // W8 之前从书库选的书：在本项目里照“从书库挑”建一份
+      await this.newMaterial(mainId, { kind: 'pdf', origin: material });
+      return this.materials(mainId);
+    }
+    let src: MaterialSource;
+    try {
+      src = await this.o.materials.copy(material, mainId);
     } catch (err) {
       if (err instanceof MaterialError) throw new BadRequestError(err.message);
       throw err;
@@ -420,6 +518,227 @@ export class Studium {
       material: src.id,
     });
     return this.materials(mainId);
+  }
+
+  // ───────────── 上传与分流（工单 W9 §4.1 §4.2） ─────────────
+
+  /** 收下一批上传的文件，一份份分到资料或学过的。 */
+  async upload(mainId: string, files: { path: string; data: Buffer }[]) {
+    await this.requireProject(mainId);
+    return this.uploads.save(mainId, files);
+  }
+
+  /** 本项目上传过的每一份现在分在哪（新的在前）。 */
+  async uploadsOf(mainId: string) {
+    await this.requireProject(mainId);
+    return this.uploads.list(mainId);
+  }
+
+  /** 学习者改判一份上传。 */
+  async reroute(mainId: string, upload: string, file: string, to: '资料' | '学过的') {
+    await this.requireProject(mainId);
+    return this.uploads.reroute(mainId, upload, file, to);
+  }
+
+  /** 删一条外部导入（项目页“我导入的学过的”）：只能删本项目导入的。 */
+  async removeImport(mainId: string, id: string): Promise<void> {
+    await this.requireProject(mainId);
+    const one = (await this.learned.imports()).find((x) => x.id === id);
+    if (one?.project !== mainId) throw new BadRequestError(`本项目没有导入过这一份：${id}`);
+    await this.learned.removeImport(id);
+  }
+
+  // ───────────── 项目说明（`docs/设计/记录/项目说明.md`；工单 W9 §4.6） ─────────────
+
+  /** 项目说明：当前值（最后一条）+ 全部历史。 */
+  async instructions(mainId: string): Promise<ProjectInstructionsResponse> {
+    await this.requireProject(mainId);
+    const history: ProjectInstructionsResponse['history'] = [];
+    for (const { line, record } of await this.hub.records(mainId)) {
+      if (record.type === 'project_instructions') {
+        history.push({ at: record.at, by: record.by, text: record.text, line });
+      }
+    }
+    return { text: history.at(-1)?.text ?? '', history, limit: INSTRUCTIONS_LIMIT };
+  }
+
+  /** 改项目说明（学习者在项目页改，或主对话代写）：存一版，从下一个开场起生效。 */
+  async setInstructions(
+    mainId: string,
+    text: string,
+    by: 'learner' | 'main' = 'learner',
+    forLine?: number,
+  ): Promise<ProjectInstructionsResponse> {
+    await this.requireProject(mainId);
+    const t = text.trim();
+    if (t.length > INSTRUCTIONS_LIMIT) {
+      throw new BadRequestError(
+        `项目说明最多 ${String(INSTRUCTIONS_LIMIT)} 字，现在是 ${String(t.length)} 字；删掉一些再存`,
+      );
+    }
+    if (t === (await this.instructions(mainId)).text) return this.instructions(mainId);
+    await this.hub.record(mainId, {
+      type: 'project_instructions',
+      at: this.iso(),
+      text: t,
+      by,
+      ...(forLine !== undefined ? { forLine } : {}),
+    });
+    return this.instructions(mainId);
+  }
+
+  /** 开场里的项目说明一段（主对话、畅谈、导航、找资料用；守卫、后台整理不给）。 */
+  private async instructionsBlock(mainId: string): Promise<string> {
+    const t = (await this.instructions(mainId)).text;
+    return `项目说明（学习者明确的长期要求；与学习者当场说的冲突时以当场为准）：${t !== '' ? `\n${t}` : '还没写'}`;
+  }
+
+  // ───────────── 找资料（`docs/设计/会话/找资料.md`；工单 W9 §4.5） ─────────────
+
+  /** 找资料对话的开场：学习者那句话、方向说明、项目说明、本项目已有资料。 */
+  private async findOpening(mainId: string, request: string, line: number): Promise<string> {
+    const records = await this.hub.records(mainId);
+    const goal = currentGoal(records);
+    const have = foldMaterials(records.map((r) => r.record));
+    const rows: string[] = [];
+    for (const m of have) {
+      const src = await this.o.materials.source(m.book);
+      rows.push(
+        src !== undefined
+          ? `- ${src.id}｜${src.title}｜${src.kind}｜${src.origin.startsWith('/') ? '本机文件' : src.origin}`
+          : `- ${m.book}｜书库里的书`,
+      );
+    }
+    return [
+      `学习者在主对话里说（主对话第 ${String(line)} 行）：${request}`,
+      '',
+      goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
+      '',
+      await this.instructionsBlock(mainId),
+      '',
+      `本项目已有的资料（id｜标题｜种类｜来源）：\n${rows.join('\n') || '（还没有）'}`,
+    ].join('\n');
+  }
+
+  /** 找资料对话交回候选：程序核网址、去重、标出已在本项目的，存成 find_candidates 给界面勾。 */
+  private candidatesTool(findId: string): ToolSpec {
+    return {
+      name: 'submit_candidates',
+      description: `候选找好了时调用：交回至多 ${String(MAX_CANDIDATES)} 份（标题、网址、为什么选——对着方向说明说），学习者在界面上勾了才存。可以再调，以最后一次为准。`,
+      input: {
+        candidates: z
+          .array(
+            z.object({
+              title: z.string(),
+              url: z.string().describe('http(s) 网址'),
+              why: z.string().describe('为什么选，对着方向说明说，一两句'),
+            }),
+          )
+          .describe(`至多 ${String(MAX_CANDIDATES)} 份`),
+      },
+      run: async (a) => {
+        const mainId = await this.projectOf(findId);
+        if (mainId === undefined) return err('找不到这个对话所属的项目');
+        const given = a.candidates as { title: string; url: string; why: string }[];
+        if (given.length === 0) return err('一份候选都没有；没找到合适的就直接跟学习者说');
+        if (given.length > MAX_CANDIDATES) {
+          return err(`至多 ${String(MAX_CANDIDATES)} 份，这次交了 ${String(given.length)} 份`);
+        }
+        const origins = new Map<string, string>();
+        for (const m of foldMaterials(await this.requireProject(mainId))) {
+          const src = await this.o.materials.source(m.book);
+          if (src !== undefined) origins.set(normalUrl(src.origin), src.id);
+        }
+        const out: FindCandidate[] = [];
+        const dropped: string[] = [];
+        for (const c of given) {
+          let u: URL;
+          try {
+            u = new URL(c.url.trim());
+          } catch {
+            dropped.push(`${c.title}（网址不对）`);
+            continue;
+          }
+          if (u.protocol !== 'http:' && u.protocol !== 'https:') {
+            dropped.push(`${c.title}（不是 http(s) 网址）`);
+            continue;
+          }
+          if (out.some((x) => normalUrl(x.url) === normalUrl(u.href))) {
+            dropped.push(`${c.title}（和前面的重复）`);
+            continue;
+          }
+          const already = origins.get(normalUrl(u.href));
+          out.push({
+            title: c.title.trim() || u.hostname,
+            url: u.href,
+            why: c.why.trim(),
+            ...(already !== undefined ? { alreadyIn: already } : {}),
+          });
+        }
+        if (out.length === 0) return err(`没有能用的候选：${dropped.join('；')}`);
+        await this.hub.record(findId, { type: 'find_candidates', at: this.iso(), candidates: out });
+        return ok(
+          `已列给学习者 ${String(out.length)} 份${dropped.length > 0 ? `；去掉了：${dropped.join('；')}` : ''}${out.some((x) => x.alreadyIn !== undefined) ? '；标了已在本项目的' : ''}。等学习者勾，不用再把清单说一遍。`,
+        );
+      },
+    };
+  }
+
+  /** 学习者在候选清单上勾了、点“存所选”：勾中的存成本项目资料（联网查来），告诉主对话存了几份。 */
+  async pickCandidates(findId: string, forLine: number, picked: number[]): Promise<void> {
+    const opened = await this.hub.opened(findId);
+    if (opened.kind !== 'find') throw new BadRequestError('这不是找资料的对话');
+    const mainId = await this.projectOf(findId);
+    if (mainId === undefined) throw new BadRequestError('找不到这个对话所属的项目');
+    const records = await this.hub.records(findId);
+    const list = records.find((r) => r.line === forLine)?.record;
+    if (list?.type !== 'find_candidates')
+      throw new BadRequestError(`第 ${String(forLine)} 行不是候选清单`);
+    if (
+      records.some((r) => r.record.type === 'candidates_picked' && r.record.forLine === forLine)
+    ) {
+      throw new BadRequestError('这份清单已经存过了');
+    }
+    const chosen = [...new Set(picked)].sort((x, y) => x - y);
+    if (chosen.some((i) => !Number.isInteger(i) || i < 0 || i >= list.candidates.length)) {
+      throw new BadRequestError('勾的序号不对');
+    }
+    const materials: string[] = [];
+    const saved: string[] = [];
+    for (const i of chosen) {
+      const c = list.candidates[i];
+      if (c === undefined) continue;
+      if (c.alreadyIn !== undefined) {
+        materials.push(c.alreadyIn);
+        continue;
+      }
+      try {
+        const src = await this.newMaterial(mainId, {
+          kind: 'search',
+          origin: c.url,
+          title: c.title,
+        });
+        materials.push(src.id);
+        saved.push(`《${c.title}》`);
+      } catch (e) {
+        if (!(e instanceof BadRequestError)) throw e;
+        materials.push('');
+      }
+    }
+    await this.hub.record(findId, {
+      type: 'candidates_picked',
+      at: this.iso(),
+      forLine,
+      picked: chosen,
+      materials,
+    });
+    await this.hub.send(mainId, {
+      role: 'program',
+      text:
+        saved.length > 0
+          ? `学习者在找资料对话里勾了 ${String(saved.length)} 份存进本项目资料（联网查来，正在抓取转换）：${saved.join('、')}；${String(list.candidates.length - chosen.length)} 份没勾，没存。跟学习者说一句存了几份。`
+          : '学习者在找资料对话里一份都没存。跟学习者说一句即可。',
+    });
   }
 
   /** 从书库加书 / 去掉资料：只追加记录；书库里没有的书整批拒绝，已有的同一本不重复加。 */
@@ -1227,6 +1546,8 @@ export class Studium {
       '',
       `期限：${deadline !== undefined ? this.deadlineText(foldDeadline(main)) : '没有记'}`,
       '',
+      await this.instructionsBlock(mainId),
+      '',
       scope.length > 0
         ? `本项目的资料（资料定范围：这个人要学会什么；每份 id｜标题｜种类｜版本｜日期｜状态｜角色）：\n${(await this.materialLines(scope)).join('\n')}`
         : '本项目还没有能用的资料（缺资料依据）：按方向说明与学过的记录推，候选里资料核不了的标“模型补的”。',
@@ -1250,7 +1571,7 @@ export class Studium {
       '',
       ...(learned.imports.length > 0
         ? [
-            `外部导入（学习者在系统之外学到的：畅谈里说的 / 笔记里写的；未验证，可信度低于学习记录，学习里的证据永远优先，可以怀疑，不算“已合上过”）：\n${learned.imports.map((x) => `- ${x.channel}：${'session' in x.ref ? `${x.ref.session} 第 ${x.ref.lines.join('、')} 行` : `笔记 ${x.ref.note}`}（未验证）`).join('\n')}`,
+            `外部导入（学习者在系统之外学到的：畅谈里说的 / 笔记里写的 / 别处跟 AI 学的对话；未验证，可信度低于学习记录，学习里的证据永远优先，可以怀疑，不算“已合上过”；笔记与对话记录的全文用 retrieve 查）：\n${learned.imports.map((x) => `- ${this.learned.importLine(x)}（未验证）`).join('\n')}`,
             '',
           ]
         : []),
@@ -1804,8 +2125,7 @@ export class Studium {
         const body = await this.learned.list(mainId);
         const rows = body.learnings.map((l) => `- ${this.learned.line(l)}`);
         const imports = body.imports.map(
-          (x) =>
-            `- ${x.channel}：${'session' in x.ref ? `${x.ref.session} 第 ${x.ref.lines.join('、')} 行` : `笔记 ${x.ref.note}`}（未验证，不算学会）`,
+          (x) => `- ${this.learned.importLine(x)}（未验证，不算学会）`,
         );
         return ok(
           [
@@ -1834,6 +2154,7 @@ export class Studium {
       '程序附上的当前事实（每轮刷新，以这里为准）',
       goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
       `期限：${deadline.deadline !== undefined ? this.deadlineText(deadline) : '没有记'}`,
+      await this.instructionsBlock(mainId),
       '── 各次学习现在的样子 ──',
       ...(await this.learningsNow(mainId)),
       decision?.record.type === 'route_decision'
@@ -1929,6 +2250,7 @@ export class Studium {
             role: 'program',
             text: [
               `学习者在主对话里说（主对话第 ${String(asked.line)} 行）：${asked.record.text}`,
+              await this.instructionsBlock(mainId),
               ...(goal !== undefined
                 ? [
                     `已有方向（主对话 L${String(goal.line)}，${goal.goal.at.slice(0, 10)}）：`,
@@ -1973,6 +2295,55 @@ export class Studium {
       },
       this.listLearnedTool(mainId),
       {
+        name: 'find_materials',
+        description:
+          '学习者要找资料时调用（如“帮我找讲 SVD 的好资料”）：在他这条消息下开一个找资料的对话，联网搜、列候选，学习者勾了才存进本项目资料。主对话自己不搜。',
+        input: { request: z.string().describe('学习者的原话') },
+        run: async (a) => {
+          const recs = await this.hub.records(mainId);
+          const asked = recs.filter((r) => r.record.type === 'user_message').at(-1);
+          if (asked?.record.type !== 'user_message') return err('主对话里还没有学习者的话');
+          const title = '找资料';
+          const find = await this.hub.createSession('find', {
+            title,
+            parent: mainId,
+            anchorLine: asked.line,
+          });
+          await this.hub.send(find.sessionId, {
+            role: 'program',
+            text: await this.findOpening(mainId, a.request as string, asked.line),
+          });
+          await this.hub.record(mainId, {
+            type: 'task_opened',
+            at: this.iso(),
+            sessionId: find.sessionId,
+            kind: 'find',
+            title,
+            anchorLine: asked.line,
+          });
+          return ok(
+            '已在学习者这条消息下开了找资料的对话；候选列出来后学习者在那里勾，存了几份程序会告诉你。',
+          );
+        },
+      },
+      {
+        name: 'remember',
+        description:
+          '学习者明确要你记住一件长期的事（“记住我用 Linux”“以后别先给答案”）时调用：给出改后的项目说明全文（在现有的上面增删改，其余照留）。只记学习者明确要求记的；随口说的、你自己推断的不记。写完跟学习者说一句改了什么。',
+        input: { text: z.string().describe('改后的项目说明全文') },
+        run: async (a) => {
+          const recs = await this.hub.records(mainId);
+          const asked = recs.filter((r) => r.record.type === 'user_message').at(-1);
+          try {
+            const now = await this.setInstructions(mainId, a.text as string, 'main', asked?.line);
+            return await ok(`已存。现在的项目说明：\n${now.text || '（空）'}`);
+          } catch (e) {
+            if (e instanceof BadRequestError) return await err(e.message);
+            throw e;
+          }
+        },
+      },
+      {
         name: 'point_to_conversation',
         description:
           '学习者要接着某个已有的对话（比如一次还在进行的学习）时调用：在主对话里放一个回到那里的入口。',
@@ -1985,7 +2356,10 @@ export class Studium {
           });
           if (
             opened?.parent !== mainId ||
-            (opened.kind !== 'loop' && opened.kind !== 'talk' && opened.kind !== 'output')
+            (opened.kind !== 'loop' &&
+              opened.kind !== 'talk' &&
+              opened.kind !== 'output' &&
+              opened.kind !== 'find')
           ) {
             return err(`本项目里没有这个对话：${id}`);
           }
@@ -2959,4 +3333,15 @@ function validDate(s: string): boolean {
 /** b 比 a 晚几天（YYYY-MM-DD；b 在 a 之前为负）。 */
 function daysBetween(a: string, b: string): number {
   return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
+}
+
+/** 比对网址是否同一份：去掉结尾斜杠与 #片段，主机名小写。 */
+function normalUrl(u: string): string {
+  try {
+    const x = new URL(u.trim());
+    x.hash = '';
+    return x.href.replace(/\/+$/, '');
+  } catch {
+    return u.trim();
+  }
 }

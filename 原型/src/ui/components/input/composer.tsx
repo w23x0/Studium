@@ -17,6 +17,7 @@ import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button
 import { useSpeech } from '@/hooks/use-speech';
 import { hasMath, insertFormula, needsSmallerCopy, scaledSize } from '@/input-model';
 import { cn } from '@/lib/utils';
+import type { PickedFile } from '@/components/project-materials';
 import { W } from '@/wording';
 import {
   IMAGE_MIME_TYPES,
@@ -48,7 +49,12 @@ interface PendingImage {
 const coarse = (): boolean =>
   typeof window !== 'undefined' && window.matchMedia('(pointer: coarse)').matches;
 
-export function InputComposer(props: { placeholder: string; onSend: SendInput }) {
+export function InputComposer(props: {
+  placeholder: string;
+  onSend: SendInput;
+  /** 拖进 / 选了非图片文件时（只有主对话给）：不进输入，交给项目的上传；回一句给学习者看的话。 */
+  onOtherFiles?: (files: PickedFile[]) => Promise<string>;
+}) {
   const [text, setText] = useState('');
   const [images, setImages] = useState<PendingImage[]>([]);
   const [notice, setNotice] = useState<string | undefined>(undefined);
@@ -124,7 +130,16 @@ export function InputComposer(props: { placeholder: string; onSend: SendInput })
   const addFiles = (list: FileList | File[]) => {
     const all = [...list];
     const ok = all.filter((f) => (IMAGE_MIME_TYPES as readonly string[]).includes(f.type));
-    setNotice(ok.length < all.length ? W.notImage : undefined);
+    const others = all.filter((f) => !ok.includes(f));
+    const upload = props.onOtherFiles;
+    if (others.length > 0 && upload !== undefined) {
+      setNotice(W.filesUploading(others.length));
+      upload(others.map((file) => ({ file, path: file.name })))
+        .then(setNotice)
+        .catch((e: unknown) => setNotice(e instanceof Error ? e.message : String(e)));
+    } else {
+      setNotice(others.length > 0 ? W.notImage : undefined);
+    }
     for (const file of ok) {
       const key = `${String(Date.now())}-${Math.random().toString(36).slice(2)}`;
       setImages((xs) => [
@@ -333,7 +348,8 @@ export function InputComposer(props: { placeholder: string; onSend: SendInput })
       <input
         ref={files}
         type="file"
-        accept={IMAGE_MIME_TYPES.join(',')}
+        // 主对话里非图片也收（交给项目的上传）；别处只收图片
+        accept={props.onOtherFiles !== undefined ? undefined : IMAGE_MIME_TYPES.join(',')}
         multiple
         hidden
         onChange={(e) => {

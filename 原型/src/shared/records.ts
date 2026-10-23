@@ -15,6 +15,7 @@ export type * from './records-cross.ts';
 /**
  * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 守卫 · nav 出选择卡（导航）
  * · retrieve 检索子代理（导航派的）· state 整理学习者状态 · pedagogy 记教法效果 · output 写产出对话
+ * · find 找资料（联网列候选，学习者勾了才存）
  */
 export const CONVERSATION_KINDS = [
   'main',
@@ -26,6 +27,7 @@ export const CONVERSATION_KINDS = [
   'state',
   'pedagogy',
   'output',
+  'find',
 ] as const;
 export type ConversationKind = (typeof CONVERSATION_KINDS)[number];
 
@@ -412,6 +414,62 @@ export interface LoopResumed {
   by: 'button' | 'message';
 }
 
+/**
+ * 上传的一份分到了哪边（工单 W9 §4.2）：程序先按扩展名粗分，拿不准的交模型判一次；学习者改判再记一条，
+ * 以最后一条为准。记在项目主对话里。
+ */
+export interface UploadRouted {
+  type: 'upload_routed';
+  at: string;
+  upload: string;
+  /** 上传里的相对路径（整个笔记文件夹 = 文件夹名）。 */
+  file: string;
+  routedTo: '资料' | '学过的';
+  by: 'model' | 'learner';
+  reason?: string;
+  /** 落到了哪：资料 id / 外部导入 id；落不下写原因。 */
+  material?: string;
+  import?: string;
+  problem?: string;
+}
+
+/** 找资料对话交回的一份候选（程序核过网址、去过重）。 */
+export interface FindCandidate {
+  title: string;
+  url: string;
+  why: string;
+  /** 已在本项目：那份资料的 id。 */
+  alreadyIn?: string;
+}
+
+/** 找资料对话交回的候选清单（程序核过的那份），界面拿它给学习者勾。 */
+export interface FindCandidates {
+  type: 'find_candidates';
+  at: string;
+  candidates: FindCandidate[];
+}
+
+/** 学习者在候选清单上勾了哪些（下标，从 0 起）；勾中的已存成本项目资料。 */
+export interface CandidatesPicked {
+  type: 'candidates_picked';
+  at: string;
+  /** 候选清单（find_candidates）所在行。 */
+  forLine: number;
+  picked: number[];
+  /** 存成的资料 id，与 picked 一一对应；存不进的是空串。 */
+  materials: string[];
+}
+
+/** 项目说明（记录/项目说明.md）：每次改动存一版，当前值 = 最后一条。记在项目主对话里。 */
+export interface ProjectInstructions {
+  type: 'project_instructions';
+  at: string;
+  text: string;
+  by: 'learner' | 'main';
+  /** 主对话代写时：学习者那句话所在行。 */
+  forLine?: number;
+}
+
 export type LogRecord =
   | SessionOpened
   | SessionWithdrawn
@@ -442,6 +500,10 @@ export type LogRecord =
   | ProjectDeadline
   | LoopShelved
   | LoopResumed
+  | UploadRouted
+  | FindCandidates
+  | CandidatesPicked
+  | ProjectInstructions
   | ReminderAdded
   | ReminderClosed;
 

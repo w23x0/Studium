@@ -1,19 +1,27 @@
 // 学过的记录（docs/设计/记录/学过的记录.md）：按层读每次学习，加外部导入的存放处。
 // 只读、不缓存、不另存摘要：每次从正本现算；下层（事件记录）走 GET /api/sessions/<id>/records。
-import { appendFile, mkdir, readFile } from 'node:fs/promises';
-import { dirname, join } from 'node:path';
+import { appendFile, cp, mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+import { basename, dirname, extname, join, relative } from 'node:path';
 import type { Import, LearnedResponse, Learning } from '../shared/protocol-learned.ts';
 import type { NumberedRecord, Ticket } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
+import { chatExportToMarkdown } from './knowledge/chat-export.ts';
 import { currentTicket, ticketEdits } from './ticket.ts';
 
 export interface LearnedDeps {
   hub: () => Hub;
-  /** 数据目录；导入存放处在 <数据>/learned/imports.jsonl。 */
+  /** 数据目录；导入的指针在 <数据>/learned/imports.jsonl，笔记与对话记录在 <数据>/learned/imports/<导入 id>/。 */
   dir: string;
   newId: (prefix: string) => string;
   iso: () => string;
 }
+
+/** imports.jsonl 里的一行：一条导入，或一条“删掉了”（只追加，删也是追加）。 */
+type ImportLine = Import | { removed: string; at: string };
+
+/** 对话记录的 md 开头那句（工单 W9 §4.3）：只有学习者说的、做的算证据。 */
+export const CHAT_RECORD_HEAD =
+  '> 这是学习者在别处跟 AI 学的对话；只有学习者说的、做的算证据，AI 讲的不算学习者会。';
 
 export class Learned {
   constructor(private readonly o: LearnedDeps) {}
@@ -22,21 +30,98 @@ export class Learned {
     return join(this.o.dir, 'learned', 'imports.jsonl');
   }
 
-  /** 程序在导入时写一条原样指针（畅谈 / 笔记两个渠道）；只追加。 */
-  async addImport(x: { channel: Import['channel']; ref: Import['ref'] }): Promise<Import> {
+  /** <数据>/learned/：ref.file 相对它。 */
+  get root(): string {
+    return join(this.o.dir, 'learned');
+  }
+
+  /** 程序在导入时写一条原样指针（畅谈渠道）；只追加。 */
+  async addImport(x: {
+    channel: Import['channel'];
+    ref: Import['ref'];
+    title?: string;
+    project?: string;
+    id?: string;
+  }): Promise<Import> {
     const one: Import = {
-      id: this.o.newId('imp'),
+      id: x.id ?? this.o.newId('imp'),
       at: this.o.iso(),
       channel: x.channel,
       ref: x.ref,
       unverified: true,
+      ...(x.title !== undefined ? { title: x.title } : {}),
+      ...(x.project !== undefined ? { project: x.project } : {}),
     };
-    await mkdir(dirname(this.file), { recursive: true });
-    await appendFile(this.file, `${JSON.stringify(one)}\n`, 'utf8');
+    await this.append(one);
     return one;
   }
 
-  /** 全部外部导入，按时间升序。 */
+  /**
+   * 笔记 / 别处 AI 对话记录导入（工单 W9 §4.3）：原件拷进 imports/<id>/原件/，转成一份 md
+   * （.md / .txt 原样；对话导出 JSON 转成逐条“学习者 / AI”；文件夹里的 md 按路径接成一份）。
+   * 不进资料、不经模型分析。
+   */
+  async importFile(x: {
+    path: string;
+    channel: '笔记' | '对话记录';
+    project: string;
+    title?: string;
+  }): Promise<Import> {
+    const id = this.o.newId('imp');
+    const dir = join(this.root, 'imports', id);
+    const original = join(dir, '原件');
+    await mkdir(original, { recursive: true });
+    const name = basename(x.path);
+    const title = x.title ?? name.replace(extname(name), '');
+    await cp(x.path, join(original, name), { recursive: true });
+    const st = await stat(x.path);
+    let md: string;
+    if (st.isDirectory()) {
+      const parts: string[] = [`# ${title}`, ''];
+      for (const f of await textFilesIn(x.path)) {
+        parts.push(`<!-- 文件：${f} -->`, '', await readFile(join(x.path, f), 'utf8'), '');
+      }
+      md = parts.join('\n');
+    } else {
+      const raw = await readFile(x.path, 'utf8');
+      md = extname(name).toLowerCase() === '.json' ? chatExportToMarkdown(raw, title) : raw;
+    }
+    if (x.channel === '对话记录') md = `${CHAT_RECORD_HEAD}\n\n${md}`;
+    await writeFile(join(dir, '正文.md'), md.endsWith('\n') ? md : `${md}\n`, 'utf8');
+    return this.addImport({
+      id,
+      channel: x.channel,
+      ref: { file: relative(this.root, join(dir, '正文.md')) },
+      title,
+      project: x.project,
+    });
+  }
+
+  /** 删一条导入：追加一行“删掉了”，文件留着（只追加）。 */
+  async removeImport(id: string): Promise<void> {
+    if (!(await this.imports()).some((x) => x.id === id)) {
+      throw new NotFoundError(`没有这条导入：${id}`);
+    }
+    await this.append({ removed: id, at: this.o.iso() });
+  }
+
+  /** 一条导入的 md 全文（笔记 / 对话记录）；畅谈的没有。 */
+  async importText(x: Import): Promise<string | undefined> {
+    if (!('file' in x.ref)) return undefined;
+    try {
+      return await readFile(join(this.root, x.ref.file), 'utf8');
+    } catch (err) {
+      if ((err as { code?: string }).code === 'ENOENT') return undefined;
+      throw err;
+    }
+  }
+
+  private async append(line: ImportLine): Promise<void> {
+    await mkdir(dirname(this.file), { recursive: true });
+    await appendFile(this.file, `${JSON.stringify(line)}\n`, 'utf8');
+  }
+
+  /** 全部外部导入（删掉的不算），按时间升序。W9 之前笔记那种 `{ note }` 指针不再列。 */
   async imports(): Promise<Import[]> {
     let raw: string;
     try {
@@ -45,10 +130,15 @@ export class Learned {
       if ((err as { code?: string }).code === 'ENOENT') return [];
       throw err;
     }
-    return raw
+    const lines = raw
       .split('\n')
       .filter((l) => l.trim() !== '')
-      .map((l) => JSON.parse(l) as Import);
+      .map((l) => JSON.parse(l) as ImportLine);
+    const removed = new Set(lines.flatMap((l) => ('removed' in l ? [l.removed] : [])));
+    return lines.filter(
+      (l): l is Import =>
+        !('removed' in l) && !removed.has(l.id) && ('session' in l.ref || 'file' in l.ref),
+    );
   }
 
   /**
@@ -232,6 +322,13 @@ export class Learned {
     return parts.join('；');
   }
 
+  /** 一条外部导入一行：畅谈 = 会话与行号；笔记 / 对话记录 = 标题 + 沙盒里的位置（只读/学过的记录/外部导入/<id>.md）。 */
+  importLine(x: Import): string {
+    return 'session' in x.ref
+      ? `${x.id} ${x.channel}：${x.ref.session} 第 ${x.ref.lines.join('、')} 行`
+      : `${x.id} ${x.channel}《${x.title ?? x.id}》：外部导入/${x.id}.md`;
+  }
+
   /** 一次学习一行（导航开场、复盘、主对话的 list_learned 用）：上层 + 中层（记录/学过的记录.md「分层」）。 */
   line(l: Learning): string {
     const start = l.openedAt.slice(0, 10);
@@ -270,4 +367,19 @@ export function ticketText(t: Ticket): string {
     .map((s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`)
     .join('；');
   return `新点 ${t.newPoint}；预期理解 ${t.clause}；出发点 ${starts || '（无）'}`;
+}
+
+/** 文件夹里的文字笔记（.md / .markdown / .txt），按路径排；隐藏目录不进。 */
+async function textFilesIn(root: string): Promise<string[]> {
+  const out: string[] = [];
+  const walk = async (dir: string): Promise<void> => {
+    for (const e of await readdir(dir, { withFileTypes: true })) {
+      if (e.name.startsWith('.')) continue;
+      const p = join(dir, e.name);
+      if (e.isDirectory()) await walk(p);
+      else if (/\.(md|markdown|txt)$/i.test(e.name)) out.push(relative(root, p));
+    }
+  };
+  await walk(root);
+  return out.sort((a, b) => a.localeCompare(b, 'zh-CN', { numeric: true }));
 }

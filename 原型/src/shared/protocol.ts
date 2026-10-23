@@ -11,6 +11,7 @@ import type {
   Understanding,
 } from './records.ts';
 import type { TodayView } from './protocol-longterm.ts';
+import type { Import } from './protocol-learned.ts';
 
 export type * from './protocol-longterm.ts';
 export type * from './protocol-learned.ts';
@@ -540,6 +541,7 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   state: '状态整理',
   pedagogy: '教法记录整理',
   output: '写产出',
+  find: '找资料',
 };
 
 export * from './output.ts';
@@ -844,6 +846,8 @@ export interface MaterialSource {
   role?: { value: '主资料' | '参考资料'; by: 'model'; at: string; sessionId: string };
   /** 正文不在本资料目录的 正文/ 里时（从书库挑的书 = 它的切分目录），正文的绝对路径。 */
   bodyPath?: string;
+  /** 从别的项目拿来的（工单 W9 §4.1）：来源项目与那边的资料 id；origin 照抄原来的（重试要用）。 */
+  copiedFrom?: { project: string; material: string };
 }
 
 export interface AddMaterialRequest {
@@ -868,6 +872,7 @@ export interface ProjectMaterialView {
   status?: MaterialStatus;
   problems?: string[];
   role?: MaterialSource['role'];
+  copiedFrom?: MaterialSource['copiedFrom'];
 }
 
 export interface ProjectMaterialsResponse {
@@ -900,13 +905,6 @@ export interface ProjectDeadlineResponse {
   daysLeft?: number;
 }
 
-export interface NoteImportRequest {
-  /** 一份 Markdown 笔记文件，或一个目录（里面所有 .md，按文件名顺序）。 */
-  path: string;
-  /** 不给：文件名 / 目录名（目录带上一层名）。 */
-  title?: string;
-}
-
 export interface NoteSummary {
   /** 在书库里的 id（“笔记-…”），当书用：浏览 / 检索 / 引用都照书的接口。 */
   id: string;
@@ -926,10 +924,66 @@ export interface NoteSummary {
   skipped?: string[];
 }
 
-export interface NoteImportResponse {
-  note: NoteSummary;
-}
-
 export interface NotesResponse {
   notes: NoteSummary[];
+}
+
+// ───────────── 导入入口与项目页（工单 W9） ─────────────
+
+/** 一次上传里的一份（单个文件，或整个笔记文件夹）分到了哪边、落到了哪。 */
+export interface UploadItemView {
+  upload: string;
+  /** 上传里的相对路径（文件夹 = 文件夹名）。 */
+  file: string;
+  at: string;
+  routedTo: '资料' | '学过的';
+  by: 'model' | 'learner';
+  reason?: string;
+  /** 进了资料：资料 id。 */
+  material?: string;
+  /** 进了学过的：外部导入 id。 */
+  import?: string;
+  /** 没能落下的原因（这种文件还转不了等）。 */
+  problem?: string;
+}
+
+export interface UploadsResponse {
+  items: UploadItemView[];
+}
+
+/** 学习者改判：这份改去另一边。 */
+export interface RerouteRequest {
+  upload: string;
+  file: string;
+  to: '资料' | '学过的';
+}
+
+/** 从别的项目拿一份资料。 */
+export interface CopyMaterialRequest {
+  fromProject: string;
+  material: string;
+}
+
+/** 项目说明：当前值 + 全部历史（只追加）。 */
+export interface ProjectInstructionsResponse {
+  text: string;
+  history: { at: string; by: 'learner' | 'main'; text: string; line: number }[];
+  /** 上限（字）。 */
+  limit: number;
+}
+
+export interface ProjectInstructionsRequest {
+  text: string;
+}
+
+/** 找资料对话里学习者勾了哪些候选（`forLine` = 那份候选清单所在行）。 */
+export interface PickCandidatesRequest {
+  forLine: number;
+  picked: number[];
+}
+
+/** 一条外部导入（笔记 / 对话记录）的 md 全文。 */
+export interface ImportTextResponse {
+  import: Import;
+  text: string;
 }

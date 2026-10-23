@@ -32,10 +32,14 @@ export interface Learning {
 export interface Import {
   id: string;
   at: string;
-  channel: '畅谈' | '笔记';
-  /** 畅谈 = 学习者原话的行；笔记 = 那份笔记。 */
-  ref: { session: string; lines: number[] } | { note: string };
+  channel: '畅谈' | '笔记' | '对话记录';
+  /** 畅谈 = 学习者原话的行；笔记 / 对话记录 = 转好的 md（相对 `<数据>/learned/` 的路径，工单 W9 §4.3）。 */
+  ref: { session: string; lines: number[] } | { file: string };
   unverified: true;
+  /** 笔记 / 对话记录：标题（多是原文件名）。 */
+  title?: string;
+  /** 从哪个项目导入的（项目页“我导入的学过的”只列本项目的）；学过的按人，不按项目划界。 */
+  project?: string;
 }
 
 export interface LearnedResponse {

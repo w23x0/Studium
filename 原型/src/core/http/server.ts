@@ -12,8 +12,6 @@ import type {
   ListProjectsResponse,
   ProjectResponse,
   CardResponse,
-  NoteImportRequest,
-  NoteImportResponse,
   NotesResponse,
   ProjectDeadlineRequest,
   ProjectDeadlineResponse,
@@ -50,7 +48,15 @@ import type {
   SourceReportResponse,
   SourceReportsResponse,
   TocResponse,
+  CopyMaterialRequest,
+  ImportTextResponse,
+  PickCandidatesRequest,
+  ProjectInstructionsRequest,
+  ProjectInstructionsResponse,
+  RerouteRequest,
+  UploadsResponse,
 } from '../../shared/protocol.ts';
+import { MAX_UPLOAD_BYTES } from '../uploads.ts';
 import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
 import { NoOriginalError, NoRendererError } from '../knowledge/originals.ts';
@@ -246,8 +252,68 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, { mainSessionId: await studium.ensureMain() } satisfies ProjectResponse);
       return;
     }
+    if (parts[1] === 'projects' && parts.length === 5 && parts[2] !== undefined) {
+      // 工单 W9：从别的项目拿、重试、改判、删导入
+      const mainId = parts[2];
+      const what = `${parts[3] ?? ''}/${parts[4] ?? ''}`;
+      if (method === 'POST' && what === 'materials/copy') {
+        const b = (await readJson(req)) as Partial<CopyMaterialRequest>;
+        if (typeof b.fromProject !== 'string' || typeof b.material !== 'string') {
+          throw new BadRequest('fromProject 与 material 要是字符串');
+        }
+        send(res, 200, await studium.copyMaterial(mainId, b.fromProject, b.material));
+        return;
+      }
+      if (method === 'POST' && what === 'materials/retry') {
+        const b = (await readJson(req)) as { material?: unknown };
+        if (typeof b.material !== 'string') throw new BadRequest('material 要是字符串');
+        send(res, 200, await studium.retryMaterial(mainId, b.material));
+        return;
+      }
+      if (method === 'POST' && what === 'uploads/reroute') {
+        const b = (await readJson(req)) as Partial<RerouteRequest>;
+        if (typeof b.upload !== 'string' || typeof b.file !== 'string') {
+          throw new BadRequest('upload 与 file 要是字符串');
+        }
+        if (b.to !== '资料' && b.to !== '学过的') throw new BadRequest('to 要是 资料 或 学过的');
+        await studium.reroute(mainId, b.upload, b.file, b.to);
+        send(res, 200, { items: await studium.uploadsOf(mainId) } satisfies UploadsResponse);
+        return;
+      }
+      if (method === 'POST' && what === 'imports/remove') {
+        const b = (await readJson(req)) as { id?: unknown };
+        if (typeof b.id !== 'string') throw new BadRequest('id 要是字符串');
+        await studium.removeImport(mainId, b.id);
+        send(res, 200, {});
+        return;
+      }
+    }
     if (parts[1] === 'projects' && parts.length === 4 && parts[2] !== undefined) {
       const mainId = parts[2];
+      if (parts[3] === 'uploads' && method === 'GET') {
+        send(res, 200, { items: await studium.uploadsOf(mainId) } satisfies UploadsResponse);
+        return;
+      }
+      if (parts[3] === 'uploads' && method === 'POST') {
+        // multipart：files 一个或多个；paths（可选）= 同序的相对路径 JSON 数组（文件夹按相对路径传）
+        const files = await readUpload(req);
+        send(res, 201, { items: await studium.upload(mainId, files) } satisfies UploadsResponse);
+        return;
+      }
+      if (parts[3] === 'instructions' && method === 'GET') {
+        send(res, 200, (await studium.instructions(mainId)) satisfies ProjectInstructionsResponse);
+        return;
+      }
+      if (parts[3] === 'instructions' && method === 'PUT') {
+        const b = (await readJson(req)) as Partial<ProjectInstructionsRequest>;
+        if (typeof b.text !== 'string') throw new BadRequest('text 要是字符串');
+        send(
+          res,
+          200,
+          (await studium.setInstructions(mainId, b.text)) satisfies ProjectInstructionsResponse,
+        );
+        return;
+      }
       if (parts[3] === 'materials' && method === 'GET') {
         send(res, 200, (await studium.materials(mainId)) satisfies ProjectMaterialsResponse);
         return;
@@ -411,6 +477,20 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             await studium.resumeLoop(id);
             send(res, 202, {});
             return;
+          case 'candidates': {
+            // 找资料对话里勾候选、存所选（工单 W9 §4.5）
+            const b = body as Partial<PickCandidatesRequest>;
+            if (
+              typeof b.forLine !== 'number' ||
+              !Array.isArray(b.picked) ||
+              !b.picked.every((x) => typeof x === 'number')
+            ) {
+              throw new BadRequest('forLine 要是数字、picked 要是数字数组');
+            }
+            await studium.pickCandidates(id, b.forLine, b.picked);
+            send(res, 200, {});
+            return;
+          }
         }
       }
     }
@@ -552,18 +632,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       } satisfies ResolveCitationsResponse);
       return true;
     }
-    if (method === 'POST' && what === 'notes/import') {
-      const body = (await readJson(req)) as Partial<NoteImportRequest>;
-      if (typeof body.path !== 'string') throw new BadRequest('path 要是字符串');
-      if (body.title !== undefined && typeof body.title !== 'string') {
-        throw new BadRequest('title 要是字符串');
-      }
-      const note = await opts.notes.import(body.path, body.title);
-      // 外部导入：程序写一条原样指针（指向那份笔记），标未验证；导入失败就不写
-      await opts.studium.learned.addImport({ channel: '笔记', ref: { note: note.id } });
-      send(res, 201, { note } satisfies NoteImportResponse);
-      return true;
-    }
     if (method === 'POST' && what === 'reports') {
       const body = (await readJson(req)) as Partial<SourceReportRequest>;
       send(res, 201, { report: await src.report(body) } satisfies SourceReportResponse);
@@ -613,6 +681,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         200,
         (await opts.studium.learned.list(q.get('project') ?? undefined)) satisfies LearnedResponse,
       );
+    } else if (a === 'learned' && b === 'imports' && n === 4 && parts[3] !== undefined) {
+      // 一条外部导入的 md 全文（项目页“我导入的学过的”点开看）
+      const id = decodeURIComponent(parts[3]);
+      const one = (await opts.studium.learned.imports()).find((x) => x.id === id);
+      if (one === undefined) throw new NotFoundError(`没有这条导入：${id}`);
+      send(res, 200, {
+        import: one,
+        text: (await opts.studium.learned.importText(one)) ?? '',
+      } satisfies ImportTextResponse);
     } else if (a === 'learned' && n === 3 && b !== undefined) {
       send(res, 200, {
         learning: await opts.studium.learned.one(decodeURIComponent(b)),
@@ -783,4 +860,44 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   } catch {
     throw new BadRequest('请求体不是 JSON');
   }
+}
+
+/** 读 multipart 上传：files 一个或多个；paths 是同序的相对路径（浏览器传文件夹时文件名里可能没有目录）。 */
+async function readUpload(req: IncomingMessage): Promise<{ path: string; data: Buffer }[]> {
+  const type = req.headers['content-type'] ?? '';
+  if (!type.startsWith('multipart/form-data'))
+    throw new BadRequest('要用 multipart/form-data 传文件');
+  const chunks: Buffer[] = [];
+  let size = 0;
+  for await (const chunk of req as AsyncIterable<Buffer>) {
+    size += chunk.length;
+    if (size > MAX_UPLOAD_BYTES) {
+      throw new BadRequest(`一次上传最多 ${String(MAX_UPLOAD_BYTES / 1024 / 1024)} MB；分几次传`);
+    }
+    chunks.push(chunk);
+  }
+  let form: FormData;
+  try {
+    form = await new Response(Buffer.concat(chunks), {
+      headers: { 'content-type': type },
+    }).formData();
+  } catch {
+    throw new BadRequest('上传的内容读不出来');
+  }
+  const files = form.getAll('files').filter((f): f is File => typeof f !== 'string');
+  const rawPaths = form.get('paths');
+  let paths: unknown = [];
+  if (typeof rawPaths === 'string') {
+    try {
+      paths = JSON.parse(rawPaths);
+    } catch {
+      throw new BadRequest('paths 要是 JSON 数组');
+    }
+  }
+  return Promise.all(
+    files.map(async (f, i) => {
+      const p = Array.isArray(paths) && typeof paths[i] === 'string' ? paths[i] : f.name;
+      return { path: p, data: Buffer.from(await f.arrayBuffer()) };
+    }),
+  );
 }

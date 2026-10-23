@@ -21,6 +21,7 @@ import { api } from './api.ts';
 import { OutputTaskBar } from './components/outputs/outputs-section.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
 import { ProjectHome } from './components/project-home.tsx';
+import type { PickedFile } from './components/project-materials.tsx';
 import { Sidebar } from './components/sidebar/sidebar.tsx';
 import { ProjectsPage } from './components/sidebar/projects-page.tsx';
 import { useSidebarView } from './hooks/use-sidebar.ts';
@@ -124,7 +125,8 @@ export function App() {
   const tasks = sessions
     .filter(
       (s) =>
-        (s.kind === 'loop' || s.kind === 'talk' || s.kind === 'output') && s.parent === projectId,
+        (s.kind === 'loop' || s.kind === 'talk' || s.kind === 'output' || s.kind === 'find') &&
+        s.parent === projectId,
     )
     .sort((a, b) => a.openedAt.localeCompare(b.openedAt));
   const currentSession = sessions.find((s) => s.sessionId === current);
@@ -279,6 +281,9 @@ export function App() {
                     setCurrent(projectId);
                     setPage('chat');
                   }}
+                  onRename={(title) =>
+                    void sidebar.act({ kind: 'project', id: projectId, action: 'rename', title })
+                  }
                   onError={fail}
                 />
               )}
@@ -421,6 +426,7 @@ function Conversation(props: {
           ...(m.verdict ? { verdict: m.verdict } : {}),
           ...(m.objection ? { objection: m.objection } : {}),
           ...(m.images ? { images: m.images } : {}),
+          ...(m.candidates ? { candidates: m.candidates } : {}),
         },
       },
       ...(m.role === 'assistant'
@@ -450,7 +456,7 @@ function Conversation(props: {
     <MainBar projectId={props.projectId} running={running} onError={onError} />
   ) : kind === 'output' ? (
     <OutputTaskBar sessionId={sessionId} projectId={props.projectId} />
-  ) : kind === 'talk' ? (
+  ) : kind === 'find' ? undefined : kind === 'talk' ? (
     ended ? (
       <EndedBar
         text={review !== undefined ? W.reviewEnded : '方向谈好了。'}
@@ -524,7 +530,9 @@ function Conversation(props: {
                     : '我们聊聊你想学什么。'
                   : kind === 'output'
                     ? W.outputChatWelcome
-                    : '马上开始…'
+                    : kind === 'find'
+                      ? W.findWelcome
+                      : '马上开始…'
             }
             footer={footer}
             disabled={ended || watchOnly}
@@ -538,6 +546,15 @@ function Conversation(props: {
             onSend={async (text, images) => {
               await api.send(sessionId, text, images);
             }}
+            // 主对话的输入框拖入非图片文件：不进输入，走项目的上传（工单 W9 §4.1）
+            {...(isMain
+              ? {
+                  onFiles: async (files: PickedFile[]) => {
+                    const r = await api.upload(props.projectId, files);
+                    return W.filesSent(r.items.length);
+                  },
+                }
+              : {})}
           />
         </AssistantRuntimeProvider>
       </HighlightContext.Provider>
