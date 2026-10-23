@@ -63,7 +63,7 @@
 每个会话一个 `var/sessions/<会话 id>.jsonl`，一行一条，行号 = 引用地址。类型见 `src/shared/records.ts`：
 `session_opened`（含单子 `ticket`）· `user_message`（异议带 `objection`，附图带 `images`）· `assistant_message` ·
 `model_raw`（适配层吐出的原始消息，含思考块）· `model_session`（续接凭据）· `model_used` · `turn_failed` ·
-`program_fact` · `tool_call` · `sandbox_action`（沙盒里的读 / 写 / 跑命令；`tag` 由程序按路径打：`诊断`、`教学工具:<文件名>`）·
+`program_fact` · `tool_call` · `sandbox_action`（沙盒里的读 / 写 / 跑命令；`tag` 由程序按路径打：`教学工具:<文件名>`）·
 `close_requested` `guard_verdict`（含 `understanding` 与这一轮实际执行的 `model`）`loop_ended` `after_loop_step`
 （搁置与恢复 `loop_shelved` `loop_resumed`）· `ticket_edited` ·
 `project_goal` `project_title`（项目名随方向变，开头那行不改）· `turn_context`（主对话每轮从记录重建的开场，`forLine` 指那轮输入的行）·
@@ -114,6 +114,6 @@
 1. `cd 原型 && npm ci`；本机 `claude` 登录过一次；Linux 还要装 `bubblewrap` 与 `socat`（`sudo apt install bubblewrap socat`），没装时学习对话与检索子代理一开就失败（沙盒起不来），macOS 不用装。
 2. `npm start`，打开终端打印的地址。
 3. 主对话里说想学什么 → 点“单独谈谈你想学什么”进畅谈、谈定后项目改名 → 回项目点“下一步学什么” →
-   选一项开学习 → 学（模型的工作区在 `var/sandbox/<学习 id>/工作区/`，诊断写在 `诊断.md`）→ “我觉得懂了”（守卫判）→
+   选一项开学习 → 学（模型的工作区在 `var/sandbox/<学习 id>/工作区/`，是它自己的草稿）→ “我觉得懂了”（守卫判）→
    “学完了” → 导航出下一张卡；状态整理、教法记录整理在后台。
 4. 用真书：`STUDIUM_LIBRARY=<书库根> npm start`。数据在 `var/`，删掉即重来。

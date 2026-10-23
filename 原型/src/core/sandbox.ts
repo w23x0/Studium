@@ -3,7 +3,7 @@
 // 设计：会话/学习对话.md §2；记录/读写权限.md「执行方式」「权限表」。
 import { mkdir, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
-import { DIAGNOSIS_TAG, type NumberedRecord } from '../shared/records.ts';
+import type { NumberedRecord } from '../shared/records.ts';
 import type { Import, Learning } from '../shared/protocol-learned.ts';
 import type { Hub } from './hub.ts';
 import { NotFoundError } from './hub.ts';
@@ -33,7 +33,7 @@ export function describeSandbox(sb: SandboxSpec): string {
   const books = sb.readOnly.filter((e) => e.name.startsWith('资料/'));
   return [
     '沙盒（这次的执行环境；用通用的读写与命令自己取，只读区写不进去）：',
-    `- 工作区（可写）：${sb.workdir} —— 你自己的笔记；每轮的分析追加在 诊断.md`,
+    `- 工作区（可写）：${sb.workdir} —— 你自己的草稿，想记才记`,
     ...sb.readOnly.map(
       (e) =>
         `- 只读/${e.name}（只读）→ ${e.path}${WHAT[e.name] !== undefined ? ` —— ${WHAT[e.name]}` : e.name.startsWith('资料/') ? ' —— 教材原文' : ''}`,
@@ -132,7 +132,7 @@ export class Sandboxes {
   }
 
   /**
-   * 只读/学过的记录/：每次以往的学习两个文件（上层 + 中层 / 下层对话与诊断）+ 索引 + 外部导入。
+   * 只读/学过的记录/：每次以往的学习两个文件（上层 + 中层 / 下层对话）+ 索引 + 外部导入。
    * `exclude` = 本次（本次学习不进“学过的记录”）。
    */
   private async learnedFiles(
@@ -202,7 +202,7 @@ export class Sandboxes {
     return lines.join('\n');
   }
 
-  /** 一次学习的下层：对话原文与诊断（按行号排）。 */
+  /** 一次学习的下层：对话原文（按行号排）。 */
   private async transcriptText(loopId: string): Promise<string> {
     const records = await this.o.hub().records(loopId);
     const rows = records.flatMap((r) => {
@@ -260,7 +260,7 @@ export class Sandboxes {
         ? rows.map((r) => state.describeRecord(r) + this.objectionNotes('state', r.id)).join('\n')
         : '（暂无）',
       '',
-      '解释候选须经你在诊断里裁决才能当依据；承载读数可直接用。',
+      '解释候选须你和知识证据一起掂量后才能当依据；承载读数可直接用。',
     ].join('\n');
   }
 
@@ -287,11 +287,8 @@ export class Sandboxes {
   }
 }
 
-/** 下层一行：对话本身，或模型在工作区里写的诊断（守卫看不到，这里照给）。 */
+/** 下层一行：对话本身。 */
 function lowerLine(r: NumberedRecord): string | undefined {
-  if (r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok) {
-    return `L${String(r.line)} 诊断（模型工作区，未经守卫）：${r.record.content ?? ''}`;
-  }
   if (
     r.record.type === 'user_message' ||
     r.record.type === 'assistant_message' ||

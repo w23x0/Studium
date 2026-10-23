@@ -14,7 +14,6 @@ import type {
 } from '../shared/protocol.ts';
 import { CROSS_KINDS } from '../shared/records-cross.ts';
 import {
-  DIAGNOSIS_TAG,
   DURABILITY,
   INDEPENDENCE,
   START_SOURCES,
@@ -966,7 +965,7 @@ export class Studium {
         '要判的这次学习的单子：',
         ticket ? this.describeTicket(ticket) : '（缺单子）',
         '',
-        '这次学习的对话（L 后是行号；只放双方对话；程序事实、模型一侧的诊断与沙盒动作不给）：',
+        '这次学习的对话（L 后是行号；只放双方对话；程序事实、模型一侧的沙盒动作不给）：',
         guardView(records),
       ].join('\n'),
     });
@@ -1509,7 +1508,7 @@ export class Studium {
     return {
       name: 'read_session',
       description:
-        '读某个会话（项目主对话 / 谈方向 / 一次学习）里学习者与教学的对话原文，带行号与时间；不含诊断记录与判定。',
+        '读某个会话（项目主对话 / 谈方向 / 一次学习）里学习者与教学的对话原文，带行号与时间；不含沙盒动作与判定。',
       input: {
         session: z.string(),
         from_line: z.number().int().optional(),
@@ -2009,7 +2008,7 @@ export class Studium {
 
   /**
    * 学习对话的工具：只有两个命令（工单 W4 §5.5）。资料、学过的记录、状态、教法记录与教学工具
-   * 都在沙盒里当只读文件读，不再各挂一个工具；诊断写在工作区的 `诊断.md`（沙盒动作，程序当场记）。
+   * 都在沙盒里当只读文件读，不再各挂一个工具；工作区是模型自己的草稿（沙盒动作，程序当场记）。
    */
   private loopTools(loopId: string): ToolSpec[] {
     return [
@@ -2266,7 +2265,7 @@ export class Studium {
 
   /**
    * 交给状态整理的事实（与守卫取不同的字段，`docs/设计/会话/后台整理.md`）——时间、间隔、停顿、中断与停下的地方、
-   * 学习者的话（含紧邻的前一句教学作前序事件）。不给诊断记录、守卫判定，也不给“合上没有”。
+   * 学习者的话（含紧邻的前一句教学作前序事件）。不给模型一侧的沙盒动作、守卫判定，也不给“合上没有”。
    */
   private async stateFacts(covered: Record<string, number>) {
     const sessions = this.hub
@@ -2364,7 +2363,7 @@ export class Studium {
     };
   }
 
-  /** 状态整理会话的工具：读学习对话（不含诊断与判定）、读自己的底层，只写自己的两层。 */
+  /** 状态整理会话的工具：读学习对话（不含沙盒动作与判定）、读自己的底层，只写自己的两层。 */
   private stateTools(stateId: string): ToolSpec[] {
     return [
       this.readSessionTool(),
@@ -2495,17 +2494,12 @@ export class Studium {
     }
   >();
 
-  /** 一次学习结束后记“这次教法管不管用”：对话原文 + 诊断（沙盒动作）+ 守卫判定 + 教学工具使用记录 + 单子。 */
+  /** 一次学习结束后记“这次教法管不管用”：对话原文 + 守卫判定 + 教学工具使用记录 + 单子。 */
   private async recordStrategy(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
     // 学习者改过单子就按改后的记（工单 W6 §4.1：凡“现在的单子”都走 currentTicket）
     const now = currentTicket(records);
-    const notes = records.flatMap((r) =>
-      r.record.type === 'sandbox_action' && r.record.tag === DIAGNOSIS_TAG && r.record.ok
-        ? [`L${String(r.line)} ${r.record.content ?? ''}`]
-        : [],
-    );
     const verdicts = records.flatMap((r) =>
       r.record.type === 'guard_verdict'
         ? [
@@ -2539,8 +2533,6 @@ export class Studium {
         '',
         `守卫判定：\n${verdicts.join('\n') || '（没申请过收口）'}`,
         '',
-        `诊断记录（模型在工作区里写的 诊断.md，未经守卫）：\n${notes.join('\n') || '（无）'}`,
-        '',
         `教学工具使用记录（程序从沙盒动作里记的）：${toolUses.map((u) => `L${String(u.line)} 教学工具:${u.name}`).join('、') || '这次学习没读教学工具，只能从对话原文看用了什么做法'}`,
         '',
         ...(annotated.length > 0
@@ -2561,7 +2553,7 @@ export class Studium {
     return {
       name: 'write_strategy_record',
       description:
-        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时的诊断与状态条件、用了哪些做法、之后诊断怎么变；引用写这次学习的行号。单次记录不证明因果。',
+        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时学习者的表现与状态条件、用了哪些做法、之后表现怎么变；引用写这次学习的行号。单次记录不证明因果。',
       input: {
         conditions: z.string(),
         strategies: z.string(),

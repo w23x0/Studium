@@ -35,10 +35,9 @@ import {
 export function LoopView(props: {
   loopId: string;
   verdictLine?: number | undefined;
-  noteLine?: number | undefined;
   editTicket?: boolean | undefined;
 }) {
-  const { loopId, verdictLine, noteLine } = props;
+  const { loopId, verdictLine } = props;
   const r = useLoad(`loop:${loopId}`, () => api.loopEvidence(loopId));
   const panel = usePanel();
   const loop = r.data?.loop;
@@ -59,13 +58,6 @@ export function LoopView(props: {
       .getElementById(`verdict-${String(verdictLine)}`)
       ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
   }, [loopId, verdictLine, focusLines, jump]);
-
-  // 从“出现在教法变化之后”点进来：滚到那一轮的观察
-  const ready = loop !== undefined;
-  useEffect(() => {
-    if (!ready || noteLine === undefined) return;
-    scrollToNote(noteLine);
-  }, [ready, noteLine]);
 
   if (!loop) return <Loading error={r.error} />;
   const tools = toolCounts(loop.teachingToolsUsed);
@@ -125,26 +117,6 @@ export function LoopView(props: {
         ))}
       </Section>
 
-      <Section title={W.notes} hint={W.notesHint}>
-        {loop.diagnoses.length === 0 && (
-          <div className="text-muted-foreground text-sm">{W.noNotes}</div>
-        )}
-        {loop.diagnoses.map((d) => (
-          <Card
-            key={d.line}
-            id={`note-${String(d.line)}`}
-            active={d.line === noteLine}
-            className="flex flex-col gap-2"
-          >
-            <div className="whitespace-pre-wrap">{d.text}</div>
-            <span className="flex flex-wrap items-center gap-3">
-              <Time at={d.at} />
-              <JumpLine loopId={loopId} line={d.line} label={W.diagnosesJump} />
-            </span>
-          </Card>
-        ))}
-      </Section>
-
       <Section title={W.toolsUsedHere} {...(tools.length > 0 ? { hint: W.toolsUsedHint } : {})}>
         {tools.length === 0 ? (
           <div className="text-muted-foreground text-sm">{W.toolsUsedNone}</div>
@@ -179,12 +151,6 @@ export function LoopView(props: {
       )}
     </div>
   );
-}
-
-function scrollToNote(line: number) {
-  document
-    .getElementById(`note-${String(line)}`)
-    ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
 }
 
 /** 单子：逐行显示、改过的几行、可改（学习结束后隐藏表单）。 */

@@ -71,7 +71,6 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
           key={t.loopId}
           loopId={t.loopId}
           verdictLine={t.verdictLine}
-          noteLine={t.noteLine}
           editTicket={t.editTicket}
         />
       );
