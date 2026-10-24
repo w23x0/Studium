@@ -558,8 +558,8 @@ export class Materials {
   private async convertPdf(pdf: string, dir: string, body: string): Promise<string | undefined> {
     const tool = this.o.pdfTool;
     if (tool === undefined) return 'PDF 的转换没接上（找不到 书库处理/）';
-    if (process.env.MINERU_TOKEN === undefined) {
-      return 'PDF 要用 MinerU 转换，缺环境变量 MINERU_TOKEN';
+    if (!(await hasMineruToken(tool))) {
+      return 'PDF 要用 MinerU 转换，缺 MINERU_TOKEN（环境变量或 书库处理/.env）';
     }
     let pages: number;
     try {
@@ -754,4 +754,15 @@ export function htmlToMarkdown(html: string): string {
     /\uE000(\d+)\uE000/g,
     (_m, i: string) => `\`\`\`\n${blocks[Number(i)] ?? ''}\n\`\`\``,
   );
+}
+
+/** MinerU 密钥：环境变量，或 `书库处理/.env` 里的同名一行（mineru.py 两处都认）。 */
+async function hasMineruToken(tool: string): Promise<boolean> {
+  if (process.env.MINERU_TOKEN !== undefined) return true;
+  try {
+    return /^\s*MINERU_TOKEN\s*=\s*\S/m.test(await readFile(join(tool, '.env'), 'utf8'));
+  } catch (err) {
+    if (isNotFound(err)) return false;
+    throw err;
+  }
 }
