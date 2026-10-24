@@ -66,7 +66,6 @@ import type {
   VersionResponse,
 } from '../shared/output.ts';
 import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
-import { SHELVE_NO_NOTE } from './thread-model.ts';
 
 function token(): string {
   const fromUrl = new URLSearchParams(location.search).get('token');
@@ -109,7 +108,11 @@ let source: EventSource | undefined;
 export const api = {
   listSessions: () => call<ListSessionsResponse>('/sessions'),
   projects: () => call<ListProjectsResponse>('/projects'),
-  createProject: () => call<ProjectResponse>('/projects', { method: 'POST', body: '{}' }),
+  createProject: (title?: string) =>
+    call<ProjectResponse>('/projects', {
+      method: 'POST',
+      body: JSON.stringify(title !== undefined ? { title } : {}),
+    }),
   // ── 左栏：置顶、从列表删掉（只藏起来）、改名 ──
   sidebar: () => call<SidebarResponse>('/sidebar'),
   sidebarAct: (req: SidebarActionRequest) =>
@@ -127,13 +130,6 @@ export const api = {
       body: JSON.stringify({ note: '学习者在界面上点了“结束（没合上）”' }),
     }),
   // ── 学到一半：先放一放、恢复 ──
-  shelve: (loopId: string, note?: string) =>
-    call<object>(`/sessions/${loopId}/shelve`, {
-      method: 'POST',
-      body: JSON.stringify({
-        note: note !== undefined && note.trim() !== '' ? note.trim() : SHELVE_NO_NOTE,
-      }),
-    }),
   resume: (loopId: string) =>
     call<object>(`/sessions/${loopId}/resume`, { method: 'POST', body: '{}' }),
   loopRelations: (mainId: string) =>

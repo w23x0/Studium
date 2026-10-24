@@ -1,43 +1,25 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Thread } from '@/components/assistant-ui/thread';
+// 外壳：左栏 · 中间一页（全部项目 / 新建项目 / 项目页 / 某个对话）· 右侧面板。
+// 现在在哪写进地址（#/…），刷新、后退回原处；窄屏时左栏变抽屉、面板盖满全屏（界面说明 §1.1、§1.5）。
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
-import { Button } from '@/components/ui/button';
-import {
-  ChevronLeftIcon,
-  LayoutGridIcon,
-  PanelRightCloseIcon,
-  PanelRightOpenIcon,
-} from 'lucide-react';
+import { PanelRightCloseIcon, PanelRightOpenIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  AssistantRuntimeProvider,
-  useExternalStoreRuntime,
-  type AppendMessage,
-  type ThreadMessageLike,
-} from '@assistant-ui/react';
 import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
-import type { NumberedRecord } from '../shared/records.ts';
 import { api } from './api.ts';
-import { OutputTaskBar } from './components/outputs/outputs-section.tsx';
+import { Conversation } from './components/conversation.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
 import { ProjectHome } from './components/project-home.tsx';
-import type { PickedFile } from './components/project-materials.tsx';
+import { NewProject } from './components/sidebar/new-project.tsx';
 import { Sidebar } from './components/sidebar/sidebar.tsx';
 import { ProjectsPage } from './components/sidebar/projects-page.tsx';
+import { TopBar } from './components/top-bar.tsx';
 import { useSidebarView } from './hooks/use-sidebar.ts';
+import { LayoutContext, useNarrow } from './layout.ts';
 import { useSetting } from './settings.ts';
 import { buildSidebar, withTitles } from './sidebar-model.ts';
-import {
-  LongtermBanner,
-  ReviewBanner,
-  UnclosedEndBar,
-} from './components/longterm/loop-extras.tsx';
 import { useReviewIds } from './components/longterm/reviews.tsx';
-import { StageCheckBanner } from './components/stage-check.tsx';
 import { OpenSessionContext } from './open-session.ts';
 import {
-  CurrentSessionContext,
-  HighlightContext,
   isWideTarget,
   PanelContext,
   ProjectContext,
@@ -45,15 +27,7 @@ import {
   type PanelApi,
   type PanelTarget,
 } from './panel.ts';
-import {
-  loopSide,
-  loopState,
-  reviewWindow,
-  talkEnded,
-  toUiMessages,
-  type LoopSide,
-  type UiMessage,
-} from './thread-model.ts';
+import { formatRoute, parseRoute, sameRoute, type Route } from './route.ts';
 import { W } from './wording.ts';
 
 /** 右侧面板：开着时显示栈顶，面板里点开的东西压栈、可返回。 */
@@ -64,14 +38,15 @@ interface PanelState {
 
 export function App() {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [projectId, setProjectId] = useState<string | undefined>();
   const [rawSessions, setSessions] = useState<SessionSummary[]>([]);
-  const [current, setCurrent] = useState<string | undefined>();
-  /** 中间显示对话、项目概览（项目页），还是全部项目页。 */
-  const [page, setPage] = useState<'chat' | 'overview' | 'projects'>('chat');
+  const [loaded, setLoaded] = useState(false);
+  /** 中间显示什么；地址里有就照地址（刷新回原处），没有等项目读回来再定。 */
+  const [route, setRoute] = useState<Route | undefined>(() => parseRoute(window.location.hash));
   const [panel, setPanel] = useState<PanelState>({ open: false, stack: [{ kind: 'home' }] });
   const [focus, setFocus] = useState<Focus | undefined>();
   const [error, setError] = useState<string | undefined>();
+  const [navOpen, setNavOpen] = useState(false);
+  const narrow = useNarrow();
   const fail = useCallback((e: unknown) => {
     setError(e instanceof Error ? e.message : String(e));
   }, []);
@@ -83,12 +58,49 @@ export function App() {
     [rawSessions, sidebar.view.titles],
   );
 
+  const routeRef = useRef(route);
+  routeRef.current = route;
+  const go = useCallback((r: Route) => {
+    // 换了项目、去全部项目或新建：旁边面板里的东西不再相干，先关上
+    const pid = (x: Route | undefined) => (x !== undefined && 'projectId' in x ? x.projectId : '');
+    if (pid(routeRef.current) !== pid(r)) setPanel((p) => ({ ...p, open: false }));
+    setRoute(r);
+    setNavOpen(false);
+  }, []);
+
+  // 地址 ↔ 现在在哪：页面换了写进地址（留一条历史）；后退、手改地址时照地址换页
+  useEffect(() => {
+    if (route === undefined) return;
+    const now = parseRoute(window.location.hash);
+    if (now === undefined || !sameRoute(now, route)) window.location.hash = formatRoute(route);
+  }, [route]);
+  useEffect(() => {
+    const onHash = () => {
+      const r = parseRoute(window.location.hash);
+      if (r === undefined) return;
+      const pid = (x: Route | undefined) =>
+        x !== undefined && 'projectId' in x ? x.projectId : '';
+      if (pid(routeRef.current) !== pid(r)) setPanel((p) => ({ ...p, open: false }));
+      setNavOpen(false);
+      setRoute((cur) => (cur !== undefined && sameRoute(cur, r) ? cur : r));
+    };
+    window.addEventListener('hashchange', onHash);
+    return () => window.removeEventListener('hashchange', onHash);
+  }, []);
+
   const refresh = useCallback(async () => {
     const [{ projects }, { sessions }] = await Promise.all([api.projects(), api.listSessions()]);
     setProjects(projects);
     setSessions(sessions);
-    setProjectId((p) => p ?? projects[0]?.mainSessionId);
-    setCurrent((c) => c ?? projects[0]?.mainSessionId);
+    setLoaded(true);
+    // 地址里没写在哪：有项目就进第一个项目的对话，一个都没有就去全部项目页（空状态）
+    setRoute((r) => {
+      if (r !== undefined) return r;
+      const first = projects[0]?.mainSessionId;
+      return first !== undefined
+        ? { page: 'chat', projectId: first, current: first }
+        : { page: 'projects' };
+    });
     return sessions;
   }, []);
 
@@ -106,18 +118,37 @@ export function App() {
     });
   }, [refresh, fail]);
 
+  const projectId = route !== undefined && 'projectId' in route ? route.projectId : undefined;
+  const current = route?.page === 'chat' ? route.current : undefined;
+  const page = route?.page;
+
   // 当前项目被从列表删掉（藏起来）了：换到第一个还在的项目；一个都没有就去全部项目页
   useEffect(() => {
     if (!sidebar.loaded || projectId === undefined) return;
     if (!sidebar.view.hidden.some((h) => h.kind === 'project' && h.id === projectId)) return;
     const next = buildSidebar({ projects, sessions: rawSessions, view: sidebar.view }).projects[0];
-    if (next !== undefined) {
-      setProjectId(next.id);
-      setCurrent(next.id);
-    } else {
-      setPage('projects');
+    go(
+      next !== undefined
+        ? { page: 'chat', projectId: next.id, current: next.id }
+        : { page: 'projects' },
+    );
+  }, [sidebar.loaded, sidebar.view, projectId, projects, rawSessions, go]);
+
+  // 地址里的项目或对话不存在（删了、换了数据目录、手输错了）：项目没了回全部项目页，对话没了回这个项目的项目对话
+  useEffect(() => {
+    if (!loaded || route === undefined || !('projectId' in route)) return;
+    if (!projects.some((p) => p.mainSessionId === route.projectId)) {
+      go({ page: 'projects' });
+      return;
     }
-  }, [sidebar.loaded, sidebar.view, projectId, projects, rawSessions]);
+    if (
+      route.page === 'chat' &&
+      route.current !== route.projectId &&
+      !rawSessions.some((s) => s.sessionId === route.current)
+    ) {
+      go({ page: 'chat', projectId: route.projectId, current: route.projectId });
+    }
+  }, [loaded, route, projects, rawSessions, go]);
 
   const project = projects.find((p) => p.mainSessionId === projectId);
   const reviewIds = useReviewIds(projectId);
@@ -125,7 +156,11 @@ export function App() {
   const tasks = sessions
     .filter(
       (s) =>
-        (s.kind === 'loop' || s.kind === 'talk' || s.kind === 'output' || s.kind === 'find') &&
+        (s.kind === 'loop' ||
+          s.kind === 'talk' ||
+          s.kind === 'output' ||
+          s.kind === 'find' ||
+          s.kind === 'nav') &&
         s.parent === projectId,
     )
     .sort((a, b) => a.openedAt.localeCompare(b.openedAt));
@@ -134,34 +169,19 @@ export function App() {
     (id: string) => sessions.find((s) => s.sessionId === id)?.title,
     [sessions],
   );
-  const openProject = (id: string) => {
-    setProjectId(id);
-    setCurrent(id);
-    setPage('chat');
-  };
   /** 左栏点项目：进项目页。 */
-  const openProjectHome = (id: string) => {
-    setProjectId(id);
-    setCurrent(id);
-    setPage('overview');
-  };
-  const newProject = () => {
-    api
-      .createProject()
-      .then(async (r) => {
-        await refresh();
-        openProject(r.mainSessionId);
-      })
-      .catch(fail);
-  };
-  const showSession = useCallback((id: string, list: SessionSummary[]) => {
-    const s = list.find((x) => x.sessionId === id);
-    // 别的项目里的对话：连项目一起切过去
-    if (s?.kind === 'main') setProjectId(id);
-    else if (s?.parent !== undefined) setProjectId(s.parent);
-    setCurrent(id);
-    setPage('chat');
-  }, []);
+  const openProjectHome = (id: string) => go({ page: 'overview', projectId: id });
+  const openMain = (id: string) => go({ page: 'chat', projectId: id, current: id });
+  const showSession = useCallback(
+    (id: string, list: SessionSummary[]) => {
+      const s = list.find((x) => x.sessionId === id);
+      // 别的项目里的对话：连项目一起切过去
+      const pid = s?.kind === 'main' ? id : (s?.parent ?? projectId);
+      if (pid === undefined) return;
+      go({ page: 'chat', projectId: pid, current: id });
+    },
+    [go, projectId],
+  );
   const open = useCallback(
     (id: string) => {
       // 新开的对话可能还不在列表里：先刷新再切过去
@@ -213,571 +233,176 @@ export function App() {
                 : [{ kind: 'home' }],
           },
     );
-  // 开发者模式关掉时不给打开面板的按钮（对话里的出处照样能在面板里打开）
+  // 开发者模式关掉时不给打开面板的按钮（对话里的出处、判断的“为什么”照样能在面板里打开）
   const panelButton = devMode && (
     <TooltipIconButton
       tooltip={panel.open ? W.panelClose : W.panelOpen}
       data-testid="panel-toggle"
-      className="ms-auto size-8"
+      className="size-8"
       onClick={togglePanel}
     >
       {panel.open ? <PanelRightCloseIcon /> : <PanelRightOpenIcon />}
     </TooltipIconButton>
   );
+  const top = panel.stack.at(-1) ?? { kind: 'home' };
 
-  return (
-    <OpenSessionContext.Provider value={open}>
-      <PanelContext.Provider value={panelApi}>
-        <ProjectContext.Provider value={projectId}>
-          <div className="flex h-screen">
-            <Sidebar
-              projects={projects}
-              sessions={rawSessions}
-              view={sidebar.view}
-              active={{ page, projectId, current }}
-              onAct={(req) => void sidebar.act(req)}
-              onOpenProject={openProjectHome}
-              onOpenChat={open}
-              onOpenProjects={() => setPage('projects')}
-              onNewProject={newProject}
-            />
-            <main className="flex min-w-0 flex-1 flex-col">
-              {error !== undefined && (
-                <div
-                  role="alert"
-                  className="flex justify-between bg-red-100 px-4 py-2 text-sm text-red-800"
-                >
-                  {error}
-                  <button onClick={() => setError(undefined)}>关闭</button>
-                </div>
-              )}
-              {page === 'projects' && (
-                <ProjectsPage
-                  projects={projects}
-                  sessions={rawSessions}
-                  view={sidebar.view}
-                  header={
-                    <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
-                      {panelButton}
-                    </header>
-                  }
-                  onAct={(req) => void sidebar.act(req)}
-                  onOpenProject={openProjectHome}
-                  onNewProject={newProject}
-                />
-              )}
-              {projectId !== undefined && page === 'overview' && (
-                <ProjectHome
-                  key={projectId}
-                  projectId={projectId}
-                  tasks={tasks}
-                  header={
-                    <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
-                      <span className="truncate font-medium">{W.projectHome}</span>
-                      {panelButton}
-                    </header>
-                  }
-                  onOpenChat={() => {
-                    setCurrent(projectId);
-                    setPage('chat');
-                  }}
-                  onRename={(title) =>
-                    void sidebar.act({ kind: 'project', id: projectId, action: 'rename', title })
-                  }
-                  onError={fail}
-                />
-              )}
-              {current !== undefined && projectId !== undefined && page === 'chat' && (
-                <Conversation
-                  key={current}
-                  sessionId={current}
-                  kind={currentSession?.kind ?? (current === projectId ? 'main' : 'loop')}
-                  title={
-                    current === projectId ? (project?.title ?? '') : (currentSession?.title ?? '')
-                  }
-                  projectId={projectId}
-                  projectTitle={project?.title ?? ''}
-                  titleOf={titleOf}
-                  isReview={isReview}
-                  focus={focus?.sessionId === current ? focus : undefined}
-                  headerExtra={panelButton}
-                  onOverview={() => setPage('overview')}
-                  onError={fail}
-                  onBack={() => setCurrent(projectId)}
-                  onProject={() => setPage('overview')}
-                />
-              )}
-            </main>
-            {panel.open && (
-              <aside
-                className={cn(
-                  'bg-sidebar/60 flex shrink-0 flex-col border-s',
-                  // 看书（原文、原件页面）时面板放宽，看与改产出物时更宽，像 Claude 的 artifact 面板
-                  panel.stack.at(-1)?.kind === 'output'
-                    ? 'w-[min(56rem,56vw)]'
-                    : isWideTarget(panel.stack.at(-1) ?? { kind: 'home' })
-                      ? 'w-[min(44rem,50vw)]'
-                      : 'w-[min(28rem,40vw)]',
-                )}
-              >
-                <EvidencePanel
-                  target={panel.stack.at(-1) ?? { kind: 'home' }}
-                  canBack={panel.stack.length > 1}
-                  onBack={() => setPanel((p) => ({ ...p, stack: p.stack.slice(0, -1) }))}
-                  onClose={() => setPanel((p) => ({ ...p, open: false }))}
-                  loopId={loopId}
-                />
-              </aside>
-            )}
-          </div>
-        </ProjectContext.Provider>
-      </PanelContext.Provider>
-    </OpenSessionContext.Provider>
-  );
-}
-
-function Conversation(props: {
-  sessionId: string;
-  kind: SessionSummary['kind'];
-  title: string;
-  projectId: string;
-  projectTitle: string;
-  titleOf: (id: string) => string | undefined;
-  isReview: (id: string) => boolean;
-  focus: Focus | undefined;
-  headerExtra: ReactNode;
-  onOverview: () => void;
-  onError: (e: unknown) => void;
-  onBack: () => void;
-  /** 顶部的项目名：回项目页。 */
-  onProject: () => void;
-}) {
-  const { sessionId, kind, onError, titleOf, isReview, focus } = props;
-  const isMain = kind === 'main';
-  const [records, setRecords] = useState<NumberedRecord[]>([]);
-  const [draft, setDraft] = useState('');
-  const [running, setRunning] = useState(false);
-
-  useEffect(() => {
-    let alive = true;
-    const stop = api.events((e) => {
-      if (e.sessionId !== sessionId) return;
-      if (e.type === 'delta') setDraft((d) => d + e.text);
-      if (e.type === 'running') {
-        setRunning(e.running);
-        if (!e.running) setDraft('');
-      }
-      if (e.type === 'record') {
-        if (e.record.type === 'assistant_message') setDraft('');
-        setRecords((rs) =>
-          rs.some((r) => r.line === e.line) ? rs : [...rs, { line: e.line, record: e.record }],
-        );
-      }
-    });
-    api
-      .records(sessionId)
-      .then((r) => {
-        if (!alive) return;
-        // 与 SSE 先到的记录合并，按行号去重
-        setRecords((rs) => {
-          const byLine = new Map(r.records.map((x) => [x.line, x]));
-          for (const x of rs) byLine.set(x.line, x);
-          return [...byLine.values()].sort((a, b) => a.line - b.line);
-        });
-        setRunning(r.running);
-      })
-      .catch(onError);
-    return () => {
-      alive = false;
-      stop();
-    };
-  }, [sessionId, onError]);
-
-  const messages = useMemo(
-    () => toUiMessages(records, draft, { running, titleOf, isReview }),
-    [records, draft, running, titleOf, isReview],
-  );
-
-  // 从依据面板跳过来：滚到被引用的那句（记录还没读回来时等读回来再滚）
-  const scrolled = useRef(0);
-  useEffect(() => {
-    if (focus?.scroll !== true || scrolled.current === focus.seq) return;
-    const first = focus.lines[0];
-    if (first === undefined) return;
-    const el = document.querySelector(`[data-lines~="${String(first)}"]`);
-    if (!el) return;
-    scrolled.current = focus.seq;
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [focus, messages.length]);
-
-  const runtime = useExternalStoreRuntime<UiMessage>({
-    messages,
-    // 不把“模型在答”告诉输入框：答到一半也能接着说（中途插话），“正在答”由最后一条占位显示
-    isRunning: false,
-    convertMessage: (m): ThreadMessageLike => ({
-      id: m.id,
-      role: m.role,
-      content: m.text,
-      metadata: {
-        custom: {
-          line: m.line,
-          ...(m.lines ? { lines: m.lines } : {}),
-          ...(m.link ? { link: m.link } : {}),
-          ...(m.verdict ? { verdict: m.verdict } : {}),
-          ...(m.objection ? { objection: m.objection } : {}),
-          ...(m.images ? { images: m.images } : {}),
-          ...(m.candidates ? { candidates: m.candidates } : {}),
-        },
-      },
-      ...(m.role === 'assistant'
-        ? {
-            status:
-              m.id === 'draft'
-                ? { type: 'running' as const }
-                : m.failed === true
-                  ? { type: 'incomplete' as const, reason: 'error' as const }
-                  : { type: 'complete' as const, reason: 'stop' as const },
-          }
-        : {}),
-    }),
-    onNew: async (m: AppendMessage) => {
-      const text = m.content.flatMap((p) => (p.type === 'text' ? [p.text] : [])).join('');
-      await api.send(sessionId, text);
-    },
-  });
-
-  const side = useMemo(() => (kind === 'loop' ? loopSide(records) : undefined), [kind, records]);
-  const review = kind === 'talk' ? reviewWindow(records) : undefined;
-  const ended =
-    kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
-  // 导航会话只给学习者看它怎么想的，不交互（会话/导航.md「会话形态」）
-  const watchOnly = kind === 'nav';
-  const footer = watchOnly ? undefined : kind === 'main' ? (
-    <MainBar projectId={props.projectId} running={running} onError={onError} />
-  ) : kind === 'output' ? (
-    <OutputTaskBar sessionId={sessionId} projectId={props.projectId} />
-  ) : kind === 'find' ? undefined : kind === 'talk' ? (
-    ended ? (
-      <EndedBar
-        text={review !== undefined ? W.reviewEnded : '方向谈好了。'}
-        onBack={props.onBack}
-        backLabel={props.projectTitle}
-      />
-    ) : undefined
-  ) : (
-    <LoopBar
-      sessionId={sessionId}
-      records={records}
-      side={side ?? NO_SIDE}
-      titleOf={titleOf}
-      running={running}
-      onError={onError}
-      onBack={props.onBack}
-      projectId={props.projectId}
-      projectTitle={props.projectTitle}
+  const sidebarEl = (
+    <Sidebar
+      projects={projects}
+      sessions={rawSessions}
+      view={sidebar.view}
+      active={{ page: page ?? 'projects', projectId, current }}
+      onAct={(req) => void sidebar.act(req)}
+      onOpenProject={openProjectHome}
+      onOpenChat={open}
+      onOpenProjects={() => go({ page: 'projects' })}
+      onNewProject={() => go({ page: 'new' })}
+      drawer={narrow}
     />
   );
-  const header = (
-    <div className="shrink-0">
-      <header className="flex h-12 shrink-0 items-center gap-2 px-4 text-sm">
-        {!isMain && (
-          <>
-            <button
-              type="button"
-              className="text-muted-foreground hover:text-foreground flex items-center gap-1"
-              data-testid="crumb-project"
-              onClick={props.onProject}
-            >
-              <ChevronLeftIcon className="size-4" />
-              {props.projectTitle}
-            </button>
-            <span className="text-muted-foreground">/</span>
-          </>
-        )}
-        <span className="truncate font-medium">{props.title}</span>
-        {isMain && (
-          <Button
-            variant="ghost"
-            size="xs"
-            className="text-muted-foreground"
-            onClick={props.onOverview}
-          >
-            <LayoutGridIcon />
-            {W.projectHome}
-          </Button>
-        )}
-        {props.headerExtra}
-      </header>
-      {side !== undefined && (
-        <LoopBanner side={side} titleOf={titleOf} loopId={sessionId} projectId={props.projectId} />
-      )}
-      {review !== undefined && <ReviewBanner window={review} />}
-    </div>
-  );
 
   return (
-    <CurrentSessionContext.Provider value={sessionId}>
-      <HighlightContext.Provider value={focus?.lines ?? NO_LINES}>
-        <AssistantRuntimeProvider runtime={runtime}>
-          <Thread
-            header={header}
-            welcome={
-              isMain
-                ? '想学什么？说说你的打算，或点“下一步学什么”。'
-                : kind === 'talk'
-                  ? review !== undefined
-                    ? W.reviewWelcome
-                    : '我们聊聊你想学什么。'
-                  : kind === 'output'
-                    ? W.outputChatWelcome
-                    : kind === 'find'
-                      ? W.findWelcome
-                      : '马上开始…'
-            }
-            footer={footer}
-            disabled={ended || watchOnly}
-            placeholder={
-              side?.shelved !== undefined
-                ? W.shelvedPlaceholder
-                : running
-                  ? '可以随时插话…'
-                  : '回复…'
-            }
-            onSend={async (text, images) => {
-              await api.send(sessionId, text, images);
-            }}
-            // 主对话的输入框拖入非图片文件：不进输入，走项目的上传（工单 W9 §4.1）
-            {...(isMain
-              ? {
-                  onFiles: async (files: PickedFile[]) => {
-                    const r = await api.upload(props.projectId, files);
-                    return W.filesSent(r.items.length);
-                  },
-                }
-              : {})}
-          />
-        </AssistantRuntimeProvider>
-      </HighlightContext.Provider>
-    </CurrentSessionContext.Provider>
-  );
-}
-
-const NO_LINES: readonly number[] = [];
-const NO_SIDE: LoopSide = {};
-
-/** 学习对话顶部的一行：搁置、复习 / 复检、阶段验收（接着学的来历在开场里）。 */
-function LoopBanner(props: {
-  side: LoopSide;
-  titleOf: (id: string) => string | undefined;
-  loopId: string;
-  projectId: string;
-}) {
-  const { side, titleOf } = props;
-  return (
-    <div className="flex flex-col gap-1 px-4 pb-2 text-sm empty:hidden">
-      <LongtermBanner
-        side={side}
-        loopId={props.loopId}
-        projectId={props.projectId}
-        titleOf={titleOf}
-      />
-      {side.stageCheck === true && <StageCheckBanner />}
-    </div>
-  );
-}
-
-function EndedBar(props: { text: string; backLabel: string; onBack: () => void }) {
-  return (
-    <div className="text-muted-foreground flex items-center justify-center gap-3 text-sm">
-      {props.text}
-      <Button variant="outline" size="sm" onClick={props.onBack}>
-        回到{props.backLabel || '项目'}
-      </Button>
-    </div>
-  );
-}
-
-function MainBar(props: { projectId: string; running: boolean; onError: (e: unknown) => void }) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className="flex justify-end">
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={busy || props.running}
-        onClick={() => {
-          setBusy(true);
-          api
-            .send(props.projectId, W.askNext)
-            .catch(props.onError)
-            .finally(() => setBusy(false));
-        }}
-      >
-        {W.nextStep}
-      </Button>
-    </div>
-  );
-}
-
-function LoopBar(props: {
-  sessionId: string;
-  records: NumberedRecord[];
-  side: LoopSide;
-  titleOf: (id: string) => string | undefined;
-  running: boolean;
-  onError: (e: unknown) => void;
-  onBack: () => void;
-  projectId: string;
-  projectTitle: string;
-}) {
-  const { side } = props;
-  const state = loopState(props.records);
-  const [shelving, setShelving] = useState(false);
-  const act = (fn: () => Promise<unknown>) => {
-    fn().catch(props.onError);
-  };
-  if (state.kind === 'ended') {
-    if (!state.closed) {
-      return (
-        <UnclosedEndBar
-          loopId={props.sessionId}
-          projectId={props.projectId}
-          projectTitle={props.projectTitle}
-          onBack={props.onBack}
-          onError={props.onError}
-        />
-      );
-    }
-    return (
-      <EndedBar
-        text="这部分学完了，下一步在项目里。"
-        backLabel={props.projectTitle}
-        onBack={props.onBack}
-      />
-    );
-  }
-  if (side.shelved !== undefined) {
-    return (
-      <div
-        data-testid="shelved-bar"
-        className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 text-sm"
-      >
-        <span>
-          {W.shelvedBar}
-          {side.shelved.note !== undefined && (
-            <span className="text-muted-foreground ms-2">
-              {W.shelvedNote}：{side.shelved.note}
-            </span>
-          )}
-        </span>
-        <div className="flex gap-2">
-          <Button
-            variant="ghost"
-            size="sm"
-            disabled={props.running}
-            onClick={() => act(() => api.endUnclosed(props.sessionId))}
-          >
-            {W.endInstead}
-          </Button>
-          <Button
-            size="sm"
-            disabled={props.running}
-            onClick={() => act(() => api.resume(props.sessionId))}
-          >
-            {W.resume}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  if (state.kind === 'awaiting_confirm') {
-    return (
-      <div className="bg-card flex items-center justify-between gap-3 rounded-2xl border p-3 text-sm">
-        <span>看起来这部分你已经掌握了。就学到这里吗？</span>
-        <div className="flex gap-2">
-          <Button size="sm" onClick={() => act(() => api.confirmClose(props.sessionId))}>
-            学完了
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  if (shelving) {
-    return (
-      <ShelveForm
-        onCancel={() => setShelving(false)}
-        onShelve={(note) =>
-          api.shelve(props.sessionId, note).then(
-            () => setShelving(false),
-            (e: unknown) => {
-              props.onError(e);
-            },
-          )
-        }
-      />
-    );
-  }
-  return (
-    <div className="flex justify-end gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        disabled={props.running || state.closeRequested}
-        onClick={() => act(() => api.requestClose(props.sessionId))}
-      >
-        {state.closeRequested ? '正在整理这次学到了什么…' : '我觉得懂了'}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        data-testid="shelve"
-        disabled={props.running || state.closeRequested}
-        onClick={() => setShelving(true)}
-      >
-        {W.shelve}
-      </Button>
-      <Button
-        variant="ghost"
-        size="sm"
-        disabled={props.running}
-        onClick={() => act(() => api.endUnclosed(props.sessionId))}
-      >
-        先到这里
-      </Button>
-    </div>
-  );
-}
-
-/** “先放一放”：可写一句为什么，再放下。 */
-function ShelveForm(props: { onCancel: () => void; onShelve: (note: string) => Promise<void> }) {
-  const [note, setNote] = useState('');
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className="bg-card flex flex-col gap-2 rounded-2xl border p-3 text-sm">
-      <div className="text-muted-foreground text-xs">{W.shelveHint}</div>
-      <input
-        className="bg-background focus:border-foreground/30 w-full rounded-lg border px-3 py-1.5 outline-none"
-        placeholder={W.shelvePlaceholder}
-        aria-label={W.shelvePlaceholder}
-        value={note}
-        autoFocus
-        onChange={(e) => setNote(e.target.value)}
-      />
-      <div className="flex justify-end gap-2">
-        <Button variant="ghost" size="sm" onClick={props.onCancel}>
-          {W.shelveCancel}
-        </Button>
-        <Button
-          size="sm"
-          disabled={busy}
-          onClick={() => {
-            setBusy(true);
-            void props.onShelve(note).finally(() => setBusy(false));
-          }}
-        >
-          {W.shelveGo}
-        </Button>
-      </div>
-    </div>
+    <LayoutContext.Provider value={{ narrow, openNav: () => setNavOpen(true) }}>
+      <OpenSessionContext.Provider value={open}>
+        <PanelContext.Provider value={panelApi}>
+          <ProjectContext.Provider value={projectId}>
+            <div className="flex h-dvh">
+              {!narrow && sidebarEl}
+              {narrow && navOpen && (
+                <div className="fixed inset-0 z-40 flex" data-testid="nav-drawer">
+                  {sidebarEl}
+                  <button
+                    type="button"
+                    aria-label={W.sidebar.collapse}
+                    className="flex-1 bg-black/30"
+                    onClick={() => setNavOpen(false)}
+                  />
+                </div>
+              )}
+              <main className="flex min-w-0 flex-1 flex-col">
+                {error !== undefined && (
+                  <div
+                    role="alert"
+                    className="flex justify-between bg-red-100 px-4 py-2 text-sm text-red-800"
+                  >
+                    {error}
+                    <button onClick={() => setError(undefined)}>关闭</button>
+                  </div>
+                )}
+                {page === 'projects' && (
+                  <ProjectsPage
+                    projects={projects}
+                    sessions={rawSessions}
+                    view={sidebar.view}
+                    loaded={loaded}
+                    header={
+                      <TopBar crumbs={[{ label: W.sidebar.allProjects }]} right={panelButton} />
+                    }
+                    onAct={(req) => void sidebar.act(req)}
+                    onOpenProject={openProjectHome}
+                    onNewProject={() => go({ page: 'new' })}
+                  />
+                )}
+                {page === 'new' && (
+                  <NewProject
+                    header={
+                      <TopBar
+                        crumbs={[
+                          { label: W.sidebar.allProjects, onClick: () => go({ page: 'projects' }) },
+                          { label: W.sidebar.newProjectLong },
+                        ]}
+                      />
+                    }
+                    onCreated={(id) => {
+                      refresh()
+                        .then(() => openMain(id))
+                        .catch(fail);
+                    }}
+                    onError={fail}
+                  />
+                )}
+                {projectId !== undefined && page === 'overview' && project !== undefined && (
+                  <ProjectHome
+                    key={projectId}
+                    projectId={projectId}
+                    tasks={tasks}
+                    panelOpen={panel.open && !narrow}
+                    header={
+                      <TopBar
+                        crumbs={[
+                          { label: W.sidebar.allProjects, onClick: () => go({ page: 'projects' }) },
+                          { label: project.title },
+                        ]}
+                        right={panelButton}
+                      />
+                    }
+                    onOpenChat={() => openMain(projectId)}
+                    onNextStep={() => {
+                      openMain(projectId);
+                      api.send(projectId, W.askNext).catch(fail);
+                    }}
+                    onRename={(title) =>
+                      void sidebar.act({ kind: 'project', id: projectId, action: 'rename', title })
+                    }
+                    onError={fail}
+                  />
+                )}
+                {current !== undefined &&
+                  projectId !== undefined &&
+                  page === 'chat' &&
+                  // 列表读回来、认得出是哪种对话再画（不把还没认出的当学习对话显示）
+                  project !== undefined &&
+                  (current === projectId || currentSession !== undefined) && (
+                    <Conversation
+                      key={current}
+                      sessionId={current}
+                      kind={currentSession?.kind ?? 'main'}
+                      parent={currentSession?.parent}
+                      title={currentSession?.title ?? ''}
+                      projectId={projectId}
+                      projectTitle={project.title}
+                      hasGoal={project.goal !== undefined}
+                      titleOf={titleOf}
+                      isReview={isReview}
+                      focus={focus?.sessionId === current ? focus : undefined}
+                      headerExtra={panelButton}
+                      onError={fail}
+                      onBackToMain={() => openMain(projectId)}
+                      onProject={() => openProjectHome(projectId)}
+                    />
+                  )}
+              </main>
+              {panel.open && (
+                <aside
+                  className={cn(
+                    'bg-sidebar flex shrink-0 flex-col',
+                    narrow
+                      ? 'fixed inset-0 z-50'
+                      : cn(
+                          'border-s',
+                          // 看书（原文、原件页面）时面板放宽，看与改产出物时更宽，像 Claude 的 artifact 面板
+                          top.kind === 'output'
+                            ? 'w-[min(56rem,56vw)]'
+                            : isWideTarget(top)
+                              ? 'w-[min(44rem,50vw)]'
+                              : 'w-[min(28rem,40vw)]',
+                        ),
+                  )}
+                >
+                  <EvidencePanel
+                    target={top}
+                    // 首页目录只在开发者模式：不是开发者模式时退到第一项为止
+                    canBack={panel.stack.length > (devMode ? 1 : 2)}
+                    onBack={() => setPanel((p) => ({ ...p, stack: p.stack.slice(0, -1) }))}
+                    onClose={() => setPanel((p) => ({ ...p, open: false }))}
+                    loopId={loopId}
+                  />
+                </aside>
+              )}
+            </div>
+          </ProjectContext.Provider>
+        </PanelContext.Provider>
+      </OpenSessionContext.Provider>
+    </LayoutContext.Provider>
   );
 }

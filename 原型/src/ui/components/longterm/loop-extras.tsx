@@ -86,7 +86,7 @@ function ResumedBy(props: {
   );
 }
 
-/** 没学完就停下的那段底部：回项目，或接着学（开一段新的；已经接着学了就去那段）。 */
+/** 搁着的那段底部：回项目对话；已经接着学了就给去那段的入口。 */
 export function UnclosedEndBar(props: {
   loopId: string;
   projectId: string;
@@ -100,9 +100,9 @@ export function UnclosedEndBar(props: {
   const next = brief?.resumedBy?.at(-1);
   return (
     <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-3 text-sm">
-      先学到这里，下一步在项目里。
-      <Button variant="outline" size="sm" onClick={props.onBack}>
-        回到{props.projectTitle || '项目'}
+      {W.unclosedDone}
+      <Button size="sm" onClick={props.onBack}>
+        {W.backToMain}
       </Button>
       {brief !== undefined && next !== undefined && (
         <Button variant="ghost" size="sm" onClick={() => open(next.loopSessionId)}>

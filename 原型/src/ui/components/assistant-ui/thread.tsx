@@ -12,19 +12,28 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
-import { ArrowDownIcon, ArrowRightIcon, CheckIcon, ChevronRightIcon, CopyIcon } from 'lucide-react';
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  CheckIcon,
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CopyIcon,
+  LoaderIcon,
+} from 'lucide-react';
 import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
 import type { PickedFile } from '@/components/project-materials';
 import { CandidateList } from '@/components/find-candidates';
-import type { CandidatesView } from '@/thread-model';
+import type { CandidatesView, ToolGroup } from '@/thread-model';
 import { ImageViewer } from '@/components/input/modal';
 import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
 import { useCurrentSession, useHighlight, usePanel } from '@/panel';
 import { W } from '@/wording';
-import { useState, type FC, type ReactNode } from 'react';
+import { WT } from '@/wording-tools';
+import { useEffect, useRef, useState, type FC, type ReactNode } from 'react';
 
 /** 消息带的附加信息（由 App 的 convertMessage 放进 metadata.custom）。 */
 interface MessageMeta {
@@ -35,6 +44,8 @@ interface MessageMeta {
   objection?: { toLine: number; label: string };
   images?: string[];
   candidates?: CandidatesView;
+  tools?: ToolGroup;
+  pending?: true;
 }
 
 function useMeta(): MessageMeta {
@@ -69,6 +80,7 @@ export const Thread: FC<{
   onFiles,
 }) => {
   const isEmpty = useAuiState((s) => s.thread.messages.length === 0);
+  const viewport = useStickToBottom();
   return (
     <ThreadPrimitive.Root
       className="aui-root bg-background @container flex h-full flex-col"
@@ -79,7 +91,9 @@ export const Thread: FC<{
     >
       {header}
       <ThreadPrimitive.Viewport
-        turnAnchor="top"
+        ref={viewport}
+        turnAnchor="bottom"
+        autoScroll
         className="relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll scroll-smooth"
       >
         <div
@@ -89,7 +103,9 @@ export const Thread: FC<{
           )}
         >
           {isEmpty && (
-            <p className="font-serif mb-8 text-center text-3xl text-foreground/90">{welcome}</p>
+            <p className="font-serif text-foreground/90 mb-8 text-center text-2xl text-balance">
+              {welcome}
+            </p>
           )}
           <div className="mb-14 flex flex-col gap-y-6 empty:hidden">
             <ThreadPrimitive.Messages>
@@ -153,40 +169,45 @@ const AssistantMessage: FC = () => {
         data-testid="assistant-message"
         className="font-serif text-foreground px-1 text-[1.05rem] leading-relaxed wrap-break-word"
       >
-        <CitationsProvider text={text} done={done}>
-          <MessagePrimitive.Parts>
-            {({ part }) => (part.type === 'text' ? <MarkdownText /> : null)}
-          </MessagePrimitive.Parts>
-        </CitationsProvider>
-        <AuiIf
-          condition={(s) => s.message.status?.type === 'running' && s.message.parts.length === 0}
-        >
-          <span className="animate-pulse font-sans" aria-label="正在回答">
-            ●
+        {text.trim() === '' && !done ? (
+          // 还没出字：只放一行“在想…”（不再叠 Markdown 自带的跳动点）
+          <span
+            data-testid="thinking"
+            className="text-muted-foreground flex items-center gap-1.5 font-sans text-sm"
+          >
+            <LoaderIcon className="size-3.5 animate-spin" />
+            {WT.thinking}
           </span>
-        </AuiIf>
+        ) : (
+          <CitationsProvider text={text} done={done}>
+            <MessagePrimitive.Parts>
+              {({ part }) => (part.type === 'text' ? <MarkdownText /> : null)}
+            </MessagePrimitive.Parts>
+          </CitationsProvider>
+        )}
         <MessagePrimitive.Error>
           <ErrorPrimitive.Root className="border-destructive bg-destructive/10 text-destructive mt-2 rounded-md border p-3 text-sm">
             <ErrorPrimitive.Message className="line-clamp-2" />
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
       </div>
-      <ActionBarPrimitive.Root
-        hideWhenRunning
-        autohide="not-last"
-        className="text-muted-foreground ms-0 mt-1 flex gap-1"
-      >
-        <ActionBarPrimitive.Copy asChild>
-          <TooltipIconButton tooltip="复制">
-            <AuiIf condition={(s) => s.message.isCopied}>
-              <CheckIcon />
-            </AuiIf>
-            <AuiIf condition={(s) => !s.message.isCopied}>
-              <CopyIcon />
-            </AuiIf>
-          </TooltipIconButton>
-        </ActionBarPrimitive.Copy>
-      </ActionBarPrimitive.Root>
+      {done && (
+        <ActionBarPrimitive.Root
+          autohide="not-last"
+          className="text-muted-foreground ms-0 mt-1 flex gap-1"
+        >
+          <ActionBarPrimitive.Copy asChild>
+            <TooltipIconButton tooltip="复制">
+              <AuiIf condition={(s) => s.message.isCopied}>
+                <CheckIcon />
+              </AuiIf>
+              <AuiIf condition={(s) => !s.message.isCopied}>
+                <CopyIcon />
+              </AuiIf>
+            </TooltipIconButton>
+          </ActionBarPrimitive.Copy>
+        </ActionBarPrimitive.Root>
+      )}
     </MessagePrimitive.Root>
   );
 };
@@ -251,13 +272,23 @@ const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, verdict, line, candidates } = useMeta();
+  const { link, verdict, line, candidates, tools, pending } = useMeta();
   const open = useOpenSession();
   const panel = usePanel();
   const sessionId = useCurrentSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
-      {candidates !== undefined && sessionId !== undefined ? (
+      {tools !== undefined ? (
+        <ToolLine tools={tools} />
+      ) : pending === true ? (
+        <div
+          data-testid="pending-line"
+          className="text-muted-foreground flex items-center gap-2 text-sm"
+        >
+          <LoaderIcon className="size-3.5 animate-spin" />
+          {text}
+        </div>
+      ) : candidates !== undefined && sessionId !== undefined ? (
         <CandidateList view={candidates} sessionId={sessionId} />
       ) : verdict !== undefined && sessionId !== undefined && line !== undefined ? (
         <button
@@ -296,4 +327,76 @@ const SystemMessage: FC = () => {
 interface UiLink {
   sessionId: string;
   label: string;
+}
+
+/** 工具行：一行摘要（用了什么、做了什么），点开看每一步与模型当时说的话（界面说明 §1.2）。 */
+const ToolLine: FC<{ tools: ToolGroup }> = ({ tools }) => {
+  const [open, setOpen] = useState(false);
+  // 只有结果另有显示的工具、也没说什么话：这一行不必出现
+  if (tools.labels.length === 0 && tools.narration.length === 0) return null;
+  return (
+    <div data-testid="tool-line" className="text-muted-foreground flex flex-col gap-1 text-xs">
+      <button
+        type="button"
+        aria-expanded={open}
+        className="hover:text-foreground flex items-center gap-1 self-start"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {open ? (
+          <ChevronDownIcon className="size-3.5" />
+        ) : (
+          <ChevronRightIcon className="size-3.5" />
+        )}
+        {WT.summary(tools.labels)}
+      </button>
+      {open && (
+        <div className="border-border ms-1.5 flex flex-col gap-1 border-s ps-3">
+          {tools.narration.map((n, i) => (
+            <span key={`n${String(i)}`} className="italic">
+              {WT.narration}：{n}
+            </span>
+          ))}
+          {tools.labels.map((l, i) => (
+            <span key={`l${String(i)}`}>{l}</span>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+};
+
+/**
+ * 自己发了消息就滚到底；看历史时（离底部远）来了新内容不打扰。
+ * assistant-ui 的自动滚动认“正在运行”，而我们不把运行状态告诉它（为了能中途插话），所以这里补一手。
+ */
+function useStickToBottom() {
+  const ref = useRef<HTMLDivElement>(null);
+  const count = useAuiState((s) => s.thread.messages.length);
+  const lastRole = useAuiState((s) => s.thread.messages.at(-1)?.role);
+  const lastLen = useAuiState((s) => {
+    const m = s.thread.messages.at(-1);
+    return m?.content.reduce((n, p) => n + (p.type === 'text' ? p.text.length : 0), 0) ?? 0;
+  });
+  const near = useRef(true);
+  const prevCount = useRef(count);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const onScroll = () => {
+      near.current = el.scrollHeight - el.scrollTop - el.clientHeight < 120;
+    };
+    el.addEventListener('scroll', onScroll, { passive: true });
+    return () => el.removeEventListener('scroll', onScroll);
+  }, []);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const grew = count > prevCount.current;
+    prevCount.current = count;
+    // 新出现的一条是学习者自己发的：一定滚；否则只在本来就贴着底部时跟着走
+    const mine = grew && lastRole === 'user';
+    if (mine || near.current)
+      el.scrollTo({ top: el.scrollHeight, behavior: mine ? 'smooth' : 'auto' });
+  }, [count, lastRole, lastLen]);
+  return ref;
 }

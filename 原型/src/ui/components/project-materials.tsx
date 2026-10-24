@@ -212,7 +212,7 @@ export function MaterialsTab(props: { projectId: string; onError: (e: unknown) =
       <section data-testid="project-materials" className="flex flex-col gap-2">
         <div className="flex flex-wrap items-center gap-2 [&_svg]:size-4">
           <LibraryIcon className="text-muted-foreground" />
-          <h2 className="font-medium">{W.materials}</h2>
+          <h2 className="text-base font-medium">{W.materials}</h2>
           {r.data !== undefined && (
             <span className="text-muted-foreground text-sm">{r.data.materials.length}</span>
           )}
@@ -224,9 +224,11 @@ export function MaterialsTab(props: { projectId: string; onError: (e: unknown) =
             />
           </div>
         </div>
-        <p className="text-muted-foreground text-xs leading-relaxed">
-          {dragging ? W.dropFiles : `${W.materialsHint}；${W.dropHint}`}
-        </p>
+        {(dragging || (r.data?.materials.length ?? 0) > 0) && (
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            {dragging ? W.dropFiles : `${W.materialsHint}；${W.dropHint}`}
+          </p>
+        )}
         {sending > 0 && (
           <div className="text-muted-foreground flex items-center gap-2 text-sm">
             <Loader2Icon className="size-4 animate-spin" />
@@ -513,7 +515,7 @@ function Uploads(props: {
     <section data-testid="uploads" className="flex flex-col gap-2">
       <div className="flex items-baseline gap-2 [&_svg]:size-4 [&_svg]:self-center">
         <FolderInputIcon className="text-muted-foreground" />
-        <h2 className="font-medium">{W.uploadsTitle}</h2>
+        <h2 className="text-base font-medium">{W.uploadsTitle}</h2>
       </div>
       <p className="text-muted-foreground text-xs leading-relaxed">{W.uploadsHint}</p>
       <ul className="flex flex-col gap-1">
@@ -568,14 +570,13 @@ function MyImports(props: { projectId: string; onError: (e: unknown) => void }) 
     <section data-testid="my-imports" className="flex flex-col gap-2">
       <div className="flex items-baseline gap-2 [&_svg]:size-4 [&_svg]:self-center">
         <NotebookPenIcon className="text-muted-foreground" />
-        <h2 className="font-medium">{W.myImports}</h2>
+        <h2 className="text-base font-medium">{W.myImports}</h2>
         <span className="text-muted-foreground text-sm">{mine.length}</span>
       </div>
-      <p className="text-muted-foreground text-xs leading-relaxed">{W.myImportsHint}</p>
       {!r.data ? (
         <Loading error={r.error} />
       ) : mine.length === 0 ? (
-        <div className="text-muted-foreground text-sm">{W.myImportsNone}</div>
+        <p className="text-muted-foreground text-xs leading-relaxed">{W.myImportsHint}</p>
       ) : (
         <ul className="flex flex-col gap-1.5">
           {mine.map((x) => (

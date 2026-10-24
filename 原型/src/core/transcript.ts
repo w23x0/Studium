@@ -1,6 +1,7 @@
 // 对话原文 → 给模型读的带行号文本（00 原则 8）。行号 = 正本 JSONL 的行号，引用只写行号。
 // 只放对话本身（学习者、教学、程序事实）；沙盒动作、工具调用、原始消息不放（守卫不读教学侧推理）。
 import type { NumberedRecord } from '../shared/records.ts';
+import { localMinute } from '../shared/time.ts';
 
 export function renderTranscript(records: NumberedRecord[]): string {
   const out: string[] = [];
@@ -15,7 +16,7 @@ export function renderTranscript(records: NumberedRecord[]): string {
             : undefined;
     if (who === undefined || !('text' in r)) continue;
     const body = r.text.replace(/\n/g, '\n      ');
-    out.push(`L${String(line)} ${who}（${r.at.slice(0, 16).replace('T', ' ')}）：${body}`);
+    out.push(`L${String(line)} ${who}（${localMinute(r.at)}）：${body}`);
   }
   return out.join('\n');
 }

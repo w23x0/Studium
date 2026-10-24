@@ -43,14 +43,13 @@ export function RemindersSection(props: {
     <section data-testid="reminders" className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <BellIcon className="text-muted-foreground size-4" />
-        <h2 className="font-medium">{W.reminders}</h2>
+        <h2 className="text-sm font-medium">{W.reminders}</h2>
         {!adding && (
           <Button variant="ghost" size="xs" className="ms-auto" onClick={() => setAdding(true)}>
             {W.reminderAdd}
           </Button>
         )}
       </div>
-      <p className="text-muted-foreground text-xs leading-relaxed">{W.remindersHint}</p>
       {adding && (
         <ReminderForm
           projectId={projectId}
@@ -66,7 +65,10 @@ export function RemindersSection(props: {
       {!r.data ? (
         <Loading error={r.error} />
       ) : reminders.length === 0 ? (
-        <div className="text-muted-foreground text-sm">{W.remindersEmpty}</div>
+        // 空着时只说一句这是干什么的（界面说明 §1.3）
+        !adding && (
+          <p className="text-muted-foreground text-xs leading-relaxed">{W.remindersHint}</p>
+        )
       ) : (
         <ul className="flex flex-col gap-1.5">
           {reminders.map((x) => (
@@ -145,7 +147,7 @@ function ClosedReminders(props: { reminders: ReminderView[] }) {
                 <Badge tone="neutral">{W.reminderKind[x.kind]}</Badge>
                 {x.closed !== undefined && (
                   <span>
-                    {W.reminderOutcome[x.closed.outcome]} · {x.closed.at.slice(0, 10)} ·{' '}
+                    {W.reminderOutcome[x.closed.outcome]} · {dayOf(x.closed.at)} ·{' '}
                     {W.reminderClosedBy[x.closed.by]}
                   </span>
                 )}

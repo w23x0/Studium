@@ -7,7 +7,6 @@ import type {
   TicketEditRequest,
   LoopRelationsResponse,
   ShelveRequest,
-  CreateSessionResponse,
   ErrorResponse,
   ListProjectsResponse,
   ProjectResponse,
@@ -244,10 +243,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 201, { confirmation: c } satisfies ConfirmationResponse);
       return;
     }
-    if (method === 'GET' && parts[1] === 'project' && parts.length === 2) {
-      send(res, 200, { mainSessionId: await studium.ensureMain() } satisfies ProjectResponse);
-      return;
-    }
     if (parts[1] === 'projects' && parts.length === 5 && parts[2] !== undefined) {
       // 工单 W9：从别的项目拿、重试、改判、删导入
       const mainId = parts[2];
@@ -383,19 +378,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     const action = parts[3];
     if (id === undefined && method === 'GET') {
       send(res, 200, { sessions: hub.listSessions() } satisfies ListSessionsResponse);
-      return;
-    }
-    if (id === undefined && method === 'POST') {
-      // 一个项目一条主对话：已有就返回它
-      const main = await hub.opened(await studium.ensureMain());
-      send(res, 201, {
-        session: {
-          sessionId: main.sessionId,
-          kind: main.kind,
-          title: main.title,
-          openedAt: main.at,
-        },
-      } satisfies CreateSessionResponse);
       return;
     }
     if (id !== undefined && parts.length === 4) {

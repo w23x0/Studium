@@ -57,6 +57,7 @@ import { describeSandbox, Sandboxes } from './sandbox.ts';
 import { currentTicket } from './ticket.ts';
 import { guardView, learnerLines, renderTranscript } from './transcript.ts';
 import { Uploads, type RouteJudge } from './uploads.ts';
+import { localMinute } from '../shared/time.ts';
 
 export class BadRequestError extends Error {}
 
@@ -305,13 +306,6 @@ export class Studium {
   }
 
   // ───────────── 事件 ─────────────
-
-  /** 一个项目一条主对话；没有就开一条。 */
-  async ensureMain(): Promise<string> {
-    const main = this.hub.listSessions().find((s) => s.kind === 'main');
-    if (main) return main.sessionId;
-    return this.createProject();
-  }
 
   /** 开一个新项目（= 一条新的主对话）。 */
   async createProject(title?: string): Promise<string> {
@@ -853,8 +847,7 @@ export class Studium {
    * 定下一次学什么（会话/导航.md）：开导航会话、全自动跑完；导航定了就存单子与路线决定、直接开学习对话，
    * 要问学习者就交回问题（由主对话顺口问）。导航会话挂在主对话下，学习者可点进去看它怎么想的。
    */
-  async planNext(trigger: string, projectId?: string): Promise<PlanResult> {
-    const mainId = projectId ?? (await this.ensureMain());
+  async planNext(trigger: string, mainId: string): Promise<PlanResult> {
     const title = '想下一步学什么';
     const nav = await this.hub.createSession('nav', { title, parent: mainId });
     const mainRecs = await this.hub.records(mainId);
@@ -1121,9 +1114,9 @@ export class Studium {
     const recs = (await this.hub.records(loopId)).map((r) => r.record);
     const verdict = recs.filter((r) => r.type === 'guard_verdict').at(-1);
     if (verdict?.type !== 'guard_verdict' || !verdict.closed) {
-      // 收尾记录还没写好，不能确认结束；没学完要结束走“先到这里”
+      // 收尾记录还没写好，不能确认结束；没学完要结束走“搁着，以后再学”
       throw new BadRequestError(
-        '这次学到了什么还没整理：先点“我觉得懂了”；想先停下就点“先到这里”。',
+        '这次学到了什么还没整理：先点“我觉得懂了”；想先停下就点“…”里的“搁着，以后再学”。',
       );
     }
     await this.hub.record(loopId, {
@@ -1304,7 +1297,9 @@ export class Studium {
    */
   private async afterLoop(loopId: string, closed: boolean): Promise<void> {
     const opened = await this.hub.opened(loopId);
-    const mainId = opened.parent ?? (await this.ensureMain());
+    const mainId = opened.parent;
+    // 学习对话总挂在项目的主对话下；没有就是坏数据，不替它新建项目
+    if (mainId === undefined) throw new Error(`学习对话 ${loopId} 没有挂在项目下`);
     try {
       await this.hub.send(mainId, {
         role: 'program',
@@ -2769,7 +2764,7 @@ export class Studium {
       const firstLearner = talk.find((r) => r.record.type === 'user_message');
       if (firstLearner)
         starts.push(
-          `${firstLearner.record.at.slice(0, 16).replace('T', ' ')}（${label[x.kind as keyof typeof label]}）`,
+          `${localMinute(firstLearner.record.at)}（${label[x.kind as keyof typeof label]}）`,
         );
       const fresh = talk.filter((r) => r.line > since);
       const freshLearner = fresh.filter((r) => r.record.type === 'user_message');
@@ -2799,14 +2794,14 @@ export class Studium {
       );
       const stopped =
         ended?.record.type === 'loop_ended' && !ended.record.closed
-          ? `学习者选择先停下（${ended.record.at.slice(0, 16).replace('T', ' ')}）`
+          ? `学习者选择先停下（${localMinute(ended.record.at)}）`
           : ended
-            ? `已结束（${ended.record.at.slice(0, 16).replace('T', ' ')}）`
+            ? `已结束（${localMinute(ended.record.at)}）`
             : '还开着';
       out.push(
         [
           `### ${kindLabel} ${x.sessionId}「${x.title}」`,
-          `开始 ${x.openedAt.slice(0, 16).replace('T', ' ')}；最近一条 ${(recs.at(-1)?.record.at ?? '').slice(0, 16).replace('T', ' ')}；${stopped}；这次新增学习者的话 ${String(freshLearner.length)} 条`,
+          `开始 ${localMinute(x.openedAt)}；最近一条 ${localMinute(recs.at(-1)?.record.at ?? '')}；${stopped}；这次新增学习者的话 ${String(freshLearner.length)} 条`,
           ...lines,
         ].join('\n'),
       );

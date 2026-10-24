@@ -15,6 +15,7 @@ import { usePanel } from '../../panel.ts';
 import { editedFields, refLink, ticketRowsOf } from '../../ticket-model.ts';
 import { understandingRows } from '../../verdict-model.ts';
 import { W } from '../../wording.ts';
+import { forLearner } from '../../learner-text.ts';
 import { toolCounts } from '../../teaching-model.ts';
 import { ToolChip } from './tools-view.tsx';
 import {
@@ -144,7 +145,9 @@ export function LoopView(props: {
                 <Badge tone="warn">{W.routeDecisionSuperseded}</Badge>
               )}
             </span>
-            <span className="text-muted-foreground text-xs">{loop.routeDecision.reason}</span>
+            <span className="text-muted-foreground text-xs">
+              {forLearner(loop.routeDecision.reason)}
+            </span>
             <SourceList sources={loop.routeDecision.basis} />
           </Card>
         </Section>

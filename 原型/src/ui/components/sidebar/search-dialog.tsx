@@ -1,8 +1,14 @@
-// 左栏“搜索”：按项目名与对话名过滤（只在界面上过滤），点结果就打开；回车打开第一条。
+// 左栏“搜索”：没输入时列最近 5 个对话；输入后按项目名与对话名过滤（只搜标题），点结果就打开；回车打开第一条。
 import { useMemo, useState, type ReactNode } from 'react';
 import { FolderIcon, MessageCircleIcon, SearchIcon } from 'lucide-react';
 import { Modal } from '@/components/input/modal';
-import { chatTitle, searchSidebar, type ChatItem, type SidebarData } from '../../sidebar-model.ts';
+import {
+  chatSub,
+  chatTitle,
+  searchSidebar,
+  type ChatItem,
+  type SidebarData,
+} from '../../sidebar-model.ts';
 import { W } from '../../wording.ts';
 
 const S = W.sidebar;
@@ -14,7 +20,14 @@ export function SearchDialog(props: {
   onOpenChat: (id: string) => void;
 }) {
   const [q, setQ] = useState('');
-  const hits = useMemo(() => searchSidebar(q, props.data, W.projectChat), [q, props.data]);
+  const empty = q.trim() === '';
+  const hits = useMemo(
+    () =>
+      q.trim() === ''
+        ? { projects: [], chats: props.data.chats.slice(0, 5) }
+        : searchSidebar(q, props.data, W.projectChat),
+    [q, props.data],
+  );
   const first: (() => void) | undefined =
     hits.projects[0] !== undefined
       ? () => props.onOpenProject(hits.projects[0]?.id ?? '')
@@ -59,13 +72,13 @@ export function SearchDialog(props: {
           </Section>
         )}
         {hits.chats.length > 0 && (
-          <Section title={S.searchChats}>
+          <Section title={empty ? S.searchRecent : S.searchChats}>
             {hits.chats.map((c: ChatItem) => (
               <Hit
                 key={c.id}
                 icon={<MessageCircleIcon />}
                 title={chatTitle(c)}
-                sub={c.projectTitle}
+                sub={chatSub(c)}
                 onClick={() => props.onOpenChat(c.id)}
               />
             ))}

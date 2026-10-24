@@ -1,13 +1,12 @@
-// 左栏底部的账号：弹出菜单——设置（开发者模式开关）、语言（现在只有中文）、退出登录（还没做）。
+// 左栏底部的账号：弹出菜单——设置（开发者模式开关）、语言（现在只有中文）。没做的（退出登录）不摆出来。
 import { useState } from 'react';
-import { ChevronsUpDownIcon, GlobeIcon, LogOutIcon, SettingsIcon } from 'lucide-react';
+import { ChevronsUpDownIcon, GlobeIcon, SettingsIcon } from 'lucide-react';
 import {
   Menu,
   MenuContent,
   MenuItem,
   MenuRadioGroup,
   MenuRadioItem,
-  MenuSeparator,
   MenuSubmenu,
   MenuSubmenuTrigger,
   MenuTrigger,
@@ -65,12 +64,6 @@ export function AccountMenu(props: { collapsed: boolean }) {
               </MenuRadioGroup>
             </MenuContent>
           </MenuSubmenu>
-          <MenuSeparator />
-          <MenuItem disabled>
-            <LogOutIcon />
-            <span className="flex-1">{S.logout}</span>
-            <span className="text-muted-foreground text-xs">{S.notYet}</span>
-          </MenuItem>
         </MenuContent>
       </Menu>
       {settings && <SettingsDialog onClose={() => setSettings(false)} />}

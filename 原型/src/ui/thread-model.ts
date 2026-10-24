@@ -9,6 +9,7 @@ import type {
 } from '../shared/records.ts';
 import { parseReviewReturned } from '../shared/records-longterm.ts';
 import { judgementLine, W } from './wording.ts';
+import { sandboxLabel, toolLabel, WT } from './wording-tools.ts';
 
 export interface UiMessage {
   id: string;
@@ -29,6 +30,39 @@ export interface UiMessage {
   images?: string[];
   /** 找资料对话交回的候选清单（勾了才存）。 */
   candidates?: CandidatesView;
+  /** 工具行：模型这一段用了哪些工具、做了什么（一行摘要，可展开）；调工具前的短旁白收在这里，不当正文。 */
+  tools?: ToolGroup;
+  /** 等待中的一行（守卫正在整理）：灰字，判断出来后消失。 */
+  pending?: true;
+}
+
+/** 一组连着的工具调用 / 沙盒动作。 */
+export interface ToolGroup {
+  labels: string[];
+  /** 模型调工具前说的短话（给程序的过程说明，不算回答）。 */
+  narration: string[];
+  /** 其中没成的几次。 */
+  failed: number;
+}
+
+/** 调工具前的旁白最长多少字算“短”（再长就当正文照常显示）。 */
+const NARRATION_MAX = 120;
+/** 这些记录夹在旁白与工具调用之间也不算打断。 */
+const QUIET = new Set(['model_raw', 'model_used', 'model_session', 'turn_context']);
+const TOOLISH = new Set(['tool_call', 'sandbox_action', 'task_opened']);
+
+/** 哪几行助手文字只是调工具前的短旁白：紧跟着（中间只隔原始消息）就是工具调用、沙盒动作或开任务。 */
+function narrationLines(records: NumberedRecord[]): Set<number> {
+  const out = new Set<number>();
+  records.forEach(({ line, record: r }, i) => {
+    if (r.type !== 'assistant_message' || r.text.trim().length > NARRATION_MAX) return;
+    for (const next of records.slice(i + 1)) {
+      if (QUIET.has(next.record.type)) continue;
+      if (TOOLISH.has(next.record.type)) out.add(line);
+      return;
+    }
+  });
+  return out;
 }
 
 /** 找资料的候选清单：清单所在行、各份候选；存过了带勾了哪些、存成了哪些资料。 */
@@ -60,10 +94,54 @@ export function toUiMessages(
     if (r.type === 'candidates_picked')
       picks.set(r.forLine, { picked: r.picked, materials: r.materials });
   }
+  const narration = narrationLines(records);
+  /** 最近一组工具行：之后只有程序的小字（入口卡片等）时，新的工具调用并进这一组。 */
+  const toolGroup = (id: string, line: number): ToolGroup => {
+    for (let i = out.length - 1; i >= 0; i--) {
+      const m = out[i];
+      if (m === undefined || m.role !== 'system') break;
+      if (m.tools !== undefined) return m.tools;
+    }
+    const tools: ToolGroup = { labels: [], narration: [], failed: 0 };
+    // 工具行放在它开出的入口卡片前面（开对话、开学习的卡片是工具调用的结果，记录里却先到）
+    let at = out.length;
+    while (at > 0 && out[at - 1]?.role === 'system' && out[at - 1]?.link !== undefined) at -= 1;
+    out.splice(at, 0, { id, role: 'system', text: '', line, tools });
+    return tools;
+  };
+  /** 导航对话之后主对话有没有接着说话或开学习：有就是定完了（学习者中途插话不算）。 */
+  const laterActivity = (afterLine: number) =>
+    records.some(
+      ({ line: l, record: x }) =>
+        l > afterLine && (x.type === 'choice_made' || x.type === 'assistant_message'),
+    );
+  /** 去掉“正在整理”那行：判断出来了、学习结束了、又申请了一次，或之后又有人说话（守卫没交回时不卡在那里）。 */
+  const dropPending = () => {
+    const waiting = out.findIndex((m) => m.pending === true);
+    if (waiting >= 0) out.splice(waiting, 1);
+  };
   for (const { line, record: r } of records) {
     const id = `l${String(line)}`;
     switch (r.type) {
+      case 'tool_call': {
+        const g = toolGroup(id, line);
+        const label = toolLabel(r.name);
+        if (label !== '') g.labels.push(label);
+        if (r.isError) g.failed += 1;
+        break;
+      }
+      case 'sandbox_action': {
+        const g = toolGroup(id, line);
+        g.labels.push(sandboxLabel(r.op, r.path));
+        if (!r.ok) g.failed += 1;
+        break;
+      }
+      case 'close_requested':
+        dropPending();
+        push({ id, role: 'system', text: WT.closing, line, pending: true });
+        break;
       case 'user_message':
+        dropPending();
         push({
           id,
           role: 'user',
@@ -79,6 +157,10 @@ export function toUiMessages(
         break;
       case 'assistant_message':
       case 'turn_failed': {
+        if (r.type === 'assistant_message' && narration.has(line)) {
+          toolGroup(id, line).narration.push(r.text.trim());
+          break;
+        }
         const text = r.type === 'assistant_message' ? r.text : '（这次回复没完成，可以再发一次）';
         const prev = out.at(-1);
         // 同一轮里的多段助手文字合成一条显示
@@ -92,7 +174,9 @@ export function toUiMessages(
         }
         break;
       }
-      case 'guard_verdict':
+      case 'guard_verdict': {
+        // 判断出来了：“正在整理”那行换成判断
+        dropPending();
         push({
           id,
           role: 'system',
@@ -101,23 +185,20 @@ export function toUiMessages(
           verdict: { closed: r.closed && r.problem === undefined },
         });
         break;
-      case 'loop_ended':
-        push({ id, role: 'system', text: r.closed ? '这部分学完了。' : '先学到这里。', line });
+      }
+      case 'loop_ended': {
+        dropPending();
+        // 结束那句只在底栏说一次（界面说明 §2.6）
         break;
+      }
       case 'ticket_edited':
         push({ id, role: 'system', text: W.ticketEdited, line });
         break;
       case 'project_goal':
-        push({ id, role: 'system', text: `记下了你的方向：${r.text}`, line });
+        push({ id, role: 'system', text: W.goalSavedLine, line });
         break;
       case 'talk_ended':
-        push({
-          id,
-          role: 'system',
-          text:
-            r.review !== undefined ? W.reviewEndedLine(r.goal) : '方向谈好了，回到项目里接着往下。',
-          line,
-        });
+        // 方向谈好了只在底栏说一次（界面说明 §2.4）
         break;
       case 'task_opened': {
         // 写产出的对话（批 8b）标题是“写：某某”；阶段复盘（批 6）；想下一步（导航，只看不聊）；别的是谈方向的对话
@@ -125,7 +206,7 @@ export function toUiMessages(
           r.kind === 'output'
             ? `一起写：${r.title.replace(/^写：/, '')}`
             : r.kind === 'nav'
-              ? `${r.title} · ${W.watchNav}`
+              ? `${laterActivity(line) ? WT.navDone : `${WT.navRunning}…`} · ${WT.navWatch}`
               : r.kind === 'find'
                 ? W.findTask
                 : ctx.isReview?.(r.sessionId) === true
@@ -205,7 +286,10 @@ export function toUiMessages(
   if (draft !== '' || ctx.running === true) {
     out.push({ id: 'draft', role: 'assistant', text: draft, line: 0 });
   }
-  return out;
+  // 只有结果另有显示的工具、也没说什么话的工具行不留（不占一行空白）
+  return out.filter(
+    (m) => m.tools === undefined || m.tools.labels.length + m.tools.narration.length > 0,
+  );
 }
 
 export type LoopState =
@@ -219,6 +303,10 @@ export function loopState(records: NumberedRecord[]): LoopState {
   for (const { record: r } of records) {
     if (r.type === 'close_requested' && state.kind === 'open') {
       state = { kind: 'open', closeRequested: true };
+    }
+    // 申请后学习者又说话了（比如整理没交回来）：按钮恢复，可以再申请
+    if (r.type === 'user_message' && state.kind === 'open') {
+      state = { kind: 'open', closeRequested: false };
     }
     if (r.type === 'guard_verdict') {
       state = r.closed
@@ -241,7 +329,7 @@ export function talkEnded(records: NumberedRecord[]): boolean {
   return records.some((r) => r.record.type === 'talk_ended');
 }
 
-/** 界面上点“先放一放”没写原因时发的备注（核心照存；显示时不当成学习者的话）。 */
+/** 旧数据：以前界面上点“先放一放”没写原因时发的备注（这个按钮已去掉，读旧记录时仍要认出来）。 */
 export const SHELVE_NO_NOTE = '学习者点了“先放一放”，没写为什么';
 
 /**

@@ -32,6 +32,7 @@ import type { OutputStore } from './knowledge/output.ts';
 import type { ToolResult, ToolSpec } from './model/port.ts';
 import type { Sources } from './sources.ts';
 import { BadRequestError } from './studium.ts';
+import { localMinute } from '../shared/time.ts';
 
 export interface OutputsDeps {
   store: OutputStore;
@@ -480,7 +481,7 @@ export class Outputs {
             .map((t, i) => `${String(i + 1)}\t${t}`)
             .join('\n');
           return ok(
-            `第 ${String(v.n)} 版（${v.by}，${v.at.slice(0, 16).replace('T', ' ')}；改动说明：${v.note || '无'}）\n${body}\n\n${refProblems(refs)}`,
+            `第 ${String(v.n)} 版（${v.by}，${localMinute(v.at)}；改动说明：${v.note || '无'}）\n${body}\n\n${refProblems(refs)}`,
           );
         },
       },

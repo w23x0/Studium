@@ -1,8 +1,10 @@
-// 左栏（布局与交互照 Claude 桌面版）：收起 / 展开 · 搜索 · 新建（现在 = 新建项目）· 项目（全部项目页）·
+// 左栏（布局与交互照 Claude 桌面版）：收起 / 展开 · 搜索 · 新建项目（先问想学什么）· 项目（全部项目页）·
 // 置顶 · 最近（各项目的所有对话按最近活动分组）· 底部账号。项目点进去是项目页，对话树在项目页里，不在这里展开。
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   BookOpenIcon,
+  CompassIcon,
+  LibraryIcon,
   FolderIcon,
   FoldersIcon,
   MessageCircleIcon,
@@ -21,9 +23,11 @@ import { useActivity } from '../../hooks/use-sidebar.ts';
 import { useSetting } from '../../settings.ts';
 import {
   buildSidebar,
+  chatSub,
   chatTitle,
   groupByTime,
   isPinned,
+  stableOrder,
   type ChatItem,
   type ProjectItem,
   type SidebarItem,
@@ -37,7 +41,7 @@ const S = W.sidebar;
 
 /** 中间正在看的东西（左栏据此标出当前那一行）。 */
 export interface SidebarActive {
-  page: 'chat' | 'overview' | 'projects';
+  page: 'chat' | 'overview' | 'projects' | 'new';
   projectId?: string | undefined;
   current?: string | undefined;
 }
@@ -52,6 +56,8 @@ export interface SidebarProps {
   onOpenChat: (id: string) => void;
   onOpenProjects: () => void;
   onNewProject: () => void;
+  /** 窄屏抽屉里：一直展开，不给收起按钮。 */
+  drawer?: boolean;
 }
 
 const CHAT_ICON: Record<ChatItem['chatKind'], ReactNode> = {
@@ -59,10 +65,14 @@ const CHAT_ICON: Record<ChatItem['chatKind'], ReactNode> = {
   talk: <MessagesSquareIcon />,
   loop: <BookOpenIcon />,
   output: <PenLineIcon />,
+  nav: <CompassIcon />,
+  find: <LibraryIcon />,
 };
 
 export function Sidebar(props: SidebarProps) {
-  const [collapsed, setCollapsed] = useSetting('sidebarCollapsed');
+  const [savedCollapsed, setCollapsed] = useSetting('sidebarCollapsed');
+  const collapsed = savedCollapsed && props.drawer !== true;
+  const seen = useRef(new Map<string, { rank: number; lastAt: string }>());
   const [searching, setSearching] = useState(false);
   const activity = useActivity();
   const data = useMemo(
@@ -123,23 +133,25 @@ export function Sidebar(props: SidebarProps) {
     );
   }
 
-  const groups = groupByTime(data.recents, new Date());
+  const groups = groupByTime(stableOrder(data.recents, seen.current), new Date());
   return (
     <aside
       data-testid="sidebar"
-      className="bg-sidebar flex w-64 shrink-0 flex-col gap-1 border-r p-3 text-sm"
+      className="bg-sidebar flex h-full w-64 shrink-0 flex-col gap-1 border-r p-3 text-sm"
     >
       <div className="flex items-center px-2 pt-1 pb-3">
         <span className="font-serif text-xl tracking-tight">Studium</span>
-        <TooltipIconButton
-          tooltip={S.collapse}
-          side="right"
-          data-testid="sidebar-toggle"
-          className="text-muted-foreground ms-auto size-7"
-          onClick={() => setCollapsed(true)}
-        >
-          <PanelLeftCloseIcon />
-        </TooltipIconButton>
+        {props.drawer !== true && (
+          <TooltipIconButton
+            tooltip={S.collapse}
+            side="right"
+            data-testid="sidebar-toggle"
+            className="text-muted-foreground ms-auto size-7"
+            onClick={() => setCollapsed(true)}
+          >
+            <PanelLeftCloseIcon />
+          </TooltipIconButton>
+        )}
       </div>
       <NavItem testId="sidebar-search" icon={<SearchIcon />} onClick={() => setSearching(true)}>
         {S.search}
@@ -217,7 +229,7 @@ function Row(props: SidebarProps & { item: SidebarItem }) {
       active={active.page === 'chat' && active.current === item.id}
       icon={<KindIcon>{CHAT_ICON[item.chatKind]}</KindIcon>}
       title={chatTitle(item)}
-      sub={item.projectTitle}
+      sub={chatSub(item)}
       actions={rowActions(item, props.view, props.onAct)}
       onClick={() => props.onOpenChat(item.id)}
     />

@@ -4,7 +4,10 @@ import { CornerDownRightIcon, MessageSquareQuoteIcon } from 'lucide-react';
 import type { ModelInfo, ObjectionView, QuoteView } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { api } from '../../api.ts';
 import { segmentLines, shortTime, splitLineRefs } from '../../evidence-model.ts';
+import { useLoad } from '../../hooks/use-load.ts';
+import { forLearner, refMark } from '../../learner-text.ts';
 import { usePanel } from '../../panel.ts';
 import { citationPieces } from '../../source-model.ts';
 import type { TicketRow } from '../../ticket-model.ts';
@@ -166,25 +169,46 @@ function QuoteText(props: { text: string }) {
   );
 }
 
-/** 理由文字：里面引用的行号做成可跳转的。 */
+/**
+ * 理由文字：里面引用的行号做成小号上标 ①②…（同一行同一个号），点了跳到那句原话；
+ * 文字对学习者说“你”（界面说明 §1.4）。
+ */
 export function ReasonText(props: { text: string; sessionId: string }) {
   const panel = usePanel();
+  const marks = new Map<string, number>();
+  // 悬停显示被引的原话：读这个对话的记录，按行号找那句（读回来之前先显示“那句原话”）
+  const recs = useLoad(`records:${props.sessionId}`, () => api.records(props.sessionId));
+  const said = (from: number, to: number): string | undefined => {
+    const lines = (recs.data?.records ?? []).filter((x) => x.line >= from && x.line <= to);
+    const texts = lines.flatMap(({ record: r }) =>
+      r.type === 'user_message'
+        ? [`你：${r.text}`]
+        : r.type === 'assistant_message'
+          ? [`老师：${r.text}`]
+          : [],
+    );
+    return texts.length > 0 ? texts.join('\n').slice(0, 400) : undefined;
+  };
   return (
     <span className="whitespace-pre-wrap">
-      {splitLineRefs(props.text).map((s, i) =>
-        'line' in s ? (
+      {splitLineRefs(props.text).map((s, i) => {
+        if (!('line' in s)) return <span key={i}>{forLearner(s.text)}</span>;
+        const key = `${String(s.line)}-${String(s.to ?? s.line)}`;
+        const n = marks.get(key) ?? marks.size + 1;
+        marks.set(key, n);
+        return (
           <button
             key={i}
             type="button"
-            className="text-primary mx-0.5 hover:underline"
+            title={said(s.line, s.to ?? s.line) ?? s.text.replace(/[（）]/g, '')}
+            aria-label={s.text.replace(/[（）]/g, '')}
+            className="text-primary relative -top-1.5 mx-px text-[0.7em] hover:underline"
             onClick={() => panel.jump(props.sessionId, segmentLines(s))}
           >
-            {s.text}
+            {refMark(n)}
           </button>
-        ) : (
-          <span key={i}>{s.text}</span>
-        ),
-      )}
+        );
+      })}
     </span>
   );
 }

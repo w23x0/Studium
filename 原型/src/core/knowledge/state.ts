@@ -3,6 +3,7 @@
 // 可随时从底层整个重算）。另记每次整理看到哪一行为止，没有新记录就不整理。
 import { join } from 'node:path';
 import { appendJsonl, readJsonl } from './jsonl.ts';
+import { localMinute } from '../../shared/time.ts';
 
 export type StateSource = '自述' | '观察' | '推断';
 /** 来源档：模型只能写前三档；“已确认”是学习者在界面上确认过的（只由确认记录得出，不写进状态记录本身）。 */
@@ -183,7 +184,7 @@ export class StateStore {
     const verdict = this.verdictOf(r.id);
     const level = this.sourceLevel(r);
     return [
-      `${r.id}（${r.at.slice(0, 16).replace('T', ' ')}）[${r.output}·${level}${level !== r.source ? `（原为${r.source}）` : ''}·${r.timeRange}] ${r.text}（依据 ${refs || '无'}）`,
+      `${r.id}（${localMinute(r.at)}）[${r.output}·${level}${level !== r.source ? `（原为${r.source}）` : ''}·${r.timeRange}] ${r.text}（依据 ${refs || '无'}）`,
       ...(verdict?.verdict === '否认'
         ? [`  学习者否认了这条${verdict.note ? `：${verdict.note}` : ''}（对不上的两边都留着）`]
         : []),
@@ -199,6 +200,6 @@ export class StateStore {
   describeCurrent(): string {
     const p = this.current();
     if (!p) return '还没有“当前状态”页。';
-    return `当前状态（${p.at.slice(0, 16).replace('T', ' ')} 整理）：\n${p.text}\n阶段：${p.stage}（依据跨度：${p.basisSpan}）`;
+    return `当前状态（${localMinute(p.at)} 整理）：\n${p.text}\n阶段：${p.stage}（依据跨度：${p.basisSpan}）`;
   }
 }

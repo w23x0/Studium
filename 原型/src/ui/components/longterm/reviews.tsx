@@ -42,9 +42,8 @@ export function ReviewsSection(props: { projectId: string; onError: (e: unknown)
     <section data-testid="reviews" className="flex flex-col gap-2">
       <div className="flex items-center gap-2">
         <HistoryIcon className="text-muted-foreground size-4" />
-        <h2 className="font-medium">{W.review}</h2>
+        <h2 className="text-sm font-medium">{W.review}</h2>
       </div>
-      <p className="text-muted-foreground text-xs leading-relaxed">{W.reviewHint}</p>
       <div className="flex flex-wrap items-center gap-2">
         <Button variant="outline" size="sm" disabled={busy} onClick={start}>
           {busy ? W.reviewOpening : W.reviewStart}
@@ -74,7 +73,7 @@ export function ReviewsSection(props: { projectId: string; onError: (e: unknown)
       {!r.data ? (
         <Loading error={r.error} />
       ) : reviews.length === 0 ? (
-        <div className="text-muted-foreground text-sm">{W.reviewNone}</div>
+        <p className="text-muted-foreground text-xs leading-relaxed">{W.reviewHint}</p>
       ) : (
         <div className="flex flex-col gap-1.5">
           <div className="text-muted-foreground text-xs">{W.reviewsPast}</div>

@@ -8,7 +8,8 @@ const KEYS = {
 
 export type SettingName = keyof typeof KEYS;
 
-const DEFAULTS: Record<SettingName, boolean> = { sidebarCollapsed: false, devMode: true };
+// 开发者模式默认关（界面说明 §2.11）：学习者第一次打开不看到开发用的面板入口
+const DEFAULTS: Record<SettingName, boolean> = { sidebarCollapsed: false, devMode: false };
 
 const listeners = new Set<() => void>();
 

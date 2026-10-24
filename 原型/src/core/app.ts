@@ -156,7 +156,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
   outputs.attach(hub);
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
-  await studium.ensureMain();
+  // 第一次打开不自动建“项目 1”：没有项目时界面显示全部项目页的空状态，新建时先问想学什么（界面说明 §3）
   const evidence = new Evidence({
     hub,
     learned: studium.learned,

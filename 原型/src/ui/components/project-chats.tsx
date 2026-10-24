@@ -1,78 +1,68 @@
-// 项目页里“这个项目里的对话”：项目对话 + 全部学习、谈话、写产出对话（原来在左栏展开的那棵树，搬到这里）——
-// 岔出去补的、接着学的缩进在它来自的那段下面并标来历；复盘、写产出带图标。左栏删掉（藏起来）的对话这里照样列。
-import type { ReactNode } from 'react';
-import { HistoryIcon, MessageCircleIcon, PenLineIcon } from 'lucide-react';
+// 项目页“学习”页签底部的“其他对话”：谈方向、复盘、写产出、找资料、导航（学习对话已在上面的分组里，不再重复）。
+// 默认收成一行，点开再列（界面说明 §2.8）；左栏删掉（藏起来）的对话这里照样列。
+import { useState, type ReactNode } from 'react';
+import {
+  ChevronDownIcon,
+  ChevronRightIcon,
+  CompassIcon,
+  HistoryIcon,
+  LibraryIcon,
+  MessagesSquareIcon,
+  PenLineIcon,
+} from 'lucide-react';
 import type { SessionSummary } from '../../shared/protocol.ts';
 import { useOpenSession } from '../open-session.ts';
-import { taskRows } from '../relations-model.ts';
 import { W } from '../wording.ts';
 import { useReviewIds } from './longterm/reviews.tsx';
 
 export function ProjectChats(props: { projectId: string; tasks: SessionSummary[] }) {
   const open = useOpenSession();
   const reviewIds = useReviewIds(props.projectId);
+  const [shown, setShown] = useState(false);
+  const others = props.tasks
+    .filter((s) => s.kind !== 'loop')
+    .sort((a, b) => b.openedAt.localeCompare(a.openedAt));
+  if (others.length === 0) return null;
+  const icon = (s: SessionSummary): ReactNode =>
+    s.kind === 'output' ? (
+      <PenLineIcon />
+    ) : s.kind === 'find' ? (
+      <LibraryIcon />
+    ) : s.kind === 'nav' ? (
+      <CompassIcon />
+    ) : reviewIds.has(s.sessionId) ? (
+      <HistoryIcon aria-label={W.reviewBadge} />
+    ) : (
+      <MessagesSquareIcon />
+    );
   return (
     <section data-testid="project-chats" className="flex flex-col gap-2">
-      <div className="flex items-baseline gap-2 [&_svg]:size-4 [&_svg]:self-center">
-        <MessageCircleIcon className="text-muted-foreground" />
-        <h2 className="font-medium">{W.sidebar.projectChats}</h2>
-        <span className="text-muted-foreground text-sm">{props.tasks.length + 1}</span>
-      </div>
-      <ul
-        data-testid="session-list"
-        className="bg-card flex flex-col rounded-xl border py-1 shadow-xs"
+      <button
+        type="button"
+        aria-expanded={shown}
+        className="text-muted-foreground hover:text-foreground flex items-center gap-1.5 self-start text-sm"
+        onClick={() => setShown((x) => !x)}
       >
-        <li>
-          <Item onClick={() => open(props.projectId)}>
-            <MessageCircleIcon className="text-muted-foreground size-3.5 shrink-0" />
-            {W.projectChat}
-          </Item>
-        </li>
-        {taskRows(props.tasks).map(({ session: s, depth, from }) => (
-          <li
-            key={s.sessionId}
-            data-from={from}
-            style={depth > 0 ? { paddingInlineStart: `${String(depth * 1.25)}rem` } : {}}
-          >
-            <Item onClick={() => open(s.sessionId)}>
-              {s.kind === 'output' ? (
-                <PenLineIcon className="text-muted-foreground size-3.5 shrink-0" />
-              ) : reviewIds.has(s.sessionId) ? (
-                <HistoryIcon
-                  className="text-muted-foreground size-3.5 shrink-0"
-                  aria-label={W.reviewBadge}
-                />
-              ) : (
-                <span className="text-muted-foreground w-3.5 shrink-0 text-center text-xs">
-                  {from !== undefined ? '↳' : '·'}
-                </span>
-              )}
-              {from !== undefined ? (
-                <span className="flex min-w-0 flex-col">
-                  <span className="truncate">{s.title}</span>
-                  <span className="text-muted-foreground text-[0.7rem] leading-tight">
-                    {W.taskFrom[from]}
-                  </span>
-                </span>
-              ) : (
+        {shown ? <ChevronDownIcon className="size-4" /> : <ChevronRightIcon className="size-4" />}
+        {W.otherChats}
+        <span>{others.length}</span>
+      </button>
+      {shown && (
+        <ul data-testid="session-list" className="flex flex-col rounded-xl border py-1">
+          {others.map((s) => (
+            <li key={s.sessionId}>
+              <button
+                type="button"
+                className="hover:bg-accent/40 flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm [&_svg]:size-3.5 [&_svg]:shrink-0"
+                onClick={() => open(s.sessionId)}
+              >
+                <span className="text-muted-foreground flex">{icon(s)}</span>
                 <span className="truncate">{s.title}</span>
-              )}
-            </Item>
-          </li>
-        ))}
-      </ul>
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
     </section>
-  );
-}
-
-function Item(props: { onClick: () => void; children: ReactNode }) {
-  return (
-    <button
-      type="button"
-      className="hover:bg-accent/40 flex w-full items-center gap-2 px-3 py-1.5 text-left text-sm"
-      onClick={props.onClick}
-    >
-      {props.children}
-    </button>
   );
 }

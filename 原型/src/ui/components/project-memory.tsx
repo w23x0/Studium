@@ -17,6 +17,7 @@ import { shortTime } from '../evidence-model.ts';
 import { goalRows } from '../goal-model.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { usePanel } from '../panel.ts';
+import { forLearner } from '../learner-text.ts';
 import { W } from '../wording.ts';
 import { Loading } from './evidence/parts.tsx';
 
@@ -28,7 +29,8 @@ export function MemoryTab(props: {
 }) {
   const panel = usePanel();
   const o = props.overview;
-  const rows = goalRows(o.goalView);
+  // 方向名就是项目名时不再重复一行（界面说明 §2.7）
+  const rows = goalRows(o.goalView).filter((x) => !(x.kind === 'title' && x.text === o.title));
   return (
     <div data-testid="memory-tab" className="flex flex-col gap-6">
       <p className="text-muted-foreground text-sm">{W.memoryHint}</p>
@@ -42,6 +44,14 @@ export function MemoryTab(props: {
               <div key={i} className="flex flex-col">
                 <span className="text-muted-foreground text-xs">{row.label}</span>
                 <span>{row.text}</span>
+                {row.reason !== undefined && (
+                  <span className="text-muted-foreground text-xs">{forLearner(row.reason)}</span>
+                )}
+                {row.confirmedReason !== undefined && (
+                  <span className="text-muted-foreground text-xs">
+                    {W.goalConfirmedReason(row.confirmedReason)}
+                  </span>
+                )}
               </div>
             ))}
           </div>
@@ -60,6 +70,37 @@ export function MemoryTab(props: {
         )}
       </Block>
       <StateBlock />
+      {/* 不靠开发者模式也能看到：用过的教法、教法库、内容送往哪里（设计 00 §7：外发可知、依据可见） */}
+      <div
+        data-testid="memory-more"
+        className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"
+      >
+        <span className="text-muted-foreground">{W.memoryMore}</span>
+        <Button
+          variant="link"
+          size="xs"
+          className="px-0"
+          onClick={() => panel.show({ kind: 'teaching' })}
+        >
+          {W.teaching}
+        </Button>
+        <Button
+          variant="link"
+          size="xs"
+          className="px-0"
+          onClick={() => panel.show({ kind: 'tools' })}
+        >
+          {W.tools}
+        </Button>
+        <Button
+          variant="link"
+          size="xs"
+          className="px-0"
+          onClick={() => panel.show({ kind: 'disclosure' })}
+        >
+          {W.disclosure}
+        </Button>
+      </div>
     </div>
   );
 }
@@ -77,7 +118,7 @@ function Instructions(props: { projectId: string; onError: (e: unknown) => void 
     <section data-testid="project-instructions" className="flex flex-col gap-2">
       <div className="flex items-center gap-2 [&_svg]:size-4">
         <ScrollTextIcon className="text-primary" />
-        <h2 className="font-medium">{W.instructions}</h2>
+        <h2 className="text-base font-medium">{W.instructions}</h2>
         {d !== undefined && !editing && (
           <Button
             variant="ghost"
@@ -92,7 +133,6 @@ function Instructions(props: { projectId: string; onError: (e: unknown) => void 
           </Button>
         )}
       </div>
-      <p className="text-muted-foreground text-xs leading-relaxed">{W.instructionsHint}</p>
       {!d ? (
         <Loading error={r.error} />
       ) : editing ? (
@@ -140,7 +180,7 @@ function Instructions(props: { projectId: string; onError: (e: unknown) => void 
           </div>
         </form>
       ) : (
-        <div className="bg-card rounded-xl border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap shadow-xs">
+        <div className="bg-card rounded-xl border px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap">
           {d.text !== '' ? (
             d.text
           ) : (
@@ -187,13 +227,12 @@ function StateBlock() {
       detail={() => panel.show({ kind: 'state' })}
       notRight={() => panel.show({ kind: 'state' })}
     >
-      <p className="text-muted-foreground mb-1 text-xs">{W.memoryStateHint}</p>
       {!r.data ? (
         <Loading error={r.error} />
       ) : r.data.current !== undefined ? (
-        <span className="whitespace-pre-wrap">{r.data.current.text}</span>
+        <StatePoints text={r.data.current.text} />
       ) : (
-        <span className="text-muted-foreground">{W.noneYet}</span>
+        <span className="text-muted-foreground">{W.memoryStateEmpty}</span>
       )}
     </Block>
   );
@@ -210,7 +249,7 @@ function Block(props: {
     <section className="flex flex-col gap-2">
       <div className="flex items-center gap-2 [&_svg]:size-4">
         <span className="text-muted-foreground">{props.icon}</span>
-        <h2 className="font-medium">{props.title}</h2>
+        <h2 className="text-base font-medium">{props.title}</h2>
         <span className="ms-auto flex gap-1">
           {props.detail !== undefined && (
             <Button variant="ghost" size="xs" onClick={props.detail}>
@@ -222,9 +261,31 @@ function Block(props: {
           </Button>
         </span>
       </div>
-      <div className="bg-card rounded-xl border px-4 py-3 text-sm leading-relaxed shadow-xs">
+      <div className="bg-card rounded-xl border px-4 py-3 text-sm leading-relaxed">
         {props.children}
       </div>
     </section>
+  );
+}
+
+/**
+ * 当前状态那段（模型写的）摊成要点：每条一句人话，不露编号（界面说明 §2.10）；
+ * “已拿掉…”这类整理过程留给“看详细”。
+ */
+function StatePoints(props: { text: string }) {
+  const points = props.text
+    .split('\n')
+    .map((l) => l.trim())
+    .filter((l) => l.startsWith('- ') || l.startsWith('• '))
+    .map((l) => forLearner(l.slice(2)));
+  if (points.length === 0) {
+    return <span className="whitespace-pre-wrap">{forLearner(props.text)}</span>;
+  }
+  return (
+    <ul data-testid="state-points" className="flex list-disc flex-col gap-1 ps-5">
+      {points.map((p, i) => (
+        <li key={i}>{p}</li>
+      ))}
+    </ul>
   );
 }

@@ -5,22 +5,35 @@ export const WS = {
   collapse: '收起侧栏',
   expand: '展开侧栏',
   search: '搜索',
-  searchPlaceholder: '搜项目名或对话名…',
+  searchPlaceholder: '搜项目名、对话名（只搜标题）…',
+  searchRecent: '最近的对话',
   searchNone: '没有找到',
   searchProjects: '项目',
   searchChats: '对话',
-  newProject: '新建', // 现在 = 新建项目
+  newProject: '新建项目',
   newProjectLong: '新建项目',
   projects: '项目', // 打开全部项目页
   allProjects: '全部项目',
-  noProjects: '还没有项目。',
+  noProjects: '还没有项目。点“新建项目”，说一句想学什么就能开始。',
+  newAsk: '想学什么？',
+  newHint: '说一句就行，比如“想搞懂矩阵乘法为什么是行乘列”。接下来在项目对话里接着谈。',
+  newPlaceholder: '想学的东西、想做成的事…',
+  newGo: '开始',
+  mainChatSub: '项目对话',
+  noGoalYet: '还没谈方向',
   pinned: '置顶',
   recents: '最近',
   noRecents: '还没有对话。',
   /** 最近里的时间分组。 */
   buckets: { today: '今天', yesterday: '昨天', week: '7 天内', earlier: '更早' } as const,
   /** 最近里各种对话的叫法（主对话的那条用项目对话）。 */
-  chatKind: { talk: '谈话', loop: '学习', output: '写产出' } as const,
+  chatKind: {
+    talk: '谈话',
+    loop: '学习',
+    output: '写产出',
+    nav: '下一步',
+    find: '找资料',
+  } as const,
   lastActive: '最近活动',
   // ── ⋯ 菜单 ──
   more: '更多',
@@ -41,10 +54,6 @@ export const WS = {
   settings: '设置',
   language: '语言',
   chinese: '中文',
-  logout: '退出登录',
-  notYet: '还没做',
   devMode: '开发者模式',
   devModeHint: '打开后，右上角可以打开旁边的面板，看资料、记录、教法和外发内容。',
-  // ── 项目页里的全部对话 ──
-  projectChats: '这个项目里的对话',
 } as const;

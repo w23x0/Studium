@@ -29,10 +29,6 @@ export interface SessionSummary {
   from?: { kind: 'resume'; loop: string };
 }
 
-export interface CreateSessionResponse {
-  session: SessionSummary;
-}
-
 export interface ProjectResponse {
   mainSessionId: string;
 }

@@ -8,55 +8,85 @@ export const W = {
   /** 左栏、全部项目页、账号菜单与设置的叫法在 wording-sidebar.ts。 */
   sidebar: WS,
   // ── 项目页 ──
-  projectHome: '项目概览', // 项目页（Overview）
+  projectHome: '项目页', // 项目页（Overview）
   projectChat: '项目对话', // 主对话
   /** 左栏对话列表里学习对话的来历。 */
   taskFrom: { resume: '接着学的' } as const,
-  goal: '想学的方向', // 方向目标
+  goal: '学成后能', // 方向目标（页头只放一行）
+  goalMore: '全部方向',
+  goalSavedLine: '记下了你的方向，在项目页“记着什么”里能看全。',
   goalMissing: '还没谈定。在项目对话里说说你想学什么。',
-  backToChat: '回到项目对话',
+  backToChat: '进项目对话',
+  backToMain: '回项目对话',
   nextStep: '下一步学什么',
   noneYet: '还没有',
   groups: {
-    inProgress: '进行中',
-    closed: '学完了', // 合上
-    unclosed: '先放下的（没学完）', // 没合上（停车场）
-    shelved: '先放一放的', // 搁置
+    inProgress: '在学',
+    closed: '学完',
+    unclosed: '搁着', // 没合上（停车场）
+    shelved: '停着的', // 搁置（旧数据；界面不再给这个按钮）
   },
   groupHints: {
-    inProgress: '正在学、还没学完的',
+    inProgress: '还开着的学习，点进去接着说',
     closed: '判断过你已经学会、你也确认了的',
-    unclosed: '没学完就先停下的，以后可以再接着学',
-    shelved: '暂时放下的，点“接着学”或在里面说句话就能接上',
+    unclosed: '没学完就先结束的；下次要下一步时会一起考虑',
+    shelved: '停着的，进去说句话就能接上',
   },
+  learnEmpty: '还没开始学。在项目对话里说想学什么，或点“下一步学什么”。',
+  closedMore: (n: number) => `全部 ${String(n)} 次`,
+  otherChats: '其他对话',
 
   // ── 下一步 ──
   askNext: '下一步学什么？',
   whyNext: '为什么接下来学这个',
-  watchNav: '看看是怎么想的',
   cardTrigger: '为什么现在想下一步',
   sources: '出处',
   noSources: '这一项没有记出处。',
 
   // ── 依据面板 ──
   panel: '依据', // 右侧依据面板
-  panelOpen: '打开依据',
+  panelOpen: '打开开发者面板',
   panelClose: '关上',
+  panelHomeTitle: '开发者面板',
+  panelLoopTitle: '这次学习',
+  panelSourceTitle: '出处',
+  whereAmI: '现在在哪',
+  // ── 对话页 ──
+  mainWelcome: '想学什么？说一句就行。',
+  loopTopic: '这次学',
+  understood: '我觉得懂了',
+  closingShort: '正在整理…',
+  moreActions: '更多',
+  endLater: '搁着，以后再学', // 没合上就结束
+  endLaterHint: '没学完就先结束这次；下次要下一步时会一起考虑。',
+  confirmBar: '已经算学会了。还想补一句就接着说；不补就点“学完了”。',
+  confirmMore: '再补一句',
+  confirmGo: '学完了',
+  loopDone: '这部分学完了。',
+  unclosedDone: '搁着了，下次要下一步时会一起考虑。',
+  talkDone: '方向记好了。',
+  talkIntro: '在这里说清想学到什么程度；谈定后方向会记进项目。',
+  talkFrom: '从你在项目对话里说的这句开始：',
+  navIntro: '导航自己跑完，这里只看它怎么想的。',
+  navResult: '下一次学',
+  navStart: '开始学',
+  navWhy: '为什么：',
   panelBack: '返回',
   panelHome: '可以看的东西',
-  loopBasis: '这次学习的依据', // 学习依据
+  loopBasis: '这次学习的记录', // 学习依据
+  loopBasisShort: '看记录',
   status: {
-    in_progress: '进行中',
+    in_progress: '在学',
     closed: '学完了',
-    unclosed: '先放下了',
+    unclosed: '搁着',
   } satisfies Record<LoopStatus, string>,
   plan: '这次学什么', // 开场单子
   newPoint: '要学的', // 新点
   clause: '学完应该能', // 预期理解
   startPoints: '从这些已有的出发', // 出发点
   routeAction: '这次怎么走', // 路线动作
-  sourceCheck: '对过资料',
-  modelAdded: '模型补的，资料里没有',
+  sourceCheck: '和资料对照',
+  modelAdded: '资料里没有，按通常讲法',
   startSource: {
     学过的记录: '你之前学过的',
     自述: '你自己说会的',
@@ -340,7 +370,7 @@ export const W = {
 
   // ── 我学会的：按学习列（W6） ──
   learnedEmpty: '还没有学过。',
-  learnedStatus: { 进行中: '还在学', 合上: '学会了', 没合上: '先放下了' } as const,
+  learnedStatus: { 进行中: '还在学', 合上: '学会了', 没合上: '搁着' } as const,
   learnedUpper: '这次打算学什么',
   learnedMiddle: '学成什么样',
   learnedTranscript: '看这次的对话原文',
@@ -369,24 +399,18 @@ export const W = {
   // ── 外部导入 ──
   unverified: '未验证',
 
-  // ── 学到一半：先放一放 ──
+  // ── 学到一半：停着的（旧数据） ──
   thatPart: '那一段',
-  shelve: '先放一放', // 搁置
-  shelveHint: '先放下，不算学完也不算半途而废；以后点“接着学”或在这里说句话就能接上。',
-  shelvePlaceholder: '想写一句为什么先放下（可不填）',
-  shelveGo: '放下',
-  shelveCancel: '算了',
-  shelvedBar: '已放下，点“接着学”继续。',
+  shelvedBar: '这次停着，点“接着学”或说句话就能接上。',
   shelvedPlaceholder: '说句话也会接着学…',
   resume: '接着学',
-  endInstead: '不学了，先到这里',
-  shelvedLine: '先放一放了。',
-  shelvedLineNote: (note: string) => `先放一放了：${note}`,
+  shelvedLine: '停了一下。',
+  shelvedLineNote: (note: string) => `停了一下：${note}`,
   resumedLine: '接着学。',
-  shelvedNote: '放下时说的',
-  shelvedBadge: '放着',
+  shelvedNote: '停下时说的',
+  shelvedBadge: '停着',
   loadHeavy: (n: number) =>
-    `同时开着的有点多（${String(n)} 段没学完）。先把手上的学完或放一放，再开新的。`,
+    `同时开着的有点多（${String(n)} 段没学完）。先把手上的学完或搁着，再开新的。`,
   loadPile: (n: number) => `没学完的攒了 ${String(n)} 段，先收一收：挑一段接着学。`,
   // 学习之间的关系（从哪来）
   relations: '学习之间的来龙去脉',
@@ -440,7 +464,7 @@ export const W = {
   // ── 我的产出：自己写的笔记整理、推导、小论文、方法比较（批 8b） ──
   outputs: '我的产出', // 知识产出物
   outputsHint: '你自己写的东西。每次保存都留一版，可以回看、对比、回到旧的一版。',
-  outputsEmpty: '还没有。可以自己新建一份，也可以在项目对话里说想写什么，和老师一起写。',
+  outputsEmpty: '还没有：可以自己新建一份，也可以在项目对话里说想写什么，一起写。',
   outputNew: '新建一份',
   outputNewCancel: '算了',
   outputTitle: '标题',
@@ -664,7 +688,6 @@ export const W = {
   settings: '项目设置',
   settingsName: '项目名',
   settingsSave: '保存',
-  settingsClose: '关上',
   add: '添加',
   addFile: '文件',
   addFolder: '文件夹',
@@ -705,7 +728,7 @@ export const W = {
   otherProjectsNone: '别的项目里还没有资料。',
   takeThis: '拿过来',
   taken: '已拿',
-  myImports: '我导入的学过的',
+  myImports: '在别处学过的（导入）',
   myImportsHint: '你的笔记、在别处跟 AI 学的对话。只当你自述的经历，不算在这里学会了。',
   myImportsNone: '还没有。',
   importView: '看看',
@@ -717,7 +740,8 @@ export const W = {
   instructions: '项目说明',
   instructionsHint:
     '写给这个项目的长期要求，比如用什么系统、什么时候有空、讲题希望怎样。每次对话开头都会带上；和你当场说的冲突时，以当场说的为准。',
-  instructionsEmpty: '还没写。也可以在项目对话里说“记住……”。',
+  instructionsEmpty:
+    '还没写。写给这个项目的长期要求（用什么系统、什么时候有空、讲题希望怎样），每次对话都会带上；也可以在项目对话里说“记住……”。',
   instructionsEdit: '改',
   instructionsSave: '保存',
   instructionsCancel: '算了',
@@ -729,11 +753,13 @@ export const W = {
   memoryGoal: '方向',
   memoryLearned: '学过的',
   memoryLearnedLine: (closed: number, open: number, parked: number) =>
-    `学完 ${String(closed)} 次，在学 ${String(open)} 次，没学完先放下 ${String(parked)} 次`,
+    `学完 ${String(closed)} 次 · 在学 ${String(open)} 次 · 搁着 ${String(parked)} 次`,
   memoryState: '你的状态',
   memoryStateHint: '学习时观察到的状态与条件（比如时间、精力），只作参考。',
+  memoryStateEmpty: '还没整理过。学过几次后，这里会记下观察到的时间、精力这类情况，只作参考。',
   notRight: '这里不对',
   openDetail: '看详细',
+  memoryMore: '还能看：',
   // 找资料
   findTask: '找资料',
   findWelcome: '正在找资料…',

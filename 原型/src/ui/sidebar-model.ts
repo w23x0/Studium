@@ -4,7 +4,7 @@ import type { SidebarRef, SidebarView } from '../shared/sidebar.ts';
 import { W } from './wording.ts';
 
 /** 左栏里列的对话种类（后台的判断、整理会话不列）。 */
-const LISTED = new Set<SessionSummary['kind']>(['main', 'talk', 'loop', 'output']);
+const LISTED = new Set<SessionSummary['kind']>(['main', 'talk', 'loop', 'output', 'nav', 'find']);
 
 export interface ProjectItem {
   kind: 'project';
@@ -20,7 +20,7 @@ export interface ChatItem {
   id: string;
   /** 改过名用改的名；主对话没改过名时为空（界面上叫“项目对话”）。 */
   title: string;
-  chatKind: 'main' | 'talk' | 'loop' | 'output';
+  chatKind: 'main' | 'talk' | 'loop' | 'output' | 'nav' | 'find';
   projectId: string;
   projectTitle: string;
   lastAt: string;
@@ -186,7 +186,37 @@ export function isPinned(view: SidebarView, ref: SidebarRef): boolean {
   return view.pinned.some((r) => sameRef(r, ref));
 }
 
-/** 对话在列表里显示的名字：主对话没改过名叫“项目对话”。 */
+/** 对话在列表里显示的名字：主对话写项目名（界面说明 §2.1），任务对话写自己的名字。 */
 export function chatTitle(c: ChatItem): string {
-  return c.title !== '' ? c.title : W.projectChat;
+  if (c.title !== '') return c.title;
+  return c.chatKind === 'main' && c.projectTitle !== '' ? c.projectTitle : W.projectChat;
+}
+
+/** 列表行的小字：主对话写“项目对话”，任务对话写所在项目。 */
+export function chatSub(c: ChatItem): string {
+  return c.chatKind === 'main' ? W.projectChat : c.projectTitle;
+}
+
+/**
+ * 打开页面以后左栏行的先后不跟着活动跳（界面说明 §1.1）：第一次见到时记下名次与时间，之后照记下的排；
+ * 新出现的对话排最前。刷新页面再按最近活动重排。seen 由调用方保存（每个左栏一份）。
+ */
+export function stableOrder(
+  items: readonly ChatItem[],
+  seen: Map<string, { rank: number; lastAt: string }>,
+): ChatItem[] {
+  const first = seen.size === 0;
+  let top = Math.min(0, ...[...seen.values()].map((v) => v.rank));
+  items.forEach((c, i) => {
+    if (seen.has(c.id)) return;
+    // 第一次一起见到的按原来的先后；之后新来的放最前
+    seen.set(c.id, { rank: first ? i : --top, lastAt: c.lastAt });
+  });
+  return items
+    .map((c) => {
+      const s = seen.get(c.id);
+      return { c: s !== undefined ? { ...c, lastAt: s.lastAt } : c, rank: s?.rank ?? 0 };
+    })
+    .sort((a, b) => a.rank - b.rank)
+    .map((x) => x.c);
 }

@@ -1,4 +1,5 @@
-// 右侧依据面板（照 Claude 的 artifact 面板）：可开可关，面板里点开的东西可返回；我的产出也在这里看与改。
+// 右侧面板（照 Claude 的 artifact 面板）：可开可关，面板里点开的东西可返回；我的产出也在这里看与改。
+// 标题写当前内容名，不统一叫“依据”；首页目录只在开发者模式（界面说明 §2.11）。
 import type { ReactNode } from 'react';
 import {
   BookCheckIcon,
@@ -42,9 +43,7 @@ export function EvidencePanel(props: {
             <ChevronLeftIcon />
           </TooltipIconButton>
         )}
-        <span className="ms-1 font-medium">
-          {props.target.kind === 'output' ? W.outputs : W.panel}
-        </span>
+        <span className="ms-1 truncate font-medium">{panelTitle(props.target)}</span>
         <TooltipIconButton
           tooltip={W.panelClose}
           className="ms-auto size-7"
@@ -58,6 +57,36 @@ export function EvidencePanel(props: {
       </div>
     </div>
   );
+}
+
+/** 面板标题：当前看的是什么。 */
+function panelTitle(t: PanelTarget): string {
+  switch (t.kind) {
+    case 'home':
+      return W.panelHomeTitle;
+    case 'loop':
+      return W.panelLoopTitle;
+    case 'card':
+      return W.whyNext;
+    case 'learned':
+      return W.learned;
+    case 'state':
+      return W.myState;
+    case 'teaching':
+      return W.teaching;
+    case 'tools':
+      return W.tools;
+    case 'disclosure':
+      return W.disclosure;
+    case 'materials':
+    case 'search':
+      return W.materialsNav;
+    case 'source':
+    case 'page':
+      return W.panelSourceTitle;
+    case 'output':
+      return W.outputs;
+  }
 }
 
 function View(props: { target: PanelTarget; loopId?: string | undefined }) {

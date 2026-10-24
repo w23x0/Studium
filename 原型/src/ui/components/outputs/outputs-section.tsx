@@ -25,13 +25,10 @@ export function OutputsSection(props: { projectId: string }) {
     <section data-testid="my-outputs" className="flex flex-col gap-2">
       <div className="flex items-baseline gap-2 [&_svg]:size-4 [&_svg]:self-center">
         <FileTextIcon className="text-primary" />
-        <h2 className="font-medium">{W.outputs}</h2>
+        <h2 className="text-base font-medium">{W.outputs}</h2>
         {outputs !== undefined && (
           <span className="text-muted-foreground text-sm">{outputs.length}</span>
         )}
-        <span className="text-muted-foreground ms-2 hidden text-xs @lg:inline">
-          {W.outputsHint}
-        </span>
         {!adding && (
           <Button
             variant="ghost"
@@ -58,7 +55,11 @@ export function OutputsSection(props: { projectId: string }) {
       {outputs === undefined ? (
         <Loading error={r.error} />
       ) : outputs.length === 0 ? (
-        !adding && <div className="text-muted-foreground ps-6 text-sm">{W.outputsEmpty}</div>
+        !adding && (
+          <p className="text-muted-foreground text-xs leading-relaxed">
+            {W.outputsHint} {W.outputsEmpty}
+          </p>
+        )
       ) : (
         <div className="grid grid-cols-1 gap-2 @2xl:grid-cols-2">
           {outputs.map((o) => (

@@ -3,6 +3,7 @@
 import { join } from 'node:path';
 import type { LearnerObjection, ObjectionTarget } from '../../shared/records.ts';
 import { appendJsonl, readJsonl } from './jsonl.ts';
+import { localMinute } from '../../shared/time.ts';
 
 export class Objections {
   private constructor(
@@ -40,7 +41,7 @@ export class Objections {
 
   /** 交给模型的一行话：说明异议对着什么、说了什么。 */
   describe(o: LearnerObjection): string {
-    return `${o.id}（${o.at.slice(0, 16).replace('T', ' ')}）对${describeTarget(o.target)}的异议：${o.text}`;
+    return `${o.id}（${localMinute(o.at)}）对${describeTarget(o.target)}的异议：${o.text}`;
   }
 }
 

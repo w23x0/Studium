@@ -9,6 +9,7 @@ import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
 import { ticketRows } from '../../ticket-model.ts';
 import { W } from '../../wording.ts';
+import { forLearner } from '../../learner-text.ts';
 import { Badge, Card, Field, Loading, ModelLine, Section, TicketRowList, Time } from './parts.tsx';
 
 export function CardEvidence(props: { cardId: string; option?: number | undefined }) {
@@ -53,7 +54,7 @@ function RouteDecision(props: { view: RouteDecisionView }) {
           <span>{d.decision}</span>
           {d.superseded && <Badge tone="warn">{W.routeDecisionSuperseded}</Badge>}
         </span>
-        <span className="text-muted-foreground text-xs">{d.reason}</span>
+        <span className="text-muted-foreground text-xs">{forLearner(d.reason)}</span>
         {d.basis.length > 0 && (
           <span className="flex flex-col gap-1">
             <span className="text-muted-foreground text-xs">{W.routeDecisionBasis}</span>
@@ -74,7 +75,7 @@ function OptionBlock(props: { option: CardOptionView; active: boolean }) {
   return (
     <Card id={`option-${String(o.index)}`} active={props.active} className="flex flex-col gap-3">
       <div className="font-medium">{o.title}</div>
-      {o.reason !== '' && <div>{o.reason}</div>}
+      {o.reason !== '' && <div>{forLearner(o.reason)}</div>}
       <TicketRowList rows={ticketRows(o.ticket, o.ticket.refs)} />
       <Section title={W.sources}>
         {o.sources === undefined || o.sources.length === 0 ? (

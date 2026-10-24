@@ -19,6 +19,8 @@ export function ProjectsPage(props: {
   sessions: SessionSummary[];
   view: SidebarView;
   header: ReactNode;
+  /** 项目列表读回来了没有（没读回来前不显示空状态）。 */
+  loaded: boolean;
   onAct: (req: SidebarActionRequest) => void;
   onOpenProject: (id: string) => void;
   onNewProject: () => void;
@@ -40,14 +42,21 @@ export function ProjectsPage(props: {
       <div className="flex-1 overflow-y-auto">
         <div className="mx-auto flex w-full max-w-3xl flex-col gap-6 px-6 pt-6 pb-16">
           <div className="flex items-center gap-3">
-            <h1 className="font-serif text-3xl tracking-tight">{S.allProjects}</h1>
+            <h1 className="font-serif text-2xl tracking-tight">{S.allProjects}</h1>
             <Button className="ms-auto" size="sm" onClick={props.onNewProject}>
               <PlusIcon />
               {S.newProjectLong}
             </Button>
           </div>
           {list.length === 0 ? (
-            <div className="text-muted-foreground text-sm">{S.noProjects}</div>
+            props.loaded && (
+              <div
+                data-testid="projects-empty"
+                className="text-muted-foreground rounded-xl border border-dashed px-4 py-8 text-center text-sm"
+              >
+                {S.noProjects}
+              </div>
+            )
           ) : (
             <ul className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               {list.map((p) => (
@@ -79,11 +88,9 @@ export function ProjectsPage(props: {
                               </span>
                             )}
                           </span>
-                          {p.goal !== undefined && (
-                            <span className="text-muted-foreground line-clamp-2 text-sm">
-                              {p.goal}
-                            </span>
-                          )}
+                          <span className="text-muted-foreground line-clamp-2 text-sm">
+                            {p.goal ?? S.noGoalYet}
+                          </span>
                           {p.lastAt !== '' && (
                             <span className="text-muted-foreground text-xs">
                               {S.lastActive} {shortTime(p.lastAt)}

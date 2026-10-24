@@ -15,6 +15,7 @@ import type { Objections } from './knowledge/objections.ts';
 import type { TeachingTools } from './teaching-tools.ts';
 import type { SandboxSpec } from './model/port.ts';
 import { renderTranscript } from './transcript.ts';
+import { localMinute } from '../shared/time.ts';
 
 /** 只读区里的资料目录（程序渲染）。 */
 const MATERIAL_INDEX = '资料/目录.md';
@@ -176,8 +177,7 @@ export class Sandboxes {
         '',
         ...(all.length > 0
           ? all.map(
-              (l) =>
-                `- ${l.loopId}「${l.title}」${l.status}，开始 ${l.openedAt.slice(0, 16).replace('T', ' ')}`,
+              (l) => `- ${l.loopId}「${l.title}」${l.status}，开始 ${localMinute(l.openedAt)}`,
             )
           : ['（还没有）']),
       ].join('\n'),
@@ -195,7 +195,7 @@ export class Sandboxes {
     const lines = [
       `# 一次学习 ${l.loopId}「${l.title}」`,
       '',
-      `- 状态：${l.status}；开始 ${l.openedAt.slice(0, 16).replace('T', ' ')}${l.endedAt !== undefined ? `；结束 ${l.endedAt.slice(0, 16).replace('T', ' ')}` : ''}`,
+      `- 状态：${l.status}；开始 ${localMinute(l.openedAt)}${l.endedAt !== undefined ? `；结束 ${localMinute(l.endedAt)}` : ''}`,
       `- 单子：新点 ${l.ticket.newPoint}；预期理解 ${l.ticket.clause}；出发点 ${
         l.ticket.startPoints
           .map(
@@ -258,7 +258,7 @@ export class Sandboxes {
   }
 
   private async importText(x: Import): Promise<string> {
-    const at = `${x.id}（${x.at.slice(0, 16).replace('T', ' ')}，${x.channel}）`;
+    const at = `${x.id}（${localMinute(x.at)}，${x.channel}）`;
     if (!('session' in x.ref))
       return `- ${at}：《${x.title ?? x.id}》→ 外部导入/${x.id}.md（未验证）`;
     const { session, lines } = x.ref;
