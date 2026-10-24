@@ -1,5 +1,5 @@
-// 原文与出处（批 2a）：把书库的书、目录、小节、全文检索、原件页面、教材出处标记、资料报错整理成界面和模型能直接用的视图。
-// 只读书库；唯一会写的是资料报错存放处（只追加）。
+// 原文与出处（批 2a）：把项目资料的文件清单、正文、全文检索、原件页面、出处标记、资料报错整理成界面和模型能直接用的视图。
+// 只读资料；唯一会写的是资料报错存放处（只追加）。
 import { randomBytes } from 'node:crypto';
 import { parseBookLineRef, parseCitations, type CitationRef } from '../shared/citation.ts';
 import {
@@ -11,7 +11,7 @@ import type {
   BBox,
   BooksResponse,
   CitationView,
-  LibrarySearchResponse,
+  SourceSearchResponse,
   LocateResponse,
   PageResponse,
   SectionResponse,
@@ -26,7 +26,7 @@ import { isNotFound } from './log/session-log.ts';
 import { BadRequestError } from './studium.ts';
 
 export interface SourcesDeps {
-  library: SourceReader;
+  materials: SourceReader;
   originals: Originals;
   reports: SourceReports;
   now?: () => Date;
@@ -48,7 +48,7 @@ export class Sources {
 
   async books(): Promise<BooksResponse> {
     const books = [];
-    for (const b of await this.d.library.summaries()) {
+    for (const b of await this.d.materials.summaries()) {
       books.push({ ...b, hasOriginal: await this.d.originals.hasOriginal(b.id) });
     }
     return { books };
@@ -58,8 +58,8 @@ export class Sources {
     const id = await this.book(book);
     return {
       book: id,
-      title: await this.d.library.title(id),
-      entries: await this.d.library.toc(id),
+      title: await this.d.materials.title(id),
+      entries: await this.d.materials.toc(id),
     };
   }
 
@@ -71,11 +71,11 @@ export class Sources {
       throw new BadRequestError('from / to 要是正整数，且 to 不小于 from');
     }
     const r = await this.readLines(id, file, lo, Math.min(hi, lo + MAX_SECTION_LINES - 1));
-    const entry = await this.d.library.entryOf(id, file);
-    const near = await this.d.library.neighbors(id, file);
+    const entry = await this.d.materials.entryOf(id, file);
+    const near = await this.d.materials.neighbors(id, file);
     return {
       book: id,
-      bookTitle: await this.d.library.title(id),
+      bookTitle: await this.d.materials.title(id),
       file,
       ...(entry ? { entry } : {}),
       totalLines: r.total,
@@ -92,10 +92,10 @@ export class Sources {
     book?: string,
     limit?: number,
     books?: string[],
-  ): Promise<LibrarySearchResponse> {
+  ): Promise<SourceSearchResponse> {
     if (q.trim() === '') throw new BadRequestError('q 不能为空');
     const id = book !== undefined && book !== '' ? await this.book(book) : undefined;
-    const r = await this.d.library.search(q, {
+    const r = await this.d.materials.search(q, {
       ...(id !== undefined ? { book: id } : books !== undefined ? { books } : {}),
       ...(limit !== undefined ? { limit } : {}),
     });
@@ -116,12 +116,12 @@ export class Sources {
       canRender,
       ...(where !== undefined && canRender
         ? {
-            imageUrl: `/api/library/page/image?book=${encodeURIComponent(id)}&page=${String(page)}`,
+            imageUrl: `/api/sources/page/image?book=${encodeURIComponent(id)}&page=${String(page)}`,
           }
         : {}),
       blocks: where !== undefined ? await this.d.originals.blocks(id, page) : [],
       ...(where === undefined
-        ? { note: '这本书没有 PDF 原件（或这一页不在已转换的页段里），只能看转录的文字。' }
+        ? { note: '这份资料没有 PDF 原件（或这一页不在已转换的页段里），只能看转录的文字。' }
         : !canRender
           ? { note: '本机没有 pdftoppm，渲染不了原件页面。' }
           : {}),
@@ -141,7 +141,7 @@ export class Sources {
       throw new BadRequestError('from / to 要是正整数，且 to 不小于 from');
     }
     const r = await this.readLines(id, file, from, Math.min(to, from + MAX_CITED_LINES - 1));
-    const entry = await this.d.library.entryOf(id, file);
+    const entry = await this.d.materials.entryOf(id, file);
     return {
       book: id,
       file,
@@ -162,7 +162,7 @@ export class Sources {
 
   /** 依据串里的“资料id/文件:行号”回查成原文；认不出（没有资料 id、没有这份资料）返回空。 */
   async materialLine(raw: string): Promise<CitationView | undefined> {
-    const ref = parseBookLineRef(raw, await this.d.library.books());
+    const ref = parseBookLineRef(raw, await this.d.materials.books());
     return ref ? { ...(await this.cite(ref)), raw, start: 0, end: raw.length } : undefined;
   }
 
@@ -191,15 +191,14 @@ export class Sources {
     const b = { ...base, book: id };
     if (ref.from < 1) return view(b, { problem: '行号从 1 数' });
     if (ref.from > total) return view(b, { problem: `行号超出文件末尾（共 ${String(total)} 行）` });
-    const entry = await this.d.library.entryOf(id, ref.file);
+    const entry = await this.d.materials.entryOf(id, ref.file);
     const loc = (await this.d.originals.hasOriginal(id))
       ? (await this.d.originals.locate(id, lines.slice(0, 8), entry?.pdfPages))[0]
       : undefined;
     return view(b, {
       resolved: true,
-      bookTitle: await this.d.library.title(id),
+      bookTitle: await this.d.materials.title(id),
       ...(entry ? { section: `${entry.num} ${entry.title}`.trim() } : {}),
-      ...(entry?.pages !== undefined ? { pages: entry.pages } : {}),
       ...(entry?.pdfPages !== undefined ? { pdfPages: entry.pdfPages } : {}),
       lines,
       ...(loc ? { location: loc } : {}),
@@ -261,23 +260,23 @@ export class Sources {
 
   // ───────────── 内部 ─────────────
 
-  /** 书名 → 书库里的书目录名；先精确匹配，再忽略首尾空白（真书库里有名字带尾空格的）。 */
+  /** 资料 id；先精确匹配，再忽略首尾空白。 */
   private async findBook(name: string): Promise<string | undefined> {
-    const books = await this.d.library.books();
+    const books = await this.d.materials.books();
     return books.includes(name) ? name : books.find((b) => b.trim() === name.trim());
   }
 
   private async book(name: string): Promise<string> {
     const id = await this.findBook(name);
-    if (id === undefined) throw new NotFoundError(`书库里没有这本书：${name}`);
+    if (id === undefined) throw new NotFoundError(`没有这份资料：${name}`);
     return id;
   }
 
   private async readLines(book: string, file: string, from: number, to: number) {
     try {
-      return await this.d.library.lines(book, file, from, to);
+      return await this.d.materials.lines(book, file, from, to);
     } catch (err) {
-      if (isNotFound(err)) throw new NotFoundError(`这本书里没有这个文件：${file}`);
+      if (isNotFound(err)) throw new NotFoundError(`这份资料里没有这个文件：${file}`);
       if (err instanceof Error && err.message.startsWith('路径越界')) {
         throw new BadRequestError(err.message);
       }

@@ -58,19 +58,19 @@ export interface OutputVersion {
 export const RELATION_KINDS = ['支持', '矛盾', '方法沿革', '来源可靠性', '其他'] as const;
 export type RelationKind = (typeof RELATION_KINDS)[number];
 
-/** 相关文献：书库里的书 / 小节，或外部条目。 */
+/** 相关文献：项目资料（整份或某个文件的行段），或外部条目。 */
 export interface LiteratureEntry {
   id: string;
   output: string;
   at: string;
   by: OutputAuthor;
   session?: string;
-  /** library = 书库里的书（可带小节与行段）；external = 外部条目。 */
+  /** library = 项目资料（可带文件与行段；值是存放处里的行格式，沿用旧名）；external = 外部条目。 */
   source: 'library' | 'external';
   title: string;
   authors?: string[];
   url?: string;
-  /** 书库条目：书（目录名）、小节文件、行段。 */
+  /** 资料条目：资料 id、文件、行段。 */
   book?: string;
   file?: string;
   from?: number;
@@ -131,9 +131,9 @@ export interface VersionView extends VersionSummary {
 }
 
 export interface LiteratureView extends LiteratureEntry {
-  /** 书库条目带出处核对；外部条目没有。 */
+  /** 资料条目带出处核对；外部条目没有。 */
   citation?: CitationView;
-  /** 书库里找不到这本书 / 这个小节时的说明。 */
+  /** 找不到这份资料 / 这个文件时的说明。 */
   problem?: string;
 }
 
@@ -206,7 +206,7 @@ export interface CompareResponse {
 }
 
 export interface AddLiteratureRequest {
-  /** 书库里的书（目录名）；与 title 二选一：给 book 是书库条目，否则是外部条目。 */
+  /** 资料 id；与 title 二选一：给 book 是资料条目，否则是外部条目。 */
   book?: string;
   file?: string;
   from?: number;

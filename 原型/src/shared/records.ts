@@ -387,8 +387,6 @@ export interface ProjectMaterial {
   op: 'add' | 'remove';
   /** 资料 id（项目资料区里的一份，工单 W8）。 */
   material?: string;
-  /** W8 之前：选用书库里的书 id；读的时候当资料 id。 */
-  book?: string;
 }
 
 /** 项目期限（可不填）。deadline 为 null = 清掉期限；取最新一条。 */

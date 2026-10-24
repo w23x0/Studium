@@ -64,17 +64,17 @@ export function citationIndex(href: string | undefined): number | undefined {
   return Number.isInteger(n) && n >= 0 ? n : undefined;
 }
 
-/** 出处显示在哪一页：原件上比出来的页 → 小节的起页（原 PDF 页）；都没有为空。 */
+/** 出处显示在哪一页：原件上比出来的页 → 文件的起页（原 PDF 页）；都没有为空。 */
 export function citationPage(c: CitationView): number | undefined {
   return c.location?.page ?? c.pdfPages?.from;
 }
 
-/** 出处小标签上的字：书名 · 第几页（没有原件页时退到书上印的页码，再退到小节）。 */
+/** 出处小标签上的字：资料名 · 第几页（没有原件页时退到文件）。 */
 export function citationLabel(c: CitationView): string {
   const book = c.bookTitle ?? c.book;
   const page = citationPage(c);
   if (page !== undefined) return W.page(book, page);
-  const where = c.pages ?? c.section?.split(' ')[0];
+  const where = c.section?.split(' ')[0];
   return where !== undefined && where !== '' ? `${book} · ${where}` : book;
 }
 

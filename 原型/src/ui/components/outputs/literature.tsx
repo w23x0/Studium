@@ -1,4 +1,4 @@
-// 产出物的相关文献（书库里的书 / 小节，或外面的文章：标题、作者、链接；每条一句关系，可选关系类型）。只追加。
+// 产出物的相关文献（项目资料里的一份 / 一个文件，或外面的文章：标题、作者、链接；每条一句关系，可选关系类型）。只追加。
 import { useState, type ReactNode } from 'react';
 import { BookOpenIcon, ExternalLinkIcon, PlusIcon, TriangleAlertIcon } from 'lucide-react';
 import {
@@ -61,13 +61,13 @@ function LiteratureRow(props: { entry: LiteratureView }) {
     (e.file !== undefined ? e.file : e.source === 'library' ? W.litWholeBookLine : undefined);
   const openSource = () => {
     if (e.citation !== undefined) panel.show(citationTarget(e.citation));
-    else if (e.book !== undefined) panel.show({ kind: 'library', book: e.book });
+    else if (e.book !== undefined) panel.show({ kind: 'materials', book: e.book });
   };
   return (
     <li className="bg-card flex flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-sm shadow-xs">
       <div className="flex flex-wrap items-center gap-2">
         <Badge tone={e.source === 'library' ? 'accent' : 'neutral'}>
-          {e.source === 'library' ? W.litFromLibrary : W.litExternal}
+          {e.source === 'library' ? W.litFromMaterials : W.litExternal}
         </Badge>
         {e.source === 'library' ? (
           <button
@@ -134,9 +134,9 @@ function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded
   const [kind, setKind] = useState<RelationKind | ''>('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const books = useLoad(`library:books:${project ?? ''}`, () => api.books(project), false);
+  const books = useLoad(`sources:books:${project ?? ''}`, () => api.books(project), false);
   const toc = useLoad(
-    `library:toc:${book}`,
+    `sources:toc:${book}`,
     () => (book !== '' ? api.toc(book) : Promise.resolve(undefined)),
     false,
   );
@@ -196,7 +196,7 @@ function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded
             )}
             onClick={() => setMode(m)}
           >
-            {m === 'library' ? W.litFromLibrary : W.litExternal}
+            {m === 'library' ? W.litFromMaterials : W.litExternal}
           </button>
         ))}
       </div>
@@ -232,7 +232,7 @@ function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded
                   x.file !== undefined && x.file !== ''
                     ? [
                         <option key={x.file} value={x.file}>
-                          {`${'　'.repeat(Math.max(0, (x.level ?? 1) - 1))}${x.num} ${x.title}`.trim()}
+                          {`${x.num} ${x.title}`.trim()}
                         </option>,
                       ]
                     : [],

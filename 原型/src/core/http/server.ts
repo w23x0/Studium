@@ -12,7 +12,6 @@ import type {
   ListProjectsResponse,
   ProjectResponse,
   CardResponse,
-  NotesResponse,
   ProjectDeadlineRequest,
   ProjectDeadlineResponse,
   ProjectMaterialsRequest,
@@ -39,7 +38,7 @@ import type {
   SearchResponse,
   BBox,
   BooksResponse,
-  LibrarySearchResponse,
+  SourceSearchResponse,
   LocateResponse,
   PageResponse,
   ResolveCitationsResponse,
@@ -60,7 +59,6 @@ import { MAX_UPLOAD_BYTES } from '../uploads.ts';
 import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
 import { NoOriginalError, NoRendererError } from '../knowledge/originals.ts';
-import type { Notes } from '../knowledge/notes.ts';
 import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 import { InputError, type Inputs } from '../inputs.ts';
@@ -81,8 +79,6 @@ export interface ServerOptions {
   sources: Sources;
   /** 输入（批 4）：图片原样保存与转写。 */
   inputs: Inputs;
-  /** 个人笔记导入资料区。 */
-  notes: Notes;
   /** 知识产出物（批 8）。 */
   outputs: Outputs;
   /** 资料的来源说明、状态回看（批 10b）。 */
@@ -177,7 +173,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       )
     )
       return;
-    if (parts[1] === 'library' && (await libraryRoute(req, res, parts, method, sources, studium)))
+    if (parts[1] === 'sources' && (await sourcesRoute(req, res, parts, method, sources, studium)))
       return;
     if (await sidebarRoute(req, res, parts, method, { store: opts.sidebar, hub, studium })) return;
     if (
@@ -330,11 +326,9 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           );
           return;
         }
-        for (const k of ['add', 'remove'] as const) {
-          const v = body[k];
-          if (v !== undefined && !(Array.isArray(v) && v.every((x) => typeof x === 'string'))) {
-            throw new BadRequest(`${k} 要是字符串数组`);
-          }
+        const v = body.remove;
+        if (v !== undefined && !(Array.isArray(v) && v.every((x) => typeof x === 'string'))) {
+          throw new BadRequest('remove 要是字符串数组');
         }
         send(
           res,
@@ -497,8 +491,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     send(res, 404, { error: '没有这个接口' });
   }
 
-  /** 原文与出处的接口（/api/library/…）；认出路径就回答并返回真。 */
-  async function libraryRoute(
+  /** 原文与出处的接口（/api/sources/…）；认出路径就回答并返回真。 */
+  async function sourcesRoute(
     req: IncomingMessage,
     res: ServerResponse,
     parts: string[],
@@ -538,22 +532,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           send(res, 200, books satisfies BooksResponse);
           return true;
         }
-        case 'notes':
-          send(res, 200, { notes: await opts.notes.list() } satisfies NotesResponse);
-          return true;
-        case 'note-asset': {
-          const asset = await opts.notes.asset(str('book'), str('ref'));
-          if (asset === undefined) {
-            send(res, 404, { error: '笔记里没有这个图片（或不是图片）' });
-            return true;
-          }
-          res.writeHead(200, {
-            'content-type': IMAGE_MIME[asset.ext] ?? 'application/octet-stream',
-            'cache-control': 'private, max-age=3600',
-          });
-          res.end(await readFile(asset.path));
-          return true;
-        }
         case 'toc':
           send(res, 200, (await src.toc(str('book'))) satisfies TocResponse);
           return true;
@@ -583,7 +561,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           send(
             res,
             200,
-            (await src.search(str('q'), book, int('limit'), scope)) satisfies LibrarySearchResponse,
+            (await src.search(str('q'), book, int('limit'), scope)) satisfies SourceSearchResponse,
           );
           return true;
         }
@@ -810,16 +788,6 @@ function parseBBox(v: string | null): BBox | undefined {
   }
   return [a, b, c, d];
 }
-
-const IMAGE_MIME: Record<string, string> = {
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.svg': 'image/svg+xml',
-  '.bmp': 'image/bmp',
-};
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

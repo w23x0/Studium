@@ -1,5 +1,5 @@
-// 项目页「资料」页签（照 Claude 项目的 Library 与 NotebookLM 的“添加来源”；工单 W9 §4.1 §4.4）：
-// 整页可拖放；“添加”菜单（文件 · 文件夹 · 链接 · 代码仓库 · 从书库选 · 从别的项目拿）；
+// 项目页「资料」页签（照 Claude 项目的资料区与 NotebookLM 的“添加来源”；工单 W9 §4.1 §4.4）：
+// 整页可拖放；“添加”菜单（文件 · 文件夹 · 链接 · 代码仓库 · 从别的项目拿）；
 // 刚加进来的每份先分流（资料 / 学过的，可点改）；本项目资料每份显示种类、角色、处理状态，可重试、删掉；
 // “我导入的学过的”可看、可删；我的产出也在这页。还有项目期限（设置里用）。
 import { useEffect, useRef, useState, type ReactNode } from 'react';
@@ -20,7 +20,7 @@ import {
   RotateCcwIcon,
   Trash2Icon,
 } from 'lucide-react';
-import type { ProjectMaterialView, UploadItemView } from '../../shared/protocol.ts';
+import type { MaterialKind, ProjectMaterialView, UploadItemView } from '../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { Menu, MenuContent, MenuItem, MenuSeparator, MenuTrigger } from '@/components/ui/menu';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
@@ -29,7 +29,6 @@ import { api } from '../api.ts';
 import { shortTime } from '../evidence-model.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { usePanel } from '../panel.ts';
-import { groupBySubject } from '../scope-model.ts';
 import { W } from '../wording.ts';
 import { Badge, Loading } from './evidence/parts.tsx';
 import { OutputsSection } from './outputs/outputs-section.tsx';
@@ -143,7 +142,7 @@ export function DeadlineLine(props: { projectId: string; onError: (e: unknown) =
 
 // ───────────── 资料页签 ─────────────
 
-type Adding = 'link' | 'repo' | 'library' | 'project' | undefined;
+type Adding = 'link' | 'repo' | 'project' | undefined;
 
 export function MaterialsTab(props: { projectId: string; onError: (e: unknown) => void }) {
   const { projectId, onError } = props;
@@ -263,15 +262,6 @@ export function MaterialsTab(props: { projectId: string; onError: (e: unknown) =
             }
           />
         )}
-        {adding === 'library' && (
-          <Picker
-            projectId={projectId}
-            chosen={new Set(r.data?.materials.map((m) => m.origin ?? m.book) ?? [])}
-            onAdd={(book) =>
-              api.changeMaterials(projectId, { add: [book] }).then(r.reload, onError)
-            }
-          />
-        )}
         {adding === 'project' && (
           <FromProject
             projectId={projectId}
@@ -370,10 +360,6 @@ function AddMenu(props: {
           {W.addRepo}
         </MenuItem>
         <MenuSeparator />
-        <MenuItem onClick={() => props.onPick('library')}>
-          <BookIcon />
-          {W.addFromLibrary}
-        </MenuItem>
         <MenuItem onClick={() => props.onPick('project')}>
           <CopyIcon />
           {W.addFromProject}
@@ -422,13 +408,13 @@ function LinkForm(props: {
   );
 }
 
-const KIND_ICON: Record<string, ReactNode> = {
+const KIND_ICON: Record<MaterialKind, ReactNode> = {
+  pdf: <BookIcon />,
   web: <GlobeIcon />,
   search: <GlobeIcon />,
   repo: <GitBranchIcon />,
   md: <FileIcon />,
   subtitle: <FileIcon />,
-  note: <NotebookPenIcon />,
 };
 
 function MaterialRow(props: {
@@ -444,7 +430,7 @@ function MaterialRow(props: {
     <div className="bg-card group flex flex-col gap-1 rounded-xl border px-3 py-2 text-sm shadow-xs">
       <div className="flex items-center gap-2">
         <span className="text-muted-foreground shrink-0 [&_svg]:size-4">
-          {KIND_ICON[m.kind] ?? <BookIcon />}
+          {m.kind !== undefined ? KIND_ICON[m.kind] : <BookIcon />}
         </span>
         <button
           type="button"
@@ -454,13 +440,12 @@ function MaterialRow(props: {
             usable && 'hover:underline',
             missing && 'text-muted-foreground line-through',
           )}
-          onClick={() => panel.show({ kind: 'library', book: m.book })}
+          onClick={() => panel.show({ kind: 'materials', book: m.book })}
         >
           <span className="truncate font-medium">{m.title}</span>
           <span className="text-muted-foreground truncate text-xs">
             {[
-              W.materialKind[m.kind],
-              m.subject,
+              m.kind !== undefined ? W.materialKind[m.kind] : undefined,
               m.origin !== undefined && /^https?:/.test(m.origin) ? m.origin : undefined,
               m.fetchedAt !== undefined ? shortTime(m.fetchedAt) : undefined,
             ]
@@ -642,58 +627,6 @@ function MyImports(props: { projectId: string; onError: (e: unknown) => void }) 
   );
 }
 
-/** 从本机书库按学科挑书加进项目资料。 */
-function Picker(props: {
-  projectId: string;
-  chosen: Set<string>;
-  onAdd: (book: string) => Promise<unknown>;
-}) {
-  const r = useLoad(`library:books:${props.projectId}`, () => api.books(props.projectId), false);
-  const [busy, setBusy] = useState<string | undefined>();
-  if (!r.data) return <Loading error={r.error} />;
-  const books = r.data.books.filter((b) => b.kind !== 'note');
-  return (
-    <Panel testId="material-picker">
-      <p className="text-muted-foreground text-xs">{W.materialPickHint}</p>
-      {books.length === 0 && <div className="text-muted-foreground text-sm">{W.libraryEmpty}</div>}
-      {groupBySubject(books).map((g) => (
-        <div key={g.subject} className="flex flex-col gap-1">
-          <div className="text-muted-foreground text-xs font-medium">
-            {g.subject === '' ? W.noSubject : g.subject}
-          </div>
-          {g.books.map((b) => {
-            const has = props.chosen.has(b.id) || b.selected === true;
-            return (
-              <div key={b.id} className="flex items-center gap-2 rounded-md px-1 py-1 text-sm">
-                <BookIcon className="text-muted-foreground size-4 shrink-0" />
-                <span className="min-w-0 flex-1 truncate">{b.title}</span>
-                <span className="text-muted-foreground shrink-0 text-xs">
-                  {W.bookSections(b.sections)}
-                </span>
-                {has ? (
-                  <Badge tone="accent">{W.inProject}</Badge>
-                ) : (
-                  <Button
-                    variant="outline"
-                    size="xs"
-                    disabled={busy !== undefined}
-                    onClick={() => {
-                      setBusy(b.id);
-                      void props.onAdd(b.id).finally(() => setBusy(undefined));
-                    }}
-                  >
-                    {W.materialAddOne}
-                  </Button>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      ))}
-    </Panel>
-  );
-}
-
 /** 从别的项目拿：列出其他项目和它们的资料，点“拿过来”复制一份进本项目。 */
 function FromProject(props: {
   projectId: string;
@@ -737,7 +670,7 @@ function OtherProject(props: {
         list.map((m) => (
           <div key={m.book} className="flex items-center gap-2 rounded-md px-1 py-1 text-sm">
             <span className="text-muted-foreground [&_svg]:size-4">
-              {KIND_ICON[m.kind] ?? <BookIcon />}
+              {m.kind !== undefined ? KIND_ICON[m.kind] : <BookIcon />}
             </span>
             <span className="min-w-0 flex-1 truncate">{m.title}</span>
             {taken.has(m.book) ? (

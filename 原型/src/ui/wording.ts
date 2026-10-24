@@ -136,9 +136,9 @@ export const W = {
   effort: '思考强度',
 
   // ── 书里的原文与原件（资料） ──
-  library: '资料', // 资料浏览
-  libraryEmpty: '书库里还没有书。',
-  books: '书',
+  materialsNav: '资料', // 资料浏览
+  materialsEmpty: '还没有资料。',
+  books: '资料',
   bookSections: (n: number) => `${String(n)} 节`,
   hasOriginal: '有原件',
   toc: '目录',
@@ -227,18 +227,13 @@ export const W = {
   send: '发送',
   close: '关上',
 
-  // ── 资料范围（批 3b）：项目资料、期限、个人笔记 ──
-  materials: '项目资料', // 本项目的资料（Claude 项目的 Library）
+  // ── 资料范围（批 3b）：项目资料、期限 ──
+  materials: '项目资料', // 本项目的资料
   materialsHint: '学习时查资料、排下一步，只在本项目的资料里查',
   materialsAll: '还没有资料：拖文件进来，或点“添加”。学习时只在本项目的资料里查。',
-  materialMissing: '书库里找不到了',
+  materialMissing: '资料目录里找不到了',
   materialRemove: '从项目资料里去掉',
-  materialPickHint: '本机书库里已经转好的书，直接进本项目，不重新转换。',
-  materialAddOne: '加进来',
   inProject: '项目资料', // 资料列表里的标记
-  noteKind: '笔记',
-  noteBy: (author: string) => `作者：${author}`,
-  noSubject: '没分学科的',
   deadline: '期限',
   deadlineNone: '没设期限',
   deadlineSet: '设期限',
@@ -249,9 +244,6 @@ export const W = {
   deadlineCancel: '算了',
   daysLeft: (n: number) =>
     n > 0 ? `还剩 ${String(n)} 天` : n === 0 ? '就是今天' : `已过 ${String(-n)} 天`,
-  noteMine: '你自己的笔记',
-  noteMineHint: '这是你自己写的笔记，不是书上的原文。',
-  noteImageMissing: (ref: string) => `（图片找不到：${ref}）`,
 
   // ── 资料的来源说明、状态回看（批 10b） ──
   sourceNote: '这份资料的说明',
@@ -264,13 +256,13 @@ export const W = {
     remark: '已知限制',
   } as const,
   noteFieldHint: {
-    type: '教材 / 讲义 / 个人笔记 / 网页',
+    type: '教材 / 讲义 / 论文 / 网页',
     level: '入门 / 进阶 …',
     author: '作者或机构',
     scope: '这份资料适合用来做什么，一句话',
     remark: '已知的问题，一句话',
   } as const,
-  noteFrom: { 程序: '自动得到', 资料: '资料自带', 学习者: '你补的', 模型: '老师补的' } as const,
+  noteFrom: { 学习者: '你补的', 模型: '老师补的' } as const,
   noteUnset: '还没说明',
   noteQuality: '转写质量',
   noteAdd: '补一句',
@@ -547,7 +539,7 @@ export const W = {
   litHint: '和这份产出有关的书或文章；每条写一句它和这份产出是什么关系。',
   litEmpty: '还没登记。',
   litAdd: '登记一条',
-  litFromLibrary: '书库里的',
+  litFromMaterials: '项目资料里的',
   litExternal: '外面的',
   litBook: '哪本书',
   litPickBook: '选一本',
@@ -565,7 +557,7 @@ export const W = {
   litNeedTitle: '外面的文献要写标题。',
   litNeedBook: '要选一本书。',
   litSave: '登记',
-  litProblem: '书库里对不上了：',
+  litProblem: '资料里对不上了：',
   litWholeBookLine: '整本书',
   // 写产出的对话
   outputChatWelcome: '我们一起写。说说这次想写或改哪里。',
@@ -668,7 +660,7 @@ export const W = {
   seeThatLearning: '看那段学习',
 
   // ── 项目页三页签与导入入口（工单 W9） ──
-  tabs: { learn: '学习', library: '资料', memory: '记着什么' } as const,
+  tabs: { learn: '学习', materials: '资料', memory: '记着什么' } as const,
   settings: '项目设置',
   settingsName: '项目名',
   settingsSave: '保存',
@@ -678,7 +670,6 @@ export const W = {
   addFolder: '文件夹',
   addLink: '网页链接',
   addRepo: '代码仓库',
-  addFromLibrary: '从本机书库选',
   addFromProject: '从别的项目拿',
   linkPlaceholder: 'https://…',
   repoPlaceholder: 'https://github.com/… 或 git 地址',

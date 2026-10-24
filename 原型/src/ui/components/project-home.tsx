@@ -43,8 +43,8 @@ import { TodaySection } from './longterm/today.tsx';
 import { ProjectChats } from './project-chats.tsx';
 import { useSetting } from '../settings.ts';
 
-type Tab = 'learn' | 'library' | 'memory';
-const TABS: readonly Tab[] = ['learn', 'library', 'memory'];
+type Tab = 'learn' | 'materials' | 'memory';
+const TABS: readonly Tab[] = ['learn', 'materials', 'memory'];
 const TAB_KEY = 'studium-project-tab';
 
 /** 上次停在哪个页签（只是本机的方便，读不到就回默认）。 */
@@ -156,7 +156,7 @@ export function ProjectHome(props: {
                   </div>
                 </>
               )}
-              {tab === 'library' && (
+              {tab === 'materials' && (
                 <MaterialsTab projectId={props.projectId} onError={props.onError} />
               )}
               {tab === 'memory' && (
@@ -538,7 +538,11 @@ function Relations(props: { projectId: string }) {
 function AboutMe() {
   const panel = usePanel();
   const items: { icon: ReactNode; label: string; onClick: () => void }[] = [
-    { icon: <LibraryIcon />, label: W.library, onClick: () => panel.show({ kind: 'library' }) },
+    {
+      icon: <LibraryIcon />,
+      label: W.materialsNav,
+      onClick: () => panel.show({ kind: 'materials' }),
+    },
     { icon: <BookCheckIcon />, label: W.learned, onClick: () => panel.show({ kind: 'learned' }) },
     { icon: <GaugeIcon />, label: W.myState, onClick: () => panel.show({ kind: 'state' }) },
     {

@@ -1,5 +1,5 @@
-// 资料的来源说明补充存放处（`docs/设计/记录/资料.md`）：学习者或模型给某本书 / 笔记补的一句（类型、层次、作者、适用范围、备注）。
-// 只追加，不改书库；同一项补了多次，取最新一条，旧的留着。
+// 资料的来源说明补充存放处（`docs/设计/记录/资料.md`）：学习者或模型给某份资料补的一句（类型、层次、作者、适用范围、备注）。
+// 只追加，不改资料；同一项补了多次，取最新一条，旧的留着。
 import { join } from 'node:path';
 import type { SourceNoteAddition } from '../../shared/protocol.ts';
 import { appendJsonl, readJsonl } from './jsonl.ts';

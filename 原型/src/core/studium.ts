@@ -44,7 +44,7 @@ import { routeDeviations } from './route-deviations.ts';
 import { REVISIT_KINDS } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { foldLoop } from './loop-state.ts';
-import { MaterialError, type Materials, type SourceReader } from './knowledge/materials.ts';
+import { MaterialError, type Materials } from './knowledge/materials.ts';
 import type { Sources } from './sources.ts';
 import type { PedagogyStore } from './knowledge/pedagogy.ts';
 import type { Objections } from './knowledge/objections.ts';
@@ -81,9 +81,7 @@ const MAX_CANDIDATES = 10;
 
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
-  /** 读原文：项目资料，认不出的退回书库（工单 W8）。 */
-  library: SourceReader;
-  /** 项目资料区：建资料、角色、正文目录。 */
+  /** 项目资料区（工单 W8）：读原文、建资料、角色、正文目录。 */
   materials: Materials;
   /** 数据目录（学过的记录的导入存放处在其下）。 */
   dataDir: string;
@@ -381,7 +379,7 @@ export class Studium {
     return foldMaterials(await this.requireProject(mainId));
   }
 
-  /** 项目资料的视图：每份带种类 / 版本 / 日期 / 处理状态 / 模型判断的角色；读不到的标 missing。 */
+  /** 项目资料的视图：每份带种类 / 版本 / 日期 / 处理状态 / 模型判断的角色；资料目录里找不到的标 missing。 */
   async materials(mainId: string): Promise<ProjectMaterialsResponse> {
     const recs = await this.requireProject(mainId);
     const chosen = foldMaterials(recs);
@@ -404,16 +402,7 @@ export class Studium {
         });
         continue;
       }
-      // W8 之前选用的书库里的书：照旧按书库读
-      const info = await this.o.library.info(c.book);
-      views.push({
-        book: c.book,
-        title: info !== undefined ? await this.o.library.title(c.book) : c.book,
-        kind: info?.kind ?? 'book',
-        ...(info !== undefined && info.subject !== '' ? { subject: info.subject } : {}),
-        addedAt: c.addedAt,
-        ...(info === undefined ? { missing: true } : { status: '可用' as const }),
-      });
+      views.push({ book: c.book, title: c.book, addedAt: c.addedAt, missing: true });
     }
     const d = foldDeadline(recs);
     return {
@@ -499,11 +488,6 @@ export class Studium {
     if (fromProject === mainId) throw new BadRequestError('这份已经在本项目里了');
     const there = foldMaterials(await this.requireProject(fromProject)).map((m) => m.book);
     if (!there.includes(material)) throw new BadRequestError(`那个项目里没有这份资料：${material}`);
-    if ((await this.o.materials.source(material)) === undefined) {
-      // W8 之前从书库选的书：在本项目里照“从书库挑”建一份
-      await this.newMaterial(mainId, { kind: 'pdf', origin: material });
-      return this.materials(mainId);
-    }
     let src: MaterialSource;
     try {
       src = await this.o.materials.copy(material, mainId);
@@ -603,10 +587,9 @@ export class Studium {
     const rows: string[] = [];
     for (const m of have) {
       const src = await this.o.materials.source(m.book);
+      if (src === undefined) continue;
       rows.push(
-        src !== undefined
-          ? `- ${src.id}｜${src.title}｜${src.kind}｜${src.origin.startsWith('/') ? '本机文件' : src.origin}`
-          : `- ${m.book}｜书库里的书`,
+        `- ${src.id}｜${src.title}｜${src.kind}｜${src.origin.startsWith('/') ? '本机文件' : src.origin}`,
       );
     }
     return [
@@ -741,27 +724,13 @@ export class Studium {
     });
   }
 
-  /** 从书库加书 / 去掉资料：只追加记录；书库里没有的书整批拒绝，已有的同一本不重复加。 */
+  /** 去掉资料：只追加记录；本项目没有的名字跳过。 */
   async changeMaterials(
     mainId: string,
-    change: { add?: string[]; remove?: string[] },
+    change: { remove?: string[] },
   ): Promise<ProjectMaterialsResponse> {
     const recs = await this.requireProject(mainId);
     const have = foldMaterials(recs).map((m) => m.book);
-    const lib = await this.o.library.books();
-    const resolve = (name: string): string | undefined =>
-      lib.includes(name) ? name : lib.find((b) => b.trim() === name.trim());
-    const adds: string[] = [];
-    for (const name of change.add ?? []) {
-      const id = resolve(name);
-      if (id === undefined) throw new BadRequestError(`书库里没有这份资料：${name}`);
-      // 同一本书已在本项目（W8 之前按书 id 选的，或之后从书库挑的）就不再建
-      let already = have.includes(id);
-      for (const m of have) {
-        if ((await this.o.materials.source(m))?.origin === id) already = true;
-      }
-      if (!already && !adds.includes(id)) adds.push(id);
-    }
     const removes: string[] = [];
     for (const name of change.remove ?? []) {
       const id = have.find((b) => b === name || b.trim() === name.trim());
@@ -774,9 +743,6 @@ export class Studium {
         op: 'remove',
         material: id,
       });
-    }
-    for (const book of adds) {
-      await this.addMaterial(mainId, { kind: 'pdf', origin: book });
     }
     return this.materials(mainId);
   }
@@ -791,11 +757,7 @@ export class Studium {
     const out: string[] = [];
     for (const c of await this.selectedBooks(main)) {
       const src = await this.o.materials.source(c.book);
-      if (src !== undefined) {
-        if (src.status === '可用' || src.status === '部分可用') out.push(c.book);
-      } else if ((await this.o.library.info(c.book)) !== undefined) {
-        out.push(c.book);
-      }
+      if (src?.status === '可用' || src?.status === '部分可用') out.push(c.book);
     }
     return out;
   }
@@ -3159,10 +3121,7 @@ export class Studium {
     const out: string[] = [];
     for (const id of ids) {
       const s = await this.o.materials.source(id);
-      if (s === undefined) {
-        out.push(`- ${id}｜${await this.o.library.title(id)}｜书（W8 之前从书库选的）`);
-        continue;
-      }
+      if (s === undefined) continue;
       out.push(
         `- ${id}｜${s.title}｜${s.kind}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}`,
       );
@@ -3183,7 +3142,7 @@ export class Studium {
       {
         name: 'textbook_index',
         description:
-          '不给资料 id：列出本项目的资料（书、网页、代码仓库、字幕、文字等，每份一行：id、标题、种类、版本、日期、状态、角色）；给资料 id：读这份资料的目录（书 = 章节表，其余 = 文件清单）。',
+          '不给资料 id：列出本项目的资料（PDF、网页、代码仓库、字幕、文字等，每份一行：id、标题、种类、版本、日期、状态、角色）；给资料 id：读这份资料的文件清单。',
         input: { book: z.string().optional().describe('资料 id') },
         run: async (a) => {
           const book = a.book as string | undefined;
@@ -3194,7 +3153,7 @@ export class Studium {
           }
           const bad = await inScope(book);
           if (bad !== undefined) return err(bad);
-          return ok((await this.o.library.index(book)) + (await this.o.cross.noteLines([book])));
+          return ok((await this.o.materials.index(book)) + (await this.o.cross.noteLines([book])));
         },
       },
       {
@@ -3203,7 +3162,7 @@ export class Studium {
           '读资料里一个文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
         input: {
           book: z.string().describe('资料 id'),
-          file: z.string().describe('目录里的文件路径，如 ch01/sec-1.2.md 或 src/main.py'),
+          file: z.string().describe('文件清单里的路径，如 p1-200.md 或 src/main.py'),
           from_line: z.number().int().optional(),
           to_line: z.number().int().optional(),
         },
@@ -3212,7 +3171,7 @@ export class Studium {
           const file = a.file as string;
           const bad = await inScope(book);
           if (bad !== undefined) return err(bad);
-          const r = await this.o.library.lines(
+          const r = await this.o.materials.lines(
             book,
             file,
             (a.from_line as number | undefined) ?? 1,
@@ -3301,12 +3260,12 @@ function formatDuration(ms: number): string {
   return `${String(Math.round(h / 24))} 天`;
 }
 
-/** 把 project_material 记录折叠成项目当前的资料（按加入顺序）；W8 之前的记录用 book 当资料 id。 */
+/** 把 project_material 记录折叠成项目当前的资料（按加入顺序）。 */
 export function foldMaterials(recs: LogRecord[]): { book: string; addedAt: string }[] {
   const out = new Map<string, string>();
   for (const r of recs) {
     if (r.type !== 'project_material') continue;
-    const id = r.material ?? r.book;
+    const id = r.material;
     if (id === undefined) continue;
     if (r.op === 'add') {
       if (!out.has(id)) out.set(id, r.at);

@@ -17,8 +17,6 @@ import type { ActionName, TapeLine } from './recorder.ts';
 
 export interface ReplayOptions {
   dataRoot: string;
-  /** 不给就用录带头里记的（录的时候用的书库）。 */
-  library?: string;
   /** 等一个条件的最长毫秒数（插话、会话出现）。 */
   waitMs?: number;
 }
@@ -84,7 +82,6 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
   };
   const ids = new IdTokens();
   const model = new ReplayModel(header.adapter, turns, ids, problems, advance, waitMs);
-  const library = opts.library ?? header.library;
   const app = await createApp({
     dataRoot: opts.dataRoot,
     model,
@@ -92,7 +89,6 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
     port: 0,
     now: () => new Date(clock),
     instrument: (hub, studium) => ids.attach(hub, studium),
-    ...(library !== undefined ? { library } : {}),
   });
 
   try {

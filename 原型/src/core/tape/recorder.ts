@@ -70,7 +70,6 @@ export type TapeLine =
       adapter: string;
       /** 开录时数据目录里已有的会话数；不为 0 时回放会有偏差（回放从空目录开始）。 */
       preexisting: number;
-      library?: string;
     }
   | { t: 'turn'; s: string; n: number; at: string; input: TurnInput }
   | { t: 'interject'; s: string; n: number; at: string; input: TurnInput }
@@ -107,7 +106,7 @@ export class Recorder {
 
   constructor(
     private readonly path: string,
-    private readonly opts: { library?: string; now: () => Date },
+    private readonly opts: { now: () => Date },
   ) {
     mkdirSync(dirname(path), { recursive: true });
   }
@@ -138,7 +137,6 @@ export class Recorder {
       at: this.at(),
       adapter,
       preexisting,
-      ...(this.opts.library !== undefined ? { library: this.opts.library } : {}),
     });
   }
 

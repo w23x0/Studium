@@ -17,7 +17,7 @@ import type {
   BooksResponse,
   TocResponse,
   SectionResponse,
-  LibrarySearchResponse,
+  SourceSearchResponse,
   PageResponse,
   LocateResponse,
   ResolveCitationsResponse,
@@ -30,7 +30,6 @@ import type {
   ProjectMaterialsResponse,
   ProjectMaterialsRequest,
   ProjectDeadlineResponse,
-  NotesResponse,
   UploadsResponse,
   ProjectInstructionsResponse,
   ImportTextResponse,
@@ -176,10 +175,10 @@ export const api = {
   strategies: () => call<StrategiesResponse>('/pedagogy/records'),
   state: () => call<StateResponse>('/state/records'),
   // ── 批 10b：来源说明、状态回看 ──
-  sourceNotes: () => call<SourceNotesResponse>('/library/source-notes'),
-  sourceNote: (book: string) => call<SourceNoteResponse>(`/library/source-notes?${qs({ book })}`),
+  sourceNotes: () => call<SourceNotesResponse>('/sources/source-notes'),
+  sourceNote: (book: string) => call<SourceNoteResponse>(`/sources/source-notes?${qs({ book })}`),
   addSourceNote: (book: string, field: SourceNoteField, text: string) =>
-    call<SourceNoteResponse>('/library/source-notes', {
+    call<SourceNoteResponse>('/sources/source-notes', {
       method: 'POST',
       body: JSON.stringify({ book, field, text }),
     }),
@@ -212,29 +211,29 @@ export const api = {
       ),
     }),
   // ── 原文与出处 ──
-  /** 书库里的书与笔记；给了项目就标出哪些是项目资料。 */
-  books: (project?: string) => call<BooksResponse>(`/library/books?${qs({ project })}`),
-  toc: (book: string) => call<TocResponse>(`/library/toc?${qs({ book })}`),
+  /** 各项目的资料；给了项目就标出哪些是这个项目的。 */
+  books: (project?: string) => call<BooksResponse>(`/sources/books?${qs({ project })}`),
+  toc: (book: string) => call<TocResponse>(`/sources/toc?${qs({ book })}`),
   section: (book: string, file: string) =>
-    call<SectionResponse>(`/library/section?${qs({ book, file })}`),
-  /** 给了项目：默认只搜项目资料；all = 查全部。 */
+    call<SectionResponse>(`/sources/section?${qs({ book, file })}`),
+  /** 给了项目：默认只搜本项目资料；all = 查全部项目的。 */
   search: (q: string, book?: string, limit?: number, project?: string, all?: boolean) =>
-    call<LibrarySearchResponse>(
-      `/library/search?${qs({ q, book, limit, project, all: all === true ? 1 : undefined })}`,
+    call<SourceSearchResponse>(
+      `/sources/search?${qs({ q, book, limit, project, all: all === true ? 1 : undefined })}`,
     ),
-  page: (book: string, page: number) => call<PageResponse>(`/library/page?${qs({ book, page })}`),
+  page: (book: string, page: number) => call<PageResponse>(`/sources/page?${qs({ book, page })}`),
   locate: (book: string, file: string, from: number, to: number) =>
-    call<LocateResponse>(`/library/locate?${qs({ book, file, from, to })}`),
+    call<LocateResponse>(`/sources/locate?${qs({ book, file, from, to })}`),
   citations: (text: string) =>
-    call<ResolveCitationsResponse>('/library/citations', {
+    call<ResolveCitationsResponse>('/sources/citations', {
       method: 'POST',
       body: JSON.stringify({ text }),
     }),
   reports: (book: string, file: string) =>
-    call<SourceReportsResponse>(`/library/reports?${qs({ book, file })}`),
+    call<SourceReportsResponse>(`/sources/reports?${qs({ book, file })}`),
   report: (req: SourceReportRequest) =>
-    call<SourceReportResponse>('/library/reports', { method: 'POST', body: JSON.stringify(req) }),
-  // ── 资料范围：项目资料、期限、个人笔记、外部导入 ──
+    call<SourceReportResponse>('/sources/reports', { method: 'POST', body: JSON.stringify(req) }),
+  // ── 资料范围：项目资料、期限 ──
   materials: (projectId: string) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`),
   changeMaterials: (projectId: string, req: ProjectMaterialsRequest) =>
@@ -248,7 +247,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(note !== undefined ? { deadline, note } : { deadline }),
     }),
-  notes: () => call<NotesResponse>('/library/notes'),
   // ── 导入入口（工单 W9）：上传、改判、从别的项目拿、重试、删、外部导入、项目说明 ──
   /** 上传一批文件（文件夹按相对路径传）；核心收下后分流，回这次每份分到了哪。 */
   upload: async (projectId: string, files: { file: File; path: string }[]) => {
@@ -308,9 +306,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ forLine, picked }),
     }),
-  /** 笔记里引用的图片（给 <img src>）。 */
-  noteAssetUrl: (book: string, ref: string) =>
-    withToken(`/api/library/note-asset?${qs({ book, ref })}`),
   // ── 我的产出（批 8b） ──
   outputs: (projectId: string) => call<ListOutputsResponse>(`/projects/${projectId}/outputs`),
   output: (id: string) => call<OutputResponse>(`/outputs/${encodeURIComponent(id)}`),

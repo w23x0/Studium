@@ -412,7 +412,7 @@ export class Evidence {
         to: cited.to,
       };
     }
-    const where = [cited.section, cited.pages].filter((x) => x !== undefined).join(' ');
+    const where = cited.section ?? '';
     return {
       raw,
       kind: 'book_line',

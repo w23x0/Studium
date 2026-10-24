@@ -8,10 +8,10 @@ import type { MaterialKind, StateRecordView } from './protocol.ts';
 export const SOURCE_NOTE_FIELDS = ['type', 'level', 'author', 'scope', 'remark'] as const;
 export type SourceNoteField = (typeof SOURCE_NOTE_FIELDS)[number];
 
-/** 说明里的一项，带来历：程序算的 / 资料自带的 / 学习者补的 / 模型补的。 */
+/** 说明里的一项，带来历：学习者补的 / 模型补的。 */
 export interface NoteItem {
   value: string;
-  from: '程序' | '资料' | '学习者' | '模型';
+  from: '学习者' | '模型';
   at?: string;
 }
 
@@ -30,8 +30,8 @@ export interface SourceNoteAddition {
 export interface SourceNoteView {
   book: string;
   title: string;
-  kind: 'book' | 'note' | MaterialKind;
-  /** 教材 / 讲义 / 个人笔记 / 网页；程序只会认出“个人笔记”，其余要补。 */
+  kind: MaterialKind;
+  /** 教材 / 讲义 / 论文 / 网页 …；学习者或模型补。 */
   type?: NoteItem;
   /** 层次（入门 / 进阶 / 研究生 …），自由写，不打分。 */
   level?: NoteItem;
@@ -40,10 +40,8 @@ export interface SourceNoteView {
   scope?: NoteItem;
   /** 已知的限制或别的备注（最新一条）。 */
   remark?: NoteItem;
-  subject?: string;
   sections: number;
   hasOriginal: boolean;
-  importedAt?: string;
   /** 转写质量：读得到的数据，不合成分数。 */
   quality: {
     /** 学习者报的错条数（报了还没有“修正”这一步，全部算还开着）。 */

@@ -31,7 +31,7 @@ export async function crossRoute(
   const [, a, b, c, d] = parts;
   const n = parts.length;
 
-  if (a === 'library' && method === 'GET') {
+  if (a === 'sources' && method === 'GET') {
     if (b === 'source-notes' && n === 3) {
       const book = q.get('book');
       if (book !== null && book !== '') {
@@ -42,7 +42,7 @@ export async function crossRoute(
       return true;
     }
   }
-  if (a === 'library' && b === 'source-notes' && n === 3 && method === 'POST') {
+  if (a === 'sources' && b === 'source-notes' && n === 3 && method === 'POST') {
     const body = (await readJson(req)) as Partial<AddSourceNoteRequest>;
     if (
       typeof body.book !== 'string' ||

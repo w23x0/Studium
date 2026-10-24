@@ -16,12 +16,23 @@ import sys
 import time
 import urllib.parse
 import urllib.request
+import os
 import zipfile
 from pathlib import Path
 
-from .llm import _env
-
 _API = "https://mineru.net/api/v4"
+_ENV_FILE = Path(__file__).resolve().parent.parent / ".env"
+
+
+def _env(name: str) -> str:
+    if name in os.environ:
+        return os.environ[name]
+    if _ENV_FILE.exists():
+        for line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+            key, sep, value = line.partition("=")
+            if sep and key.strip() == name:
+                return value.strip()
+    raise RuntimeError(f"缺 {name}：在 书库处理/.env 里配置（见 .env.example）")
 
 
 def _call(method: str, path: str, body: dict | None = None) -> dict:

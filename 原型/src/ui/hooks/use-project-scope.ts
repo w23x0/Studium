@@ -1,4 +1,4 @@
-// 当前项目的资料范围：选了资料时是选了几份（书库里还在的）；没选 / 不在项目里 = undefined（查全部）。
+// 当前项目的资料范围：本项目有几份资料（资料目录里还在的）；不在项目里 = undefined（查全部）。
 import { api } from '../api.ts';
 import { useProject } from '../panel.ts';
 import { useLoad } from './use-load.ts';

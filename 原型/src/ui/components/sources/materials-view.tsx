@@ -1,7 +1,7 @@
-// 资料（右侧面板）：书列表（按学科分组、标出项目资料）→ 目录 → 小节原文；在书里搜（默认只搜项目资料，
-// 可切查全部）；原件的一页。
+// 资料（右侧面板）：资料列表（标出本项目的）→ 文件清单 → 文件原文；全文检索（默认只搜本项目资料，
+// 可切查全部项目的）；原件的一页。
 import { useState } from 'react';
-import { BookIcon, FileTextIcon, NotebookPenIcon, SearchIcon } from 'lucide-react';
+import { BookIcon, FileTextIcon, SearchIcon } from 'lucide-react';
 import type { BBox, TocEntry } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -9,16 +9,15 @@ import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { useProjectScope } from '../../hooks/use-project-scope.ts';
 import { usePanel, useProject } from '../../panel.ts';
-import { groupBySubject } from '../../scope-model.ts';
 import { markTerms } from '../../source-model.ts';
 import { W } from '../../wording.ts';
 import { Badge, Loading, Section } from '../evidence/parts.tsx';
 import { OriginalPage } from './original-page.tsx';
 import { SourceNoteCard } from './source-note.tsx';
 
-export function LibraryView(props: { book?: string | undefined }) {
+export function MaterialsView(props: { book?: string | undefined }) {
   return (
-    <div className="flex flex-col gap-5" data-testid="library-view">
+    <div className="flex flex-col gap-5" data-testid="materials-view">
       <SearchBox book={props.book} />
       {props.book === undefined ? <Books /> : <Toc book={props.book} />}
     </div>
@@ -103,53 +102,43 @@ function SearchBox(props: {
 function Books() {
   const panel = usePanel();
   const project = useProject();
-  const r = useLoad(`library:books:${project ?? ''}`, () => api.books(project), false);
+  const r = useLoad(`sources:books:${project ?? ''}`, () => api.books(project), false);
   if (!r.data) return <Loading error={r.error} />;
   const { books } = r.data;
   if (books.length === 0) {
     return (
       <Section title={W.books}>
-        <div className="text-muted-foreground text-sm">{W.libraryEmpty}</div>
+        <div className="text-muted-foreground text-sm">{W.materialsEmpty}</div>
       </Section>
     );
   }
   return (
-    <>
-      {groupBySubject(books).map((g) => (
-        <Section key={g.subject} title={g.subject === '' ? W.noSubject : g.subject}>
-          {g.books.map((b) => (
-            <button
-              key={b.id}
-              type="button"
-              className="bg-card hover:bg-accent/40 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm shadow-xs"
-              onClick={() => panel.show({ kind: 'library', book: b.id })}
-            >
-              {b.kind === 'note' ? (
-                <NotebookPenIcon className="text-muted-foreground size-4 shrink-0" />
-              ) : (
-                <BookIcon className="text-muted-foreground size-4 shrink-0" />
-              )}
-              <span className="flex min-w-0 flex-1 flex-col">
-                <span className="font-medium">{b.title}</span>
-                <span className="text-muted-foreground text-xs">
-                  {W.bookSections(b.sections)}
-                  {b.kind === 'note' && b.author !== undefined && ` · ${W.noteBy(b.author)}`}
-                </span>
-              </span>
-              {b.selected === true && <Badge tone="accent">{W.inProject}</Badge>}
-              {b.kind === 'note' && <Badge>{W.noteKind}</Badge>}
-              {b.hasOriginal && <Badge>{W.hasOriginal}</Badge>}
-            </button>
-          ))}
-        </Section>
-      ))}
-    </>
+    <Section title={W.books}>
+      {[...books]
+        .sort((x, y) => x.title.localeCompare(y.title, 'zh-CN', { numeric: true }))
+        .map((b) => (
+          <button
+            key={b.id}
+            type="button"
+            className="bg-card hover:bg-accent/40 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm shadow-xs"
+            onClick={() => panel.show({ kind: 'materials', book: b.id })}
+          >
+            <BookIcon className="text-muted-foreground size-4 shrink-0" />
+            <span className="flex min-w-0 flex-1 flex-col">
+              <span className="font-medium">{b.title}</span>
+              <span className="text-muted-foreground text-xs">{W.bookSections(b.sections)}</span>
+            </span>
+            {b.selected === true && <Badge tone="accent">{W.inProject}</Badge>}
+            {b.hasOriginal && <Badge>{W.hasOriginal}</Badge>}
+          </button>
+        ))}
+    </Section>
   );
 }
 
 function Toc(props: { book: string }) {
   const panel = usePanel();
-  const r = useLoad(`library:toc:${props.book}`, () => api.toc(props.book), false);
+  const r = useLoad(`sources:toc:${props.book}`, () => api.toc(props.book), false);
   if (!r.data) return <Loading error={r.error} />;
   const { title, entries, book } = r.data;
   return (
@@ -178,37 +167,24 @@ function Toc(props: { book: string }) {
 
 function TocRow(props: { entry: TocEntry; onOpen: (() => void) | undefined }) {
   const e = props.entry;
-  const top = e.kind === 'part' || e.kind === 'ch' || (e.level !== undefined && e.level <= 1);
-  const indent = e.level !== undefined ? Math.max(0, e.level - 1) : top ? 0 : 1;
   const body = (
     <>
       <span className="text-muted-foreground w-10 shrink-0 text-xs tabular-nums">{e.num}</span>
-      <span className={cn('min-w-0 flex-1', top && 'font-medium')}>
+      <span className="min-w-0 flex-1">
         {e.title}
-        {props.onOpen === undefined && !top && (
+        {props.onOpen === undefined && (
           <span className="text-muted-foreground ms-1 text-xs">{W.noText}</span>
         )}
       </span>
-      {e.pages !== undefined && (
-        <span className="text-muted-foreground shrink-0 text-xs">{e.pages}</span>
-      )}
     </>
   );
   const cls = 'flex w-full items-baseline gap-2 rounded-md px-2 py-1.5 text-left text-sm';
-  const style = { paddingInlineStart: `${String(0.5 + indent)}rem` };
   return props.onOpen !== undefined ? (
-    <button
-      type="button"
-      className={cn(cls, 'hover:bg-accent/60')}
-      style={style}
-      onClick={props.onOpen}
-    >
+    <button type="button" className={cn(cls, 'hover:bg-accent/60')} onClick={props.onOpen}>
       {body}
     </button>
   ) : (
-    <div className={cn(cls, top && 'mt-2')} style={style}>
-      {body}
-    </div>
+    <div className={cls}>{body}</div>
   );
 }
 
@@ -220,7 +196,7 @@ export function SearchView(props: {
   const panel = usePanel();
   const project = useProject();
   const r = useLoad(
-    `library:search:${props.book ?? ''}:${props.q}:${project ?? ''}:${String(props.all)}`,
+    `sources:search:${props.book ?? ''}:${props.q}:${project ?? ''}:${String(props.all)}`,
     () => api.search(props.q, props.book, 50, project, props.all),
     false,
   );
@@ -296,8 +272,8 @@ export function PageView(props: {
 }) {
   const panel = usePanel();
   const { book, file, line } = props;
-  // 标题用书名；书目还没取到（或书库里没有这本）时先用编号
-  const books = useLoad('library:books', () => api.books(), false);
+  // 标题用资料名；列表还没取到（或已经没有这份）时先用 id
+  const books = useLoad('sources:books', () => api.books(), false);
   const title = books.data?.books.find((b) => b.id === book)?.title ?? book;
   return (
     <div className="flex flex-col gap-4" data-testid="page-view">
@@ -305,7 +281,7 @@ export function PageView(props: {
         <button
           type="button"
           className="text-muted-foreground hover:text-foreground self-start text-xs"
-          onClick={() => panel.show({ kind: 'library', book })}
+          onClick={() => panel.show({ kind: 'materials', book })}
         >
           {title} · {W.toc}
         </button>

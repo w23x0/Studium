@@ -1,8 +1,8 @@
 // 项目资料（工单 W8；设计 docs/设计/记录/资料.md）：资料归项目，每份处理成
 // md 正文 + 指回原件的位置 + 固定版本 + 来源与日期。存在 <数据>/projects/<主对话 id>/资料/<资料 id>/：
-//   source.json · 原件/（原样保留）· 正文/（md；仓库 = 固定提交的工作树，代码原样）。
-// 读的接口和书库（Library）一样，原文、出处、沙盒、原件页面都经它读；认不出的 id 退回书库
-// （W8 之前的记录与个人笔记还按书库 id 引用）。不存摘要、路线、标签。
+//   source.json · 原件/（原样保留）· 正文/（md；仓库 = 固定提交的工作树，代码原样）·
+//   mineru/（PDF 的 MinerU 转换产物：每段页码一个 p<起>-<止>/，原件页面从这里找）。
+// 原文、出处、沙盒、原件页面都经它读。不存摘要、路线、标签。
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { constants } from 'node:fs';
@@ -30,25 +30,21 @@ import type {
 import { MATERIAL_KINDS } from '../../shared/protocol.ts';
 import { isNotFound } from '../log/session-log.ts';
 import {
-  BOOK_DIR,
-  parseIndex,
   searchSets,
   splitLines,
-  type BookInfo,
   type IndexedFile,
-  type Library,
   type SearchOptions,
   type SearchResult,
   type SearchSet,
-} from './library.ts';
+} from './search.ts';
 
 const run = promisify(execFile);
 
-/** 读的接口：书库与项目资料都给这一套（原文、出处、沙盒、原件页面共用）。 */
+/** 读原文的接口（原文、出处、原件页面、来源说明、产出共用）。 */
 export type SourceReader = Pick<
-  Library,
+  Materials,
   | 'books'
-  | 'info'
+  | 'source'
   | 'summaries'
   | 'index'
   | 'read'
@@ -58,13 +54,15 @@ export type SourceReader = Pick<
   | 'entryOf'
   | 'neighbors'
   | 'search'
-  | 'bookDir'
+  | 'pagesDir'
 >;
 
 /** 资料目录里的子目录名。 */
 const SOURCE_FILE = 'source.json';
 const ORIGINAL_DIR = '原件';
 const BODY_DIR = '正文';
+/** MinerU 的输出目录（和 source.json 分开，转换途中不会盖掉它）。 */
+const MINERU_DIR = 'mineru';
 /** 扫描缓存多久（毫秒）。 */
 const SCAN_TTL_MS = 2000;
 /** 没有目录表（index.md）的资料：按文件树列，最多列这么多个文件。 */
@@ -88,21 +86,18 @@ interface Entry {
 interface Loaded {
   title: string;
   entries: TocEntry[];
-  /** 有 M07 目录表（从书库挑的书、按书切过的）。 */
-  indexed: boolean;
   files?: IndexedFile[];
 }
 
 export interface MaterialsOptions {
   /** <数据>/projects。 */
   root: string;
-  library: Library;
   now?: () => Date;
-  /** `书库处理/` 目录（新 PDF 走它的 MinerU 转换）；不给 = 新 PDF 转不了，标失败。 */
+  /** `书库处理/` 目录（PDF 走它的 MinerU 转换）；不给 = PDF 转不了，标失败。 */
   pdfTool?: string;
 }
 
-export class Materials implements SourceReader {
+export class Materials {
   private scanned: { at: number; map: Map<string, Entry> } | undefined;
   private readonly loaded = new Map<string, Loaded>();
   private readonly pending = new Map<string, Promise<void>>();
@@ -150,17 +145,9 @@ export class Materials implements SourceReader {
       throw new MaterialError(`kind 要是 ${MATERIAL_KINDS.join(' / ')} 之一`);
     }
     const origin = req.origin.trim();
-    if (origin === '')
-      throw new MaterialError('origin 不能为空：给路径、网址、仓库地址或书库里的书');
-    const fromLibrary =
-      req.kind === 'pdf'
-        ? await this.o.library.info(origin).then((i) => (i?.kind === 'book' ? i : undefined))
-        : undefined;
-    const title =
-      req.title?.trim() ||
-      (fromLibrary !== undefined ? await this.o.library.title(fromLibrary.id) : '') ||
-      guessTitle(req.kind, origin);
-    const id = await this.freshId(fromLibrary?.id ?? title);
+    if (origin === '') throw new MaterialError('origin 不能为空：给路径、网址或仓库地址');
+    const title = req.title?.trim() || guessTitle(req.kind, origin);
+    const id = await this.freshId(title);
     const dir = join(this.projectDir(mainId), id);
     await mkdir(dir, { recursive: true });
     const src: MaterialSource = {
@@ -173,18 +160,13 @@ export class Materials implements SourceReader {
       status: '处理中',
     };
     await this.write(dir, src);
-    this.run(dir, src, req, fromLibrary);
+    this.run(dir, src, req);
     return src;
   }
 
   /** 在后台处理；失败写进 source.json（状态“失败”带原因），不伪装可用。 */
-  private run(
-    dir: string,
-    src: MaterialSource,
-    req: AddMaterialRequest,
-    fromLibrary: BookInfo | undefined,
-  ): void {
-    const job = this.process(dir, src, req, fromLibrary)
+  private run(dir: string, src: MaterialSource, req: AddMaterialRequest): void {
+    const job = this.process(dir, src, req)
       .catch(async (err: unknown) => {
         await this.write(dir, {
           ...src,
@@ -212,20 +194,14 @@ export class Materials implements SourceReader {
     }
     const src: MaterialSource = { ...e.src, status: '处理中', fetchedAt: this.now().toISOString() };
     delete src.problems;
-    delete src.bodyPath;
     delete src.converter;
     await this.write(e.dir, src);
-    const fromLibrary =
-      src.kind === 'pdf'
-        ? await this.o.library.info(src.origin).then((i) => (i?.kind === 'book' ? i : undefined))
-        : undefined;
-    this.run(e.dir, src, { kind: src.kind, origin: src.origin, title: src.title }, fromLibrary);
+    this.run(e.dir, src, { kind: src.kind, origin: src.origin, title: src.title });
     return src;
   }
 
   /**
-   * 从别的项目拿一份（工单 W9 §4.1）：整份目录复制进本项目、换新 id，记 copiedFrom；
-   * 从书库挑的书照旧指向书的切分目录（bodyPath 不变）。处理中的不拿。
+   * 从别的项目拿一份（工单 W9 §4.1）：整份目录复制进本项目、换新 id，记 copiedFrom。处理中的不拿。
    */
   async copy(id: string, toMain: string): Promise<MaterialSource> {
     const e = await this.entry(id);
@@ -257,44 +233,29 @@ export class Materials implements SourceReader {
     return true;
   }
 
-  // ───────────── 读（同书库） ─────────────
+  // ───────────── 读 ─────────────
 
-  /** 能读的 id：项目资料 + 书库里的书与个人笔记（旧引用、笔记浏览还按书库 id）。 */
+  /** 能读的 id：各项目的资料。 */
   async books(): Promise<string[]> {
-    const ids = new Set((await this.scan()).keys());
-    for (const b of await this.o.library.books()) ids.add(b);
-    return [...ids].sort();
+    return [...(await this.scan()).keys()].sort();
   }
 
-  async info(id: string): Promise<BookInfo | undefined> {
-    const e = await this.entry(id);
-    if (e === undefined) return this.o.library.info(id);
-    return { id, dir: await this.bookDir(id), subject: '', kind: e.src.kind };
-  }
-
-  /** 资料浏览的列表：项目资料（各项目的都列）+ 书库里的书（个人笔记不算资料，见 W9 分流）。 */
+  /** 资料浏览的列表：各项目的资料都列。 */
   async summaries(): Promise<Omit<BookSummary, 'hasOriginal'>[]> {
     const out: Omit<BookSummary, 'hasOriginal'>[] = [];
-    const mine = await this.scan();
-    for (const e of mine.values()) {
+    for (const e of (await this.scan()).values()) {
       const sections =
         e.src.status === '可用' || e.src.status === '部分可用'
           ? (await this.load(e.id)).entries.filter((x) => x.file !== undefined).length
           : 0;
       out.push({ id: e.id, title: e.src.title, sections, kind: e.src.kind, source: e.src.origin });
     }
-    for (const b of await this.o.library.summaries()) {
-      if (b.kind === 'note' || mine.has(b.id)) continue;
-      out.push(b);
-    }
     return out.sort((a, b) => a.id.localeCompare(b.id));
   }
 
   async index(id: string): Promise<string> {
-    const e = await this.entry(id);
-    if (e === undefined) return this.o.library.index(id);
+    const e = await this.require(id);
     const l = await this.load(id);
-    if (l.indexed) return readFile(join(await this.bodyDir(id), 'index.md'), 'utf8');
     const head = [
       `# 资料：${e.src.title}`,
       '',
@@ -319,7 +280,6 @@ export class Materials implements SourceReader {
     from = 1,
     to = Number.MAX_SAFE_INTEGER,
   ): Promise<{ total: number; from: number; to: number; lines: NumberedLine[] }> {
-    if ((await this.entry(id)) === undefined) return this.o.library.lines(id, file, from, to);
     const all = splitLines(await readFile(await this.path(id, file), 'utf8'));
     const lo = Math.max(1, from);
     const hi = Math.min(to, all.length);
@@ -329,17 +289,14 @@ export class Materials implements SourceReader {
   }
 
   async title(id: string): Promise<string> {
-    const e = await this.entry(id);
-    return e !== undefined ? e.src.title : this.o.library.title(id);
+    return (await this.require(id)).src.title;
   }
 
   async toc(id: string): Promise<TocEntry[]> {
-    if ((await this.entry(id)) === undefined) return this.o.library.toc(id);
     return (await this.load(id)).entries;
   }
 
   async entryOf(id: string, file: string): Promise<TocEntry | undefined> {
-    if ((await this.entry(id)) === undefined) return this.o.library.entryOf(id, file);
     const f = normalize(file);
     return (await this.load(id)).entries.find(
       (e) => e.file !== undefined && normalize(e.file) === f,
@@ -347,7 +304,6 @@ export class Materials implements SourceReader {
   }
 
   async neighbors(id: string, file: string): Promise<{ prev?: TocEntry; next?: TocEntry }> {
-    if ((await this.entry(id)) === undefined) return this.o.library.neighbors(id, file);
     const withFile = (await this.load(id)).entries.filter((e) => e.file !== undefined);
     const f = normalize(file);
     const i = withFile.findIndex((e) => e.file !== undefined && normalize(e.file) === f);
@@ -357,43 +313,27 @@ export class Materials implements SourceReader {
     return { ...(prev ? { prev } : {}), ...(next ? { next } : {}) };
   }
 
-  /** 全文检索；不给 book / books = 只搜项目资料（不搜书库）。 */
+  /** 全文检索；不给 book / books = 搜各项目的资料。认不出的 id 跳过。 */
   async search(query: string, opt: SearchOptions = {}): Promise<SearchResult> {
     const ids =
       opt.book !== undefined ? [opt.book] : (opt.books ?? [...(await this.scan()).keys()]);
     const sets: SearchSet[] = [];
-    const lib: string[] = [];
     for (const id of ids) {
-      if ((await this.entry(id)) === undefined) {
-        lib.push(id);
-        continue;
-      }
+      if ((await this.entry(id)) === undefined) continue;
       const l = await this.load(id);
       sets.push({ book: id, title: l.title, files: await this.files(id) });
     }
-    const mine = searchSets(sets, query, opt);
-    if (lib.length === 0) return mine;
-    // 旧引用里的书库 id：交给书库搜，再合并（按各自的分数顺序，项目资料在前）
-    const theirs = await this.o.library.search(query, { ...opt, books: lib });
-    const limit = Math.min(Math.max(opt.limit ?? 20, 1), 100);
-    return {
-      hits: [...mine.hits, ...theirs.hits].slice(0, limit),
-      total: mine.total + theirs.total,
-    };
+    return searchSets(sets, query, opt);
   }
 
-  /** 资料目录（原件页面从这里找 PDF 页段）：从书库挑的书 = 书目录；其余 = 本资料目录。 */
-  async bookDir(id: string): Promise<string> {
-    const e = await this.entry(id);
-    if (e === undefined) return this.o.library.bookDir(id);
-    return e.src.bodyPath !== undefined ? dirname(e.src.bodyPath) : e.dir;
+  /** PDF 页段所在的目录（MinerU 输出；原件页面从这里找）；不是 PDF 的资料没有这个目录。 */
+  async pagesDir(id: string): Promise<string> {
+    return join((await this.require(id)).dir, MINERU_DIR);
   }
 
   /** 正文目录（沙盒只读区挂这个）。 */
   async bodyDir(id: string): Promise<string> {
-    const e = await this.entry(id);
-    if (e === undefined) return join(await this.o.library.bookDir(id), BOOK_DIR);
-    return e.src.bodyPath ?? join(e.dir, BODY_DIR);
+    return join((await this.require(id)).dir, BODY_DIR);
   }
 
   // ───────────── 内部：扫描与读 ─────────────
@@ -407,6 +347,13 @@ export class Materials implements SourceReader {
     const hit = (await this.scan()).get(id);
     if (hit !== undefined) return hit;
     return (await this.scan(true)).get(id);
+  }
+
+  /** 认不出的 id 报“没有”（读的人按找不到处理）。 */
+  private async require(id: string): Promise<Entry> {
+    const e = await this.entry(id);
+    if (e === undefined) throw notFound(`没有这份资料：${id}`);
+    return e;
   }
 
   private async scan(fresh = false): Promise<Map<string, Entry>> {
@@ -434,33 +381,22 @@ export class Materials implements SourceReader {
   private async load(id: string): Promise<Loaded> {
     const hit = this.loaded.get(id);
     if (hit) return hit;
-    const e = await this.entry(id);
-    if (e === undefined) throw new Error(`没有这份资料：${id}`);
-    const body = await this.bodyDir(id);
-    let l: Loaded;
-    let indexText: string | undefined;
-    try {
-      indexText = await readFile(join(body, 'index.md'), 'utf8');
-    } catch (err) {
-      if (!isNotFound(err)) throw err;
-    }
-    const parsed = indexText !== undefined ? parseIndex(indexText) : undefined;
-    if (parsed !== undefined && parsed.entries.length > 0) {
-      l = { title: e.src.title, entries: parsed.entries, indexed: true };
-    } else {
-      const files = e.src.status === '处理中' ? [] : await textFiles(body);
-      l = {
-        title: e.src.title,
-        indexed: false,
-        entries: files.map((f, i) => ({
+    const e = await this.require(id);
+    const files = e.src.status === '处理中' ? [] : await textFiles(join(e.dir, BODY_DIR));
+    const l: Loaded = {
+      title: e.src.title,
+      entries: files.map((f, i) => {
+        // PDF 按页段转出的 p<起>-<止>.md：记下原 PDF 页段（原件页面从这里起）
+        const span = e.src.kind === 'pdf' ? /^p(\d+)-(\d+)\.md$/.exec(f) : null;
+        return {
           num: String(i + 1),
-          kind: '文件',
           title: f,
           file: f,
           chapter: dirname(f) === '.' ? '' : dirname(f),
-        })),
-      };
-    }
+          ...(span !== null ? { pdfPages: { from: Number(span[1]), to: Number(span[2]) } } : {}),
+        };
+      }),
+    };
     if (e.src.status !== '处理中') this.loaded.set(id, l);
     return l;
   }
@@ -500,7 +436,7 @@ export class Materials implements SourceReader {
     this.invalidate(src.id);
   }
 
-  /** 新资料的 id：可读的名字，和已有的资料、书库里的书都不重名（从书库挑的书第一次用书的 id）。 */
+  /** 新资料的 id：可读的名字，和已有的资料都不重名。 */
   private async freshId(base: string): Promise<string> {
     const clean =
       base
@@ -509,10 +445,7 @@ export class Materials implements SourceReader {
         .trim()
         .slice(0, 60) || '资料';
     const taken = new Set((await this.scan(true)).keys());
-    const lib = new Set(await this.o.library.books());
-    const libraryBook = lib.has(base);
-    const free = (x: string): boolean =>
-      !taken.has(x) && (!lib.has(x) || (libraryBook && x === base));
+    const free = (x: string): boolean => !taken.has(x);
     if (free(clean)) return clean;
     for (let n = 2; ; n++) {
       const x = `${clean}（${String(n)}）`;
@@ -522,27 +455,13 @@ export class Materials implements SourceReader {
 
   // ───────────── 内部：按种类处理 ─────────────
 
-  private async process(
-    dir: string,
-    src: MaterialSource,
-    req: AddMaterialRequest,
-    fromLibrary: BookInfo | undefined,
-  ): Promise<void> {
+  private async process(dir: string, src: MaterialSource, req: AddMaterialRequest): Promise<void> {
     const body = join(dir, BODY_DIR);
     const original = join(dir, ORIGINAL_DIR);
     const done = (rest: Partial<MaterialSource>): Promise<void> =>
       this.write(dir, { ...src, status: '可用', ...rest });
     switch (src.kind) {
       case 'pdf': {
-        if (fromLibrary !== undefined) {
-          // 书库里已转换、切好的书：正文直接用它的切分目录，不重跑转换
-          const bodyPath = join(fromLibrary.dir, BOOK_DIR);
-          return done({
-            bodyPath,
-            version: await hashFile(join(bodyPath, 'index.md')),
-            converter: 'mineru',
-          });
-        }
         await mkdir(original, { recursive: true });
         const pdf = join(original, basename(src.origin));
         await cp(src.origin, pdf);
@@ -635,13 +554,12 @@ export class Materials implements SourceReader {
     }
   }
 
-  /** 新 PDF：走 `书库处理/` 的 MinerU 转换；转不了返回原因（不伪装成可用）。 */
+  /** PDF：走 `书库处理/` 的 MinerU 转换；转不了返回原因（不伪装成可用）。 */
   private async convertPdf(pdf: string, dir: string, body: string): Promise<string | undefined> {
     const tool = this.o.pdfTool;
-    if (tool === undefined)
-      return '新 PDF 的转换没接上（找不到 书库处理/）；先在书库里转好，再从书库挑';
+    if (tool === undefined) return 'PDF 的转换没接上（找不到 书库处理/）';
     if (process.env.MINERU_TOKEN === undefined) {
-      return '新 PDF 要用 MinerU 转换，缺环境变量 MINERU_TOKEN；或先在书库里转好，再从书库挑';
+      return 'PDF 要用 MinerU 转换，缺环境变量 MINERU_TOKEN';
     }
     let pages: number;
     try {
@@ -651,12 +569,14 @@ export class Materials implements SourceReader {
       return '本机没有 pdfinfo，数不出页数，转不了；装 poppler-utils 后重试';
     }
     if (!Number.isInteger(pages) || pages < 1) return '读不出 PDF 页数';
+    const out = join(dir, MINERU_DIR);
     const ranges: string[] = [];
     for (let a = 1; a <= pages; a += 200)
       ranges.push(`${String(a)}-${String(Math.min(a + 199, pages))}`);
+    // 不加 -I：-I 不把工作目录放进模块路径，找不到 studium 包（cwd 是仓库里自己的 书库处理/）
     await run(
       'python3',
-      ['-I', '-m', 'studium.mineru', pdf, '--ranges', ranges.join(','), '--out', dir],
+      ['-m', 'studium.mineru', pdf, '--ranges', ranges.join(','), '--out', out],
       {
         cwd: tool,
         timeout: COMMAND_TIMEOUT_MS,
@@ -665,7 +585,7 @@ export class Materials implements SourceReader {
     await mkdir(body, { recursive: true });
     for (const r of ranges) {
       try {
-        await cp(join(dir, `p${r}`, 'full.md'), join(body, `p${r}.md`));
+        await cp(join(out, `p${r}`, 'full.md'), join(body, `p${r}.md`));
       } catch (err) {
         if (isNotFound(err)) return `第 ${r} 页没转出来`;
         throw err;
@@ -676,6 +596,11 @@ export class Materials implements SourceReader {
 }
 
 export class MaterialError extends Error {}
+
+/** 和读文件找不到时同一种错（code ENOENT），读的人统一按“找不到”处理。 */
+function notFound(message: string): Error {
+  return Object.assign(new Error(message), { code: 'ENOENT' });
+}
 
 /** 不给标题时从来源猜一个。 */
 function guessTitle(kind: MaterialKind, origin: string): string {

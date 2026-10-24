@@ -571,22 +571,17 @@ export interface NumberedLine {
   text: string;
 }
 
-/** 书库里的一本书。hasOriginal = 找得到 PDF 原件（页面能调出来）。 */
+/** 一份项目资料（资料浏览的列表）。hasOriginal = 找得到 PDF 原件（页面能调出来）。 */
 export interface BookSummary {
   id: string;
   title: string;
-  /** 有正文文件的条目数。 */
+  /** 正文文件数。 */
   sections: number;
   hasOriginal: boolean;
-  /** 在书库里的学科目录（相对书库根，如 大学物理/力学）；个人笔记是“个人笔记”；平铺的书没有。 */
-  subject?: string;
-  /** book = 书库里的书 · note = 学习者的个人笔记（导入到数据目录自己的区）· 其余 = 项目资料的种类。 */
-  kind?: 'book' | 'note' | MaterialKind;
-  /** 个人笔记：作者（学习者）、来源（个人笔记）、导入时的原路径。 */
-  author?: string;
-  source?: string;
-  originalPath?: string;
-  /** 请求里带了 project 时：这份资料是不是该项目选用的。 */
+  kind: MaterialKind;
+  /** 来源：原路径 / URL / 仓库地址。 */
+  source: string;
+  /** 请求里带了 project 时：这份资料是不是该项目的。 */
   selected?: boolean;
 }
 
@@ -594,24 +589,17 @@ export interface BooksResponse {
   books: BookSummary[];
 }
 
-/** 目录里的一条。file 为空 = 这一条没有独立正文（如只有标题的章，见下级条目）。 */
+/** 资料文件清单里的一条（按路径排）。 */
 export interface TocEntry {
   /** 编号（1、1.2、…）；习题 / 附注等按书里的写法。 */
   num: string;
-  /** part 篇 · ch 章 · sec 节 · prob 习题 · app 附录 · front 正文前 · back 正文后 · note 附注 · ans 书末答案 · x 其他。 */
-  kind: string;
   title: string;
-  /** 书上印的页码（“p.2–10”）。 */
-  pages?: string;
-  /** 小节文件，相对于这本书的切分结果目录。 */
+  /** 文件，相对于资料的正文目录。 */
   file?: string;
-  /** 所在章（章目录名，如 ch03；没有文件的条目按编号推）。 */
+  /** 所在目录（相对正文目录；顶层为空）。 */
   chapter: string;
-  level?: number;
-  /** 原 PDF 页范围；旧格式的目录没有。 */
+  /** 原 PDF 页范围：PDF 资料按页段转出的 p<起>-<止>.md 才有。 */
   pdfPages?: PageSpan;
-  note?: string;
-  examples?: string[];
 }
 
 export interface TocResponse {
@@ -646,11 +634,11 @@ export interface SearchHit {
   /** 命中段里第一个出现检索词的行。 */
   line: number;
   snippet: string;
-  /** 小节起页（原 PDF 页）；旧格式目录没有。 */
+  /** 文件起页（原 PDF 页）；只有 PDF 资料的页段文件有。 */
   pdfPage?: number;
 }
 
-export interface LibrarySearchResponse {
+export interface SourceSearchResponse {
   query: string;
   hits: SearchHit[];
   /** 命中的段落总数（hits 是排序后截断的前若干条）。 */
@@ -707,7 +695,6 @@ export interface CitationView {
   bookTitle?: string;
   /** 小节编号与标题，如 “3.1 Spaces of Vectors”。 */
   section?: string;
-  pages?: string;
   pdfPages?: PageSpan;
   /** 引到的那几行原文（超出文件末尾的截到末尾）。 */
   lines?: NumberedLine[];
@@ -818,9 +805,6 @@ export interface InputDisclosure {
   note: string;
 }
 
-// ───────────── 批 3a：资料范围（书库多层、项目资料、个人笔记、外部导入、期限）─────────────
-
-/** 项目选用的一份资料。missing = 书库里现在找不到它了（被移走 / 改名）。 */
 // ───────────── 项目资料（工单 W8；设计 docs/设计/记录/资料.md） ─────────────
 
 /** 资料的种类：pdf · 网页 · 字幕 · 代码仓库 · 联网查来的 · md / 纯文字。 */
@@ -833,7 +817,7 @@ export interface MaterialSource {
   id: string;
   title: string;
   kind: MaterialKind;
-  /** 原路径 / URL / 仓库地址 / 书库里的书 id。 */
+  /** 原路径 / URL / 仓库地址。 */
   origin: string;
   /** pdf：文件哈希；web / search：抓取时间；repo：提交号；md / subtitle：内容哈希。 */
   version: string;
@@ -844,8 +828,6 @@ export interface MaterialSource {
   problems?: string[];
   /** 模型检索时判断的角色；界面可见。 */
   role?: { value: '主资料' | '参考资料'; by: 'model'; at: string; sessionId: string };
-  /** 正文不在本资料目录的 正文/ 里时（从书库挑的书 = 它的切分目录），正文的绝对路径。 */
-  bodyPath?: string;
   /** 从别的项目拿来的（工单 W9 §4.1）：来源项目与那边的资料 id；origin 照抄原来的（重试要用）。 */
   copiedFrom?: { project: string; material: string };
 }
@@ -862,9 +844,10 @@ export interface ProjectMaterialView {
   /** 资料 id（引用写 `资料id/文件:行号`）；字段名沿用 book。 */
   book: string;
   title: string;
-  kind: 'book' | 'note' | MaterialKind;
-  subject?: string;
+  /** missing 时没有。 */
+  kind?: MaterialKind;
   addedAt: string;
+  /** 记录里有、资料目录里找不到了。 */
   missing?: boolean;
   origin?: string;
   version?: string;
@@ -885,9 +868,7 @@ export interface ProjectMaterialsResponse {
 }
 
 export interface ProjectMaterialsRequest {
-  /** 要从书库加进来的书 id（书库里 books 的 id）：在项目里建一份 kind=pdf 的资料。 */
-  add?: string[];
-  /** 要去掉的。 */
+  /** 要去掉的资料 id。 */
   remove?: string[];
 }
 
@@ -903,29 +884,6 @@ export interface ProjectDeadlineResponse {
   deadlineNote?: string;
   /** 离期限还有几天（负数 = 已过）。 */
   daysLeft?: number;
-}
-
-export interface NoteSummary {
-  /** 在书库里的 id（“笔记-…”），当书用：浏览 / 检索 / 引用都照书的接口。 */
-  id: string;
-  title: string;
-  author: string;
-  source: string;
-  originalPath: string;
-  importedAt: string;
-  /** 原文件数 / 切出的小节数。 */
-  files: number;
-  sections: number;
-  /** 笔记里引用的图片 / 嵌入（路径原样留在文字里）；found = 在原位置找到了文件。 */
-  assets: { ref: string; found: boolean; file: string; line: number }[];
-  /** 导入前同一原路径已有的笔记 id（新导入是新版本，旧的不动）。 */
-  previous?: string;
-  /** 没读的文件（非 .md 的不算）。 */
-  skipped?: string[];
-}
-
-export interface NotesResponse {
-  notes: NoteSummary[];
 }
 
 // ───────────── 导入入口与项目页（工单 W9） ─────────────

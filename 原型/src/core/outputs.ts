@@ -36,7 +36,7 @@ import { BadRequestError } from './studium.ts';
 export interface OutputsDeps {
   store: OutputStore;
   sources: Sources;
-  library: SourceReader;
+  materials: SourceReader;
   now?: () => Date;
 }
 
@@ -282,11 +282,11 @@ export class Outputs {
     };
     let entry: LiteratureEntry;
     if (typeof req.book === 'string' && req.book.trim() !== '') {
-      const books = await this.d.library.books();
+      const books = await this.d.materials.books();
       const book = books.find((b) => b === req.book || b.trim() === req.book?.trim());
-      if (book === undefined) throw new BadRequestError(`书库里没有这份资料：${req.book}`);
+      if (book === undefined) throw new BadRequestError(`没有这份资料：${req.book}`);
       if (req.file === undefined && (req.from !== undefined || req.to !== undefined)) {
-        throw new BadRequestError('给了行号就要同时给 file（哪个小节文件）');
+        throw new BadRequestError('给了行号就要同时给 file（哪个文件）');
       }
       if (req.file !== undefined) {
         const from = req.from ?? 1;
@@ -295,23 +295,24 @@ export class Outputs {
           await this.d.sources.citations(formatCitation({ book, file: req.file, from, to }))
         )[0];
         if (c === undefined || !c.resolved) {
-          throw new BadRequestError(c?.problem ?? '这个小节对不上');
+          throw new BadRequestError(c?.problem ?? '这个文件对不上');
         }
         entry = {
           ...common,
           source: 'library',
-          title: await this.d.library.title(book),
+          title: await this.d.materials.title(book),
           book,
           file: req.file,
           from,
           to,
         };
       } else {
-        entry = { ...common, source: 'library', title: await this.d.library.title(book), book };
+        entry = { ...common, source: 'library', title: await this.d.materials.title(book), book };
       }
     } else {
       const title = typeof req.title === 'string' ? req.title.trim() : '';
-      if (title === '') throw new BadRequestError('外部条目要有 title（标题）；书库里的书给 book');
+      if (title === '')
+        throw new BadRequestError('外部条目要有 title（标题）；项目资料给 book（资料 id）');
       if (
         req.authors !== undefined &&
         !(Array.isArray(req.authors) && req.authors.every((a) => typeof a === 'string'))
@@ -343,8 +344,8 @@ export class Outputs {
   private async literatureView(e: LiteratureEntry): Promise<LiteratureView> {
     if (e.source !== 'library' || e.book === undefined) return e;
     if (e.file === undefined) {
-      const has = (await this.d.library.books()).includes(e.book);
-      return has ? e : { ...e, problem: `书库里现在没有这份资料：${e.book}` };
+      const has = (await this.d.materials.books()).includes(e.book);
+      return has ? e : { ...e, problem: `现在没有这份资料：${e.book}` };
     }
     const c = (
       await this.d.sources.citations(
@@ -486,7 +487,7 @@ export class Outputs {
       {
         name: 'save_output_version',
         description:
-          '把你和学习者写好的内容存成产出物的新版本（每次保存都是新的一版，旧版本不动）。text 是整篇完整正文，不是只写改的部分。要引教材原文就在句后附出处标记（【教材|书名|小节文件|L起-止】，照 read_source 给的）。note 写这一版改了什么。方法比较类用 comparison，不用 text。',
+          '把你和学习者写好的内容存成产出物的新版本（每次保存都是新的一版，旧版本不动）。text 是整篇完整正文，不是只写改的部分。要引资料原文就在句后附出处标记（【资料|资料id|文件|L起-止】，照 read_source 给的）。note 写这一版改了什么。方法比较类用 comparison，不用 text。',
         input: {
           text: z.string().optional(),
           note: z.string().describe('这一版改了什么，一句话'),
@@ -528,7 +529,7 @@ export class Outputs {
       {
         name: 'add_literature',
         description:
-          '给本产出物登记一条相关文献：书库里的书 / 小节（给 book，可加 file 与行号），或外部条目（给 title，可加 authors、url）。relation 用一句话说它和这个产出物是什么关系。只追加。',
+          '给本产出物登记一条相关文献：项目资料（给 book = 资料 id，可加 file 与行号），或外部条目（给 title，可加 authors、url）。relation 用一句话说它和这个产出物是什么关系。只追加。',
         input: {
           book: z.string().optional(),
           file: z.string().optional(),

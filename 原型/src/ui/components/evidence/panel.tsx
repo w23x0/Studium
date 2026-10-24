@@ -22,7 +22,7 @@ import { LoopView } from './loop-view.tsx';
 import { StateView, TeachingView } from './records-view.tsx';
 import { LearnedView } from '../longterm/learned.tsx';
 import { ToolsView } from './tools-view.tsx';
-import { LibraryView, PageView, SearchView } from '../sources/library-view.tsx';
+import { MaterialsView, PageView, SearchView } from '../sources/materials-view.tsx';
 import { SourceView } from '../sources/source-view.tsx';
 import { OutputPage } from '../outputs/output-page.tsx';
 
@@ -86,8 +86,8 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
       return <ToolsView key={t.name ?? ''} name={t.name} />;
     case 'disclosure':
       return <DisclosureView />;
-    case 'library':
-      return <LibraryView key={t.book ?? ''} book={t.book} />;
+    case 'materials':
+      return <MaterialsView key={t.book ?? ''} book={t.book} />;
     case 'search':
       return (
         <SearchView
@@ -153,9 +153,9 @@ function DevItems() {
     <div data-testid="dev-items" className="flex flex-col gap-2">
       <HomeItem
         icon={<LibraryIcon />}
-        label={W.library}
-        testId="nav-library"
-        onClick={() => panel.show({ kind: 'library' })}
+        label={W.materialsNav}
+        testId="nav-materials"
+        onClick={() => panel.show({ kind: 'materials' })}
       />
       <HomeItem
         icon={<BookCheckIcon />}

@@ -43,9 +43,6 @@ export function SourceView(props: {
   const panel = usePanel();
   const r = useLoad(`section:${book}:${file}`, () => api.section(book, file), false);
   const reports = useLoad(`reports:${book}:${file}`, () => api.reports(book, file), false);
-  // 个人笔记：标明是学习者自己写的，图片引用画成图片
-  const books = useLoad('library:books', () => api.books(), false);
-  const isNote = books.data?.books.find((b) => b.id === book)?.kind === 'note';
   const cited: Span | undefined =
     props.from !== undefined ? { from: props.from, to: props.to ?? props.from } : undefined;
   /** 学习者点中的一段（看原件、报错都对它）；没点过就是引到的那几行。 */
@@ -87,12 +84,6 @@ export function SourceView(props: {
     <div className="flex flex-col gap-4" data-testid="source-view">
       {problem}
       <Head section={s} cited={cited} />
-      {isNote && (
-        <div className="flex items-center gap-1.5 text-xs">
-          <Badge tone="accent">{W.noteMine}</Badge>
-          <span className="text-muted-foreground">{W.noteMineHint}</span>
-        </div>
-      )}
       <div className="bg-muted flex gap-1 self-start rounded-lg p-0.5 text-sm">
         <TabButton active={tab === 'text'} onClick={() => setTab('text')}>
           {W.bookText}
@@ -123,7 +114,6 @@ export function SourceView(props: {
             }}
             onReported={reports.reload}
             page={known?.page}
-            noteBook={isNote ? s.book : undefined}
           />
         </>
       ) : (
@@ -149,7 +139,7 @@ function Head(props: { section: SectionResponse; cited: Span | undefined }) {
       <button
         type="button"
         className="text-muted-foreground hover:text-foreground flex items-center gap-1 self-start text-xs"
-        onClick={() => panel.show({ kind: 'library', book: s.book })}
+        onClick={() => panel.show({ kind: 'materials', book: s.book })}
       >
         <ListTreeIcon className="size-3.5" />
         {s.bookTitle} · {W.toc}
@@ -158,7 +148,6 @@ function Head(props: { section: SectionResponse; cited: Span | undefined }) {
         {e !== undefined ? `${e.num} ${e.title}`.trim() : s.file}
       </h2>
       <div className="text-muted-foreground flex flex-wrap gap-x-3 text-xs">
-        {e?.pages !== undefined && <span>{e.pages}</span>}
         {e?.pdfPages !== undefined && (
           <span>
             {W.original}：{W.pageOf(e.pdfPages.from)}
@@ -228,7 +217,6 @@ function TextBody(props: {
   onShowOriginal: (p: Span) => void;
   onReported: () => void;
   page: number | undefined;
-  noteBook: string | undefined;
 }) {
   const { section, cited, picked } = props;
   const paras = paragraphs(section.lines);
@@ -264,11 +252,7 @@ function TextBody(props: {
               >
                 {p.from}
               </span>
-              <BookText
-                text={p.text}
-                className="min-w-0 flex-1 text-[0.95rem]"
-                {...(props.noteBook !== undefined ? { noteBook: props.noteBook } : {})}
-              />
+              <BookText text={p.text} className="min-w-0 flex-1 text-[0.95rem]" />
             </div>
             <div
               className={cn(

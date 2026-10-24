@@ -1,7 +1,6 @@
-// 资料的原件：书的 PDF 原件页面（渲染成图）与页面上的内容块位置（MinerU content_list）。只读书库；渲染出的图缓存在数据目录。
-// 原件从哪找：<书>/source.json 列出页段（p1-200 …，每段目录里有 MinerU 留的 *_origin.pdf 与 *_content_list.json，
-// 页码 = first_page + page_idx）；没有 source.json 就按 p<起>-<止> 目录名认；都没有再看整本 PDF（source.json 的 file 字段）。
-// 页码一律是原 PDF 页（1 起），与切分结果目录的“PDF 页”同一套。
+// 资料的原件：PDF 资料的原件页面（渲染成图）与页面上的内容块位置（MinerU content_list）。只读资料；渲染出的图缓存在数据目录。
+// 原件从哪找：资料的 mineru/ 目录下按 p<起>-<止> 目录名认页段（MinerU 转换时每段一个，里面有 *_origin.pdf 与 *_content_list.json，
+// 页码 = 起 + page_idx）。页码一律是原 PDF 页（1 起），与正文文件 p<起>-<止>.md 同一套。
 import { execFile } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import { mkdir, readFile, readdir, rename, stat } from 'node:fs/promises';
@@ -203,30 +202,21 @@ export class Originals {
   }
 
   private async findSegments(book: string): Promise<Segment[]> {
-    const dir = await this.lib.bookDir(book);
+    const dir = await this.lib.pagesDir(book);
     const out: Segment[] = [];
-    let source: {
-      file?: string;
-      parts?: Record<string, { page_ranges?: string; first_page?: number }>;
-    } = {};
+    const parts: { name: string; first: number; last: number }[] = [];
+    let entries;
     try {
-      source = JSON.parse(await readFile(join(dir, 'source.json'), 'utf8')) as typeof source;
+      entries = await readdir(dir, { withFileTypes: true });
     } catch (err) {
-      if (!isNotFound(err)) throw err;
+      // 没有页段目录 = 不是转换过的 PDF，没有原件页面
+      if (isNotFound(err)) return [];
+      throw err;
     }
-    const parts: { name: string; first: number; last?: number }[] = [];
-    for (const [name, info] of Object.entries(source.parts ?? {})) {
-      const nums = (info.page_ranges ?? '').match(/\d+/g)?.map(Number) ?? [];
-      const first = info.first_page ?? nums[0];
-      if (first === undefined) continue;
-      parts.push({ name, first, ...(nums.length > 0 ? { last: nums[nums.length - 1] } : {}) });
-    }
-    if (parts.length === 0) {
-      for (const e of await readdir(dir, { withFileTypes: true })) {
-        const m = /^p(\d+)-(\d+)$/.exec(e.name);
-        if ((e.isDirectory() || e.isSymbolicLink()) && m?.[1] && m[2]) {
-          parts.push({ name: e.name, first: Number(m[1]), last: Number(m[2]) });
-        }
+    for (const e of entries) {
+      const m = /^p(\d+)-(\d+)$/.exec(e.name);
+      if ((e.isDirectory() || e.isSymbolicLink()) && m?.[1] && m[2]) {
+        parts.push({ name: e.name, first: Number(m[1]), last: Number(m[2]) });
       }
     }
     for (const p of parts) {
@@ -238,21 +228,9 @@ export class Originals {
         if (!isNotFound(err)) throw err;
       }
       if (pdf === undefined) continue;
-      out.push({ first: p.first, last: p.last ?? p.first + 9999, dir: sub, pdf: join(sub, pdf) });
+      out.push({ first: p.first, last: p.last, dir: sub, pdf: join(sub, pdf) });
     }
-    if (out.length > 0) return out.sort((a, b) => a.first - b.first);
-    // 没有页段：整本 PDF（页码 = 文件页码）
-    if (source.file !== undefined) {
-      for (const cand of [join(dir, source.file), join(dir, '..', source.file)]) {
-        try {
-          await stat(cand);
-          return [{ first: 1, last: 99999, dir, pdf: cand }];
-        } catch (err) {
-          if (!isNotFound(err)) throw err;
-        }
-      }
-    }
-    return [];
+    return out.sort((a, b) => a.first - b.first);
   }
 
   private segmentBlocks(seg: Segment): Promise<Block[]> {

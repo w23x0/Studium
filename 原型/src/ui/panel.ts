@@ -18,8 +18,8 @@ export type PanelTarget =
   /** 教法（教学工具）：不给名字 = 列表；给名字 = 这一份的全文。 */
   | { kind: 'tools'; name?: string }
   | { kind: 'disclosure' }
-  /** 资料：不给书 = 书列表；给书 = 这本书的目录。 */
-  | { kind: 'library'; book?: string }
+  /** 资料浏览：不给 book = 资料列表；给 book（资料 id）= 这份资料的文件清单。 */
+  | { kind: 'materials'; book?: string }
   /** all = 不限项目资料、查全部。 */
   | { kind: 'search'; q: string; book?: string; all?: boolean }
   /**
@@ -64,7 +64,7 @@ export type OutputTab = 'text' | 'versions' | 'literature';
 /** 面板里看书的几类东西与产出物：面板放宽一些。 */
 export function isWideTarget(t: PanelTarget): boolean {
   return (
-    t.kind === 'library' ||
+    t.kind === 'materials' ||
     t.kind === 'search' ||
     t.kind === 'source' ||
     t.kind === 'page' ||
