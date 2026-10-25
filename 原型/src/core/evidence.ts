@@ -357,7 +357,23 @@ export class Evidence {
    */
   private async source(raw: string): Promise<SourceView> {
     const id = raw.trim();
-    const at = await locate(raw, { hub: this.d.hub, sources: this.d.sources });
+    const at = await locate(raw, {
+      hub: this.d.hub,
+      sources: this.d.sources,
+      importText: async (importId) => {
+        const one = (await this.d.learned.imports()).find((x) => x.id === importId);
+        return one !== undefined ? this.d.learned.importText(one) : undefined;
+      },
+    });
+    if (at.kind === 'import') {
+      return {
+        raw,
+        kind: 'unknown',
+        resolved: at.ok,
+        label: `在别处学过的 ${at.importId ?? ''} 第 ${String(at.line ?? 0)} 行（未验证）`,
+        ...(at.importLine !== undefined ? { detail: at.importLine } : {}),
+      };
+    }
     if (at.kind === 'book') {
       const cited = await this.bookSource(raw);
       if (cited !== undefined) return cited;
