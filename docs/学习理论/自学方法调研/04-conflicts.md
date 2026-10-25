@@ -281,7 +281,7 @@ Woźniak：
 
 ### 对 Studium 的含义
 - 这个区分对 Studium 这类系统的定位有直接含义
-- 详见 05-implications.md § 7
+- 详见 05-implications-2.md § 7
 
 ### 证据限制
 

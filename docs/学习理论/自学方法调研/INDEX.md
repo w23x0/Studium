@@ -16,7 +16,8 @@
 | `02-methods.md` | ~2700 | 归纳方法论，按主题组织 | `[METHOD]` `[AUTHOR]` `[CLAIM]` |
 | `03-evidence.md` | ~2000 | 实证证据，带数字和评级 | `[STUDY]` `[METRIC]` `[LIMITATION]` |
 | `04-conflicts.md` | ~1900 | 来源矛盾点 | `[CONFLICT]` `[POSITION_A]` `[POSITION_B]` |
-| `05-implications.md` | ~2400 | 与 Studium 模块关联 | `[MODULE]` `[IMPLICATION]` `[UNRESOLVED]` |
+| `05-implications.md` | ~1300 | 与 Studium 模块关联（META 与 § 1–§ 5） | `[MODULE]` `[IMPLICATION]` `[UNRESOLVED]` |
+| `05-implications-2.md` | ~1100 | 与 Studium 模块关联（续：§ 6–§ 10：社会性学习、LLM 定位、流畅谈论不懂的东西、未解答问题、不要直接推出的东西） | 同上 |
 
 ## 证据等级
 
@@ -63,7 +64,10 @@ LEVEL_4: 个人经验报告（n=1）
 - **M08/M09**: 05-implications.md § 1（多理解侧面）
 - **M10**: 05-implications.md § 3（策略证据对齐）
 - **M15**: 05-implications.md § 4（时间与专注度）
-- **结构性缺口**: 05-implications.md § 6（社会性学习）
+- **结构性缺口**: 05-implications-2.md § 6（社会性学习）
+- **LLM 定位**: 05-implications-2.md § 7
+- **无归属问题**: 05-implications-2.md § 8（流畅地谈论自己不懂的东西）
+- **未解答问题 / 不要直接推出的**: 05-implications-2.md § 9、§ 10
 
 ## 引用规范
 
@@ -73,3 +77,4 @@ LEVEL_4: 个人经验报告（n=1）
 ## 更新日志
 
 - 2026-09-09: 初始版本，删除 ME.md 草稿，精简冗余引述
+- 2026-10-25: `05-implications.md` 超 400 行，拆为 `05-implications.md`（§ 1–§ 5）与 `05-implications-2.md`（§ 6–§ 10），内容不变

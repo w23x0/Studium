@@ -53,7 +53,7 @@
 | `src/core/http/`                                                                        | 本地服务：只绑 127.0.0.1、口令、HTTP 命令 + SSE 事件、托管构建好的界面                                                                                                                                                                                                                                                                                                               |
 | `src/core/tape/`                                                                        | 真实运行录带（`recorder.ts`）与离线回放（`replay.ts`、`cli.ts`）；编号换成稳定记号（`ids.ts`）                                                                                                                                                                                                                                                                                       |
 | `src/core/prompts/`                                                                     | 系统提示：`main` `talk` `loop` `guard` `nav` `state` `pedagogy` `retrieve` `output` `find` `evidence`（接在守卫后面）`transcribe`（图片转写）`route`（上传分流的一次判断）                                                                                                                                                                                                           |
-| `src/ui/`                                                                               | 浏览器界面：React + Vite + assistant-ui；怎么摆以 `../界面说明.md` 为准；`thread-model.ts` 是可单测的纯转换；`route.ts` 地址里的“在哪”，`layout.ts` 窄屏                                                                                                                                                                                                                             |
+| `src/ui/`                                                                               | 浏览器界面：React + Vite + assistant-ui；怎么摆以 `界面说明.md` 为准；`thread-model.ts` 是可单测的纯转换；`route.ts` 地址里的“在哪”，`layout.ts` 窄屏                                                                                                                                                                                                                             |
 | `dist/`                                                                                 | 构建出来的界面（`npm start` 生成；不进 git）                                                                                                                                                                                                                                                                                                                                         |
 | `教学工具/`                                                                             | 官方教学工具（教法记录里的通用策略知识层，agent 起草）：一份一个 Markdown，格式见其 README；核心 `src/core/teaching-tools.ts` 装载（学习者自己的在 `<数据>/teaching-tools/`）                                                                                                                                                                                                        |
 | `scripts/`                                                                              | 检查命令、lint 一行格式、hooks、独立审查                                                                                                                                                                                                                                                                                                                                             |
@@ -120,8 +120,9 @@
 1. `cd 原型 && npm ci`；本机 `claude` 登录过一次；Linux 还要装 `bubblewrap` 与 `socat`（`sudo apt install bubblewrap socat`），没装时学习对话与检索子代理一开就失败（沙盒起不来），macOS 不用装。
 2. `npm start`，打开终端打印的地址。
 3. 主对话里说想学什么 → 点“单独谈谈你想学什么”进畅谈、谈定后项目改名 → 回项目点“下一步学什么” →
-   选一项开学习 → 学（模型的工作区在 `var/sandbox/<学习 id>/工作区/`，是它自己的草稿）→ “我觉得懂了”（守卫判）→
-   “学完了” → 导航出下一张卡；状态整理、教法记录整理在后台。
+   导航自己跑完（不交互、不出选择卡），卡片变成“开始学：<标题>” → 学（模型的工作区在 `var/sandbox/<学习 id>/工作区/`，
+   是它自己的草稿）→ “我觉得懂了”（守卫写收尾记录，不把关）→ 学习者确认“学完了” → 主对话说一句结果，
+   不自动开下一次（下一次由学习者再点“下一步学什么”）；状态整理、教法记录整理在后台。
 4. 资料从项目页「资料」页签加（拖文件 / 文件夹、网页链接、代码仓库）；PDF 要先配 `MINERU_TOKEN`，本机装 `pdfinfo`（poppler-utils）。
 
 ## 正式使用与更新（10-23 起）

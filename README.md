@@ -24,7 +24,7 @@
 - `任务线路.md` — 当前位置（先读这个）
 - `docs/设计/` — 现行设计；`docs/撤下原文/`、`docs/暂缓设计/` 只供追溯；`docs/调研/`、`docs/学习理论/`、`docs/agent框架学习/`、`docs/同类项目对照/`、`docs/模型基准/` 是参考材料
 - `原型/` — 原型（TypeScript：本地服务 + 浏览器界面）
-- `书库处理/` — 书库转换与切分（Python）
+- `书库处理/` — PDF → md 转换（MinerU，Python）
 - `会话记录/` — 每个会话一页，只供追溯
 - `.agents/` — agent 技能（web-access 联网）
 
