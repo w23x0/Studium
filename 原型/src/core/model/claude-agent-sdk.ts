@@ -52,9 +52,15 @@ export interface ClaudeAgentSdkOptions {
  * 有沙盒时打开六个通用工具，cwd 落到工作区，只读目录经 additionalDirectories 与沙盒的 allowRead 给出，
  * 每次工具调用再经 `canUseTool` 按沙盒卡一道（记录/读写权限.md「执行方式」）。
  */
+/** 进程内工具一次调用的上限：30 分钟（一次导航连检索在真模型上要几分钟）。 */
+const TOOL_TIMEOUT_MS = 30 * 60 * 1000;
+
 export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions): Options {
   const server = createSdkMcpServer({
     name: SERVER,
+    // 我们的工具里有整段跑完一个会话的（plan_next 跑完导航、retrieve 跑完检索子代理），常超过一分钟；
+    // 不跟环境变量 MCP_TOOL_TIMEOUT 走——它设成 60 秒时模型拿到超时会再调一次，开出重复的导航
+    timeout: TOOL_TIMEOUT_MS,
     tools: spec.tools.map((t) =>
       tool(t.name, t.description, t.input, async (args) => {
         const r = await t.run(args);

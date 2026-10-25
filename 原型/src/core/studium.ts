@@ -260,7 +260,8 @@ export class Studium {
           // 同一类会话两种活：谈方向；阶段复盘（finish_review 只在复盘会话里可用）
           return [
             ...this.readTools(sessionId),
-            this.listLearnedTool(sessionId),
+            this.listLearnedTool(sessionId, true),
+            this.readImportTool(),
             this.settleGoalTool(sessionId),
             ...this.longterm.reviewTools(sessionId),
           ];
@@ -1871,7 +1872,14 @@ export class Studium {
       hub: this.hub,
       sources: this.o.sources,
       ...(sessionId !== undefined ? { scope: () => this.scopeOf(sessionId) } : {}),
+      importText: (id) => this.importText(id),
     };
+  }
+
+  /** 一条外部导入的正文（依据定位用）；没有这条导入或它没有正文给 undefined。 */
+  private async importText(id: string): Promise<string | undefined> {
+    const one = (await this.learned.imports()).find((x) => x.id === id);
+    return one !== undefined ? this.learned.importText(one) : undefined;
   }
 
   /** 学习者给一本书 / 笔记补一句来源说明（只追加）。 */
@@ -1920,6 +1928,45 @@ export class Studium {
             (r.record.type === 'user_message' || r.record.type === 'assistant_message'),
         );
         return ok(renderTranscript(recs) || '（这一段没有对话）');
+      },
+    };
+  }
+
+  /**
+   * 读一条外部导入（笔记 / 别处 AI 对话记录）的正文，带行号；畅谈没有沙盒，看学习者已储备什么要靠它
+   * （会话/畅谈.md「能读什么」）。给 query 只列含它的行。
+   */
+  private readImportTool(): ToolSpec {
+    const page = 400;
+    return {
+      name: 'read_import',
+      description: `读一条外部导入（学习者的笔记、在别处跟 AI 学的对话记录）的正文，带行号；一次最多 ${String(page)} 行，用 from_line 往下翻；给 query 只列含它的行。内容是学习者自述的经历，未验证、不算学会。`,
+      input: {
+        id: z.string().describe('导入 id（list_learned 里有，形如 imp-…）'),
+        from_line: z.number().int().optional(),
+        query: z.string().optional(),
+      },
+      run: async (a) => {
+        const one = (await this.learned.imports()).find((x) => x.id === a.id);
+        if (one === undefined) return err(`没有这条导入：${a.id as string}`);
+        const text = await this.learned.importText(one);
+        if (text === undefined)
+          return err('这条导入没有正文（畅谈里说的，用 read_session 读那一行）');
+        const lines = text.split('\n');
+        const numbered = lines.map((l, i) => `${String(i + 1)}\t${l}`);
+        const q = a.query as string | undefined;
+        if (q !== undefined && q !== '') {
+          const hits = numbered.filter((_, i) => lines[i]?.includes(q) === true);
+          return ok(
+            `共 ${String(hits.length)} 行含“${q}”（全文 ${String(lines.length)} 行）：\n${hits.slice(0, 80).join('\n')}`,
+          );
+        }
+        const from = Math.max(1, (a.from_line as number | undefined) ?? 1);
+        const slice = numbered.slice(from - 1, from - 1 + page);
+        const end = from - 1 + slice.length;
+        return ok(
+          `《${one.title ?? one.id}》第 ${String(from)}–${String(end)} 行，共 ${String(lines.length)} 行${end < lines.length ? `；往下读 from_line=${String(end + 1)}` : ''}：\n${slice.join('\n')}`,
+        );
       },
     };
   }
@@ -2035,12 +2082,14 @@ export class Studium {
     return {
       name: 'submit_findings',
       description:
-        '交回找到的几条（至多 5 条）：每条一句话 + 能定位的 ref（会话 id:行号 / 资料id/文件:行号）；没找到交空数组。只交一次。',
+        '交回找到的几条（至多 5 条）：每条一句话 + 能定位的 ref（会话 id:行号 / 资料id/文件:行号 / 外部导入/<导入 id>.md:行号）；没找到交空数组。只交一次。',
       input: {
         findings: z.array(
           z.object({
             text: z.string().describe('一句话：找到了什么'),
-            ref: z.string().describe('会话 id:行号 或 资料id/文件:行号'),
+            ref: z
+              .string()
+              .describe('会话 id:行号、资料id/文件:行号 或 外部导入/<导入 id>.md:行号'),
           }),
         ),
       },
@@ -2069,7 +2118,7 @@ export class Studium {
    * 主对话与畅谈共用的只读工具（工单 W5 §4.5）：方向目标一段，学过的记录每次一行（上层单子 +
    * 中层判定里的实际理解），外部导入单列标未验证。主对话问进度、畅谈看已储备什么都用它。
    */
-  private listLearnedTool(sessionId: string): ToolSpec {
+  private listLearnedTool(sessionId: string, importText = false): ToolSpec {
     return {
       name: 'list_learned',
       description:
@@ -2082,7 +2131,8 @@ export class Studium {
         const body = await this.learned.list(mainId);
         const rows = body.learnings.map((l) => `- ${this.learned.line(l)}`);
         const imports = body.imports.map(
-          (x) => `- ${this.learned.importLine(x)}（未验证，不算学会）`,
+          (x) =>
+            `- ${this.learned.importLine(x)}（未验证，不算学会${importText && 'file' in x.ref ? '；正文用 read_import 读' : ''}）`,
         );
         return ok(
           [
