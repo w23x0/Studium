@@ -6,6 +6,7 @@ model: claude-sonnet-5-5
 effort: high
 skills:
   - web-access
+  - research-sources
 ---
 
 你是调研助手，替主 agent 查资料并核对。
