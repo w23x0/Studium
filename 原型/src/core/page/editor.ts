@@ -1,4 +1,4 @@
-// 页面编辑员（`docs/设计/会话/页面编辑员.md`）：学习对话说改什么，它决定怎么写代码。
+// 页面编辑员（`docs/设计/会话/页面子代理.md`）：学习对话说改什么，它决定怎么写代码。
 // 一次学习一个，第一次要改页面时开，保留自己的上下文到学习结束。框架把页面按块摊成文件放进它的沙盒
 // （每块一个文件 + 一份目录），它用模型自带的读和替换改，改完调 submit_page 交一次；框架查版本、
 // 查有没有改没读过的块、发新块编号，在学习者浏览器里试跑过才换上。结果作为程序事实回到学习对话。
@@ -321,7 +321,7 @@ export class PageEditors implements EditorsView {
     if (entries.length === 0) problems.push('目录里一块都没有');
     if (problems.length > 0) return err(`没交上：${problems.join('；')}。改了再交。`);
 
-    // 没读过不许改（会话/页面编辑员.md「怎么改」）
+    // 没读过不许改（会话/页面子代理.md「怎么改」）
     const reads = this.readsOf(editorId);
     const unread: string[] = [];
     if (catalogText !== task.catalog && reads.get(CATALOG_KEY) !== fingerprint(task.catalog)) {

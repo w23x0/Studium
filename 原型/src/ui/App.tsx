@@ -402,7 +402,7 @@ export function App() {
               )}
             </div>
           </ProjectContext.Provider>
-          {/* 活页面的新一版先在这里看不见地试跑（会话/页面编辑员.md「怎么改」） */}
+          {/* 活页面的新一版先在这里看不见地试跑（会话/页面子代理.md「怎么改」） */}
           <PageTrials />
         </PanelContext.Provider>
       </OpenSessionContext.Provider>

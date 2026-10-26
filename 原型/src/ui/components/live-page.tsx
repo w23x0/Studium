@@ -1,6 +1,6 @@
 // 学习对话旁边的活页面（会话/学习对话.md §11）：显示当前版、看旧版（不算退回）、退回到某一版（可选原因）；
 // 页面在只给脚本的小窗里跑，学习者看得到哪几块、展开折起、页面自己的动作都交回核心。
-// PageTrials 挂在整页上：核心要试跑新的一版时，在看不见的小窗里跑一遍，报回有没有报错（会话/页面编辑员.md）。
+// PageTrials 挂在整页上：核心要试跑新的一版时，在看不见的小窗里跑一遍，报回有没有报错（会话/页面子代理.md）。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDownIcon, LoaderIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
