@@ -132,6 +132,8 @@ export function toUiMessages(
         break;
       }
       case 'sandbox_action': {
+        // 子代理在后台的读写不夹进对话（页面那边有“正在改页面”）
+        if (r.agent !== undefined) break;
         const g = toolGroup(id, line);
         g.labels.push(sandboxLabel(r.op, r.path));
         if (!r.ok) g.failed += 1;
@@ -265,8 +267,11 @@ export function toUiMessages(
         push({ id, role: 'system', text: W.resumedLine, line });
         break;
       case 'page_rollback':
-        // 退回只换页面、截模型的上下文；对话照旧全显示，这里标一行退回到哪（会话/学习对话.md §11）
+        // 旧数据（10-26 起不做退回）：标一行退回到哪
         push({ id, role: 'system', text: WP.rolledBackLine(r.to, r.reason), line });
+        break;
+      case 'subagent_result':
+        push({ id, role: 'system', text: WP.agentReturned(r.text), line });
         break;
       case 'program_fact': {
         // 程序事实是给模型看的，不显示；唯一例外：阶段复盘交回主对话的那一句（像学完一段那样显示一行）

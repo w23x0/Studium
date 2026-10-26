@@ -31,8 +31,31 @@ export interface SandboxSpec {
   readOnly: { name: string; path: string }[];
   /** 默认 false：不给联网。 */
   network: boolean;
-  /** 默认 true：给跑命令（Bash）。页面编辑员不给：它只用读和替换，读过哪块由框架从读动作里知道。 */
+  /** 默认 true：给跑命令（Bash）。 */
   commands?: boolean;
+}
+
+/**
+ * 主模型可以派的一个子代理（框架自带的子代理机制；会话/页面子代理.md）。默认在后台跑，做完交回一段话，
+ * 按时间接在主模型上下文后面。只能写 `writable` 下面，不给跑命令。
+ */
+export interface SubagentSpec {
+  /** 派它时用的名字（只用字母、数字、下划线、连字符）。 */
+  name: string;
+  /** 什么时候派它（给主模型看）。 */
+  description: string;
+  /** 它自己的系统提示。 */
+  prompt: string;
+  /** 它能用的框架自带工具（如 Read / Edit / Write / Glob）。 */
+  builtins: string[];
+  /** 只有它能用的、我们的工具名（主模型不能调）；工具本身放在 ConversationSpec.tools 里。 */
+  ownTools: string[];
+  /** 它能写的目录（绝对路径，须在工作区里）；主模型不能写这里。 */
+  writable: string;
+  /** 它还在做上一件（主模型这时再派一个同名的会被拦下，叫它等或用 SendMessage 接着说）。 */
+  busy?: () => boolean;
+  model?: string;
+  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 }
 
 export interface ConversationSpec {
@@ -42,18 +65,10 @@ export interface ConversationSpec {
   tools: ToolSpec[];
   /** 有这一项 = 这个会话在沙盒里跑（通用读写与命令），工具只是沙盒里的两个命令。 */
   sandbox?: SandboxSpec;
+  /** 主模型能派的子代理（要有沙盒）。 */
+  subagents?: SubagentSpec[];
   /** 上次的续接凭据（正本里最近一条 model_session），没有就是新开。 */
   resumeToken?: string;
-  /**
-   * 续接时只接到这一点（某一轮末尾的 checkpoint）为止，之后的从模型上下文里拿掉：活页面退回时截上下文
-   * （会话/学习对话.md §11）。没有 = 整份接上。
-   */
-  resumeAt?: string;
-  /**
-   * 旁问：在这份上下文的一个分身上问一句、拿回一句话，原对话不受影响（退回时请主模型写教训）。
-   * 不给工具、不给沙盒，只跑一轮。
-   */
-  aside?: boolean;
   /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
   session?: { id: string; kind: ConversationKind };
   /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
@@ -63,6 +78,8 @@ export interface ConversationSpec {
 /** 沙盒里的一个动作，程序当场记（不靠模型自报）。`content` 只有写类动作填。 */
 export interface SandboxActionEvent {
   kind: 'sandbox_action';
+  /** 子代理做的：它的名字（主模型自己做的不填）。 */
+  agent?: string;
   action: {
     op: 'read' | 'write' | 'run' | 'search' | 'other';
     /** 虚拟路径（工作区里的相对工作区；只读的 `只读/<name>/…`）。 */
@@ -76,12 +93,31 @@ export interface SandboxActionEvent {
   };
 }
 
-/** 一条输入：学习者的话，或程序追加的事实（守卫结论、离开多久等）。 */
+/** 一条输入：学习者的话与动作，或程序追加的事实（守卫结论等）。 */
 export interface TurnInput {
   role: 'learner' | 'program';
   text: string;
   /** 本轮之前程序从记录重建的开场（主对话每轮新开时用）；不算进 text。 */
   preface?: string;
+  /**
+   * 为真时不包“程序事实”标记：学习对话按时间线排，每条前面带行号与时间、自己说清是什么
+   * （会话/学习对话.md §3「上下文里的身份与时间线」）。
+   */
+  plain?: boolean;
+}
+
+/** 子代理开始 / 做完（程序当场记）。 */
+export interface SubagentEvent {
+  kind: 'subagent';
+  phase: 'started' | 'done';
+  agent: string;
+  taskId: string;
+  /** 开始时：主模型派它时的一句说明。 */
+  description?: string;
+  /** 做完时：completed / failed / stopped。 */
+  status?: string;
+  /** 做完时：它交回的那段话。 */
+  text?: string;
 }
 
 export type ModelEvent =
@@ -97,8 +133,7 @@ export type ModelEvent =
   | { kind: 'model'; name: string }
   /** 沙盒里的一个动作（读 / 写 / 跑命令……），程序当场记进正本。 */
   | SandboxActionEvent
-  /** 本轮成功结束时的位置（这一轮最后一条消息的标识），在 turn_end 之前报；以后可以截回到这里。 */
-  | { kind: 'checkpoint'; point: string }
+  | SubagentEvent
   /** 本轮结束。 */
   | { kind: 'turn_end' }
   /** 本轮失败；对话仍可继续。 */
@@ -113,6 +148,15 @@ export interface ModelConversation {
    * 适配器不支持就不实现，核心退回排队。
    */
   interject?(input: TurnInput): boolean;
+  /**
+   * 接住不是 send() 引起的事（子代理在后台跑）：`side` 是不属于主模型某一轮的事件（子代理的动作、
+   * 开始 / 做完）；`unprompted` 是模型自己起的一轮（子代理做完、主模型空着时框架自己接着跑一轮），
+   * 交来这一轮的事件流，直到 turn_end 或 turn_error。适配器不支持就不实现。
+   */
+  listen?(handlers: {
+    side(ev: ModelEvent): void;
+    unprompted(events: AsyncIterable<ModelEvent>): void;
+  }): void;
   close(): Promise<void>;
 }
 
@@ -164,11 +208,12 @@ export function formatProgramFact(text: string): string {
 }
 
 /**
- * 模型实际看到的一条输入：有 preface 时先给程序事实形式的开场（空一行），再接这条输入本身
- * （程序事实包标记；学习者的话原样）。适配器与假模型都只经这里拼，录带与回放的口径一致。
+ * 模型实际看到的一条输入：有 preface 时先给开场（空一行），再接这条输入本身
+ * （程序事实包标记，plain 时不包；学习者的话原样）。适配器与假模型都只经这里拼，录带与回放的口径一致。
  */
 export function modelText(input: TurnInput): string {
-  const preface = input.preface !== undefined ? `${formatProgramFact(input.preface)}\n\n` : '';
-  const body = input.role === 'program' ? formatProgramFact(input.text) : input.text;
+  const wrap = (t: string) => (input.plain === true ? t : formatProgramFact(t));
+  const preface = input.preface !== undefined ? `${wrap(input.preface)}\n\n` : '';
+  const body = input.role === 'program' ? wrap(input.text) : input.text;
   return preface + body;
 }

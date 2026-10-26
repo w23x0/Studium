@@ -2,7 +2,7 @@
 // 页面由一块块 HTML 组成，每块按内容指纹存一份，一版 = 一张块清单；正本里只记版本号与清单的指纹。
 // 本文件是核心与界面共用的形状（记录类型在 records.ts）。
 
-/** 清单里的一块：框架发的编号、内容指纹、编辑员写的一句话（主对话看的目录就是这些）。 */
+/** 清单里的一块：框架发的编号、内容指纹、子代理写的一句话（编号只在程序与子代理那边用，不进主模型上下文）。 */
 export interface PageBlockRef {
   id: string;
   hash: string;
@@ -19,9 +19,8 @@ export type PageAction =
   | { kind: 'toggle'; block: string; open: boolean }
   | { kind: 'custom'; name: string; detail?: unknown; block?: string };
 
-/** 退回时可选的原因（可跳过）。 */
-export const PAGE_ROLLBACK_REASONS = ['太多', '太快', '方向不对'] as const;
-export type PageRollbackReason = (typeof PAGE_ROLLBACK_REASONS)[number];
+/** 旧数据里退回时选的原因（10-26 起不做退回）。 */
+export type PageRollbackReason = '太多' | '太快' | '方向不对';
 
 /** 新块编号的写法：b1、b2……（框架发，不由模型定）。 */
 export const BLOCK_ID = /^b\d+$/;
@@ -41,12 +40,11 @@ export interface PageVersionView {
   same: boolean;
 }
 
-/** GET /sessions/:id/page：现在第几版、有过哪些版、学习者此刻看得到哪几块。 */
+/** GET /sessions/:id/page：现在第几版、有过哪些版。 */
 export interface PageStateResponse {
   current: number;
   versions: PageVersionView[];
-  visible: string[];
-  /** 编辑员正在改（界面上写一行“正在改页面”）。 */
+  /** 子代理正在改（界面上写一行“正在改页面”）。 */
   editing: boolean;
 }
 
@@ -63,13 +61,6 @@ export interface PageActionsRequest {
   awaited?: boolean;
 }
 
-export interface PageViewRequest {
-  version: number;
-  visible: string[];
-  /** 上次报告以来每块停留的秒数。 */
-  dwell?: Record<string, number>;
-}
-
 export interface PageErrorRequest {
   version: number;
   message: string;
@@ -78,9 +69,4 @@ export interface PageErrorRequest {
 export interface PageTrialResult {
   ok: boolean;
   error?: string;
-}
-
-export interface PageRollbackRequest {
-  to: number;
-  reason?: PageRollbackReason;
 }

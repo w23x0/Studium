@@ -20,6 +20,7 @@ import {
   type SessionOpened,
   type Ticket,
 } from '../shared/records.ts';
+import { localMinute } from '../shared/time.ts';
 import type { DerivedIndex } from './index/derived-index.ts';
 import { isSessionId, type DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
@@ -27,8 +28,10 @@ import type {
   ModelAdapter,
   ModelConversation,
   ModelDisclosure,
+  ModelEvent,
   SandboxActionEvent,
   SandboxSpec,
+  SubagentSpec,
   ToolSpec,
   TurnInput,
 } from './model/port.ts';
@@ -49,8 +52,13 @@ export interface KindConfig {
   preface?(sessionId: string, inputLine: number, fresh: boolean): Promise<string>;
   /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
   webSearch?: boolean;
-  /** 为真时每轮结束记一条 model_checkpoint：这类会话的上下文以后可能截回（活页面退回）。 */
-  checkpoints?: boolean;
+  /** 主模型能派的子代理（学习对话的页面子代理）；开模型对话时算一次。 */
+  subagents?(sessionId: string): Promise<SubagentSpec[]>;
+  /**
+   * 为真时按时间线交给模型：每条前面带行号与时间，不包“程序事实”标记，每条自己说清是什么
+   * （学习对话，会话/学习对话.md §3「上下文里的身份与时间线」）。
+   */
+  timeline?: boolean;
 }
 
 export interface HubOptions {
@@ -65,7 +73,11 @@ interface Live {
   log: SessionLog;
   kind: ConversationKind;
   conversation: ModelConversation | undefined;
-  queue: { input: TurnInput; line: number; resolve: () => void }[];
+  /** 排着的轮：一条输入，或模型自己起的一轮（子代理做完后，事件已在流里）。 */
+  queue: (
+    | { input: TurnInput; line: number; resolve: () => void }
+    | { events: AsyncIterable<ModelEvent>; resolve: () => void }
+  )[];
   running: boolean;
   idle: (() => void)[];
   /** 本轮收下的中途插话，在本轮跑完时兑现。 */
@@ -186,27 +198,37 @@ export class Hub {
   async send(
     sessionId: string,
     input: TurnInput,
-    meta: { objection?: { toLine: number }; images?: ImageInput[] } = {},
+    meta: {
+      objection?: { toLine: number };
+      images?: ImageInput[];
+      /** 这条输入已经记在正本这一行（如学习者在页面上的动作）：不再另记，只交给模型。 */
+      recorded?: number;
+    } = {},
   ): Promise<{ line: number; done: Promise<void> }> {
     const live = await this.ensureLive(sessionId);
     const objection = input.role === 'learner' ? meta.objection : undefined;
     const images = input.role === 'learner' ? meta.images : undefined;
-    const line = await this.append(
-      sessionId,
-      input.role === 'learner'
-        ? {
-            type: 'user_message',
-            at: this.iso(),
-            text: input.text,
-            ...(objection !== undefined ? { objection } : {}),
-            ...(images !== undefined && images.length > 0 ? { images } : {}),
-          }
-        : { type: 'program_fact', at: this.iso(), text: input.text },
-    );
-    // 证据引用照模型最顺手的方式：交给模型的每条消息前印它在正本里的行号（00 原则 8）
+    const line =
+      meta.recorded ??
+      (await this.append(
+        sessionId,
+        input.role === 'learner'
+          ? {
+              type: 'user_message',
+              at: this.iso(),
+              text: input.text,
+              ...(objection !== undefined ? { objection } : {}),
+              ...(images !== undefined && images.length > 0 ? { images } : {}),
+            }
+          : { type: 'program_fact', at: this.iso(), text: input.text },
+      ));
+    // 证据引用照模型最顺手的方式：交给模型的每条消息前印它在正本里的行号（00 原则 8）；
+    // 按时间线的会话再带上时间、不包标记
+    const timeline = this.opts.kinds(live.kind).timeline === true;
     const delivered: TurnInput = {
       role: input.role,
-      text: `[第 ${String(line)} 行] ${
+      ...(timeline ? { plain: true } : {}),
+      text: `[第 ${String(line)} 行${timeline ? ` · ${localMinute(this.iso())}` : ''}] ${
         objection !== undefined
           ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
           : ''
@@ -261,7 +283,12 @@ export class Hub {
     live.running = true;
     this.emit({ type: 'running', sessionId, running: true });
     for (let item = live.queue.shift(); item; item = live.queue.shift()) {
-      await this.runTurn(sessionId, live, item.input, item.line);
+      if ('events' in item) {
+        await this.consume(sessionId, live, item.events).catch(async (err: unknown) => {
+          const reason = err instanceof Error ? err.message : String(err);
+          await this.append(sessionId, { type: 'turn_failed', at: this.iso(), reason });
+        });
+      } else await this.runTurn(sessionId, live, item.input, item.line);
       item.resolve();
       for (const r of live.turnWaiters.splice(0)) r();
     }
@@ -276,7 +303,6 @@ export class Hub {
     input: TurnInput,
     inputLine: number,
   ): Promise<void> {
-    const adapter = this.opts.model.name;
     const cfg = this.opts.kinds(live.kind);
     try {
       // 沙盒里每轮重渲染的只读文件（如本次对话）在这里刷新；插话不走这里（工单 W4 §5.3）
@@ -296,83 +322,7 @@ export class Hub {
         });
         delivered = { ...input, preface: text };
       }
-      for await (const ev of live.conversation.send(delivered)) {
-        switch (ev.kind) {
-          case 'text_delta':
-            this.emit({ type: 'delta', sessionId, text: ev.text });
-            break;
-          case 'assistant_text':
-            await this.append(sessionId, {
-              type: 'assistant_message',
-              at: this.iso(),
-              text: ev.text,
-            });
-            break;
-          case 'raw':
-            await this.append(sessionId, {
-              type: 'model_raw',
-              at: this.iso(),
-              adapter,
-              payload: ev.payload,
-            });
-            break;
-          case 'session':
-            await this.append(sessionId, {
-              type: 'model_session',
-              at: this.iso(),
-              adapter,
-              token: ev.token,
-            });
-            break;
-          case 'sandbox_action': {
-            const tag = sandboxTag(ev.action);
-            await this.append(sessionId, {
-              type: 'sandbox_action',
-              at: this.iso(),
-              actor: 'model',
-              op: ev.action.op,
-              ...(ev.action.path !== undefined ? { path: ev.action.path } : {}),
-              ...(ev.action.command !== undefined ? { command: ev.action.command } : {}),
-              summary: ev.action.summary,
-              ok: ev.action.ok,
-              ...(ev.action.content !== undefined ? { content: ev.action.content } : {}),
-              ...(tag !== undefined ? { tag } : {}),
-            });
-            break;
-          }
-          case 'model':
-            if (live.model !== ev.name) {
-              live.model = ev.name;
-              await this.append(sessionId, {
-                type: 'model_used',
-                at: this.iso(),
-                adapter,
-                model: ev.name,
-              });
-            }
-            break;
-          case 'turn_error':
-            await this.append(sessionId, {
-              type: 'turn_failed',
-              at: this.iso(),
-              reason: ev.reason,
-            });
-            break;
-          case 'checkpoint':
-            if (cfg.checkpoints === true) {
-              await this.append(sessionId, {
-                type: 'model_checkpoint',
-                at: this.iso(),
-                adapter,
-                token: await this.currentToken(sessionId),
-                point: ev.point,
-              });
-            }
-            break;
-          case 'turn_end':
-            break;
-        }
-      }
+      await this.consume(sessionId, live, live.conversation.send(delivered));
     } catch (err) {
       const reason = err instanceof Error ? err.message : String(err);
       console.error(`会话 ${sessionId} 本轮失败：`, err);
@@ -380,6 +330,105 @@ export class Hub {
       // 模型侧对话可能已坏：丢掉，下一轮按正本里的续接凭据重开
       await live.conversation?.close();
       live.conversation = undefined;
+    }
+  }
+
+  /** 一轮的事件逐条记进正本（send() 的一轮与模型自己起的一轮都经这里）。 */
+  private async consume(
+    sessionId: string,
+    live: Live,
+    events: AsyncIterable<ModelEvent>,
+  ): Promise<void> {
+    for await (const ev of events) await this.onEvent(sessionId, live, ev);
+  }
+
+  private async onEvent(sessionId: string, live: Live, ev: ModelEvent): Promise<void> {
+    const adapter = this.opts.model.name;
+    switch (ev.kind) {
+      case 'text_delta':
+        this.emit({ type: 'delta', sessionId, text: ev.text });
+        break;
+      case 'assistant_text':
+        await this.append(sessionId, {
+          type: 'assistant_message',
+          at: this.iso(),
+          text: ev.text,
+        });
+        break;
+      case 'raw':
+        await this.append(sessionId, {
+          type: 'model_raw',
+          at: this.iso(),
+          adapter,
+          payload: ev.payload,
+        });
+        break;
+      case 'session':
+        await this.append(sessionId, {
+          type: 'model_session',
+          at: this.iso(),
+          adapter,
+          token: ev.token,
+        });
+        break;
+      case 'sandbox_action': {
+        const tag = sandboxTag(ev.action);
+        await this.append(sessionId, {
+          type: 'sandbox_action',
+          at: this.iso(),
+          actor: 'model',
+          ...(ev.agent !== undefined ? { agent: ev.agent } : {}),
+          op: ev.action.op,
+          ...(ev.action.path !== undefined ? { path: ev.action.path } : {}),
+          ...(ev.action.command !== undefined ? { command: ev.action.command } : {}),
+          summary: ev.action.summary,
+          ok: ev.action.ok,
+          ...(ev.action.content !== undefined ? { content: ev.action.content } : {}),
+          ...(tag !== undefined ? { tag } : {}),
+        });
+        break;
+      }
+      case 'model':
+        if (live.model !== ev.name) {
+          live.model = ev.name;
+          await this.append(sessionId, {
+            type: 'model_used',
+            at: this.iso(),
+            adapter,
+            model: ev.name,
+          });
+        }
+        break;
+      case 'turn_error':
+        await this.append(sessionId, {
+          type: 'turn_failed',
+          at: this.iso(),
+          reason: ev.reason,
+        });
+        break;
+      case 'subagent':
+        await this.append(
+          sessionId,
+          ev.phase === 'started'
+            ? {
+                type: 'subagent_started',
+                at: this.iso(),
+                agent: ev.agent,
+                taskId: ev.taskId,
+                ...(ev.description !== undefined ? { description: ev.description } : {}),
+              }
+            : {
+                type: 'subagent_result',
+                at: this.iso(),
+                agent: ev.agent,
+                taskId: ev.taskId,
+                status: ev.status ?? 'completed',
+                text: ev.text ?? '',
+              },
+        );
+        break;
+      case 'turn_end':
+        break;
     }
   }
 
@@ -397,101 +446,44 @@ export class Hub {
     cfg: KindConfig,
   ): Promise<ModelConversation> {
     const sandbox = await cfg.sandbox?.(sessionId);
-    return this.opts.model.open({
+    const subagents = sandbox !== undefined ? await cfg.subagents?.(sessionId) : undefined;
+    const conv = this.opts.model.open({
       systemPrompt: cfg.systemPrompt,
       tools: cfg.tools(sessionId).map((t) => this.logged(sessionId, t)),
       session: { id: sessionId, kind },
       ...(sandbox !== undefined ? { sandbox } : {}),
+      ...(subagents !== undefined && subagents.length > 0 ? { subagents } : {}),
       ...(cfg.webSearch === true ? { webSearch: true } : {}),
       ...(await this.resumeFrom(sessionId)),
     });
+    // 子代理在后台跑：它的动作当场记；主模型空着时它做完、模型自己起的一轮排进队列当一轮记
+    conv.listen?.({
+      side: (ev) => {
+        const live = this.live.get(sessionId);
+        if (live === undefined) return;
+        this.onEvent(sessionId, live, ev).catch((e: unknown) => {
+          console.error(`会话 ${sessionId} 记子代理的事失败：`, e);
+        });
+      },
+      unprompted: (events) => {
+        const live = this.live.get(sessionId);
+        if (live === undefined) return;
+        live.queue.unshift({ events, resolve: () => undefined });
+        if (!live.running) void this.drain(sessionId, live);
+      },
+    });
+    return conv;
   }
 
-  /**
-   * 从哪接上：最近一条续接凭据；上下文截回过的，接到现在有效的最后一个 checkpoint 为止
-   * （之后的轮已拿掉；会话/学习对话.md §11）。
-   */
-  private async resumeFrom(
-    sessionId: string,
-  ): Promise<{ resumeToken?: string; resumeAt?: string }> {
+  /** 从哪接上：最近一条续接凭据（旧数据里截回过的记录不再理会：10-26 起上下文只追加）。 */
+  private async resumeFrom(sessionId: string): Promise<{ resumeToken?: string }> {
     const records = await this.records(sessionId);
     const adapter = this.opts.model.name;
-    if (records.some((r) => r.record.type === 'context_rewound' && r.record.adapter === adapter)) {
-      // 截回过：接到现在有效的最后一个 checkpoint；一个都不剩（截回到开头）就新开
-      const cp = effectiveCheckpoints(records, adapter).at(-1);
-      return cp !== undefined ? { resumeToken: cp.token, resumeAt: cp.point } : {};
-    }
     const resume = records
       .map((r) => r.record)
       .filter((r) => r.type === 'model_session' && r.adapter === adapter)
       .at(-1);
     return resume?.type === 'model_session' ? { resumeToken: resume.token } : {};
-  }
-
-  private async currentToken(sessionId: string): Promise<string> {
-    const adapter = this.opts.model.name;
-    const last = (await this.records(sessionId))
-      .map((r) => r.record)
-      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
-      .at(-1);
-    return last?.type === 'model_session' ? last.token : '';
-  }
-
-  /**
-   * 把模型侧上下文截回到某个 checkpoint（那一行；不给 = 截回到开头、下次新开）：丢掉活着的模型对话，下次按截回点续接。
-   * 正本照旧全留，只追加一条 context_rewound。会话正在跑时不截（调用方先等它停）。
-   */
-  async rewind(sessionId: string, toLine: number | undefined, reason: string): Promise<void> {
-    const live = await this.ensureLive(sessionId);
-    if (live.running || live.queue.length > 0) throw new Error(`${sessionId} 正在跑，不能截回`);
-    if (toLine !== undefined) {
-      const target = (await this.records(sessionId)).find((r) => r.line === toLine)?.record;
-      if (target?.type !== 'model_checkpoint') {
-        throw new Error(`第 ${String(toLine)} 行不是 checkpoint`);
-      }
-    }
-    await live.conversation?.close();
-    live.conversation = undefined;
-    await this.append(sessionId, {
-      type: 'context_rewound',
-      at: this.iso(),
-      adapter: this.opts.model.name,
-      ...(toLine !== undefined ? { toLine } : {}),
-      reason,
-    });
-  }
-
-  /**
-   * 旁问：在这个会话现在的上下文的分身上问一句，拿回模型的一句话；原会话与正本都不动。
-   * 会话正在跑、没有可续接的上下文、或适配器做不了时抛错，调用方自己兜底。
-   */
-  async aside(sessionId: string, question: string): Promise<string> {
-    const live = await this.ensureLive(sessionId);
-    if (live.running || live.queue.length > 0) throw new Error(`${sessionId} 正在跑，不能旁问`);
-    const from = await this.resumeFrom(sessionId);
-    if (from.resumeToken === undefined) throw new Error(`${sessionId} 没有可续接的上下文`);
-    const cfg = this.opts.kinds(live.kind);
-    const sandbox = await cfg.sandbox?.(sessionId);
-    const conv = this.opts.model.open({
-      systemPrompt: cfg.systemPrompt,
-      tools: [],
-      session: { id: sessionId, kind: live.kind },
-      ...(sandbox !== undefined ? { sandbox } : {}),
-      ...from,
-      aside: true,
-    });
-    const texts: string[] = [];
-    try {
-      for await (const ev of conv.send({ role: 'program', text: question })) {
-        if (ev.kind === 'assistant_text') texts.push(ev.text);
-        if (ev.kind === 'turn_error') throw new Error(ev.reason);
-      }
-    } finally {
-      await conv.close();
-    }
-    const text = texts.join('').trim();
-    if (text === '') throw new Error('旁问没有拿回文字');
-    return text;
   }
 
   /** 推一条不来自正本的事件（活页面试跑）。 */
@@ -559,26 +551,6 @@ export class Hub {
   private iso(): string {
     return this.now().toISOString();
   }
-}
-
-/**
- * 现在还有效的 checkpoint（按行序）：截回到某一行之后，那行之后、截回之前的 checkpoint 作废。
- */
-export function effectiveCheckpoints(
-  records: NumberedRecord[],
-  adapter: string,
-): { line: number; at: string; token: string; point: string }[] {
-  let out: { line: number; at: string; token: string; point: string }[] = [];
-  for (const { line, record: r } of records) {
-    if (r.type === 'model_checkpoint' && r.adapter === adapter) {
-      out.push({ line, at: r.at, token: r.token, point: r.point });
-    }
-    if (r.type === 'context_rewound' && r.adapter === adapter) {
-      const to = r.toLine;
-      out = to === undefined ? [] : out.filter((c) => c.line <= to);
-    }
-  }
-  return out;
 }
 
 /** 教学工具在只读区里的虚拟路径前缀。 */
