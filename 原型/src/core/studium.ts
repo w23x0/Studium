@@ -135,7 +135,7 @@ export class Studium {
   /** 活页面：版本、学习者在页面上的动作、试跑、退回（会话/学习对话.md §11）。 */
   readonly pages: LivePages;
 
-  /** 页面编辑员：学习对话说改什么，它写代码（会话/页面编辑员.md）。 */
+  /** 页面编辑员：学习对话说改什么，它写代码（会话/页面子代理.md）。 */
   readonly editors: PageEditors;
 
   constructor(private readonly o: StudiumOptions) {
@@ -343,7 +343,7 @@ export class Studium {
           // 找资料：联网搜（模型服务自带），只挂交回候选这一个工具（会话/找资料.md）
           return [this.candidatesTool(sessionId)];
         case 'editor':
-          // 页面编辑员：在沙盒里用自带的读和替换改页面文件，只挂交一次这一个工具（会话/页面编辑员.md）
+          // 页面编辑员：在沙盒里用自带的读和替换改页面文件，只挂交一次这一个工具（会话/页面子代理.md）
           return [this.editors.submitTool(sessionId)];
       }
     },
