@@ -33,6 +33,9 @@ import { LongtermBanner, ReviewBanner, UnclosedEndBar } from './longterm/loop-ex
 import { OutputTaskBar } from './outputs/outputs-section.tsx';
 import type { PickedFile } from './project-materials.tsx';
 import { StageCheckBanner } from './stage-check.tsx';
+import { hasPage, LivePagePane } from './live-page.tsx';
+import { useLayout } from '../layout.ts';
+import { WP } from '../wording-page.ts';
 import { TopBar } from './top-bar.tsx';
 
 export function Conversation(props: {
@@ -159,8 +162,12 @@ export function Conversation(props: {
   const review = kind === 'talk' ? reviewWindow(records) : undefined;
   const ended =
     kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
-  // 导航会话只给学习者看它怎么想的，不交互（会话/导航.md「会话形态」）
-  const watchOnly = kind === 'nav';
+  // 导航会话只给学习者看它怎么想的，不交互（会话/导航.md「会话形态」）；页面编辑员也只看
+  const watchOnly = kind === 'nav' || kind === 'editor';
+  // 学习对话旁边的活页面（会话/学习对话.md §11）：有了才占位；窄屏点开盖满全屏
+  const { narrow } = useLayout();
+  const showPage = kind === 'loop' && hasPage(records);
+  const [pageOpen, setPageOpen] = useState(false);
   const footer = watchOnly ? undefined : kind === 'main' ? (
     props.hasGoal ? (
       <MainBar projectId={props.projectId} running={running} onError={onError} />
@@ -211,6 +218,17 @@ export function Conversation(props: {
             />
           )}
           {side?.stageCheck === true && <StageCheckBanner />}
+          {showPage && narrow && (
+            <Button
+              variant="outline"
+              size="sm"
+              className="self-start"
+              data-testid="open-page"
+              onClick={() => setPageOpen(true)}
+            >
+              {WP.openPage}
+            </Button>
+          )}
         </div>
       )}
       {kind === 'talk' && review === undefined && (
@@ -221,47 +239,67 @@ export function Conversation(props: {
     </div>
   );
 
+  const page = showPage ? (
+    <LivePagePane
+      loopId={sessionId}
+      records={records}
+      ended={ended}
+      onError={onError}
+      {...(narrow ? { onClose: () => setPageOpen(false) } : {})}
+    />
+  ) : undefined;
+  const thread = (
+    <Thread
+      header={header}
+      welcome={
+        isMain
+          ? W.mainWelcome
+          : kind === 'talk'
+            ? review !== undefined
+              ? W.reviewWelcome
+              : '我们聊聊你想学什么。'
+            : kind === 'output'
+              ? W.outputChatWelcome
+              : kind === 'find'
+                ? W.findWelcome
+                : '马上开始…'
+      }
+      footer={footer}
+      disabled={ended || watchOnly}
+      placeholder={
+        side?.shelved !== undefined ? W.shelvedPlaceholder : running ? '可以随时插话…' : '回复…'
+      }
+      onSend={async (text, images) => {
+        await api.send(sessionId, text, images);
+      }}
+      // 主对话的输入框拖入非图片文件：不进输入，走项目的上传（工单 W9 §4.1）
+      {...(isMain
+        ? {
+            onFiles: async (files: PickedFile[]) => {
+              const r = await api.upload(props.projectId, files);
+              return W.filesSent(r.items.length);
+            },
+          }
+        : {})}
+    />
+  );
   return (
     <CurrentSessionContext.Provider value={sessionId}>
       <HighlightContext.Provider value={focus?.lines ?? NO_LINES}>
         <AssistantRuntimeProvider runtime={runtime}>
-          <Thread
-            header={header}
-            welcome={
-              isMain
-                ? W.mainWelcome
-                : kind === 'talk'
-                  ? review !== undefined
-                    ? W.reviewWelcome
-                    : '我们聊聊你想学什么。'
-                  : kind === 'output'
-                    ? W.outputChatWelcome
-                    : kind === 'find'
-                      ? W.findWelcome
-                      : '马上开始…'
-            }
-            footer={footer}
-            disabled={ended || watchOnly}
-            placeholder={
-              side?.shelved !== undefined
-                ? W.shelvedPlaceholder
-                : running
-                  ? '可以随时插话…'
-                  : '回复…'
-            }
-            onSend={async (text, images) => {
-              await api.send(sessionId, text, images);
-            }}
-            // 主对话的输入框拖入非图片文件：不进输入，走项目的上传（工单 W9 §4.1）
-            {...(isMain
-              ? {
-                  onFiles: async (files: PickedFile[]) => {
-                    const r = await api.upload(props.projectId, files);
-                    return W.filesSent(r.items.length);
-                  },
-                }
-              : {})}
-          />
+          {page === undefined ? (
+            thread
+          ) : narrow ? (
+            <>
+              {thread}
+              {pageOpen && <div className="fixed inset-0 z-40">{page}</div>}
+            </>
+          ) : (
+            <div className="flex h-full min-h-0">
+              <div className="flex min-w-0 flex-1 flex-col">{thread}</div>
+              <div className="w-[min(50%,44rem)] shrink-0 border-l">{page}</div>
+            </div>
+          )}
         </AssistantRuntimeProvider>
       </HighlightContext.Provider>
     </CurrentSessionContext.Provider>

@@ -538,6 +538,7 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   pedagogy: '教法记录整理',
   output: '写产出',
   find: '找资料',
+  editor: '页面编辑员',
 };
 
 export * from './output.ts';
@@ -732,7 +733,14 @@ export interface ErrorResponse {
 export type ServerEvent =
   | { type: 'record'; sessionId: string; line: number; record: NumberedRecord['record'] }
   | { type: 'delta'; sessionId: string; text: string }
-  | { type: 'running'; sessionId: string; running: boolean };
+  | { type: 'running'; sessionId: string; running: boolean }
+  /** 活页面的新一版先在学习者浏览器的隐藏小窗里试跑（会话/页面编辑员.md「怎么改」）；sessionId = 学习对话。 */
+  | {
+      type: 'page_trial';
+      sessionId: string;
+      trialId: string;
+      blocks: { id: string; html: string }[];
+    };
 
 export const API_PREFIX = '/api';
 

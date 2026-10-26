@@ -72,18 +72,44 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
   const model = profile?.model ?? o.model;
   const effort = profile?.effort ?? o.effort;
   const sb = spec.sandbox;
+  // SDK 按 cwd 归档会话文件：旁问也落在原对话的 cwd 上，才找得到要分身的那份
   const cwd = sb !== undefined ? sb.workdir : o.cwd;
+  const resumeAt = spec.resumeAt !== undefined ? { resumeSessionAt: spec.resumeAt } : {};
+  if (spec.aside === true) {
+    // 旁问：分身出一份新会话再问，原会话不动；不给工具、只跑一轮、不留分身的会话文件
+    return {
+      systemPrompt: spec.systemPrompt,
+      tools: [],
+      settingSources: [],
+      strictMcpConfig: true,
+      maxTurns: 1,
+      forkSession: true,
+      persistSession: false,
+      ...(spec.resumeToken !== undefined ? { resume: spec.resumeToken } : {}),
+      ...resumeAt,
+      ...(model !== undefined ? { model } : {}),
+      ...(cwd !== undefined ? { cwd } : {}),
+      env: cleanEnv(),
+    };
+  }
+  const builtins =
+    sb === undefined
+      ? []
+      : sb.commands === false
+        ? SANDBOX_TOOLS.filter((t) => t !== 'Bash')
+        : SANDBOX_TOOLS;
   // 只放联网搜索与网页抓取两个内置工具；没有会话同时带沙盒与 webSearch（工单 W5 §4.6）
   const webTools = spec.webSearch === true ? ['WebSearch', 'WebFetch'] : [];
   return {
     systemPrompt: spec.systemPrompt,
-    tools: [...(sb !== undefined ? SANDBOX_TOOLS : []), ...webTools],
+    tools: [...builtins, ...webTools],
     settingSources: [],
     mcpServers: { [SERVER]: server },
     allowedTools: [...spec.tools.map((t) => `mcp__${SERVER}__${t.name}`), ...webTools],
     strictMcpConfig: true,
     includePartialMessages: true,
     ...(spec.resumeToken !== undefined ? { resume: spec.resumeToken } : {}),
+    ...resumeAt,
     ...(model !== undefined ? { model } : {}),
     ...(effort !== undefined ? { effort } : {}),
     ...(cwd !== undefined ? { cwd } : {}),
@@ -165,7 +191,7 @@ function decide(
       return allow(input);
     }
     case 'Bash':
-      return allow(input);
+      return sb.commands === false ? deny('这里不给跑命令') : allow(input);
     default:
       return deny(`这个工具不给用：${toolName}`);
   }
@@ -293,6 +319,8 @@ class SdkConversation implements ModelConversation {
   private readonly pending: string[] = [];
   /** 本轮见过、还没配上结果的工具调用（按 tool_use id）；沙盒动作由它配对。 */
   private readonly toolUses = new Map<string, ToolUse>();
+  /** 见到的最后一条消息的 uuid：一轮成功结束时报成 checkpoint（退回活页面时截到这里）。 */
+  private lastUuid: string | undefined;
 
   constructor(
     private readonly spec: ConversationSpec,
@@ -380,6 +408,9 @@ class SdkConversation implements ModelConversation {
         }
         continue;
       }
+      if ((msg.type === 'assistant' || msg.type === 'user') && msg.uuid !== undefined) {
+        this.lastUuid = msg.uuid;
+      }
       if (msg.type === 'assistant' || msg.type === 'user') {
         // 沙盒里跑的时候：把工具调用与它的结果配成沙盒动作事件（工单 W4 §5.10）
         for (const b of blocks(msg.message.content)) {
@@ -428,6 +459,9 @@ class SdkConversation implements ModelConversation {
         }
         // 同步收尾：此后的插话由核心按新一轮发
         this.turnActive = false;
+        if (!failed && this.lastUuid !== undefined) {
+          yield { kind: 'checkpoint', point: this.lastUuid };
+        }
         yield failed ? { kind: 'turn_error', reason: failReason(msg) } : { kind: 'turn_end' };
         return;
       }

@@ -54,6 +54,9 @@ import { locate, type LocateDeps } from './locate.ts';
 import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
+import { PageEditors } from './page/editor.ts';
+import { LivePages } from './page/live-page.ts';
+import { PageStore } from './page/store.ts';
 import { currentTicket } from './ticket.ts';
 import { guardView, learnerLines, renderTranscript } from './transcript.ts';
 import { Uploads, type RouteJudge } from './uploads.ts';
@@ -129,6 +132,12 @@ export class Studium {
   /** 上传与分流（工单 W9）。 */
   private readonly uploads: Uploads;
 
+  /** 活页面：版本、学习者在页面上的动作、试跑、退回（会话/学习对话.md §11）。 */
+  readonly pages: LivePages;
+
+  /** 页面编辑员：学习对话说改什么，它写代码（会话/页面编辑员.md）。 */
+  readonly editors: PageEditors;
+
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
     this.learned = new Learned({
@@ -152,7 +161,30 @@ export class Studium {
         const main = await this.projectOf(id);
         return main === undefined ? '' : (await this.instructions(main)).text;
       },
+      pageText: (id) => this.pages.catalog(id),
+      positionText: (id) => this.positionBasis(id),
     });
+    const pageStore = new PageStore(join(o.dataDir, 'pages'));
+    this.pages = new LivePages({
+      hub: () => this.hub,
+      store: pageStore,
+      iso: () => this.iso(),
+      newId: (prefix) => this.newId(prefix),
+      assertOpen: (id) => this.assertOpenLoop(id),
+      badRequest: (m) => new BadRequestError(m),
+    });
+    this.editors = new PageEditors({
+      hub: () => this.hub,
+      pages: this.pages,
+      store: pageStore,
+      dataDir: o.dataDir,
+      assertOpen: (id) => this.assertActiveLoop(id),
+      ended: async (id) => (await this.hub.records(id)).some((r) => r.record.type === 'loop_ended'),
+      background: (what, fn) => {
+        this.background(what, fn);
+      },
+    });
+    this.pages.attachEditors(this.editors);
     this.uploads = new Uploads({
       root: join(o.dataDir, 'projects'),
       newId: (prefix) => this.newId(prefix),
@@ -228,6 +260,7 @@ export class Studium {
 
   attach(hub: Hub): void {
     this.hubRef = hub;
+    this.editors.attach(hub);
   }
 
   private get hub(): Hub {
@@ -251,6 +284,15 @@ export class Studium {
       ? {
           sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
           beforeTurn: (sessionId: string) => this.sandboxes.refreshLoop(sessionId),
+          // 攒着的页面事实附在这一轮输入前（会话/学习对话.md §11）
+          preface: (sessionId: string) => this.pages.preface(sessionId),
+          checkpoints: true,
+        }
+      : {}),
+    ...(kind === 'editor'
+      ? {
+          sandbox: (sessionId: string) => this.editors.sandbox(sessionId),
+          checkpoints: true,
         }
       : {}),
     ...(kind === 'retrieve'
@@ -300,6 +342,9 @@ export class Studium {
         case 'find':
           // 找资料：联网搜（模型服务自带），只挂交回候选这一个工具（会话/找资料.md）
           return [this.candidatesTool(sessionId)];
+        case 'editor':
+          // 页面编辑员：在沙盒里用自带的读和替换改页面文件，只挂交一次这一个工具（会话/页面编辑员.md）
+          return [this.editors.submitTool(sessionId)];
       }
     },
   });
@@ -1343,14 +1388,17 @@ export class Studium {
     this.guardTarget.set(guard.sessionId, records);
     // 守卫按收口那一刻的单子写：学习者改过就用改后的（工单 W6 §9）
     const ticket = currentTicket(records);
+    // 守卫读得到改后学习者看到的页面（记录/对话与事件记录.md）
+    const page = await this.pages.textForGuard(loopId);
     await this.hub.send(guard.sessionId, {
       role: 'program',
       text: [
         '这次学习的单子：',
         ticket ? this.describeTicket(ticket) : '（缺单子）',
         '',
-        '这次学习的对话（L 后是行号；只放双方对话；程序事实、模型一侧的沙盒动作不给）：',
+        '这次学习的对话（L 后是行号；只放双方对话与学习者在页面上做的；程序事实、模型一侧的沙盒动作不给）：',
         guardView(records),
+        ...(page !== undefined ? ['', page] : []),
       ].join('\n'),
     });
     await this.hub.idle(guard.sessionId);
@@ -2568,11 +2616,29 @@ export class Studium {
   // ───────────── 学习对话 ─────────────
 
   /**
-   * 学习对话的工具：只有两个命令（工单 W4 §5.5）。资料、学过的记录、状态、教法记录与教学工具
-   * 都在沙盒里当只读文件读，不再各挂一个工具；工作区是模型自己的草稿（沙盒动作，程序当场记）。
+   * 学习对话的工具：两个命令（工单 W4 §5.5）+ 改活页面（会话/学习对话.md §11）。资料、学过的记录、状态、
+   * 教法记录与教学工具都在沙盒里当只读文件读，不再各挂一个工具；工作区是模型自己的草稿（沙盒动作，程序当场记）。
    */
   private loopTools(loopId: string): ToolSpec[] {
     return [
+      {
+        name: 'edit_page',
+        description:
+          '改对话旁边的活页面：用教学的话说改什么（展开哪块、折起哪块、标出什么、换一种画法，改完应该看到什么），以及这次留给编辑员多大余地；页面编辑员写代码，改好或没改成会作为程序事实回来。version 写你依据的页面版本（只读/页面.md 第一行），对不上会被拒。',
+        input: {
+          version: z.number().int().describe('你依据的页面版本号；空页面是 0'),
+          change: z.string().describe('改什么、改完应该看到什么（教学的话，不写代码）'),
+          latitude: z
+            .string()
+            .describe('这次的问题有多开放：如“只把第 3 步展开”或“这个概念换一种画法，怎么画你定”'),
+        },
+        run: (a) =>
+          this.editors.request(loopId, {
+            version: a.version as number,
+            change: a.change as string,
+            latitude: a.latitude as string,
+          }),
+      },
       {
         name: 'request_close',
         description:
@@ -2628,6 +2694,48 @@ export class Studium {
           ]
         : []),
       describeSandbox(sb),
+      '',
+      '活页面：现在还是空的（第 0 版）；要用就调 edit_page。',
+    ].join('\n');
+  }
+
+  /**
+   * 学习位置的依据（会话/学习对话.md §11 学习位置图）：哪些点、此刻在哪、哪些被守卫确认过。
+   * 画不画、怎么画由模型定；只有守卫确认过的才算扎实，学习对话自己的看法不算。
+   */
+  private async positionBasis(loopId: string): Promise<string> {
+    const ticket = currentTicket(await this.hub.records(loopId));
+    const main = await this.projectOf(loopId);
+    const all = (await this.learned.all()).filter((l) => l.loopId !== loopId);
+    const mine = (
+      await Promise.all(
+        all.map(async (l) => ((await this.projectOf(l.loopId)) === main ? [l] : [])),
+      )
+    ).flat();
+    const confirmed = mine.filter((l) => l.verdict !== undefined);
+    const rest = mine.filter((l) => l.verdict === undefined);
+    return [
+      '# 学习位置的依据（框架给的；画不画、怎么画由你定）',
+      '',
+      `此刻在：${ticket !== undefined ? ticket.newPoint : '（缺单子）'}（这次学习，还没学完）`,
+      '',
+      '这次的出发点（来源只是标注，不是证据）：',
+      ...(ticket !== undefined && ticket.startPoints.length > 0
+        ? ticket.startPoints.map((p) => `- ${p.point}（${p.source}）`)
+        : ['（没有）']),
+      '',
+      '守卫确认过的（只有这些算扎实）：',
+      ...(confirmed.length > 0
+        ? confirmed.map(
+            (l) =>
+              `- 「${l.title}」${l.loopId}：${l.verdict?.understanding.map((u) => u.text).join('；') || l.ticket.newPoint}`,
+          )
+        : ['（还没有）']),
+      '',
+      '这个项目里学过但没确认的（进行中 / 没合上）：',
+      ...(rest.length > 0
+        ? rest.map((l) => `- 「${l.title}」${l.loopId}（${l.status}）`)
+        : ['（没有）']),
     ].join('\n');
   }
 

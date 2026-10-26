@@ -1,7 +1,8 @@
 // 本地服务：HTTP 收命令、SSE 推事件；只绑本机地址，每个请求都要带口令。
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import { readFile } from 'node:fs/promises';
-import { extname, join, normalize } from 'node:path';
+import { dirname, extname, join, normalize } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { timingSafeEqual } from 'node:crypto';
 import type {
   TicketEditRequest,
@@ -64,6 +65,7 @@ import { InputError, type Inputs } from '../inputs.ts';
 import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { inputsRoute } from './inputs-routes.ts';
 import { longtermRoute } from './longterm-routes.ts';
+import { pageRoute } from './page-routes.ts';
 import { outputsRoute } from './outputs-routes.ts';
 import { sidebarRoute } from './sidebar-routes.ts';
 import type { SidebarStore } from '../sidebar.ts';
@@ -114,6 +116,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     const url = new URL(req.url ?? '/', 'http://localhost');
     if (!hostAllowed(req.headers.host, actualPort())) {
       send(res, 403, { error: 'Host 不是本机地址' });
+      return;
+    }
+    if (url.pathname.startsWith(`${PAGE_LIB}/`)) {
+      await servePageLib(res, url.pathname.slice(PAGE_LIB.length + 1));
       return;
     }
     if (!url.pathname.startsWith('/api/')) {
@@ -175,6 +181,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     if (parts[1] === 'sources' && (await sourcesRoute(req, res, parts, method, sources, studium)))
       return;
     if (await sidebarRoute(req, res, parts, method, { store: opts.sidebar, hub, studium })) return;
+    if (await pageRoute(req, res, parts, method, studium)) return;
     if (
       await inputsRoute(
         req,
@@ -722,6 +729,34 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     }
   }
 
+  /**
+   * 活页面里能用的本机库（KaTeX）：页面跑在不联网、来源不透明的小窗里，只能从这里取；
+   * 字体要跨来源，所以带 CORS 头。不要口令（同界面的静态文件）。
+   */
+  async function servePageLib(res: ServerResponse, rel: string): Promise<void> {
+    const clean = normalize(rel).replace(/^(\.\.[/\\])+/, '');
+    if (!clean.startsWith('katex/')) {
+      send(res, 404, { error: '没有这个库' });
+      return;
+    }
+    const file = join(KATEX_DIST, clean.slice('katex/'.length));
+    if (!file.startsWith(KATEX_DIST)) {
+      send(res, 403, { error: '路径越界' });
+      return;
+    }
+    try {
+      const body = await readFile(file);
+      res.writeHead(200, {
+        'content-type': MIME[extname(file)] ?? 'application/octet-stream',
+        'access-control-allow-origin': '*',
+        'cache-control': 'max-age=86400',
+      });
+      res.end(body);
+    } catch {
+      send(res, 404, { error: '没有这个文件' });
+    }
+  }
+
   function actualPort(): number {
     const a = server.address();
     return typeof a === 'object' && a !== null ? a.port : opts.port;
@@ -751,6 +786,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 
 class BadRequest extends Error {}
 
+/** 活页面能用的本机库的地址前缀（界面拼页面时用同一个，见 src/ui/page-frame.ts）。 */
+const PAGE_LIB = '/page-lib';
+const KATEX_DIST = join(dirname(fileURLToPath(import.meta.resolve('katex/package.json'))), 'dist');
+
 /** ?bbox=x0,y0,x1,y1（千分比，0–1000）；没给返回空。 */
 function parseBBox(v: string | null): BBox | undefined {
   if (v === null || v === '') return undefined;
@@ -778,6 +817,8 @@ const MIME: Record<string, string> = {
   '.svg': 'image/svg+xml',
   '.png': 'image/png',
   '.woff2': 'font/woff2',
+  '.woff': 'font/woff',
+  '.ttf': 'font/ttf',
 };
 
 function send(res: ServerResponse, status: number, body: object | ErrorResponse): void {

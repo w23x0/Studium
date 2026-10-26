@@ -8,6 +8,7 @@ import type {
   ReviewWindow,
 } from './records-longterm.ts';
 import type { CrossDomain } from './records-cross.ts';
+import type { PageAction, PageRollbackReason } from './page.ts';
 
 export type * from './records-longterm.ts';
 export type * from './records-cross.ts';
@@ -15,7 +16,7 @@ export type * from './records-cross.ts';
 /**
  * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 守卫 · nav 出选择卡（导航）
  * · retrieve 检索子代理（导航派的）· state 整理学习者状态 · pedagogy 记教法效果 · output 写产出对话
- * · find 找资料（联网列候选，学习者勾了才存）
+ * · find 找资料（联网列候选，学习者勾了才存）· editor 页面编辑员（学习对话沙盒里专管活页面）
  */
 export const CONVERSATION_KINDS = [
   'main',
@@ -28,6 +29,7 @@ export const CONVERSATION_KINDS = [
   'pedagogy',
   'output',
   'find',
+  'editor',
 ] as const;
 export type ConversationKind = (typeof CONVERSATION_KINDS)[number];
 
@@ -503,7 +505,108 @@ export type LogRecord =
   | CandidatesPicked
   | ProjectInstructions
   | ReminderAdded
-  | ReminderClosed;
+  | ReminderClosed
+  | ModelCheckpoint
+  | ContextRewound
+  | PageVersion
+  | PageActions
+  | PageView
+  | PageRollback
+  | PageLesson
+  | PageError;
+
+/**
+ * 模型侧一轮结束时的位置（Agent SDK 里这一轮最后一条消息的 uuid）：退回活页面时上下文截到这里
+ * （`会话/学习对话.md` §11）。只有会退回的会话（学习对话、页面编辑员）记。
+ */
+export interface ModelCheckpoint {
+  type: 'model_checkpoint';
+  at: string;
+  adapter: string;
+  /** 当时的续接凭据。 */
+  token: string;
+  point: string;
+}
+
+/**
+ * 模型侧上下文截回到某一轮的末尾（那条 model_checkpoint 的行；没有 = 截回到开头，下次新开）；
+ * 之后的轮从模型上下文里拿掉，正本照旧全留。
+ */
+export interface ContextRewound {
+  type: 'context_rewound';
+  at: string;
+  adapter: string;
+  toLine?: number;
+  reason: string;
+}
+
+/**
+ * 活页面换了一版（`会话/学习对话.md` §11 版本）：模型改一次、学习者动一次、退回一次都是新的一版。
+ * 只记版本号与块清单的指纹，页面内容在 `<数据>/pages/<学习 id>/`（`实现选型.md`「活页面存储」）。
+ */
+export interface PageVersion {
+  type: 'page_version';
+  at: string;
+  version: number;
+  /** 块清单的内容指纹。 */
+  manifest: string;
+  by: 'editor' | 'learner' | 'rollback';
+  /** 退回：回到的是第几版。 */
+  from?: number;
+  added: string[];
+  removed: string[];
+  changed: string[];
+  /** 编辑员改的：上页面前在学习者浏览器里试跑过没有（没人开着页面时没试跑）。 */
+  trialed?: boolean;
+  /** 到这一版为止发过的最大块号（新块编号由框架发）。 */
+  lastBlock: number;
+}
+
+/** 学习者在页面上的动作（连续的合成一条、算一版）；awaited = 等回应的，当场推给了学习对话。 */
+export interface PageActions {
+  type: 'page_actions';
+  at: string;
+  version: number;
+  actions: PageAction[];
+  awaited: boolean;
+}
+
+/** 学习者此刻看得到哪几块（框架自己看到的，不算一版）；dwell = 上次以来每块停留的秒数。 */
+export interface PageView {
+  type: 'page_view';
+  at: string;
+  version: number;
+  visible: string[];
+  dwell?: Record<string, number>;
+}
+
+/** 学习者把页面退回到第 to 版（新的一版是 version）；退掉 / 换回了哪几块由框架算。 */
+export interface PageRollback {
+  type: 'page_rollback';
+  at: string;
+  to: number;
+  version: number;
+  removed: string[];
+  added: string[];
+  reason?: PageRollbackReason;
+}
+
+/** 退回时补的一句教训：主模型当场写的（by model，只作参考，不当结论）；主模型写不出时由程序按事实拼一句。 */
+export interface PageLesson {
+  type: 'page_lesson';
+  at: string;
+  rollbackLine: number;
+  text: string;
+  by: 'model' | 'program';
+}
+
+/** 页面在学习者那边运行时报错（上页面之后、学习者碰到时才出的）。 */
+export interface PageError {
+  type: 'page_error';
+  at: string;
+  version: number;
+  message: string;
+}
 
 /** 学习者异议指向什么：守卫的一次判定（学习会话 + 判定所在行），或教法记录 / 状态记录的一条（记录 id）。 */
 export type ObjectionTarget =

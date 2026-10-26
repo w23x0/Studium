@@ -9,6 +9,7 @@ import type {
 } from '../shared/records.ts';
 import { parseReviewReturned } from '../shared/records-longterm.ts';
 import { judgementLine, W } from './wording.ts';
+import { WP } from './wording-page.ts';
 import { sandboxLabel, toolLabel, WT } from './wording-tools.ts';
 
 export interface UiMessage {
@@ -262,6 +263,10 @@ export function toUiMessages(
       }
       case 'loop_resumed':
         push({ id, role: 'system', text: W.resumedLine, line });
+        break;
+      case 'page_rollback':
+        // 退回只换页面、截模型的上下文；对话照旧全显示，这里标一行退回到哪（会话/学习对话.md §11）
+        push({ id, role: 'system', text: WP.rolledBackLine(r.to, r.reason), line });
         break;
       case 'program_fact': {
         // 程序事实是给模型看的，不显示；唯一例外：阶段复盘交回主对话的那一句（像学完一段那样显示一行）

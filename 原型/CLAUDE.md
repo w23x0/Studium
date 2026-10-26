@@ -14,18 +14,19 @@
 
 ## 会话种类
 
-| 种类       | 日常叫法     | 提示词        | 何时开                                           |
-| ---------- | ------------ | ------------- | ------------------------------------------------ |
-| `main`     | 主对话       | `main.md`     | 一个项目一条，学习者在这里说话                   |
-| `talk`     | 畅谈         | `talk.md`     | 谈方向，或阶段复盘（主对话里点开）               |
-| `loop`     | 学习对话     | `loop.md`     | 导航定了后开；在沙盒里跑，两个命令               |
-| `guard`    | 守卫         | `guard.md`    | 申请收口时开，写这次学到了什么                   |
-| `nav`      | 导航         | `nav.md`      | 要下一步时主对话开，定了直接开学习               |
-| `state`    | 状态整理     | `state.md`    | 一段学习结束、隔很久回来时在后台跑               |
-| `pedagogy` | 教法记录整理 | `pedagogy.md` | 一次学习结束后在后台跑                           |
-| `retrieve` | 检索子代理   | `retrieve.md` | 导航答不了细节时派出去找证据                     |
-| `output`   | 写产出       | `output.md`   | 主对话里开“写产出”对话                           |
-| `find`     | 找资料       | `find.md`     | 主对话里学习者要找资料时开，联网列候选，勾了才存 |
+| 种类       | 日常叫法     | 提示词        | 何时开                                                            |
+| ---------- | ------------ | ------------- | ----------------------------------------------------------------- |
+| `main`     | 主对话       | `main.md`     | 一个项目一条，学习者在这里说话                                    |
+| `talk`     | 畅谈         | `talk.md`     | 谈方向，或阶段复盘（主对话里点开）                                |
+| `loop`     | 学习对话     | `loop.md`     | 导航定了后开；在沙盒里跑，两个命令                                |
+| `guard`    | 守卫         | `guard.md`    | 申请收口时开，写这次学到了什么                                    |
+| `nav`      | 导航         | `nav.md`      | 要下一步时主对话开，定了直接开学习                                |
+| `state`    | 状态整理     | `state.md`    | 一段学习结束、隔很久回来时在后台跑                                |
+| `pedagogy` | 教法记录整理 | `pedagogy.md` | 一次学习结束后在后台跑                                            |
+| `retrieve` | 检索子代理   | `retrieve.md` | 导航答不了细节时派出去找证据                                      |
+| `output`   | 写产出       | `output.md`   | 主对话里开“写产出”对话                                            |
+| `find`     | 找资料       | `find.md`     | 主对话里学习者要找资料时开，联网列候选，勾了才存                  |
+| `editor`   | 页面编辑员   | `editor.md`   | 学习对话第一次 `edit_page` 时开，一次学习一个；在沙盒里改页面文件 |
 
 种类名单在 `src/shared/records.ts` 的 `CONVERSATION_KINDS`（提示词装载、`STUDIUM_PROFILES` 的可用键都从它取）。
 
@@ -39,6 +40,7 @@
 | `src/core/main.ts` `app.ts`                                                             | `main.ts` 读环境变量起服务；`app.ts` 组装核心：数据目录锁 → 派生索引 → 知识层 → Studium + Hub → 本地服务（main 与验收测试都从这里起）                                                                                                                                                                                                                                                |
 | `src/core/hub.ts`                                                                       | 会话管理：一次一轮、事件推送、重启后按正本里的续接凭据接上                                                                                                                                                                                                                                                                                                                           |
 | `src/core/studium.ts`                                                                   | 事件串联：主对话、畅谈、导航、学习对话、守卫、状态整理、教法记录整理；各会话的工具                                                                                                                                                                                                                                                                                                   |
+| `src/core/page/`                                                                        | 活页面（`docs/设计/会话/学习对话.md` §11、`会话/页面编辑员.md`）：`store.ts` 按块按指纹存、一版一张块清单 · `live-page.ts` 版本、学习者动作（攒一会儿合成一版，等回应的当场推）、每轮附给学习对话的页面事实、试跑、退回（旁问写教训 + 截上下文）· `editor.ts` 编辑员（摊文件、读过才能改、交时检查、发新块编号）                                                                     |
 | `src/core/sandbox.ts`                                                                   | 学习对话与检索子代理的沙盒（工作区 + 只读区、每轮刷新只读的渲染文件）                                                                                                                                                                                                                                                                                                                |
 | `src/core/learned.ts`                                                                   | 学过的记录（按层读每次学习）与外部导入存放处                                                                                                                                                                                                                                                                                                                                         |
 | `src/core/evidence.ts`                                                                  | 依据可见的只读视图（守卫判定与原文、单子与出处、教法记录 / 状态记录、外发披露）                                                                                                                                                                                                                                                                                                      |
@@ -71,6 +73,8 @@
 `task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `project_material` `project_deadline`（项目资料与期限）·
 `upload_routed`（上传的一份分到资料还是学过的，改判再记一条）· `project_instructions`（项目说明，每改一次一条，当前 = 最后一条）·
 `find_candidates` `candidates_picked`（找资料对话交回的候选、学习者勾了哪些）·
+活页面（`page_version` 只记版本号与清单指纹 · `page_actions` `page_view` `page_error` · `page_rollback` `page_lesson`（教训标谁写的））·
+`model_checkpoint`（学习对话与编辑员每轮末尾的位置）`context_rewound`（退回时模型上下文截回到哪；正本照旧全留）·
 `choice_card`（导航定的单子，10-23 起只有一项）`choice_made`（程序随即开学习）`route_decision`（路线决定，理由必标行号）·
 长期功能（`reminder_added` `reminder_closed`；`session_opened.resumeOf` `review`、`Ticket.revisit` `returnTo` `resumeOf` `stageCheck`）。
 加类型只能加，不改旧字段的意思。
@@ -85,7 +89,8 @@
 | `learned/imports.jsonl` `learned/imports/<导入 id>/`          | 外部导入：指针（畅谈、笔记、对话记录三个渠道，删 = 追加一行）；笔记与对话记录的 `原件/` 与转好的 `正文.md`                                           |
 | `knowledge/state/` `pedagogy/` `output/`                      | 状态记录、教法记录、产出物与版本链（各一个只追加的存放处）                                                                                           |
 | `knowledge/objections/` `source-reports/` `source-notes/`     | 学习者异议、资料报错、来源说明                                                                                                                       |
-| `sandbox/<学习 id>/工作区` `sandbox/<学习 id>/只读`           | 学习对话与检索子代理的沙盒                                                                                                                           |
+| `sandbox/<学习 id>/工作区` `sandbox/<学习 id>/只读`           | 学习对话与检索子代理的沙盒（编辑员的在 `sandbox/<编辑员 id>/工作区/页面/`：每块一个文件 + 目录，每件活前按当前版重摊）                               |
+| `pages/<学习 id>/块/` `pages/<学习 id>/清单/`                 | 活页面：每块按内容指纹一个文件、每版一张清单（也按指纹）；第几版由正本 `page_version` 说；不进任何沙盒，第一版不回收                                 |
 | `inputs/` `teaching-tools/` `ui/sidebar.jsonl` `cache/pages/` | 附图原样、学习者自己的教学工具、左栏操作、原件页面渲染缓存                                                                                           |
 | `index.sqlite`                                                | 派生索引（删掉可从正本重建）                                                                                                                         |
 | `data-version`                                                | 数据目录版本，值是 `3`；旧版本启动时先备份再按迁移升级（见「正式使用与更新」）                                                                       |
