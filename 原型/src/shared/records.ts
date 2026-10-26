@@ -137,6 +137,8 @@ export interface SandboxAction {
   type: 'sandbox_action';
   at: string;
   actor: 'model';
+  /** 子代理做的：它的名字（主模型自己做的不填；会话/页面子代理.md）。 */
+  agent?: string;
   op: 'read' | 'write' | 'run' | 'search' | 'other';
   path?: string;
   command?: string;
@@ -513,12 +515,33 @@ export type LogRecord =
   | PageView
   | PageRollback
   | PageLesson
-  | PageError;
+  | PageError
+  | SubagentStarted
+  | SubagentResult;
+
+/** 主模型派出的子代理开始了（框架自带的子代理机制，后台跑；会话/页面子代理.md）。 */
+export interface SubagentStarted {
+  type: 'subagent_started';
+  at: string;
+  agent: string;
+  taskId: string;
+  description?: string;
+}
 
 /**
- * 模型侧一轮结束时的位置（Agent SDK 里这一轮最后一条消息的 uuid）：退回活页面时上下文截到这里
- * （`会话/学习对话.md` §11）。只有会退回的会话（学习对话、页面编辑员）记。
+ * 子代理做完：它交回的那段话。模型那边由框架按时间接在主模型上下文后面（写明是子代理交回）；
+ * 这里记一份给界面与审计。
  */
+export interface SubagentResult {
+  type: 'subagent_result';
+  at: string;
+  agent: string;
+  taskId: string;
+  status: string;
+  text: string;
+}
+
+/** 旧数据（10-26 起不再产生：不做退回，上下文只追加）：模型侧一轮结束时的位置。 */
 export interface ModelCheckpoint {
   type: 'model_checkpoint';
   at: string;
@@ -528,10 +551,7 @@ export interface ModelCheckpoint {
   point: string;
 }
 
-/**
- * 模型侧上下文截回到某一轮的末尾（那条 model_checkpoint 的行；没有 = 截回到开头，下次新开）；
- * 之后的轮从模型上下文里拿掉，正本照旧全留。
- */
+/** 旧数据（10-26 起不再产生）：模型侧上下文截回过。 */
 export interface ContextRewound {
   type: 'context_rewound';
   at: string;
@@ -541,8 +561,8 @@ export interface ContextRewound {
 }
 
 /**
- * 活页面换了一版（`会话/学习对话.md` §11 版本）：模型改一次、学习者动一次、退回一次都是新的一版。
- * 只记版本号与块清单的指纹，页面内容在 `<数据>/pages/<学习 id>/`（`实现选型.md`「活页面存储」）。
+ * 活页面换了一版（`会话/学习对话.md` §11 版本）：子代理改一次、学习者动一次都是新的一版（rollback 是旧数据）。
+ * 版本号只在程序内部用，不进主模型上下文。只记版本号与块清单的指纹，页面内容在 `<数据>/pages/<学习 id>/`。
  */
 export interface PageVersion {
   type: 'page_version';
@@ -550,6 +570,7 @@ export interface PageVersion {
   version: number;
   /** 块清单的内容指纹。 */
   manifest: string;
+  /** editor = 页面子代理改的（沿用旧名，旧数据里也是它）。 */
   by: 'editor' | 'learner' | 'rollback';
   /** 退回：回到的是第几版。 */
   from?: number;
@@ -571,7 +592,7 @@ export interface PageActions {
   awaited: boolean;
 }
 
-/** 学习者此刻看得到哪几块（框架自己看到的，不算一版）；dwell = 上次以来每块停留的秒数。 */
+/** 旧数据（10-26 起不再记：看不到真注意力的不记）：学习者此刻看得到哪几块。 */
 export interface PageView {
   type: 'page_view';
   at: string;
@@ -580,7 +601,7 @@ export interface PageView {
   dwell?: Record<string, number>;
 }
 
-/** 学习者把页面退回到第 to 版（新的一版是 version）；退掉 / 换回了哪几块由框架算。 */
+/** 旧数据（10-26 起不做退回）：学习者把页面退回到第 to 版。 */
 export interface PageRollback {
   type: 'page_rollback';
   at: string;
@@ -591,7 +612,7 @@ export interface PageRollback {
   reason?: PageRollbackReason;
 }
 
-/** 退回时补的一句教训：主模型当场写的（by model，只作参考，不当结论）；主模型写不出时由程序按事实拼一句。 */
+/** 旧数据（10-26 起不做退回）：退回时补的一句教训。 */
 export interface PageLesson {
   type: 'page_lesson';
   at: string;

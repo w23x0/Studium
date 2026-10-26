@@ -1,11 +1,10 @@
-// 学习对话旁边的活页面（会话/学习对话.md §11）：显示当前版、看旧版（不算退回）、退回到某一版（可选原因）；
-// 页面在只给脚本的小窗里跑，学习者看得到哪几块、展开折起、页面自己的动作都交回核心。
+// 学习对话旁边的活页面（会话/学习对话.md §11）：显示当前版、看旧版（只看，不改页面也不改对话）；
+// 页面在只给脚本的小窗里跑，展开折起、页面自己的动作交回核心。
 // PageTrials 挂在整页上：核心要试跑新的一版时，在看不见的小窗里跑一遍，报回有没有报错（会话/页面子代理.md）。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ChevronDownIcon, LoaderIcon, XIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
-import { PAGE_ROLLBACK_REASONS, type PageRollbackReason } from '../../shared/page.ts';
 import type { NumberedRecord } from '../../shared/records.ts';
 import { localMinute } from '../../shared/time.ts';
 import { api } from '../api.ts';
@@ -42,8 +41,6 @@ export function LivePagePane(props: {
   const shown = viewing ?? current;
   const live = viewing === undefined && !ended;
   const [doc, setDoc] = useState<{ version: number; html: string } | undefined>(undefined);
-  const [asking, setAsking] = useState(false);
-  const [rolling, setRolling] = useState(false);
   const frame = useRef<HTMLIFrameElement>(null);
   const scrollY = useRef(0);
   const reported = useRef(new Set<string>());
@@ -63,7 +60,7 @@ export function LivePagePane(props: {
     };
   }, [loopId, shown, onError]);
 
-  // 小窗递出来的话：只认自己这个小窗；看旧版时不交动作（回看不算退回、也不算学习者动了页面）
+  // 小窗递出来的话：只认自己这个小窗；看旧版时不交动作（回看不算学习者动了页面）
   useEffect(() => {
     const onMessage = (e: MessageEvent) => {
       const win = frame.current?.contentWindow;
@@ -84,20 +81,6 @@ export function LivePagePane(props: {
     window.addEventListener('message', onMessage);
     return () => window.removeEventListener('message', onMessage);
   }, [loopId, doc, live, current, onError]);
-
-  const rollback = async (reason?: PageRollbackReason) => {
-    if (viewing === undefined) return;
-    setRolling(true);
-    try {
-      await api.pageRollback(loopId, { to: viewing, ...(reason !== undefined ? { reason } : {}) });
-      setViewing(undefined);
-      setAsking(false);
-    } catch (e) {
-      onError(e);
-    } finally {
-      setRolling(false);
-    }
-  };
 
   const changes = versions.filter((v) => !v.same).reverse();
   return (
@@ -149,40 +132,6 @@ export function LivePagePane(props: {
           <Button variant="outline" size="xs" onClick={() => setViewing(undefined)}>
             {WP.backToNow}
           </Button>
-          {!ended && !asking && (
-            <Button variant="outline" size="xs" onClick={() => setAsking(true)}>
-              {WP.rollback}
-            </Button>
-          )}
-          {asking && (
-            <span className="flex flex-wrap items-center gap-1.5" data-testid="rollback-reasons">
-              <span className="text-muted-foreground">
-                {rolling ? WP.rollingBack : WP.rollbackAsk}
-              </span>
-              {PAGE_ROLLBACK_REASONS.map((r) => (
-                <Button
-                  key={r}
-                  variant="outline"
-                  size="xs"
-                  disabled={rolling}
-                  onClick={() => void rollback(r)}
-                >
-                  {r}
-                </Button>
-              ))}
-              <Button
-                variant="outline"
-                size="xs"
-                disabled={rolling}
-                onClick={() => void rollback()}
-              >
-                {WP.rollbackSkip}
-              </Button>
-              <Button variant="ghost" size="xs" disabled={rolling} onClick={() => setAsking(false)}>
-                {WP.rollbackCancel}
-              </Button>
-            </span>
-          )}
         </div>
       )}
       <div className="min-h-0 flex-1">
@@ -208,10 +157,6 @@ async function deliver(
   m: FrameMessage,
   reported: Set<string>,
 ): Promise<void> {
-  if (m.kind === 'view') {
-    await api.pageView(loopId, { version, visible: m.visible, dwell: m.dwell });
-    return;
-  }
   if (m.kind === 'error') {
     const key = `${String(version)}:${m.message}`;
     if (reported.has(key)) return;

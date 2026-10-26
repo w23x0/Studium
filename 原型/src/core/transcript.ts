@@ -1,5 +1,6 @@
 // 对话原文 → 给模型读的带行号文本（00 原则 8）。行号 = 正本 JSONL 的行号，引用只写行号。
-// 只放对话本身（学习者、教学、程序事实）与活页面上的事；沙盒动作、工具调用、原始消息不放（守卫不读教学侧推理）。
+// 只放对话本身（学习者、教学、程序推的事、子代理交回）与学习者在页面上的操作；沙盒动作、工具调用、原始消息不放
+// （守卫不读教学侧推理）。块编号、版本号不进（会话/学习对话.md §11「版本」）。
 import type { LogRecord, NumberedRecord } from '../shared/records.ts';
 import { localMinute } from '../shared/time.ts';
 import { describeActions } from './page/live-page.ts';
@@ -15,7 +16,7 @@ export function renderTranscript(records: NumberedRecord[]): string {
   return out.join('\n');
 }
 
-/** 一条记录在对话原文里谁说了什么；活页面的事也算（会话/学习对话.md §11「进外层」）。 */
+/** 一条记录在对话原文里谁说了什么；学习者在页面上的操作与子代理交回也算（会话/学习对话.md §3）。 */
 function speech(r: LogRecord): { who: string; text: string } | undefined {
   switch (r.type) {
     case 'user_message':
@@ -25,17 +26,12 @@ function speech(r: LogRecord): { who: string; text: string } | undefined {
     case 'program_fact':
       return { who: '程序', text: r.text };
     case 'page_actions':
-      return {
-        who: '学习者（页面上）',
-        text: `第 ${String(r.version)} 版：${describeActions(r.actions)}`,
-      };
+      return { who: '学习者', text: `（在页面上）${describeActions(r.actions)}` };
+    case 'subagent_result':
+      return { who: '子代理交回', text: r.text };
+    // 以下是旧数据（10-26 前）：编辑员换版、退回、教训
     case 'page_version':
-      return r.by === 'editor'
-        ? {
-            who: '页面',
-            text: `换到第 ${String(r.version)} 版（编辑员改的；${pageDiff(r)}）`,
-          }
-        : undefined;
+      return r.by === 'editor' ? { who: '页面', text: '页面改了一版（编辑员改的）' } : undefined;
     case 'page_rollback':
       return {
         who: '学习者（退回页面）',
@@ -49,15 +45,6 @@ function speech(r: LogRecord): { who: string; text: string } | undefined {
     default:
       return undefined;
   }
-}
-
-function pageDiff(r: { added: string[]; removed: string[]; changed: string[] }): string {
-  const parts = [
-    r.added.length > 0 ? `新加 ${r.added.join('、')}` : '',
-    r.changed.length > 0 ? `改了 ${r.changed.join('、')}` : '',
-    r.removed.length > 0 ? `去掉 ${r.removed.join('、')}` : '',
-  ].filter((x) => x !== '');
-  return parts.join('，') || '没改块';
 }
 
 /**

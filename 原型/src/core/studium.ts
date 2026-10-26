@@ -54,7 +54,7 @@ import { locate, type LocateDeps } from './locate.ts';
 import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
-import { PageEditors } from './page/editor.ts';
+import { PageAgent } from './page/agent.ts';
 import { LivePages } from './page/live-page.ts';
 import { PageStore } from './page/store.ts';
 import { currentTicket } from './ticket.ts';
@@ -132,11 +132,11 @@ export class Studium {
   /** 上传与分流（工单 W9）。 */
   private readonly uploads: Uploads;
 
-  /** 活页面：版本、学习者在页面上的动作、试跑、退回（会话/学习对话.md §11）。 */
+  /** 活页面：版本、学习者在页面上的动作、试跑（会话/学习对话.md §11）。 */
   readonly pages: LivePages;
 
-  /** 页面编辑员：学习对话说改什么，它写代码（会话/页面子代理.md）。 */
-  readonly editors: PageEditors;
+  /** 页面子代理的外围：能写哪些文件、交时检查、试跑（会话/页面子代理.md）。 */
+  readonly pageAgent: PageAgent;
 
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
@@ -161,7 +161,6 @@ export class Studium {
         const main = await this.projectOf(id);
         return main === undefined ? '' : (await this.instructions(main)).text;
       },
-      pageText: (id) => this.pages.catalog(id),
       positionText: (id) => this.positionBasis(id),
     });
     const pageStore = new PageStore(join(o.dataDir, 'pages'));
@@ -173,18 +172,15 @@ export class Studium {
       assertOpen: (id) => this.assertOpenLoop(id),
       badRequest: (m) => new BadRequestError(m),
     });
-    this.editors = new PageEditors({
+    this.pageAgent = new PageAgent({
       hub: () => this.hub,
       pages: this.pages,
       store: pageStore,
-      dataDir: o.dataDir,
+      workdir: (id) => this.sandboxes.workdir(id),
       assertOpen: (id) => this.assertActiveLoop(id),
-      ended: async (id) => (await this.hub.records(id)).some((r) => r.record.type === 'loop_ended'),
-      background: (what, fn) => {
-        this.background(what, fn);
-      },
+      // 旧数据里的“页面编辑员”会话种类还在，它的提示词文件就是子代理的提示词
+      prompt: o.prompts.editor,
     });
-    this.pages.attachEditors(this.editors);
     this.uploads = new Uploads({
       root: join(o.dataDir, 'projects'),
       newId: (prefix) => this.newId(prefix),
@@ -260,7 +256,7 @@ export class Studium {
 
   attach(hub: Hub): void {
     this.hubRef = hub;
-    this.editors.attach(hub);
+    this.pageAgent.attach(hub);
   }
 
   private get hub(): Hub {
@@ -284,15 +280,10 @@ export class Studium {
       ? {
           sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
           beforeTurn: (sessionId: string) => this.sandboxes.refreshLoop(sessionId),
-          // 攒着的页面事实附在这一轮输入前（会话/学习对话.md §11）
+          // 上一轮之后学习者在页面上的操作，按时间接在这一轮前面（会话/学习对话.md §3）
           preface: (sessionId: string) => this.pages.preface(sessionId),
-          checkpoints: true,
-        }
-      : {}),
-    ...(kind === 'editor'
-      ? {
-          sandbox: (sessionId: string) => this.editors.sandbox(sessionId),
-          checkpoints: true,
+          subagents: async (sessionId: string) => [await this.pageAgent.spec(sessionId)],
+          timeline: true,
         }
       : {}),
     ...(kind === 'retrieve'
@@ -343,8 +334,8 @@ export class Studium {
           // 找资料：联网搜（模型服务自带），只挂交回候选这一个工具（会话/找资料.md）
           return [this.candidatesTool(sessionId)];
         case 'editor':
-          // 页面编辑员：在沙盒里用自带的读和替换改页面文件，只挂交一次这一个工具（会话/页面子代理.md）
-          return [this.editors.submitTool(sessionId)];
+          // 旧数据里的页面编辑员会话（10-26 起改成学习对话派的子代理），不再开
+          return [];
       }
     },
   });
@@ -864,7 +855,11 @@ export class Studium {
     return Math.round((Date.parse(date) - Date.parse(today)) / 86_400_000);
   }
 
-  /** 学习者在某个对话里发话。隔了一阵回来，先追加离开多久（`docs/设计/01-流程.md`「暂停」）。images = 附图的来历（批 4，文字已并进 text）。 */
+  /**
+   * 学习者在某个对话里发话。隔了一阵回来：学习对话每条带时间，模型自己看得出离开多久，不另推
+   * （`docs/设计/01-流程.md`「暂停」）；别的对话不带时间，过了半小时先追加一句离开多久。
+   * images = 附图的来历（批 4，文字已并进 text）。
+   */
   async learnerSays(sessionId: string, text: string, images?: ImageInput[]): Promise<void> {
     const meta = { ...(images !== undefined && images.length > 0 ? { images } : {}) };
     const recs = await this.hub.records(sessionId);
@@ -879,7 +874,7 @@ export class Studium {
       .at(-1);
     if (last !== undefined) {
       const away = this.now().getTime() - Date.parse(last.at);
-      if (away > AWAY_MS) {
+      if (away > AWAY_MS && (await this.hub.opened(sessionId)).kind !== 'loop') {
         await this.hub.send(sessionId, {
           role: 'program',
           text: `学习者离开了约 ${formatDuration(away)}，现在回来了。`,
@@ -2616,29 +2611,12 @@ export class Studium {
   // ───────────── 学习对话 ─────────────
 
   /**
-   * 学习对话的工具：两个命令（工单 W4 §5.5）+ 改活页面（会话/学习对话.md §11）。资料、学过的记录、状态、
-   * 教法记录与教学工具都在沙盒里当只读文件读，不再各挂一个工具；工作区是模型自己的草稿（沙盒动作，程序当场记）。
+   * 学习对话的工具：两个命令（工单 W4 §5.5）+ 页面子代理交改动用的 submit_page（只给子代理）。资料、学过的记录、
+   * 状态、教法记录与教学工具都在沙盒里当只读文件读；工作区是模型自己的草稿（沙盒动作，程序当场记）；
+   * 改活页面用框架自带的派子代理（会话/页面子代理.md）。
    */
   private loopTools(loopId: string): ToolSpec[] {
     return [
-      {
-        name: 'edit_page',
-        description:
-          '改对话旁边的活页面：用教学的话说改什么（展开哪块、折起哪块、标出什么、换一种画法，改完应该看到什么），以及这次留给编辑员多大余地；页面编辑员写代码，改好或没改成会作为程序事实回来。version 写你依据的页面版本（只读/页面.md 第一行），对不上会被拒。',
-        input: {
-          version: z.number().int().describe('你依据的页面版本号；空页面是 0'),
-          change: z.string().describe('改什么、改完应该看到什么（教学的话，不写代码）'),
-          latitude: z
-            .string()
-            .describe('这次的问题有多开放：如“只把第 3 步展开”或“这个概念换一种画法，怎么画你定”'),
-        },
-        run: (a) =>
-          this.editors.request(loopId, {
-            version: a.version as number,
-            change: a.change as string,
-            latitude: a.latitude as string,
-          }),
-      },
       {
         name: 'request_close',
         description:
@@ -2652,15 +2630,14 @@ export class Studium {
       {
         name: 'end_loop_unclosed',
         description:
-          '学习者明确要结束而这次学习没合上时调用；学习者想先去学别的（另开一次学习）也走它——之后导航会读整段对话出下一张卡。',
+          '学习者明确要结束而这次学习没合上时调用；学习者想先去学别的（另开一次学习）也走它——之后导航会读整段对话安排下一步。',
         input: { note: z.string().describe('学习者要结束的话在哪一行、为什么') },
         run: async (a) => {
           await this.endUnclosed(loopId, a.note as string);
-          return ok(
-            '这次学习已按“没合上就结束”处理；下一张选择卡会在主对话里出。和学习者道别即可。',
-          );
+          return ok('这次学习已按“没合上就结束”处理；下一步由项目那边安排。和学习者道别即可。');
         },
       },
+      this.pageAgent.submitTool(loopId),
     ];
   }
 
@@ -2670,7 +2647,7 @@ export class Studium {
     const resume = await this.resumeOpening(t);
     const sb = await this.sandboxes.forLoop(loopId);
     return [
-      '这次学习的目标：靠单子里的出发点、沿预期理解把新点合上（把新点接进学习者已有的认识）。该讲就成段讲，质量不低于教材。',
+      '这次学习的目标：靠单子里的出发点、沿预期理解把新点合上（把新点接进学习者已有的认识）。',
       '',
       ...revisit,
       ...resume,
@@ -2688,14 +2665,9 @@ export class Studium {
         : '（没核过）',
       '',
       ...(t.stageCheck === true
-        ? [
-            '这是一次阶段验收：看独立表现，默认不给提示，措辞照常平和；做完不等于合上，仍由守卫判。',
-            '',
-          ]
+        ? ['这是一次阶段验收：看独立表现，默认不给提示，措辞照常平和。', '']
         : []),
       describeSandbox(sb),
-      '',
-      '活页面：现在还是空的（第 0 版）；要用就调 edit_page。',
     ].join('\n');
   }
 

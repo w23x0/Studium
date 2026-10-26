@@ -1,37 +1,28 @@
 // 活页面（`docs/设计/会话/学习对话.md` §11）：一次学习里对话旁边一直在的那张页面。
-// 这里管版本（主对话、编辑员、学习者共用一个版本号）、学习者在页面上的动作、浏览器试跑、退回。
-// 改页面的代码由页面编辑员写（editor.ts）；页面内容按块按指纹存（store.ts），正本只记版本号与清单指纹。
+// 这里管版本（只在程序内部用，不进主模型上下文）、学习者在页面上的动作、浏览器试跑。
+// 改页面由主模型派出的页面子代理做（agent.ts）；页面内容按块按指纹存（store.ts），正本只记版本号与清单指纹。
 import type {
   PageAction,
   PageActionsRequest,
   PageBlockRef,
   PageManifest,
-  PageRollbackReason,
   PageStateResponse,
   PageTrialResult,
   PageVersionView,
-  PageViewRequest,
 } from '../../shared/page.ts';
-import type { LogRecord, NumberedRecord, PageVersion } from '../../shared/records.ts';
-import { effectiveCheckpoints, type Hub } from '../hub.ts';
+import type { NumberedRecord, PageVersion } from '../../shared/records.ts';
+import { localMinute } from '../../shared/time.ts';
+import type { Hub } from '../hub.ts';
 import type { PageStore } from './store.ts';
 
 /** 学习者连续的动作在这么久之内合成一条、算一版。 */
 const MERGE_MS = 4000;
 /** 试跑等浏览器回话最多这么久；没人开着页面就不等了，直接上（标“没试跑”）。 */
 const TRIAL_WAIT_MS = 20_000;
-/** 一个动作的 detail 进事实时最多保留多少字。 */
+/** 一个动作的 detail 交给模型时最多保留多少字。 */
 const DETAIL_MAX = 600;
-
-/** 编辑员那边给页面这边的几样（退回时要一起截、要先等它停）。 */
-export interface EditorsView {
-  /** 这次学习的页面编辑员会话（还没开过 = undefined）。 */
-  editorOf(loopId: string): string | undefined;
-  /** 编辑员正在改这次学习的页面。 */
-  busy(loopId: string): boolean;
-  /** 编辑员的上下文截回后，它读过哪些块就不作数了。 */
-  forgetReads(editorId: string): void;
-}
+/** 页面子代理的名字（派它、认它的记录都用这个）。 */
+export const PAGE_AGENT = 'page';
 
 export interface LivePagesDeps {
   hub: () => Hub;
@@ -51,26 +42,13 @@ interface Current {
   lastBlock: number;
 }
 
-/** 编辑员交回的那条程序事实以它开头；退回时据此认出“学习对话得知第 N 版改好了”那一轮。 */
-export function editResultHead(version: number | undefined): string {
-  return version === undefined
-    ? '页面编辑员交回（没改成）：'
-    : `页面编辑员交回（第 ${String(version)} 版）：`;
-}
-
 export class LivePages {
   /** 只常驻每次学习的当前版（旧版要用时从磁盘读）。 */
   private readonly current = new Map<string, Current>();
   private readonly buffers = new Map<string, { actions: PageAction[]; timer: NodeJS.Timeout }>();
-  private readonly lastVisible = new Map<string, string>();
   private readonly trials = new Map<string, (r: PageTrialResult) => void>();
-  private editors: EditorsView | undefined;
 
   constructor(private readonly o: LivePagesDeps) {}
-
-  attachEditors(e: EditorsView): void {
-    this.editors = e;
-  }
 
   private get hub(): Hub {
     return this.o.hub();
@@ -165,31 +143,7 @@ export class LivePages {
       changed: r.changed,
       same: i > 0 && vs[i - 1]?.record.manifest === r.manifest,
     }));
-    return {
-      current: vs.at(-1)?.record.version ?? 0,
-      versions,
-      visible: visibleOf(records),
-      editing: this.editors?.busy(loopId) ?? false,
-    };
-  }
-
-  /** 页面目录：每块的编号与一句话 + 学习者此刻看得到哪几块（主对话看的就是这些，不看代码）。 */
-  async catalog(loopId: string): Promise<string> {
-    const cur = await this.now(loopId);
-    if (cur === undefined) return '页面现在是空的（第 0 版）。';
-    const visible = new Set(visibleOf(await this.hub.records(loopId)));
-    return [
-      `页面第 ${String(cur.version)} 版，共 ${String(cur.m.blocks.length)} 块${visible.size > 0 ? `；学习者此刻看得到 ${[...visible].join('、')}` : ''}：`,
-      ...cur.m.blocks.map((b) => `- ${b.id}：${b.summary}${visible.has(b.id) ? '（看得到）' : ''}`),
-    ].join('\n');
-  }
-
-  /** 从第 version 版到现在页面上发生了什么（主对话依据的版本过期时说给它听）。 */
-  async since(loopId: string, version: number): Promise<string> {
-    const records = await this.hub.records(loopId);
-    const from = versionsOf(records).find((r) => r.record.version === version)?.line ?? 0;
-    const lines = pageEventLines(records.filter((r) => r.line > from));
-    return lines.length > 0 ? lines.join('；') : '（没有别的变化）';
+    return { current: vs.at(-1)?.record.version ?? 0, versions, editing: editing(records) };
   }
 
   // ───────────── 学习者在页面上 ─────────────
@@ -222,7 +176,7 @@ export class LivePages {
       by: 'learner',
       lastBlock: cur.lastBlock,
     });
-    await this.hub.record(loopId, {
+    const line = await this.hub.record(loopId, {
       type: 'page_actions',
       at: this.o.iso(),
       version,
@@ -230,30 +184,13 @@ export class LivePages {
       awaited,
     });
     if (awaited) {
-      // 等回应的动作当场推（会话/学习对话.md §11）；学习对话在跑就并进本轮
-      await this.hub.send(loopId, {
-        role: 'program',
-        text: `学习者在页面上（第 ${String(version)} 版）：${describeActions(buf.actions)}。这个动作在等你回应。`,
-      });
+      // 等回应的动作当场交给主模型（会话/学习对话.md §11）：身份是学习者，和说的话一样；在跑就并进本轮
+      await this.hub.send(
+        loopId,
+        { role: 'learner', text: `（在页面上）${describeActions(buf.actions, cur.m)}` },
+        { recorded: line },
+      );
     }
-  }
-
-  /** 学习者此刻看得到哪几块（框架自己看到的，不算一版）：变了才记。 */
-  async view(loopId: string, req: PageViewRequest): Promise<void> {
-    const key = req.visible.join(',');
-    const dwell = Object.fromEntries(
-      Object.entries(req.dwell ?? {}).filter(([, s]) => Number.isFinite(s) && s >= 1),
-    );
-    const hasDwell = Object.keys(dwell).length > 0;
-    if (this.lastVisible.get(loopId) === key && !hasDwell) return;
-    this.lastVisible.set(loopId, key);
-    await this.hub.record(loopId, {
-      type: 'page_view',
-      at: this.o.iso(),
-      version: req.version,
-      visible: req.visible,
-      ...(hasDwell ? { dwell } : {}),
-    });
   }
 
   async error(loopId: string, version: number, message: string): Promise<void> {
@@ -292,139 +229,30 @@ export class LivePages {
     this.trials.get(trialId)?.(r);
   }
 
-  // ───────────── 每轮附给学习对话的页面事实 ─────────────
+  // ───────────── 每轮附给学习对话的 ─────────────
 
   /**
-   * 上一轮之后页面上的事 + 页面现状，附在这一轮输入前（会话/学习对话.md §11：平时攒到学习者下次说话时附上）。
-   * 从正本现算（上一条 turn_context 之后），重启也不丢；没有页面也没有页面事件时为空。
+   * 上一轮之后学习者在页面上做的事（没等回应、攒着的那些），按时间各一条，附在学习者这一轮的话前面；
+   * 身份是学习者，和说的话一样（会话/学习对话.md §3）。页面在学习者那边报错也按时间接上（程序看到的）。
+   * 从正本现算（上一条 turn_context 之后），重启也不丢；没有就为空。
    */
   async preface(loopId: string): Promise<string> {
     const records = await this.hub.records(loopId);
     const lastCtx = records.filter((r) => r.record.type === 'turn_context').at(-1)?.line ?? 0;
     const after = records.filter((r) => r.line > lastCtx);
-    // 等回应的动作当场推过了；编辑员改好的那版由它交回的事实说，这里都不重复
-    const events = pageEventLines(after, { skipAwaited: true, skipEdits: true });
-    const cur = await this.now(loopId);
-    if (cur === undefined && events.length === 0) return '';
-    const visible = visibleOf(records);
-    const dwell = dwellOf(after);
-    return [
-      cur === undefined
-        ? '页面现在是空的（第 0 版）。'
-        : `页面现在第 ${String(cur.version)} 版${visible.length > 0 ? `；学习者此刻看得到 ${visible.join('、')}` : ''}${dwell !== '' ? `；停留较久的：${dwell}` : ''}。目录在 只读/页面.md。`,
-      ...(events.length > 0 ? ['上一轮之后页面上的事：', ...events.map((e) => `- ${e}`)] : []),
-    ].join('\n');
-  }
-
-  // ───────────── 退回 ─────────────
-
-  /**
-   * 学习者把页面退回到第 to 版（会话/学习对话.md §11）：先请主模型在现在的上下文上写一句教训，
-   * 再把页面换回那一版（记成新的一版），把学习对话与编辑员的上下文截到分叉点；正本照旧全留。
-   */
-  async rollback(loopId: string, to: number, reason?: PageRollbackReason): Promise<number> {
-    await this.o.assertOpen(loopId);
-    const editorId = this.editors?.editorOf(loopId);
-    if (this.hub.isRunning(loopId)) throw this.o.badRequest('正在回答，等这一轮说完再退回。');
-    if (
-      this.editors?.busy(loopId) === true ||
-      (editorId !== undefined && this.hub.isRunning(editorId))
-    ) {
-      throw this.o.badRequest('页面正在改，等改完再退回。');
-    }
-    await this.flush(loopId, false);
-    const cur = await this.now(loopId);
-    if (cur === undefined || to < 1 || to >= cur.version) {
-      throw this.o.badRequest(`只能退回到第 1 到第 ${String((cur?.version ?? 1) - 1)} 版`);
-    }
-    const records = await this.hub.records(loopId);
-    const target = versionsOf(records).find((r) => r.record.version === to);
-    if (target === undefined) throw this.o.badRequest(`没有第 ${String(to)} 版`);
-    const m = await this.o.store.manifest(loopId, target.record.manifest);
-    const back = diff(cur.m.blocks, m.blocks);
-    const removed = [...back.removed, ...back.changed];
-    const facts = `退回到第 ${String(to)} 版（现在第 ${String(cur.version)} 版）；退掉 ${removed.join('、') || '（没有块）'}${back.added.length > 0 ? `，换回 ${back.added.join('、')}` : ''}；${reason !== undefined ? `学习者选的原因：${reason}` : '学习者没选原因'}`;
-    const lesson = await this.lesson(loopId, to, facts);
-    const line = await this.hub.record(loopId, {
-      type: 'page_rollback',
-      at: this.o.iso(),
-      to,
-      version: cur.version + 1,
-      removed,
-      added: back.added,
-      ...(reason !== undefined ? { reason } : {}),
-    });
-    const version = await this.publish(loopId, {
-      m,
-      by: 'rollback',
-      from: to,
-      lastBlock: cur.lastBlock,
-    });
-    await this.hub.record(loopId, {
-      type: 'page_lesson',
-      at: this.o.iso(),
-      rollbackLine: line,
-      text: lesson.text,
-      by: lesson.by,
-    });
-    await this.cutContexts(loopId, editorId, records, target.line, to);
-    return version;
-  }
-
-  /** 教训由主模型在现在的上下文上当场写（旁问，不进对话）；写不出时按事实拼一句、标“程序写的”。 */
-  private async lesson(
-    loopId: string,
-    to: number,
-    facts: string,
-  ): Promise<{ text: string; by: 'model' | 'program' }> {
-    try {
-      const text = await this.hub.aside(
-        loopId,
-        `学习者要把页面${facts}。退回后，第 ${String(to)} 版之后的几轮会从你的上下文里拿掉。用一两句话写下教训，留给退回后的你：那几轮讲了什么、退掉了哪几块、学习者为什么退。只写教训本身，不对学习者说话。`,
-      );
-      return { text, by: 'model' };
-    } catch (e) {
-      console.error('请主模型写退回教训失败，改用程序拼的一句：', e);
-      return { text: `第 ${String(to)} 版之后讲的几轮被学习者退回了：${facts}。`, by: 'program' };
-    }
-  }
-
-  /**
-   * 截上下文：分叉点 = 第 to 版之后学习对话收到的第一条输入（学习者的话或程序事实；
-   * 编辑员交回第 to 版的那条不算，那一轮是“得知第 to 版改好了”，留着）。
-   * 学习对话截到这条输入之前最后一轮的末尾；编辑员截到这个时刻之前它最后一轮的末尾。
-   */
-  private async cutContexts(
-    loopId: string,
-    editorId: string | undefined,
-    records: NumberedRecord[],
-    versionLine: number,
-    to: number,
-  ): Promise<void> {
-    const boundary = records.find(
-      ({ line, record: r }) =>
-        line > versionLine &&
-        (r.type === 'user_message' ||
-          (r.type === 'program_fact' && !r.text.includes(editResultHead(to)))),
-    );
-    if (boundary === undefined) return; // 第 to 版之后学习对话没再跑过：没什么可截
-    const adapter = this.hub.modelName;
-    const why = `学习者把页面退回到第 ${String(to)} 版`;
-    const loopCps = effectiveCheckpoints(records, adapter);
-    const loopCut = loopCps.filter((c) => c.line < boundary.line).at(-1);
-    if (loopCut !== undefined && loopCut.line !== loopCps.at(-1)?.line) {
-      await this.hub.rewind(loopId, loopCut.line, why);
-    }
-    if (editorId === undefined) return;
-    const editorRecs = await this.hub.records(editorId);
-    const cps = effectiveCheckpoints(editorRecs, adapter);
-    const cut = cps.filter((c) => c.at < boundary.record.at).at(-1);
-    const ranAfter = editorRecs.some(
-      (r) => r.record.type === 'model_checkpoint' && r.record.at >= boundary.record.at,
-    );
-    if (!ranAfter) return;
-    await this.hub.rewind(editorId, cut?.line, why);
-    this.editors?.forgetReads(editorId);
+    const m = (await this.now(loopId))?.m;
+    return after
+      .flatMap(({ line, record: r }) => {
+        const head = `[第 ${String(line)} 行 · ${localMinute(r.at)}]`;
+        if (r.type === 'page_actions' && !r.awaited) {
+          return [`${head} （在页面上）${describeActions(r.actions, m)}`];
+        }
+        if (r.type === 'page_error') {
+          return [`${head} 页面在学习者那边运行时报错：${r.message.slice(0, 300)}`];
+        }
+        return [];
+      })
+      .join('\n');
   }
 
   /** 守卫读的页面：最后一版每块的一句话与文字（去掉标签与代码）。 */
@@ -433,8 +261,8 @@ export class LivePages {
     if (cur === undefined) return undefined;
     const blocks = await this.content(loopId, cur.version);
     return [
-      `学习者最后看到的页面（第 ${String(cur.version)} 版，每块：编号、一句话、页面上的文字）：`,
-      ...blocks.map((b) => `- ${b.id}（${b.summary}）：${visibleText(b.html).slice(0, 1500)}`),
+      '学习者最后看到的页面（每块：一句话、页面上的文字）：',
+      ...blocks.map((b) => `- ${b.summary}：${visibleText(b.html).slice(0, 1500)}`),
     ].join('\n');
   }
 }
@@ -447,25 +275,19 @@ export function versionsOf(records: NumberedRecord[]): { line: number; record: P
   );
 }
 
-/** 学习者此刻看得到哪几块：最近一次报告。 */
-function visibleOf(records: NumberedRecord[]): string[] {
-  const v = records.filter((r) => r.record.type === 'page_view').at(-1)?.record;
-  return v?.type === 'page_view' ? v.visible : [];
+/** 子代理正在改页面：派出去了、还没交回（看正本，重启也对）。 */
+export function editing(records: NumberedRecord[]): boolean {
+  return openTasks(records).length > 0;
 }
 
-/** 这段时间里停留较久的几块（合计 ≥ 10 秒，最多三块）。 */
-function dwellOf(records: NumberedRecord[]): string {
-  const sum = new Map<string, number>();
+/** 派出去还没交回的页面子代理（taskId）。 */
+export function openTasks(records: NumberedRecord[]): string[] {
+  const open = new Set<string>();
   for (const { record: r } of records) {
-    if (r.type !== 'page_view' || r.dwell === undefined) continue;
-    for (const [id, s] of Object.entries(r.dwell)) sum.set(id, (sum.get(id) ?? 0) + s);
+    if (r.type === 'subagent_started' && r.agent === PAGE_AGENT) open.add(r.taskId);
+    if (r.type === 'subagent_result') open.delete(r.taskId);
   }
-  return [...sum]
-    .filter(([, s]) => s >= 10)
-    .sort((a, b) => b[1] - a[1])
-    .slice(0, 3)
-    .map(([id, s]) => `${id} 约 ${String(Math.round(s))} 秒`)
-    .join('、');
+  return [...open];
 }
 
 function diff(
@@ -481,50 +303,20 @@ function diff(
   };
 }
 
-export function describeActions(actions: PageAction[]): string {
+/** 学习者在页面上的动作各一句；块用它的一句话指（编号不进主模型上下文）。 */
+export function describeActions(actions: PageAction[], m?: PageManifest): string {
+  const name = (id: string) => {
+    const summary = m?.blocks.find((b) => b.id === id)?.summary;
+    return summary !== undefined && summary !== '' ? `「${summary}」` : '一块';
+  };
   return actions
     .map((a) => {
-      if (a.kind === 'toggle') return `${a.open ? '展开' : '折起'}了 ${a.block}`;
+      if (a.kind === 'toggle') return `${a.open ? '展开' : '折起'}了${name(a.block)}`;
       const detail =
         a.detail === undefined ? '' : `：${JSON.stringify(a.detail).slice(0, DETAIL_MAX)}`;
-      return `${a.block !== undefined ? `在 ${a.block} 上` : ''}「${a.name}」${detail}`;
+      return `${a.block !== undefined ? `在${name(a.block)}上` : ''}「${a.name}」${detail}`;
     })
     .join('；');
-}
-
-/** 页面上的事各一句（版本、学习者动作、退回、教训、报错），给学习对话与“过期了”的说明用。 */
-function pageEventLines(
-  records: NumberedRecord[],
-  o: { skipAwaited?: boolean; skipEdits?: boolean } = {},
-): string[] {
-  return records.flatMap(({ line, record: r }) => {
-    const one = pageEventLine(line, r, o);
-    return one === undefined ? [] : [one];
-  });
-}
-
-function pageEventLine(
-  line: number,
-  r: LogRecord,
-  o: { skipAwaited?: boolean; skipEdits?: boolean },
-): string | undefined {
-  switch (r.type) {
-    case 'page_actions':
-      if (o.skipAwaited === true && r.awaited) return undefined;
-      return `L${String(line)} 学习者在页面上（第 ${String(r.version)} 版）：${describeActions(r.actions)}`;
-    case 'page_rollback':
-      return `L${String(line)} 学习者把页面退回到第 ${String(r.to)} 版（成了第 ${String(r.version)} 版；退掉 ${r.removed.join('、') || '无'}${r.added.length > 0 ? `，换回 ${r.added.join('、')}` : ''}；原因：${r.reason ?? '没选'}）`;
-    case 'page_lesson':
-      return `L${String(line)} 退回的教训（${r.by === 'model' ? '你退回前写的' : '程序按事实拼的'}，只作参考）：${r.text}`;
-    case 'page_error':
-      return `L${String(line)} 第 ${String(r.version)} 版在学习者那边运行时报错：${r.message.slice(0, 300)}（要修就叫编辑员）`;
-    case 'page_version':
-      return r.by === 'editor' && o.skipEdits !== true
-        ? `L${String(line)} 页面换到第 ${String(r.version)} 版（编辑员改的）`
-        : undefined;
-    default:
-      return undefined;
-  }
 }
 
 /** 一块 HTML 里学习者看得到的文字（粗略：去掉脚本、样式与标签）。 */

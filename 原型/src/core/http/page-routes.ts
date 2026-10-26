@@ -1,12 +1,7 @@
 // 活页面的接口（会话/学习对话.md §11）：/api/sessions/<学习 id>/page/…
-// 读现状与某一版、学习者在页面上的动作与看得到哪几块、运行时报错、试跑结果、退回。类型在 src/shared/page.ts。
+// 读现状与某一版（看旧版）、学习者在页面上的动作、运行时报错、试跑结果。类型在 src/shared/page.ts。
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import {
-  PAGE_ROLLBACK_REASONS,
-  type PageAction,
-  type PageContentResponse,
-  type PageStateResponse,
-} from '../../shared/page.ts';
+import type { PageAction, PageContentResponse, PageStateResponse } from '../../shared/page.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 
 const MAX_BODY = 1 << 16;
@@ -46,26 +41,6 @@ export async function pageRoute(
     send(res, 200, {});
     return true;
   }
-  if (n === 5 && c === 'view') {
-    const visible = body.visible;
-    if (!Array.isArray(visible) || !visible.every((v) => typeof v === 'string')) {
-      throw new BadRequestError('visible 要是块编号的数组');
-    }
-    const dwell = body.dwell;
-    await pages.view(id, {
-      version: int(body.version, 'version'),
-      visible,
-      ...(typeof dwell === 'object' && dwell !== null
-        ? {
-            dwell: Object.fromEntries(
-              Object.entries(dwell).filter((e): e is [string, number] => typeof e[1] === 'number'),
-            ),
-          }
-        : {}),
-    });
-    send(res, 200, {});
-    return true;
-  }
   if (n === 5 && c === 'error') {
     if (typeof body.message !== 'string') throw new BadRequestError('message 要是字符串');
     await pages.error(id, int(body.version, 'version'), body.message);
@@ -78,19 +53,6 @@ export async function pageRoute(
       ...(typeof body.error === 'string' ? { error: body.error.slice(0, 2000) } : {}),
     });
     send(res, 200, {});
-    return true;
-  }
-  if (n === 5 && c === 'rollback') {
-    const reason = body.reason;
-    if (reason !== undefined && !(PAGE_ROLLBACK_REASONS as readonly unknown[]).includes(reason)) {
-      throw new BadRequestError(`reason 只能是 ${PAGE_ROLLBACK_REASONS.join(' / ')}`);
-    }
-    const version = await pages.rollback(
-      id,
-      int(body.to, 'to'),
-      reason as (typeof PAGE_ROLLBACK_REASONS)[number] | undefined,
-    );
-    send(res, 200, { version });
     return true;
   }
   return false;

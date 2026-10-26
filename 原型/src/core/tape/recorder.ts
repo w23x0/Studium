@@ -190,6 +190,13 @@ export class Recorder {
             },
           }
         : {}),
+      // 子代理在后台的事与模型自己起的一轮原样转交，不进录带（回放不重现它们）
+      ...(conv.listen
+        ? {
+            listen: (handlers: Parameters<NonNullable<ModelConversation['listen']>>[0]) =>
+              conv.listen?.(handlers),
+          }
+        : {}),
       close: () => conv.close(),
     };
   }

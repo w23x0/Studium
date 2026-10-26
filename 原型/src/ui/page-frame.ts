@@ -1,14 +1,13 @@
 // 活页面在浏览器里怎么跑（会话/学习对话.md §11、会话/页面子代理.md「边界」代码跑在哪）：
 // 每版拼成一页，放进只给脚本、不给同源的小窗（sandbox="allow-scripts"），内容安全策略不放外网，
-// 只能从本机取 KaTeX。框架的桥接脚本报：加载好了、报错、学习者看得到哪几块与停留、展开折起、
-// 页面自己定义的动作（studium.send，页面唯一能往外递东西的口）。
+// 只能从本机取 KaTeX。框架的桥接脚本报：加载好了、报错、展开折起、页面自己定义的动作
+// （studium.send，页面唯一能往外递东西的口）。只报观测得到的真操作，不报看得到哪几块、停了多久。
 import type { PageAction } from '../shared/page.ts';
 
 /** 小窗递给外面的话（都带 studium: 1）。 */
 export type FrameMessage =
   | { kind: 'ready' }
   | { kind: 'error'; message: string }
-  | { kind: 'view'; visible: string[]; dwell: Record<string, number> }
   | { kind: 'scroll'; y: number }
   | { kind: 'toggle'; block: string; open: boolean }
   | { kind: 'action'; name: string; detail?: unknown; block?: string; wait: boolean };
@@ -51,40 +50,12 @@ const BRIDGE = String.raw`(function () {
     var b = blockOf(t);
     if (b) post({ kind: 'toggle', block: b, open: t.open });
   }, true);
-  var seen = {}, since = {}, dwell = {}, lastKey = '', lastSent = Date.now();
-  function report(force) {
-    var now = Date.now(), vis = [];
-    for (var id in seen) if (seen[id]) {
-      vis.push(id);
-      dwell[id] = (dwell[id] || 0) + (now - since[id]) / 1000; since[id] = now;
-    }
-    vis.sort(function (a, b) { return Number(a.slice(1)) - Number(b.slice(1)); });
-    var key = vis.join(',');
-    if (key === lastKey && !force && now - lastSent < 15000) return;
-    var d = {}; for (var k in dwell) d[k] = Math.round(dwell[k]);
-    post({ kind: 'view', visible: vis, dwell: d });
-    dwell = {}; lastKey = key; lastSent = now;
-  }
-  var timer = 0;
-  function soon() { clearTimeout(timer); timer = setTimeout(function () { report(false); }, 1500); }
   window.addEventListener('scroll', function () { post({ kind: 'scroll', y: window.scrollY }); }, { passive: true });
   window.addEventListener('message', function (e) {
     if (e.source === P && e.data && typeof e.data.studiumScroll === 'number') window.scrollTo(0, e.data.studiumScroll);
   });
   window.addEventListener('load', function () {
     window.studium.math(document.body);
-    if ('IntersectionObserver' in window) {
-      var io = new IntersectionObserver(function (es) {
-        es.forEach(function (x) {
-          var id = x.target.getAttribute('data-block');
-          if (x.isIntersecting && !seen[id]) { seen[id] = true; since[id] = Date.now(); }
-          if (!x.isIntersecting && seen[id]) { dwell[id] = (dwell[id] || 0) + (Date.now() - since[id]) / 1000; seen[id] = false; }
-        });
-        soon();
-      }, { threshold: 0.15 });
-      document.querySelectorAll('[data-block]').forEach(function (el) { io.observe(el); });
-    }
-    setInterval(function () { report(false); }, 5000);
     setTimeout(function () { ready = true; post({ kind: 'ready' }); }, 50);
   });
 })();`;

@@ -70,9 +70,7 @@ import type {
   PageActionsRequest,
   PageContentResponse,
   PageErrorRequest,
-  PageRollbackRequest,
   PageTrialResult,
-  PageViewRequest,
 } from '../shared/page.ts';
 
 function token(): string {
@@ -151,17 +149,10 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  pageView: (loopId: string, body: PageViewRequest) =>
-    call<object>(`/sessions/${loopId}/page/view`, { method: 'POST', body: JSON.stringify(body) }),
   pageError: (loopId: string, body: PageErrorRequest) =>
     call<object>(`/sessions/${loopId}/page/error`, { method: 'POST', body: JSON.stringify(body) }),
   pageTrial: (loopId: string, trialId: string, body: PageTrialResult) =>
     call<object>(`/sessions/${loopId}/page/trial/${trialId}`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-  pageRollback: (loopId: string, body: PageRollbackRequest) =>
-    call<{ version: number }>(`/sessions/${loopId}/page/rollback`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),

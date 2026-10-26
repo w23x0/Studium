@@ -5,18 +5,16 @@ export const WP = {
   version: (n: number) => `第 ${String(n)} 版`,
   versions: '以前的版本',
   byEditor: '改了一次',
+  /** 旧数据：10-26 前退回过的版本。 */
   byRollback: (from: number) => `退回到第 ${String(from)} 版`,
   editing: '正在改页面…',
   drawing: '正在画页面…',
-  viewingOld: (n: number) => `在看第 ${String(n)} 版（只看，不算退回）`,
+  viewingOld: (n: number) => `在看第 ${String(n)} 版（只看）`,
   backToNow: '回到现在',
-  rollback: '退回到这一版',
-  rollbackAsk: '为什么退回？（可以不选）',
-  rollbackSkip: '不选，直接退回',
-  rollbackCancel: '算了',
-  rollingBack: '正在退回…',
   openPage: '看页面',
+  agentReturned: (text: string) => `改页面：${text}`,
   backToChat: '回对话',
+  /** 旧数据里的退回。 */
   rolledBackLine: (to: number, reason?: string) =>
     `你把页面退回到第 ${String(to)} 版${reason !== undefined ? `（${reason}）` : ''}`,
 } as const;
