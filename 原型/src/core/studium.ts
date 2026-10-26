@@ -65,9 +65,13 @@ import { localMinute } from '../shared/time.ts';
 export class BadRequestError extends Error {}
 
 /** 定下一步的结果：导航定了、已开学习对话；或导航要先问学习者一件事。 */
-export type PlanResult =
+export type PlanResult = (
   | { kind: 'opened'; loopSessionId: string; title: string; reason: string; navSessionId: string }
-  | { kind: 'question'; question: string; navSessionId: string };
+  | { kind: 'question'; question: string; navSessionId: string }
+) & {
+  /** 导航发现资料缺的那段，经主对话提议去找（会话/找资料.md「何时开」）。 */
+  materialGap?: string;
+};
 
 /** 出发点的来源（学过的记录 / 自述 / 假定）。 */
 type StartSource = (typeof START_SOURCES)[number];
@@ -321,6 +325,7 @@ export class Studium {
             this.retrieveTool(sessionId),
             this.cardTool(sessionId),
             this.askLearnerTool(sessionId),
+            this.materialGapTool(sessionId),
             ...this.longterm.reminderTools(sessionId),
             this.o.cross.addNoteTool(sessionId),
           ];
@@ -910,8 +915,11 @@ export class Studium {
       text: await this.navOpening(trigger, mainId),
     });
     await this.hub.idle(nav.sessionId);
+    const gap = this.navGaps.get(nav.sessionId);
+    const withGap = gap !== undefined ? { materialGap: gap } : {};
     const question = this.navQuestions.get(nav.sessionId);
-    if (question !== undefined) return { kind: 'question', question, navSessionId: nav.sessionId };
+    if (question !== undefined)
+      return { kind: 'question', question, navSessionId: nav.sessionId, ...withGap };
     const card = this.cards.get(nav.sessionId);
     if (!card) throw new Error('导航没有交回下一步（见该会话记录）');
     // 先写路线决定，紧接着写导航定的单子（记录/单子与路线.md「路线决定与理由」）；
@@ -951,6 +959,7 @@ export class Studium {
       title: picked?.title ?? '',
       reason: picked?.reason ?? '',
       navSessionId: nav.sessionId,
+      ...withGap,
     };
   }
 
@@ -1489,6 +1498,9 @@ export class Studium {
   /** 导航交回的、要问学习者的问题（导航会话 id → 问题）。 */
   private readonly navQuestions = new Map<string, string>();
 
+  /** 导航交回的资料缺口（导航会话 id → 缺什么、为什么要）。 */
+  private readonly navGaps = new Map<string, string>();
+
   /**
    * 导航开场（会话/导航.md「开场给什么」）：触发原因、方向目标、期限、资料范围、各次学习现在的样子、
    * 主对话原文、路线事实（最近 5 次定下的与路线决定）、停车场、学过的记录上 / 中层、其他。
@@ -1910,6 +1922,24 @@ export class Studium {
         if (q === '') return err('问题不能是空的');
         this.navQuestions.set(sessionId, q);
         return ok('问题已交回主对话');
+      },
+    };
+  }
+
+  /** 导航发现资料缺一段时：交回缺什么，由主对话向学习者提议去找（会话/找资料.md「何时开」）。 */
+  private materialGapTool(sessionId: string): ToolSpec {
+    return {
+      name: 'propose_find_materials',
+      description:
+        '本项目资料缺了路线上要用的一段（如讲某块的原文、代码仓库里没有的配置或论文）时调用：交回缺什么、为什么要，主对话会向学习者提议去找资料。不自己去找、不代替 submit_next / ask_learner，照常交下一步；以最后一次为准。',
+      input: {
+        gap: z.string().describe('缺什么资料、路线上哪一段要用它，一两句日常话'),
+      },
+      run: (a) => {
+        const g = (a.gap as string | undefined)?.trim() ?? '';
+        if (g === '') return err('缺什么不能是空的');
+        this.navGaps.set(sessionId, g);
+        return ok('收到，主对话会向学习者提议去找；你照常交下一步');
       },
     };
   }
@@ -2339,13 +2369,15 @@ export class Studium {
         input: { reason: z.string().describe('学习者怎么说的、为什么现在要下一步，一两句') },
         run: async (a) => {
           const r = await this.planNext(`学习者在主对话里要下一步：${a.reason as string}`, mainId);
-          return r.kind === 'opened'
-            ? ok(
-                `定下了，学习对话已开：「${r.title}」。为什么是它：${r.reason}。跟学习者说一句学什么、为什么，入口已经放在主对话里。`,
-              )
-            : ok(
-                `想下一步之前要先问学习者一件事：${r.question}。顺口问他；他答了再调用 plan_next，把他的回答写进 reason。`,
-              );
+          const said =
+            r.kind === 'opened'
+              ? `定下了，学习对话已开：「${r.title}」。为什么是它：${r.reason}。跟学习者说一句学什么、为什么，入口已经放在主对话里。`
+              : `想下一步之前要先问学习者一件事：${r.question}。顺口问他；他答了再调用 plan_next，把他的回答写进 reason。`;
+          return ok(
+            r.materialGap !== undefined
+              ? `${said}\n另外，项目资料里缺一段：${r.materialGap}。顺带问学习者要不要去找；他说要，再调用 find_materials，request 里写上缺什么。`
+              : said,
+          );
         },
       },
       this.listLearnedTool(mainId),
@@ -2353,7 +2385,11 @@ export class Studium {
         name: 'find_materials',
         description:
           '学习者要找资料时调用（如“帮我找讲 SVD 的好资料”）：在他这条消息下开一个找资料的对话，联网搜、列候选，学习者勾了才存进本项目资料。主对话自己不搜。',
-        input: { request: z.string().describe('学习者的原话') },
+        input: {
+          request: z
+            .string()
+            .describe('学习者的原话；是答应了去补之前提的资料缺口时，连同缺什么一起写'),
+        },
         run: async (a) => {
           const recs = await this.hub.records(mainId);
           const asked = recs.filter((r) => r.record.type === 'user_message').at(-1);
