@@ -46,7 +46,7 @@
 | 本机要查的（未核） | 说明 |
 | --- | --- |
 | omp 的网络搜索工具怎么实现 | 后端用哪家搜索、怎么抓网页转文字、结果怎么给模型；`docs/agent框架学习/02-pi与omp笔记.md` 里没记 |
-| “dsh 官方自建搜索引擎”指什么 | 产品负责人原话；agent 没听明白是哪家，本机先问清 |
+| dsh = DeepSeek Harness（DeepSeek 的开源编程 agent，开发者预览） | 网上教程说它的网络搜索默认就带、用的是同一个 DeepSeek API 密钥，不另配（[DataCamp 教程](https://www.datacamp.com/tutorial/deepseek-harness)；[Ollama 文档](https://docs.ollama.com/integrations/deepseek-harness) 说接 Ollama 时要 Ollama 云端）；是二手教程，配置随版本变，本机看它源码确认搜索走的是 DeepSeek 官方接口还是别的。若是官方接口，接 DeepSeek 时可直接用，不必仿 omp |
 | 导航发现缺资料时怎么提议 | 按已定设计补实现：导航交回“缺什么资料”，主对话转告学习者、开找资料；属于对齐已定设计，不用重新拍板 |
 
 ## 下次从哪接
