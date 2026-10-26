@@ -8,6 +8,7 @@ import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import { api } from './api.ts';
 import { Conversation } from './components/conversation.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
+import { PageTrials } from './components/live-page.tsx';
 import { ProjectHome } from './components/project-home.tsx';
 import { NewProject } from './components/sidebar/new-project.tsx';
 import { Sidebar } from './components/sidebar/sidebar.tsx';
@@ -401,6 +402,8 @@ export function App() {
               )}
             </div>
           </ProjectContext.Provider>
+          {/* 活页面的新一版先在这里看不见地试跑（会话/页面编辑员.md「怎么改」） */}
+          <PageTrials />
         </PanelContext.Provider>
       </OpenSessionContext.Provider>
     </LayoutContext.Provider>

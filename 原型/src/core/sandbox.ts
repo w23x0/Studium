@@ -32,6 +32,8 @@ const WHAT: Record<string, string> = {
   教法记录: '这个学习者的教法记录',
   '本次对话.md': '本次学习的对话原文，带行号（压缩后按行号读回）',
   '项目说明.md': '学习者写给这个项目的长期要求（项目说明）；与学习者当场说的冲突时以当场说的为准',
+  '页面.md': '活页面的目录：现在第几版、每块的编号与一句话、学习者此刻看得到哪几块（每轮刷新）',
+  '学习位置.md': '画学习位置时的依据：哪些点、此刻在哪、哪些被守卫确认过',
   [MATERIAL_INDEX_NAME]:
     '本项目资料的目录：每份一行（id、标题、种类、版本、日期、状态、角色）；引用写 资料id/文件:行号',
 };
@@ -67,6 +69,10 @@ export interface SandboxDeps {
   scopeOf: (sessionId: string) => Promise<string[]>;
   /** 所属项目的项目说明（没写 = 空串）；守卫、后台整理不经这里拿（工单 W9 §4.6）。 */
   instructionsOf: (sessionId: string) => Promise<string>;
+  /** 活页面的目录（会话/学习对话.md §11：主对话看目录，不看整页代码）。 */
+  pageText: (loopId: string) => Promise<string>;
+  /** 学习位置的依据。 */
+  positionText: (loopId: string) => Promise<string>;
 }
 
 export class Sandboxes {
@@ -89,6 +95,8 @@ export class Sandboxes {
         ...this.dirEntries(loopId, [TEACHING_TOOLS_DIR, '学过的记录', '状态记录', '教法记录']),
         { name: '本次对话.md', path: join(this.root(loopId), '只读', '本次对话.md') },
         { name: '项目说明.md', path: join(this.root(loopId), '只读', '项目说明.md') },
+        { name: '页面.md', path: join(this.root(loopId), '只读', '页面.md') },
+        { name: '学习位置.md', path: join(this.root(loopId), '只读', '学习位置.md') },
       ],
       network: false,
     };
@@ -108,6 +116,12 @@ export class Sandboxes {
     await mkdir(join(readOnly, '教法记录'), { recursive: true });
     await writeFile(join(readOnly, '教法记录', '教法记录.md'), this.strategyText(), 'utf8');
     await writeFile(join(readOnly, '本次对话.md'), renderTranscript(records), 'utf8');
+    await writeFile(join(readOnly, '页面.md'), `${await this.o.pageText(loopId)}\n`, 'utf8');
+    await writeFile(
+      join(readOnly, '学习位置.md'),
+      `${await this.o.positionText(loopId)}\n`,
+      'utf8',
+    );
     const instructions = await this.o.instructionsOf(loopId);
     await writeFile(
       join(readOnly, '项目说明.md'),

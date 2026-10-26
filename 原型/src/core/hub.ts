@@ -49,6 +49,8 @@ export interface KindConfig {
   preface?(sessionId: string, inputLine: number, fresh: boolean): Promise<string>;
   /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
   webSearch?: boolean;
+  /** 为真时每轮结束记一条 model_checkpoint：这类会话的上下文以后可能截回（活页面退回）。 */
+  checkpoints?: boolean;
 }
 
 export interface HubOptions {
@@ -282,9 +284,10 @@ export class Hub {
       let delivered = input;
       const fresh = live.conversation === undefined && !(await this.resumable(sessionId));
       live.conversation ??= await this.openConversation(sessionId, live.kind, cfg);
-      if (cfg.preface !== undefined) {
-        // 主对话：连续上下文，每轮附上当前事实（会话/主对话.md「每轮附上的事实」）
-        const text = await cfg.preface(sessionId, inputLine, fresh);
+      const text = await cfg.preface?.(sessionId, inputLine, fresh);
+      if (text !== undefined && text !== '') {
+        // 主对话：连续上下文，每轮附上当前事实（会话/主对话.md「每轮附上的事实」）；
+        // 学习对话：攒着的页面事实（会话/学习对话.md §11）
         await this.append(sessionId, {
           type: 'turn_context',
           at: this.iso(),
@@ -355,6 +358,17 @@ export class Hub {
               reason: ev.reason,
             });
             break;
+          case 'checkpoint':
+            if (cfg.checkpoints === true) {
+              await this.append(sessionId, {
+                type: 'model_checkpoint',
+                at: this.iso(),
+                adapter,
+                token: await this.currentToken(sessionId),
+                point: ev.point,
+              });
+            }
+            break;
           case 'turn_end':
             break;
         }
@@ -382,12 +396,6 @@ export class Hub {
     kind: ConversationKind,
     cfg: KindConfig,
   ): Promise<ModelConversation> {
-    const records = await this.records(sessionId);
-    const adapter = this.opts.model.name;
-    const resume = records
-      .map((r) => r.record)
-      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
-      .at(-1);
     const sandbox = await cfg.sandbox?.(sessionId);
     return this.opts.model.open({
       systemPrompt: cfg.systemPrompt,
@@ -395,8 +403,100 @@ export class Hub {
       session: { id: sessionId, kind },
       ...(sandbox !== undefined ? { sandbox } : {}),
       ...(cfg.webSearch === true ? { webSearch: true } : {}),
-      ...(resume?.type === 'model_session' ? { resumeToken: resume.token } : {}),
+      ...(await this.resumeFrom(sessionId)),
     });
+  }
+
+  /**
+   * 从哪接上：最近一条续接凭据；上下文截回过的，接到现在有效的最后一个 checkpoint 为止
+   * （之后的轮已拿掉；会话/学习对话.md §11）。
+   */
+  private async resumeFrom(
+    sessionId: string,
+  ): Promise<{ resumeToken?: string; resumeAt?: string }> {
+    const records = await this.records(sessionId);
+    const adapter = this.opts.model.name;
+    if (records.some((r) => r.record.type === 'context_rewound' && r.record.adapter === adapter)) {
+      // 截回过：接到现在有效的最后一个 checkpoint；一个都不剩（截回到开头）就新开
+      const cp = effectiveCheckpoints(records, adapter).at(-1);
+      return cp !== undefined ? { resumeToken: cp.token, resumeAt: cp.point } : {};
+    }
+    const resume = records
+      .map((r) => r.record)
+      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
+      .at(-1);
+    return resume?.type === 'model_session' ? { resumeToken: resume.token } : {};
+  }
+
+  private async currentToken(sessionId: string): Promise<string> {
+    const adapter = this.opts.model.name;
+    const last = (await this.records(sessionId))
+      .map((r) => r.record)
+      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
+      .at(-1);
+    return last?.type === 'model_session' ? last.token : '';
+  }
+
+  /**
+   * 把模型侧上下文截回到某个 checkpoint（那一行；不给 = 截回到开头、下次新开）：丢掉活着的模型对话，下次按截回点续接。
+   * 正本照旧全留，只追加一条 context_rewound。会话正在跑时不截（调用方先等它停）。
+   */
+  async rewind(sessionId: string, toLine: number | undefined, reason: string): Promise<void> {
+    const live = await this.ensureLive(sessionId);
+    if (live.running || live.queue.length > 0) throw new Error(`${sessionId} 正在跑，不能截回`);
+    if (toLine !== undefined) {
+      const target = (await this.records(sessionId)).find((r) => r.line === toLine)?.record;
+      if (target?.type !== 'model_checkpoint') {
+        throw new Error(`第 ${String(toLine)} 行不是 checkpoint`);
+      }
+    }
+    await live.conversation?.close();
+    live.conversation = undefined;
+    await this.append(sessionId, {
+      type: 'context_rewound',
+      at: this.iso(),
+      adapter: this.opts.model.name,
+      ...(toLine !== undefined ? { toLine } : {}),
+      reason,
+    });
+  }
+
+  /**
+   * 旁问：在这个会话现在的上下文的分身上问一句，拿回模型的一句话；原会话与正本都不动。
+   * 会话正在跑、没有可续接的上下文、或适配器做不了时抛错，调用方自己兜底。
+   */
+  async aside(sessionId: string, question: string): Promise<string> {
+    const live = await this.ensureLive(sessionId);
+    if (live.running || live.queue.length > 0) throw new Error(`${sessionId} 正在跑，不能旁问`);
+    const from = await this.resumeFrom(sessionId);
+    if (from.resumeToken === undefined) throw new Error(`${sessionId} 没有可续接的上下文`);
+    const cfg = this.opts.kinds(live.kind);
+    const sandbox = await cfg.sandbox?.(sessionId);
+    const conv = this.opts.model.open({
+      systemPrompt: cfg.systemPrompt,
+      tools: [],
+      session: { id: sessionId, kind: live.kind },
+      ...(sandbox !== undefined ? { sandbox } : {}),
+      ...from,
+      aside: true,
+    });
+    const texts: string[] = [];
+    try {
+      for await (const ev of conv.send({ role: 'program', text: question })) {
+        if (ev.kind === 'assistant_text') texts.push(ev.text);
+        if (ev.kind === 'turn_error') throw new Error(ev.reason);
+      }
+    } finally {
+      await conv.close();
+    }
+    const text = texts.join('').trim();
+    if (text === '') throw new Error('旁问没有拿回文字');
+    return text;
+  }
+
+  /** 推一条不来自正本的事件（活页面试跑）。 */
+  broadcast(e: ServerEvent): void {
+    this.emit(e);
   }
 
   /** 工具调用由程序记进正本（用了哪份资料、查了什么），不靠模型自报。 */
@@ -459,6 +559,26 @@ export class Hub {
   private iso(): string {
     return this.now().toISOString();
   }
+}
+
+/**
+ * 现在还有效的 checkpoint（按行序）：截回到某一行之后，那行之后、截回之前的 checkpoint 作废。
+ */
+export function effectiveCheckpoints(
+  records: NumberedRecord[],
+  adapter: string,
+): { line: number; at: string; token: string; point: string }[] {
+  let out: { line: number; at: string; token: string; point: string }[] = [];
+  for (const { line, record: r } of records) {
+    if (r.type === 'model_checkpoint' && r.adapter === adapter) {
+      out.push({ line, at: r.at, token: r.token, point: r.point });
+    }
+    if (r.type === 'context_rewound' && r.adapter === adapter) {
+      const to = r.toLine;
+      out = to === undefined ? [] : out.filter((c) => c.line <= to);
+    }
+  }
+  return out;
 }
 
 /** 教学工具在只读区里的虚拟路径前缀。 */

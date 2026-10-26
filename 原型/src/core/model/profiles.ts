@@ -12,7 +12,10 @@ export interface Profile {
 
 export type Profiles = Partial<Record<ConversationKind, Profile>>;
 
-/** 默认：主对话低强度；找资料中等；畅谈、学习对话、守卫、导航、检索子代理、状态整理高强度；教法记录整理没规定，不设。 */
+/**
+ * 默认：主对话低强度；找资料中等；畅谈、学习对话、守卫、导航、检索子代理、状态整理高强度；教法记录整理没规定，不设；
+ * 页面编辑员用 Sonnet、中等强度（会话/页面编辑员.md：主对话用 Opus 时编辑员用 Opus 或 Sonnet，可选更快的）。
+ */
 export const DEFAULT_PROFILES: Profiles = {
   main: { effort: 'low' },
   talk: { effort: 'high' },
@@ -23,6 +26,7 @@ export const DEFAULT_PROFILES: Profiles = {
   retrieve: { effort: 'high' },
   state: { effort: 'high' },
   find: { effort: 'medium' },
+  editor: { model: 'sonnet', effort: 'medium' },
 };
 
 const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];

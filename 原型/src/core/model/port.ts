@@ -31,6 +31,8 @@ export interface SandboxSpec {
   readOnly: { name: string; path: string }[];
   /** 默认 false：不给联网。 */
   network: boolean;
+  /** 默认 true：给跑命令（Bash）。页面编辑员不给：它只用读和替换，读过哪块由框架从读动作里知道。 */
+  commands?: boolean;
 }
 
 export interface ConversationSpec {
@@ -42,6 +44,16 @@ export interface ConversationSpec {
   sandbox?: SandboxSpec;
   /** 上次的续接凭据（正本里最近一条 model_session），没有就是新开。 */
   resumeToken?: string;
+  /**
+   * 续接时只接到这一点（某一轮末尾的 checkpoint）为止，之后的从模型上下文里拿掉：活页面退回时截上下文
+   * （会话/学习对话.md §11）。没有 = 整份接上。
+   */
+  resumeAt?: string;
+  /**
+   * 旁问：在这份上下文的一个分身上问一句、拿回一句话，原对话不受影响（退回时请主模型写教训）。
+   * 不给工具、不给沙盒，只跑一轮。
+   */
+  aside?: boolean;
   /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
   session?: { id: string; kind: ConversationKind };
   /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
@@ -85,6 +97,8 @@ export type ModelEvent =
   | { kind: 'model'; name: string }
   /** 沙盒里的一个动作（读 / 写 / 跑命令……），程序当场记进正本。 */
   | SandboxActionEvent
+  /** 本轮成功结束时的位置（这一轮最后一条消息的标识），在 turn_end 之前报；以后可以截回到这里。 */
+  | { kind: 'checkpoint'; point: string }
   /** 本轮结束。 */
   | { kind: 'turn_end' }
   /** 本轮失败；对话仍可继续。 */
