@@ -65,7 +65,7 @@ export class LivePages {
     const cur = {
       version: last.record.version,
       manifest: last.record.manifest,
-      m: await this.o.store.manifest(loopId, last.record.manifest),
+      m: await this.o.store.manifest<PageManifest>(loopId, last.record.manifest),
       lastBlock: last.record.lastBlock,
     };
     this.current.set(loopId, cur);
@@ -126,7 +126,7 @@ export class LivePages {
     if (cur?.version === version) return cur.m;
     const v = versionsOf(await this.hub.records(loopId)).find((r) => r.record.version === version);
     if (v === undefined) throw this.o.badRequest(`没有第 ${String(version)} 版`);
-    return this.o.store.manifest(loopId, v.record.manifest);
+    return this.o.store.manifest<PageManifest>(loopId, v.record.manifest);
   }
 
   async state(loopId: string): Promise<PageStateResponse> {

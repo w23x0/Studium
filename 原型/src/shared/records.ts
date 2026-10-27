@@ -75,6 +75,11 @@ export interface SessionOpened {
   resumeOf?: ResumeOrigin;
   /** 这是一次阶段复盘（畅谈类会话的另一种活，批 6）：回看的时间窗口。 */
   review?: ReviewWindow;
+  /**
+   * 学习对话按屏幕跑（W10，会话/学习对话.md §11）：每轮屏幕由主模型的输出定。没有这一项的学习对话是旧版开的
+   * （开场的提示词与工具已定死），只看、不再跑新一轮。
+   */
+  screens?: true;
 }
 
 export interface UserMessage {
@@ -85,6 +90,8 @@ export interface UserMessage {
   objection?: { toLine: number };
   /** 随这句话附的图片（拍照 / 手写，批 4）：转写文字已并进 text（教学只读文字，不读原图），这里记原图与转写的来历。 */
   images?: ImageInput[];
+  /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3 学习者回话）：key 只在程序里用，pointer 是那块的一句话。 */
+  replyTo?: { key: string; pointer: string };
 }
 
 /** 学习者消息里的一张图片：原图在输入存放处（只追加），转写由模型接口做、学习者发送前可改。 */
@@ -139,6 +146,8 @@ export interface SandboxAction {
   actor: 'model';
   /** 子代理做的：它的名字（主模型自己做的不填；会话/页面子代理.md）。 */
   agent?: string;
+  /** 子代理做的：它这件活的编号（同 subagent_started.taskId；框架另开的是 `maker-…`）。 */
+  task?: string;
   op: 'read' | 'write' | 'run' | 'search' | 'other';
   path?: string;
   command?: string;
@@ -517,7 +526,13 @@ export type LogRecord =
   | PageLesson
   | PageError
   | SubagentStarted
-  | SubagentResult;
+  | SubagentResult
+  | ScreenShown
+  | ComponentVersion
+  | ComponentAction
+  | ComponentReport
+  | ComponentError
+  | ScreenNote;
 
 /** 主模型派出的子代理开始了（框架自带的子代理机制，后台跑；会话/页面子代理.md）。 */
 export interface SubagentStarted {
@@ -526,6 +541,8 @@ export interface SubagentStarted {
   agent: string;
   taskId: string;
   description?: string;
+  /** 主模型派它时给的交代原文（W10：学习者动了组件、框架另开子代理时带上它）。 */
+  brief?: string;
 }
 
 /**
@@ -538,6 +555,81 @@ export interface SubagentResult {
   agent: string;
   taskId: string;
   status: string;
+  text: string;
+}
+
+// ───────────── 屏幕（W10，会话/学习对话.md §11；块与清单的形状在 screen.ts）─────────────
+
+/**
+ * 第 n 屏：主模型一轮输出完、框架摆好的一屏。只记清单指纹，内容在 `<数据>/screens/<学习 id>/`。
+ * fromLine = 这一轮从正本哪一行之后开始（这轮的输入行；模型自己起的一轮 = 开始前最后一行）。
+ */
+export interface ScreenShown {
+  type: 'screen';
+  at: string;
+  n: number;
+  manifest: string;
+  fromLine: number;
+  /** 框架小模型这次花了多久（毫秒）；没调（这轮不用对、不用摆）就不填。 */
+  ms?: number;
+  /** 框架小模型实际执行的模型。 */
+  model?: string;
+  /** 主模型点名拿回的描述各对到了没有（对上的 key 只在程序里用）。 */
+  matched?: { desc: string; key?: string }[];
+}
+
+/** 组件换了一版：子代理交上、框架查过（试跑过没有见 trialed）。内容在 `<数据>/screens/<学习 id>/`。 */
+export interface ComponentVersion {
+  type: 'component_version';
+  at: string;
+  /** 框架发的组件编号（c1、c2……），不进主模型上下文。 */
+  component: string;
+  version: number;
+  manifest: string;
+  /** 这个组件是什么（一句话，取主模型派活时的说明）。 */
+  pointer: string;
+  /** 哪件活交的（subagent_started.taskId，或框架另开的 `maker-…`）。 */
+  task?: string;
+  trialed: boolean;
+}
+
+/** 学习者在组件上的一个操作（组件发出的一句看得懂的话）；身份是学习者。 */
+export interface ComponentAction {
+  type: 'component_action';
+  at: string;
+  component: string;
+  text: string;
+  awaited: boolean;
+  /** 先交给谁（子代理按交代做进组件代码）。 */
+  to: 'maker' | 'main' | 'both';
+}
+
+/** 框架另开的子代理（学习者动了它做的组件后）交回的一句：往上报的，或自己改了组件后报的。 */
+export interface ComponentReport {
+  type: 'component_report';
+  at: string;
+  component: string;
+  task: string;
+  text: string;
+  /** 等主对话回应：立刻跑一轮。 */
+  awaited: boolean;
+  /** 这次它改了组件。 */
+  changed: boolean;
+}
+
+/** 组件在学习者那边运行时报错（上屏后、学习者碰到时才出的）。 */
+export interface ComponentError {
+  type: 'component_error';
+  at: string;
+  component: string;
+  version: number;
+  message: string;
+}
+
+/** 框架回给主模型的一句（如点名的描述对不上）：程序确知的，下一轮按时间接在线后面。 */
+export interface ScreenNote {
+  type: 'screen_note';
+  at: string;
   text: string;
 }
 
