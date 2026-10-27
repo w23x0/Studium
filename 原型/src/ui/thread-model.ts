@@ -21,7 +21,7 @@ export interface UiMessage {
   /** 同一轮多段回复合成一条时，合进来的全部行号（含 line）。 */
   lines?: number[];
   failed?: boolean;
-  /** 是否学会的判断那句提示：可点开看理由（line 即判定所在行）。 */
+  /** 收尾记录那句提示：可点开看整理的内容（line 即收尾记录所在行）。 */
   verdict?: { closed: boolean };
   /** 学习者对某次判断提的不同看法（原话照记）。 */
   objection?: { toLine: number; label: string };
@@ -33,7 +33,7 @@ export interface UiMessage {
   candidates?: CandidatesView;
   /** 工具行：模型这一段用了哪些工具、做了什么（一行摘要，可展开）；调工具前的短旁白收在这里，不当正文。 */
   tools?: ToolGroup;
-  /** 等待中的一行（守卫正在整理）：灰字，判断出来后消失。 */
+  /** 等待中的一行（守卫正在整理）：灰字，收尾记录交回后消失。 */
   pending?: true;
 }
 
@@ -178,12 +178,12 @@ export function toUiMessages(
         break;
       }
       case 'guard_verdict': {
-        // 判断出来了：“正在整理”那行换成判断
+        // 收尾记录交回了：“正在整理”那行换成整理好了（守卫 10-23 起不把关）
         dropPending();
         push({
           id,
           role: 'system',
-          text: judgementLine(r.closed, r.problem),
+          text: judgementLine(r.problem),
           line,
           verdict: { closed: r.closed && r.problem === undefined },
         });

@@ -6,7 +6,7 @@ const TOOL: Record<string, string> = {
   read_session: '读了一段对话记录',
   retrieve: '派人去查了细节',
   submit_next: '定下了下一次学什么',
-  submit_verdict: '写好了判断',
+  submit_verdict: '写好了这次学到了什么',
   submit_findings: '交回了查到的东西',
   submit_candidates: '列出了候选资料',
   ask_learner: '有一句要问你',

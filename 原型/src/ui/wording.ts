@@ -10,8 +10,6 @@ export const W = {
   // ── 项目页 ──
   projectHome: '项目页', // 项目页（Overview）
   projectChat: '项目对话', // 主对话
-  /** 左栏对话列表里学习对话的来历。 */
-  taskFrom: { resume: '接着学的' } as const,
   goal: '学成后能', // 方向目标（页头只放一行）
   goalMore: '全部方向',
   goalSavedLine: '记下了你的方向，在项目页“记着什么”里能看全。',
@@ -19,18 +17,13 @@ export const W = {
   backToChat: '进项目对话',
   backToMain: '回项目对话',
   nextStep: '下一步学什么',
-  noneYet: '还没有',
   groups: {
     inProgress: '在学',
     closed: '学完',
     unclosed: '搁着', // 没合上（停车场）
-    shelved: '停着的', // 搁置（旧数据；界面不再给这个按钮）
   },
   groupHints: {
-    inProgress: '还开着的学习，点进去接着说',
-    closed: '判断过你已经学会、你也确认了的',
     unclosed: '没学完就先结束的；下次要下一步时会一起考虑',
-    shelved: '停着的，进去说句话就能接上',
   },
   learnEmpty: '还没开始学。在项目对话里说想学什么，或点“下一步学什么”。',
   closedMore: (n: number) => `全部 ${String(n)} 次`,
@@ -38,13 +31,8 @@ export const W = {
 
   // ── 下一步 ──
   askNext: '下一步学什么？',
-  whyNext: '为什么接下来学这个',
-  cardTrigger: '为什么现在想下一步',
-  sources: '出处',
-  noSources: '这一项没有记出处。',
 
   // ── 依据面板 ──
-  panel: '依据', // 右侧依据面板
   panelOpen: '打开开发者面板',
   panelClose: '关上',
   panelHomeTitle: '开发者面板',
@@ -59,7 +47,7 @@ export const W = {
   moreActions: '更多',
   endLater: '搁着，以后再学', // 没合上就结束
   endLaterHint: '没学完就先结束这次；下次要下一步时会一起考虑。',
-  confirmBar: '已经算学会了。还想补一句就接着说；不补就点“学完了”。',
+  confirmBar: '这次学到了什么已整理好。还想补一句就接着说；不补就点“学完了”。',
   confirmMore: '再补一句',
   confirmGo: '学完了',
   loopDone: '这部分学完了。',
@@ -92,13 +80,13 @@ export const W = {
     自述: '你自己说会的',
     假定: '先假定你会的',
   } as const,
-  judgements: '是否学会的判断', // 守卫判定
-  noJudgements: '还没判断过。',
-  judgedYes: '判断：已经掌握',
-  judgedNo: '判断：还差一点',
-  whyJudged: '为什么这么判断',
-  reason: '理由',
-  problem: '没能采用这次判断的原因',
+  judgements: '这次学到了什么', // 守卫的收尾记录（10-23 起不把关）
+  noJudgements: '还没整理过。',
+  judgedYes: '整理好了',
+  judgedNo: '没整理成',
+  whyJudged: '看整理的内容',
+  reason: '总的来说',
+  problem: '没整理成的原因',
   quotedWords: '依据的原话',
   askedBy: (by: 'model' | 'learner') =>
     by === 'learner' ? '你说“我觉得懂了”' : '老师提出可以看看',
@@ -107,12 +95,11 @@ export const W = {
   // 引用的是记录里的行号，和对话里看到的第几句对不上，所以不写数字，点了跳过去看
   lineRef: '（那句原话）',
   lineRangeRef: '（那几句原话）',
-  loopLineSource: '对话里的一句',
   ended: '结束时说明',
   notAvailable: '（这一行不是对话里的话）',
 
   // ── 异议 ──
-  objectJudgement: '我觉得判得不对',
+  objectJudgement: '我觉得记得不对',
   objectRecord: '我觉得记得不对',
   objectPlaceholder: '说说哪里不对、你是怎么想的…',
   objectSubmit: '提交',
@@ -120,7 +107,7 @@ export const W = {
   objectSent: '收到了，原话已记下。',
   objectSentInLoop: '收到了，你的话已经放进这段学习对话里，可以接着学，再说“我觉得懂了”。',
   objections: '你提过的不同看法',
-  objectionTag: '对上面那次判断的不同看法',
+  objectionTag: '对上面那次整理的不同看法',
 
   page: (book: string, page?: number) => (page !== undefined ? `${book} · 第 ${page} 页` : book),
 
@@ -262,7 +249,6 @@ export const W = {
   materialsHint: '学习时查资料、排下一步，只在本项目的资料里查',
   materialsAll: '还没有资料：拖文件进来，或点“添加”。学习时只在本项目的资料里查。',
   materialMissing: '资料目录里找不到了',
-  materialRemove: '从项目资料里去掉',
   inProject: '项目资料', // 资料列表里的标记
   deadline: '期限',
   deadlineNone: '没设期限',
@@ -300,12 +286,6 @@ export const W = {
   noteSave: '记下',
   noteEarlier: '以前补过的',
   noteAdded: '只会追加，旧的留着。',
-  crossKind: { 补习型: '跨领域 · 补一课', 对比链接型: '跨领域 · 对照着看' } as const,
-  crossHint: {
-    补习型: '你要弄懂的问题用到另一个领域的东西，先补到够用再回来。',
-    对比链接型: '另一个领域里有相似的内容，你已经会了，把两边对着看。',
-  } as const,
-  crossSides: (other: string) => `另一边：${other}`,
   stateTimeline: '按时间回看',
   stateList: '列表',
   stateTimelineHint: '每次整理出的记录按时间排开；颜色可以按所处阶段或按来源看。',
@@ -341,7 +321,6 @@ export const W = {
   ticketEditSee: '看那一行',
   ticketEditedFields: (fields: string) => `改了：${fields || '（没变）'}`,
   ticketEdit: '改一改',
-  ticketEditOpen: '改一改再开始',
   ticketEditTitle: '改这次要学的',
   ticketEditHint: '改过之后，这次就按改后的来；原来记下的不改。',
   ticketEditSave: '保存改动',
@@ -351,7 +330,7 @@ export const W = {
 
   // ── 判定里的实际理解与证据强度（W6） ──
   understanding: '学到的样子',
-  understandingHint: '判断这次学会没有时顺带记下的：你实际表现出的理解，以及当时是怎么做出来的。',
+  understandingHint: '收尾整理时记下的：你实际表现出的理解，以及当时是怎么做出来的。',
   independence: {
     独立: '自己做出来',
     提示后: '提示后做出来',
@@ -415,7 +394,7 @@ export const W = {
   // 学习之间的关系（从哪来）
   relations: '学习之间的来龙去脉',
   relationsHint: '每段学习从哪来、接着的是哪一段',
-  originCard: '从“下一步学什么”里选的',
+  originCard: '导航定的下一次学习',
 
   // ── 教法：老师可以取用的教学方法、每轮的教法强度、状态确认（批 7） ──
   tools: '教学方法库', // 教学工具库（通用策略知识层）
@@ -604,7 +583,6 @@ export const W = {
   // 提醒
   reminders: '提醒',
   remindersHint: '到了那天会出现在“今天该做的”里；只在这里提醒，不发通知。',
-  remindersEmpty: '还没有提醒。',
   reminderKind: {
     recheck: '复检',
     resume: '接着学',
@@ -668,7 +646,6 @@ export const W = {
   reviewSince: '从哪天起（不选就从上次复盘起）',
   reviewOpening: '正在开…',
   reviewsPast: '历次复盘',
-  reviewNone: '还没复盘过。',
   reviewRange: (since: string, until: string) => `${since} 到 ${until}`,
   reviewOngoing: '还在谈',
   reviewBadge: '复盘',
@@ -724,13 +701,11 @@ export const W = {
     book: '书',
     note: '笔记',
   } as const,
-  copiedFrom: (project: string) => `从「${project}」拿来的`,
   otherProjectsNone: '别的项目里还没有资料。',
   takeThis: '拿过来',
   taken: '已拿',
   myImports: '在别处学过的（导入）',
   myImportsHint: '你的笔记、在别处跟 AI 学的对话。只当你自述的经历，不算在这里学会了。',
-  myImportsNone: '还没有。',
   importView: '看看',
   importHide: '收起',
   importDelete: '删掉',
@@ -738,8 +713,6 @@ export const W = {
   // 记着什么
   memoryHint: '这里摊开系统记着的、关于这个项目和你的事；不对的地方可以改或提出来。',
   instructions: '项目说明',
-  instructionsHint:
-    '写给这个项目的长期要求，比如用什么系统、什么时候有空、讲题希望怎样。每次对话开头都会带上；和你当场说的冲突时，以当场说的为准。',
   instructionsEmpty:
     '还没写。写给这个项目的长期要求（用什么系统、什么时候有空、讲题希望怎样），每次对话都会带上；也可以在项目对话里说“记住……”。',
   instructionsEdit: '改',
@@ -755,7 +728,6 @@ export const W = {
   memoryLearnedLine: (closed: number, open: number, parked: number) =>
     `学完 ${String(closed)} 次 · 在学 ${String(open)} 次 · 搁着 ${String(parked)} 次`,
   memoryState: '你的状态',
-  memoryStateHint: '学习时观察到的状态与条件（比如时间、精力），只作参考。',
   memoryStateEmpty: '还没整理过。学过几次后，这里会记下观察到的时间、精力这类情况，只作参考。',
   notRight: '这里不对',
   openDetail: '看详细',
@@ -778,7 +750,12 @@ export const W = {
   loadFailed: '没读到：',
 } as const;
 
-/** 判断结果的一句话（对话里那句提示用同一说法）。 */
-export function judgementLine(closed: boolean, problem?: string): string {
-  return closed && problem === undefined ? '看起来这部分你已经掌握了。' : '还差一点，我们接着来。';
+/**
+ * 收尾记录交回后对话里那一行。守卫 10-23 起不把关、只写收尾记录，所以只说整理好了没有，不说学没学会；
+ * 没整理成（守卫没交回）时学习照旧开着，可以接着说、再申请。10-23 前的旧记录里判“没合上”的，也只说整理好了。
+ */
+export function judgementLine(problem?: string): string {
+  return problem === undefined
+    ? '这次学到了什么已整理好。'
+    : '这次没整理成，可以接着说，再点“我觉得懂了”。';
 }

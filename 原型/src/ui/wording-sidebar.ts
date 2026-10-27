@@ -19,7 +19,6 @@ export const WS = {
   newHint: '说一句就行，比如“想搞懂矩阵乘法为什么是行乘列”。接下来在项目对话里接着谈。',
   newPlaceholder: '想学的东西、想做成的事…',
   newGo: '开始',
-  mainChatSub: '项目对话',
   noGoalYet: '还没谈方向',
   pinned: '置顶',
   recents: '最近',

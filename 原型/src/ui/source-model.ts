@@ -1,12 +1,6 @@
 // 原文与出处的纯转换：回复里的出处标记、原文分段、公式切分、位置框、检索词标亮。单测覆盖。
 import { parseCitations } from '../shared/citation.ts';
-import type {
-  BBox,
-  CitationView,
-  NumberedLine,
-  SourceReport,
-  SourceView,
-} from '../shared/protocol.ts';
+import type { BBox, CitationView, NumberedLine, SourceReport } from '../shared/protocol.ts';
 import { W } from './wording.ts';
 
 // ───────────── 回复里的出处标记 ─────────────
@@ -233,15 +227,4 @@ export function markTerms(snippet: string, query: string): { text: string; hit: 
   }
   if (last < snippet.length) out.push({ text: snippet.slice(last), hit: false });
   return out;
-}
-
-// ───────────── 选项出处里“书里的一处” ─────────────
-
-/** 回查到原文的“书里的一处”：点开看原文用的值；查不到为空。 */
-export function bookLineTarget(
-  s: SourceView,
-): { kind: 'source'; book: string; file: string; from: number; to: number } | undefined {
-  if (s.kind !== 'book_line' || !s.resolved) return undefined;
-  if (s.book === undefined || s.file === undefined || s.from === undefined) return undefined;
-  return { kind: 'source', book: s.book, file: s.file, from: s.from, to: s.to ?? s.from };
 }

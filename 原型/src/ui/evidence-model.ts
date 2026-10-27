@@ -1,5 +1,4 @@
 // 依据面板用的纯转换：把核心给的视图变成给学习者看的文字。单测覆盖。
-import type { SourceView } from '../shared/protocol.ts';
 import { W } from './wording.ts';
 
 export type Segment = { text: string } | { line: number; to?: number; text: string };
@@ -23,35 +22,6 @@ export function splitLineRefs(text: string): Segment[] {
   }
   if (last < text.length) out.push({ text: text.slice(last) });
   return out;
-}
-
-export interface SourceText {
-  kind: string;
-  title: string;
-  detail?: string;
-}
-
-/** 选项的一条出处 → 给学习者看的样子（核心给的 label 带编号与内部词，不直接显示）。 */
-export function sourceText(s: SourceView): SourceText {
-  const kind = W.sourceKind[s.kind];
-  const detail = s.detail !== undefined ? { detail: s.detail } : {};
-  switch (s.kind) {
-    case 'loop_line':
-      return {
-        kind,
-        title: W.loopLineSource,
-        ...(s.resolved ? detail : { detail: W.sourceNotResolved }),
-      };
-    case 'book_line':
-      // 核心给的说法是“书里《书名》 小节 页 第几行”，对不上时括号里写原因；去掉开头的“书里”就是标题
-      return {
-        kind,
-        title: s.label.replace(/^书里\s*/, ''),
-        detail: s.resolved && s.detail !== undefined ? s.detail : W.sourceNotResolved,
-      };
-    case 'unknown':
-      return { kind, title: s.raw };
-  }
 }
 
 /** 记录里的时间 → 本地的“月-日 时:分”；不是时间就原样给。 */

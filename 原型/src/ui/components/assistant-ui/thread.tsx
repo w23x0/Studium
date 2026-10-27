@@ -267,7 +267,7 @@ const SentImages: FC<{ ids: string[] }> = ({ ids }) => {
   );
 };
 
-/** 程序给的一句结果（掌握了、学完了、记下方向）或去别的对话的入口：小字显示，不是谁说的话。 */
+/** 程序给的一句结果（整理好了、学完了、记下方向）或去别的对话的入口：小字显示，不是谁说的话。 */
 const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),

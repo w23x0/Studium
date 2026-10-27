@@ -1,6 +1,5 @@
 // 与核心通话：口令从地址栏 ?token= 取一次，存进 sessionStorage。
 import type {
-  CardResponse,
   DisclosureResponse,
   LoopEvidenceResponse,
   ObjectionResponse,
@@ -203,7 +202,6 @@ export const api = {
   // ── 依据可见 ──
   overview: (mainId: string) => call<ProjectOverviewResponse>(`/projects/${mainId}/overview`),
   loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),
-  card: (cardId: string) => call<CardResponse>(`/cards/${cardId}`),
   strategies: () => call<StrategiesResponse>('/pedagogy/records'),
   state: () => call<StateResponse>('/state/records'),
   // ── 批 10b：来源说明、状态回看 ──

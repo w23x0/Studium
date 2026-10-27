@@ -17,7 +17,6 @@ import type { PanelTarget } from '../../panel.ts';
 import { usePanel } from '../../panel.ts';
 import { useSetting } from '../../settings.ts';
 import { W } from '../../wording.ts';
-import { CardEvidence } from './card-view.tsx';
 import { DisclosureView } from './disclosure-view.tsx';
 import { LoopView } from './loop-view.tsx';
 import { StateView, TeachingView } from './records-view.tsx';
@@ -66,8 +65,6 @@ function panelTitle(t: PanelTarget): string {
       return W.panelHomeTitle;
     case 'loop':
       return W.panelLoopTitle;
-    case 'card':
-      return W.whyNext;
     case 'learned':
       return W.learned;
     case 'state':
@@ -103,8 +100,6 @@ function View(props: { target: PanelTarget; loopId?: string | undefined }) {
           editTicket={t.editTicket}
         />
       );
-    case 'card':
-      return <CardEvidence key={t.cardId} cardId={t.cardId} option={t.option} />;
     case 'learned':
       return <LearnedView key={t.loopId ?? ''} loopId={t.loopId} />;
     case 'state':

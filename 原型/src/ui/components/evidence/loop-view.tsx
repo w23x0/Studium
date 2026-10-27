@@ -388,7 +388,8 @@ function Verdict(props: {
   onObjected: () => void;
 }) {
   const { loop, verdict: v } = props;
-  const yes = v.closed && v.problem === undefined;
+  // 守卫 10-23 起不把关：只分整理成了没有（10-23 前判“没合上”的旧记录也算整理成了）
+  const yes = v.problem === undefined;
   return (
     <Card id={`verdict-${String(v.line)}`} active={props.active} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
