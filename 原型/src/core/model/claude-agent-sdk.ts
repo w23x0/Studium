@@ -70,7 +70,10 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
       }),
     ),
   });
-  const profile = spec.session ? o.profiles?.[spec.session.kind] : undefined;
+  const key = spec.profile ?? spec.session?.kind;
+  const profile = key !== undefined ? o.profiles?.[key] : undefined;
+  // 主模型派的子代理：模型与强度按 profiles 的 subagent 一项（会话/页面子代理.md「模型」单独配）
+  const subProfile = o.profiles?.subagent;
   const model = profile?.model ?? o.model;
   const effort = profile?.effort ?? o.effort;
   const sb = spec.sandbox;
@@ -99,8 +102,8 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
                 prompt: a.prompt,
                 tools: [...a.builtins, ...a.ownTools.map((t) => `mcp__${SERVER}__${t}`)],
                 background: true,
-                ...(a.model !== undefined ? { model: a.model } : {}),
-                ...(a.effort !== undefined ? { effort: a.effort } : {}),
+                ...(subProfile?.model !== undefined ? { model: subProfile.model } : {}),
+                ...(subProfile?.effort !== undefined ? { effort: subProfile.effort } : {}),
               },
             ]),
           ),
@@ -118,6 +121,7 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
     strictMcpConfig: true,
     includePartialMessages: true,
     ...(spec.resumeToken !== undefined ? { resume: spec.resumeToken } : {}),
+    ...(spec.ephemeral === true ? { persistSession: false } : {}),
     ...(model !== undefined ? { model } : {}),
     ...(effort !== undefined ? { effort } : {}),
     ...(cwd !== undefined ? { cwd } : {}),
@@ -211,16 +215,26 @@ function decide(
   if (toolName.startsWith(`mcp__${SERVER}__`)) {
     return own.has(toolName) && !bySubagent ? deny('这个工具是子代理用的') : allow(input);
   }
+  // 子代理只读得到它能写的与给它的（记录/读写权限.md 页面子代理行）
+  const subCanRead = (abs: string) =>
+    subs.some((a) => within(abs, a.writable) || (a.readable ?? []).some((r) => within(abs, r)));
   switch (toolName) {
     case 'Read': {
       const abs = pathOf(sb, input.file_path);
-      if (abs === undefined || !canRead(sb, abs)) return deny(`${shown(sb, abs, input)} 读不到`);
+      if (abs === undefined || !canRead(sb, abs) || (bySubagent && !subCanRead(abs))) {
+        return deny(`${shown(sb, abs, input)} 读不到`);
+      }
       return allow(input);
     }
     case 'Glob':
     case 'Grep': {
-      const abs = input.path === undefined ? resolve(sb.workdir) : pathOf(sb, input.path);
-      if (abs === undefined || !canRead(sb, abs)) return deny(`${shown(sb, abs, input)} 读不到`);
+      const abs =
+        input.path === undefined
+          ? resolve(bySubagent ? (subs[0]?.writable ?? sb.workdir) : sb.workdir)
+          : pathOf(sb, input.path);
+      if (abs === undefined || !canRead(sb, abs) || (bySubagent && !subCanRead(abs))) {
+        return deny(`${shown(sb, abs, input)} 读不到`);
+      }
       // 文件匹配式（Glob 的 pattern、Grep 的 glob）自己带绝对路径或 `..` 也会跑到范围外
       const k = toolName === 'Glob' ? 'pattern' : 'glob';
       const v = input[k];
@@ -430,6 +444,10 @@ class SdkConversation implements ModelConversation {
   private readonly agentOf = new Map<string, string>();
   /** 子代理最后说的一段话（按派它的那次调用）。 */
   private readonly lastWords = new Map<string, string>();
+  /** 派子代理那次调用的交代原文（按 tool_use id），开始时带进 SubagentEvent。 */
+  private readonly briefs = new Map<string, string>();
+  /** 派子代理的那次调用（tool_use id）→ 这件活的编号（task_id）。 */
+  private readonly taskOf = new Map<string, string>();
   private handlers: Parameters<NonNullable<ModelConversation['listen']>>[0] | undefined;
 
   constructor(
@@ -569,13 +587,19 @@ class SdkConversation implements ModelConversation {
       if (m.subtype === 'init' && typeof m.model === 'string') this.model(m.model, out);
       if (m.subtype === 'task_started' && typeof m.task_id === 'string') {
         const agent = typeof m.subagent_type === 'string' ? m.subagent_type : '子代理';
-        if (typeof m.tool_use_id === 'string') this.agentOf.set(m.tool_use_id, agent);
+        const via = typeof m.tool_use_id === 'string' ? m.tool_use_id : undefined;
+        if (via !== undefined) {
+          this.agentOf.set(via, agent);
+          this.taskOf.set(via, m.task_id);
+        }
+        const brief = via !== undefined ? this.briefs.get(via) : undefined;
         out.push({
           kind: 'subagent',
           phase: 'started',
           agent,
           taskId: m.task_id,
           ...(typeof m.description === 'string' ? { description: m.description } : {}),
+          ...(brief !== undefined ? { brief } : {}),
         });
       }
       if (m.subtype === 'task_notification' && typeof m.task_id === 'string') {
@@ -609,10 +633,15 @@ class SdkConversation implements ModelConversation {
     if (msg.type === 'assistant' || msg.type === 'user') {
       const parent = msg.parent_tool_use_id;
       const agent = parent !== null ? (this.agentOf.get(parent) ?? '子代理') : undefined;
+      const task = parent !== null ? this.taskOf.get(parent) : undefined;
       // 沙盒里跑的时候：把工具调用与它的结果配成沙盒动作事件（工单 W4 §5.10）
       for (const b of blocks(msg.message.content)) {
         if (b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') {
           this.toolUses.set(b.id, { name: b.name, input: b.input ?? {} });
+          const prompt = b.input?.prompt;
+          if ((b.name === 'Agent' || b.name === 'Task') && typeof prompt === 'string') {
+            this.briefs.set(b.id, prompt);
+          }
         }
       }
       if (agent === undefined) out.push({ kind: 'raw', payload: msg.message });
@@ -626,7 +655,12 @@ class SdkConversation implements ModelConversation {
           if (sb === undefined) continue;
           const action = sandboxActionOf(sb, use, { is_error: b.is_error === true });
           if (action !== undefined) {
-            out.push({ kind: 'sandbox_action', ...(agent !== undefined ? { agent } : {}), action });
+            out.push({
+              kind: 'sandbox_action',
+              ...(agent !== undefined ? { agent } : {}),
+              ...(task !== undefined ? { task } : {}),
+              action,
+            });
           }
         }
       }

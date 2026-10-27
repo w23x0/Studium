@@ -10,11 +10,21 @@ export interface Profile {
   effort?: Effort;
 }
 
-export type Profiles = Partial<Record<ConversationKind, Profile>>;
+/**
+ * 不是会话种类、也要单独配模型的两样（W10）：学习对话派的子代理（会话/页面子代理.md「模型」单独配）、
+ * 框架里对块摆屏的小模型（实现选型「框架小模型」）。
+ */
+export const EXTRA_PROFILE_KEYS = ['subagent', 'framework'] as const;
+export type ProfileKey = ConversationKind | (typeof EXTRA_PROFILE_KEYS)[number];
+const PROFILE_KEYS: readonly string[] = [...CONVERSATION_KINDS, ...EXTRA_PROFILE_KEYS];
+
+export type Profiles = Partial<Record<ProfileKey, Profile>>;
 
 /**
  * 默认：主对话低强度；找资料中等；畅谈、学习对话、守卫、导航、检索子代理、状态整理高强度；教法记录整理没规定，不设；
- * 页面编辑员用 Sonnet、中等强度（会话/页面子代理.md：主对话用 Opus 时编辑员用 Opus 或 Sonnet，可选更快的）。
+ * 学习对话的子代理用 Sonnet、中等强度（会话/页面子代理.md：主对话用 Opus 时子代理用 Opus 或 Sonnet，可选更快的）；
+ * 框架小模型用 Haiku 5.5（实现选型「框架小模型」），强度不设（用 SDK 默认）。
+ * `editor` 一行留给旧数据（10-26 的页面编辑员会话，不再开）。
  */
 export const DEFAULT_PROFILES: Profiles = {
   main: { effort: 'low' },
@@ -27,6 +37,8 @@ export const DEFAULT_PROFILES: Profiles = {
   state: { effort: 'high' },
   find: { effort: 'medium' },
   editor: { model: 'sonnet', effort: 'medium' },
+  subagent: { model: 'sonnet', effort: 'medium' },
+  framework: { model: 'claude-haiku-5-5' },
 };
 
 const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -39,16 +51,16 @@ export function mergeProfiles(overrides: unknown, base: Profiles = DEFAULT_PROFI
   }
   const out: Profiles = { ...base };
   for (const [kind, raw] of Object.entries(overrides)) {
-    if (!(CONVERSATION_KINDS as readonly string[]).includes(kind)) {
+    if (!PROFILE_KEYS.includes(kind)) {
       throw new Error(
-        `STUDIUM_PROFILES 里没有这种会话类：${kind}（可用：${CONVERSATION_KINDS.join(' / ')}）`,
+        `STUDIUM_PROFILES 里没有这一项：${kind}（可用：${PROFILE_KEYS.join(' / ')}）`,
       );
     }
     const p = raw as Profile;
     if (p.effort !== undefined && !EFFORTS.includes(p.effort)) {
       throw new Error(`强度只能是 ${EFFORTS.join(' / ')}，收到 ${p.effort}`);
     }
-    out[kind as ConversationKind] = { ...out[kind as ConversationKind], ...p };
+    out[kind as ProfileKey] = { ...out[kind as ProfileKey], ...p };
   }
   return out;
 }

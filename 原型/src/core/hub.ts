@@ -59,6 +59,11 @@ export interface KindConfig {
    * （学习对话，会话/学习对话.md §3「上下文里的身份与时间线」）。
    */
   timeline?: boolean;
+  /**
+   * 模型一轮输出完之后调（学习对话：框架照这一轮的输出摆一屏，会话/学习对话.md §11.1）。fromLine = 这一轮从正本
+   * 哪一行之后开始。在下一轮开始前跑完；出错只写日志，不算这一轮失败。
+   */
+  afterTurn?(sessionId: string, fromLine: number): Promise<void>;
 }
 
 export interface HubOptions {
@@ -138,6 +143,8 @@ export class Hub {
       anchorLine?: number;
       resumeOf?: ResumeOrigin;
       review?: ReviewWindow;
+      /** 学习对话按屏幕跑（W10）。 */
+      screens?: true;
     },
   ): Promise<SessionSummary> {
     const at = this.now();
@@ -155,6 +162,7 @@ export class Hub {
       ...(meta.anchorLine !== undefined ? { anchorLine: meta.anchorLine } : {}),
       ...(meta.resumeOf !== undefined ? { resumeOf: meta.resumeOf } : {}),
       ...(meta.review !== undefined ? { review: meta.review } : {}),
+      ...(meta.screens === true ? { screens: true as const } : {}),
     };
     await this.append(sessionId, opened);
     return summary(opened);
@@ -201,13 +209,16 @@ export class Hub {
     meta: {
       objection?: { toLine: number };
       images?: ImageInput[];
-      /** 这条输入已经记在正本这一行（如学习者在页面上的动作）：不再另记，只交给模型。 */
+      /** 这条输入已经记在正本这一行（如学习者在组件上的操作）：不再另记，只交给模型。 */
       recorded?: number;
+      /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3）：记成和那块有关；交给模型时写那块的一句话。 */
+      replyTo?: { key: string; pointer: string };
     } = {},
   ): Promise<{ line: number; done: Promise<void> }> {
     const live = await this.ensureLive(sessionId);
     const objection = input.role === 'learner' ? meta.objection : undefined;
     const images = input.role === 'learner' ? meta.images : undefined;
+    const replyTo = input.role === 'learner' ? meta.replyTo : undefined;
     const line =
       meta.recorded ??
       (await this.append(
@@ -219,6 +230,7 @@ export class Hub {
               text: input.text,
               ...(objection !== undefined ? { objection } : {}),
               ...(images !== undefined && images.length > 0 ? { images } : {}),
+              ...(replyTo !== undefined ? { replyTo } : {}),
             }
           : { type: 'program_fact', at: this.iso(), text: input.text },
       ));
@@ -232,7 +244,7 @@ export class Hub {
         objection !== undefined
           ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
           : ''
-      }${input.text}`,
+      }${replyTo !== undefined ? `（回在「${replyTo.pointer}」下面）` : ''}${input.text}`,
     };
     let resolve!: () => void;
     const done = new Promise<void>((r) => (resolve = r));
@@ -282,13 +294,24 @@ export class Hub {
   private async drain(sessionId: string, live: Live): Promise<void> {
     live.running = true;
     this.emit({ type: 'running', sessionId, running: true });
+    const cfg = this.opts.kinds(live.kind);
     for (let item = live.queue.shift(); item; item = live.queue.shift()) {
+      let fromLine: number;
       if ('events' in item) {
+        fromLine = live.log.lines;
         await this.consume(sessionId, live, item.events).catch(async (err: unknown) => {
           const reason = err instanceof Error ? err.message : String(err);
           await this.append(sessionId, { type: 'turn_failed', at: this.iso(), reason });
         });
-      } else await this.runTurn(sessionId, live, item.input, item.line);
+      } else {
+        fromLine = item.line;
+        await this.runTurn(sessionId, live, item.input, item.line);
+      }
+      if (cfg.afterTurn !== undefined) {
+        await cfg.afterTurn(sessionId, fromLine).catch((err: unknown) => {
+          console.error(`会话 ${sessionId} 一轮之后的收尾失败：`, err);
+        });
+      }
       item.resolve();
       for (const r of live.turnWaiters.splice(0)) r();
     }
@@ -378,6 +401,7 @@ export class Hub {
           at: this.iso(),
           actor: 'model',
           ...(ev.agent !== undefined ? { agent: ev.agent } : {}),
+          ...(ev.task !== undefined ? { task: ev.task } : {}),
           op: ev.action.op,
           ...(ev.action.path !== undefined ? { path: ev.action.path } : {}),
           ...(ev.action.command !== undefined ? { command: ev.action.command } : {}),
@@ -416,6 +440,7 @@ export class Hub {
                 agent: ev.agent,
                 taskId: ev.taskId,
                 ...(ev.description !== undefined ? { description: ev.description } : {}),
+                ...(ev.brief !== undefined ? { brief: ev.brief } : {}),
               }
             : {
                 type: 'subagent_result',

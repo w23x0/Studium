@@ -4,7 +4,7 @@
 // · 交回原文（ModelEvent 里的 raw，由核心逐条记进正本）。
 import type { z } from 'zod';
 import type { ConversationKind } from '../../shared/records.ts';
-import type { Profiles } from './profiles.ts';
+import type { ProfileKey, Profiles } from './profiles.ts';
 
 export interface ToolResult {
   text: string;
@@ -37,7 +37,8 @@ export interface SandboxSpec {
 
 /**
  * 主模型可以派的一个子代理（框架自带的子代理机制；会话/页面子代理.md）。默认在后台跑，做完交回一段话，
- * 按时间接在主模型上下文后面。只能写 `writable` 下面，不给跑命令。
+ * 按时间接在主模型上下文后面。只能写 `writable` 下面、只能读 `writable` 与 `readable`，不给跑命令。
+ * 模型与强度不在这里写死：适配器按 profiles 的 `subagent` 一项配（会话/页面子代理.md「模型」单独配）。
  */
 export interface SubagentSpec {
   /** 派它时用的名字（只用字母、数字、下划线、连字符）。 */
@@ -52,10 +53,10 @@ export interface SubagentSpec {
   ownTools: string[];
   /** 它能写的目录（绝对路径，须在工作区里）；主模型不能写这里。 */
   writable: string;
-  /** 它还在做上一件（主模型这时再派一个同名的会被拦下，叫它等或用 SendMessage 接着说）。 */
+  /** 它还能读的（绝对路径，目录或单个文件）；不给 = 只读得到 `writable`。 */
+  readable?: string[];
+  /** 它还在做上一件（主模型这时再派一个同名的会被拦下，叫它等或用 SendMessage 接着说）；不给 = 不限个数。 */
   busy?: () => boolean;
-  model?: string;
-  effort?: 'low' | 'medium' | 'high' | 'xhigh' | 'max';
 }
 
 export interface ConversationSpec {
@@ -73,6 +74,13 @@ export interface ConversationSpec {
   session?: { id: string; kind: ConversationKind };
   /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
   webSearch?: boolean;
+  /**
+   * 按哪一项配模型与强度；不给 = 按 `session.kind`。框架小模型（`framework`）与框架另开的子代理（`subagent`）用
+   * （W10，实现选型「框架小模型」、会话/页面子代理.md「模型」）。
+   */
+  profile?: ProfileKey;
+  /** 一次性的（框架小模型、框架另开的子代理）：不留续接用的会话文件。 */
+  ephemeral?: boolean;
 }
 
 /** 沙盒里的一个动作，程序当场记（不靠模型自报）。`content` 只有写类动作填。 */
@@ -80,6 +88,8 @@ export interface SandboxActionEvent {
   kind: 'sandbox_action';
   /** 子代理做的：它的名字（主模型自己做的不填）。 */
   agent?: string;
+  /** 子代理做的：它这件活的编号（同 SubagentEvent.taskId）。 */
+  task?: string;
   action: {
     op: 'read' | 'write' | 'run' | 'search' | 'other';
     /** 虚拟路径（工作区里的相对工作区；只读的 `只读/<name>/…`）。 */
@@ -114,6 +124,8 @@ export interface SubagentEvent {
   taskId: string;
   /** 开始时：主模型派它时的一句说明。 */
   description?: string;
+  /** 开始时：主模型派它时给的交代原文。 */
+  brief?: string;
   /** 做完时：completed / failed / stopped。 */
   status?: string;
   /** 做完时：它交回的那段话。 */

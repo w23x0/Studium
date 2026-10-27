@@ -56,6 +56,7 @@ import type { Outputs } from './outputs.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
 import { PageAgent } from './page/agent.ts';
 import { LivePages } from './page/live-page.ts';
+import { ARRANGE_TOOL, Screens } from './page/screens.ts';
 import { PageStore } from './page/store.ts';
 import { currentTicket } from './ticket.ts';
 import { guardView, learnerLines, renderTranscript } from './transcript.ts';
@@ -78,6 +79,8 @@ type StartSource = (typeof START_SOURCES)[number];
 
 /** 学习者离开多久算“隔了一阵回来”，回来时程序追加离开多久。 */
 const AWAY_MS = 30 * 60 * 1000;
+/** 旧版开的学习对话（W10 前，开场的提示词与工具已定死）：只看，要接着学另开一次（W10 §9 第 1 条）。 */
+const OLD_LOOP = '这次学习是旧版开的，只能看；要接着学，请回项目另开一次。';
 /** 隔多久回来算“隔很久”，状态整理顺带跑一次（`docs/设计/会话/后台整理.md`；阈值属实现细节，先定 12 小时）。 */
 const LONG_AWAY_MS = 12 * 3600 * 1000;
 /** 状态整理开场里教学行只放开头一段（作紧邻前序事件），全文用 read_session 查。 */
@@ -107,6 +110,8 @@ export interface StudiumOptions {
   cross: Crosslinks;
   /** 上传分流里拿不准的交模型判一次（工单 W9 §4.2）；不给 = 按扩展名默认。 */
   judge?: RouteJudge;
+  /** 框架小模型的一次调用（W10：对块、摆屏）；不给 = 主模型点名的旧块一律对不上。 */
+  arrange?: (input: string) => Promise<{ text: string; model?: string }>;
   now?: () => Date;
 }
 
@@ -137,6 +142,9 @@ export class Studium {
 
   /** 页面子代理的外围：能写哪些文件、交时检查、试跑（会话/页面子代理.md）。 */
   readonly pageAgent: PageAgent;
+
+  /** 学习者看到的屏幕：每轮照主模型的输出摆一屏、学习者在组件上的操作、试跑（会话/学习对话.md §11）。 */
+  readonly screens: Screens;
 
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
@@ -170,6 +178,16 @@ export class Studium {
       iso: () => this.iso(),
       newId: (prefix) => this.newId(prefix),
       assertOpen: (id) => this.assertOpenLoop(id),
+      badRequest: (m) => new BadRequestError(m),
+    });
+    this.screens = new Screens({
+      hub: () => this.hub,
+      store: new PageStore(join(o.dataDir, 'screens')),
+      iso: () => this.iso(),
+      newId: (prefix) => this.newId(prefix),
+      arrange:
+        o.arrange ?? (() => Promise.reject(new Error('没配框架小模型：主模型点名的旧块对不上'))),
+      assertOpen: (id) => this.assertActiveLoop(id),
       badRequest: (m) => new BadRequestError(m),
     });
     this.pageAgent = new PageAgent({
@@ -280,10 +298,14 @@ export class Studium {
       ? {
           sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
           beforeTurn: (sessionId: string) => this.sandboxes.refreshLoop(sessionId),
-          // 上一轮之后学习者在页面上的操作，按时间接在这一轮前面（会话/学习对话.md §3）
-          preface: (sessionId: string) => this.pages.preface(sessionId),
+          // 上一轮之后攒着的（学习者在组件上的操作、子代理报的、框架回的一句），按时间接在这一轮前面
+          // （会话/学习对话.md §3、§11.3）
+          preface: (sessionId: string) => this.screens.preface(sessionId),
           subagents: async (sessionId: string) => [await this.pageAgent.spec(sessionId)],
           timeline: true,
+          // 主模型一轮输出完：框架照它的输出摆一屏（会话/学习对话.md §11.1）
+          afterTurn: (sessionId: string, fromLine: number) =>
+            this.screens.afterTurn(sessionId, fromLine),
         }
       : {}),
     ...(kind === 'retrieve'
@@ -860,8 +882,18 @@ export class Studium {
    * （`docs/设计/01-流程.md`「暂停」）；别的对话不带时间，过了半小时先追加一句离开多久。
    * images = 附图的来历（批 4，文字已并进 text）。
    */
-  async learnerSays(sessionId: string, text: string, images?: ImageInput[]): Promise<void> {
-    const meta = { ...(images !== undefined && images.length > 0 ? { images } : {}) };
+  async learnerSays(
+    sessionId: string,
+    text: string,
+    images?: ImageInput[],
+    replyTo?: { key: string; pointer: string },
+  ): Promise<void> {
+    const opened = await this.hub.opened(sessionId);
+    if (opened.kind === 'loop' && opened.screens !== true) throw new BadRequestError(OLD_LOOP);
+    const meta = {
+      ...(images !== undefined && images.length > 0 ? { images } : {}),
+      ...(replyTo !== undefined && opened.kind === 'loop' ? { replyTo } : {}),
+    };
     const recs = await this.hub.records(sessionId);
     if (recs.some((r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended')) {
       throw new BadRequestError('这段对话已经结束了，回到项目里接着聊。');
@@ -1024,6 +1056,7 @@ export class Studium {
       title: picked.title,
       parent: mainId,
       ticket: picked.ticket,
+      screens: true,
       ...(resumeOf !== undefined ? { resumeOf } : {}),
     });
     await this.hub.record(mainId, {
@@ -2638,7 +2671,41 @@ export class Studium {
         },
       },
       this.pageAgent.submitTool(loopId),
+      this.arrangeTool(),
     ];
+  }
+
+  /**
+   * 主模型“说给框架的话”（会话/学习对话.md §11.3 输出分两个口）：这一轮屏幕上放什么。参数是平常话；
+   * 框架在这一轮说完后照它摆屏，调用本身不显示给学习者。块编号、版本号都不出现。
+   */
+  private arrangeTool(): ToolSpec {
+    return {
+      name: ARRANGE_TOOL,
+      description:
+        '说给框架听：这一轮学习者的屏幕上放什么。学习者只看得到你每轮放上屏幕的——这一轮你写的话，加上你在这里点名拿回的旧块；没点名的不在屏幕上。每轮写完给学习者的话后调一次，调完就停。',
+      input: {
+        parts: z
+          .array(
+            z.object({
+              begins: z.string().describe('这一块开头的几个字，照你写的原样抄'),
+              about: z.string().describe('一句话：这块是什么、和什么有关'),
+            }),
+          )
+          .optional()
+          .describe('这一轮的话要分成几块（以后能单独点名拿回某一块，如只留题目）；不分就不填'),
+        about: z.string().optional().describe('不分块时：这一轮的话一句话是什么、和什么有关'),
+        bring_back: z
+          .array(z.string())
+          .optional()
+          .describe('要拿回屏幕的旧块，每条一句极简短的描述，如“那道弹簧题”“学习者刚才的推导”'),
+        layout: z
+          .string()
+          .optional()
+          .describe('放哪，平常话说和什么有关，如“新讲解接在那道题旁边”；位置由框架摆'),
+      },
+      run: () => ok('记下了，这一轮说完后框架照这个摆屏。'),
+    };
   }
 
   /** 学习对话的开场：目标 + 单子（+ 阶段验收 / 复习复检 / 接着学）+ 沙盒说明（工单 W4 §5.5）。 */
@@ -3256,6 +3323,8 @@ export class Studium {
   private async assertActiveLoop(loopId: string): Promise<void> {
     await this.assertOpenLoop(loopId);
     await this.assertNotShelved(loopId);
+    // 旧版开的学习对话（开场时提示词与工具已定死）只看，不再跑（W10 §9 第 1 条）
+    if ((await this.hub.opened(loopId)).screens !== true) throw new BadRequestError(OLD_LOOP);
   }
 
   /** 搁置着的那次不能收口 / 确认合上：先恢复。 */

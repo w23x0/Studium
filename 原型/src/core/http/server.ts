@@ -403,14 +403,25 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           text?: unknown;
           note?: unknown;
           images?: unknown;
+          replyTo?: unknown;
         };
         const note = typeof body.note === 'string' ? body.note : '学习者在界面上点了按钮';
         switch (action) {
           case 'messages': {
             // 附了图：转写文字带来源标注并进消息（inputs.ts）；没附图就是原来的纯文字
             const m = opts.inputs.compose(body.text, body.images);
-            if (m.images.length > 0) await studium.learnerSays(id, m.text, m.images);
-            else await studium.learnerSays(id, m.text);
+            // 学习页：在某一块下面回的（W10，会话/学习对话.md §11.3 学习者回话）
+            const r = body.replyTo as { key?: unknown; pointer?: unknown } | undefined;
+            const replyTo =
+              typeof r?.key === 'string' && typeof r.pointer === 'string'
+                ? { key: r.key.slice(0, 100), pointer: r.pointer.slice(0, 200) }
+                : undefined;
+            await studium.learnerSays(
+              id,
+              m.text,
+              m.images.length > 0 ? m.images : undefined,
+              replyTo,
+            );
             send(res, 202, {});
             return;
           }

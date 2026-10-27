@@ -75,8 +75,6 @@ export class PageAgent {
       ownTools: ['submit_page'],
       writable: this.dir(loopId),
       busy: () => this.running.has(loopId),
-      model: 'sonnet',
-      effort: 'medium',
     };
   }
 

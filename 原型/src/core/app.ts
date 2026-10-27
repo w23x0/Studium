@@ -117,10 +117,13 @@ export async function createApp(opts: AppOptions): Promise<App> {
   });
   const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
   const routePrompt = await readFile(join(here, 'prompts/route.md'), 'utf8');
+  const arrangePrompt = await readFile(join(here, 'prompts/arrange.md'), 'utf8');
   const studium = new Studium({
     prompts: await loadPrompts(),
     // 上传分流：拿不准的交模型判一次（工单 W9 §4.2）；model 在下面才组装好，这里取用时再拿
     judge: (name, sample) => judgeUpload(modelRef(), routePrompt, name, sample),
+    // 学习页的框架小模型（W10）：每轮一次，对块、摆屏
+    arrange: (input) => frameworkCall(modelRef(), arrangePrompt, input),
     materials,
     sources,
     dataDir: dataDir.root,
@@ -203,6 +206,35 @@ export async function createApp(opts: AppOptions): Promise<App> {
       await dataDir.release();
     },
   };
+}
+
+/**
+ * 框架小模型的一次调用（W10，实现选型「框架小模型」）：不给工具、不留会话文件，模型按 profiles 的 framework 一项配。
+ */
+async function frameworkCall(
+  model: ModelAdapter,
+  instructions: string,
+  input: string,
+): Promise<{ text: string; model?: string }> {
+  const conv = model.open({
+    systemPrompt: instructions,
+    tools: [],
+    session: { id: 'framework', kind: 'loop' },
+    profile: 'framework',
+    ephemeral: true,
+  });
+  let text = '';
+  let used: string | undefined;
+  try {
+    for await (const e of conv.send({ role: 'program', plain: true, text: input })) {
+      if (e.kind === 'assistant_text') text += e.text;
+      if (e.kind === 'model') used = e.name;
+      if (e.kind === 'turn_error') throw new Error(e.reason);
+    }
+  } finally {
+    await conv.close();
+  }
+  return { text, ...(used !== undefined ? { model: used } : {}) };
 }
 
 /**
