@@ -69,7 +69,9 @@ export function closeLine(
   let out: { kind: 'closing' } | { kind: 'done'; verdictLine: number } | undefined;
   for (const { line, record: r } of records) {
     if (r.type === 'close_requested') out = { kind: 'closing' };
-    if (r.type === 'guard_verdict') out = { kind: 'done', verdictLine: line };
+    // 守卫没交回（有 problem）时学习又开着了：不显示“已整理好”
+    if (r.type === 'guard_verdict')
+      out = r.problem === undefined ? { kind: 'done', verdictLine: line } : undefined;
   }
   return out;
 }
