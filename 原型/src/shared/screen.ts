@@ -7,8 +7,8 @@
 export type ScreenBlockRef =
   /** 主模型这一轮写的一段（内容按指纹存）；line = 这一段所在的 assistant_message 行。 */
   | { kind: 'text'; key: string; pointer: string; hash: string; line: number }
-  /** 学习者说的话（user_message 那行）。 */
-  | { kind: 'learner'; key: string; pointer: string; line: number }
+  /** 学习者说的话（user_message 那行），或他在组件上的操作（component_action 那行，op 为真）。 */
+  | { kind: 'learner'; key: string; pointer: string; line: number; op?: true }
   /** 子代理交回的一句（subagent_result 那行，或框架另开子代理的 component_report 那行）。 */
   | { kind: 'subagent'; key: string; pointer: string; line: number }
   /** 一个组件；显示哪一版按这一屏的时间现算（当前屏 = 最新版）。 */

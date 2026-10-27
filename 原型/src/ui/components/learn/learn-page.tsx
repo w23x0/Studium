@@ -4,7 +4,7 @@
 // 不放选择题、“我懂了”这类按钮（申请收口的“我觉得懂了”在底栏，01-流程 §4）。
 // 旧版开的学习对话（没有 session_opened.screens）交回消息流只看（W10 §9 第 1、2 条）。
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDownIcon, LoaderIcon, ReplyIcon, XIcon } from 'lucide-react';
+import { ChevronDownIcon, ChevronRightIcon, LoaderIcon, ReplyIcon, XIcon } from 'lucide-react';
 import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
 import { InputComposer } from '@/components/input/composer';
 import { MathPreview } from '@/components/input/math-preview';
@@ -14,8 +14,14 @@ import type { NumberedRecord } from '../../../shared/records.ts';
 import type { ResolvedBlock, ScreenResponse } from '../../../shared/screen.ts';
 import { localMinute } from '../../../shared/time.ts';
 import { api } from '../../api.ts';
-import { CurrentSessionContext } from '../../panel.ts';
-import { failedSinceScreen, justSaid, screenRefreshKey, screensOf } from '../../screen-model.ts';
+import { CurrentSessionContext, usePanel } from '../../panel.ts';
+import {
+  closeLine,
+  failedSinceScreen,
+  justSaid,
+  screenRefreshKey,
+  screensOf,
+} from '../../screen-model.ts';
 import { loopSide, loopState } from '../../thread-model.ts';
 import { W } from '../../wording.ts';
 import { WP } from '../../wording-page.ts';
@@ -76,6 +82,8 @@ export function LearnPage(props: {
   const side = useMemo(() => loopSide(records), [records]);
   const ticket = useMemo(() => currentTicket(records), [records]);
   const said = useMemo(() => (viewing === undefined ? justSaid(records) : []), [records, viewing]);
+  const close = useMemo(() => closeLine(records), [records]);
+  const panel = usePanel();
   const reply = useCallback((b: { key: string; pointer: string }) => {
     setReplyTo(b);
     document.querySelector<HTMLTextAreaElement>('[data-testid="learn-composer"] textarea')?.focus();
@@ -161,6 +169,32 @@ export function LearnPage(props: {
                 </div>
               </div>
             ))}
+            {viewing === undefined && close?.kind === 'closing' && (
+              <p
+                className="text-muted-foreground flex items-center gap-2 text-sm"
+                data-testid="closing-line"
+              >
+                <LoaderIcon className="size-3.5 animate-spin" />
+                {WP.closing}
+              </p>
+            )}
+            {viewing === undefined && close?.kind === 'done' && (
+              <button
+                type="button"
+                data-testid="judgement"
+                className="text-muted-foreground hover:text-foreground group flex items-center gap-2 self-start text-sm"
+                onClick={() =>
+                  panel.show({ kind: 'loop', loopId: sessionId, verdictLine: close.verdictLine })
+                }
+              >
+                <span className="bg-border h-px w-4" />
+                {WP.closed}
+                <span className="text-primary flex items-center text-xs opacity-80 group-hover:opacity-100">
+                  {WP.seeClosed}
+                  <ChevronRightIcon className="size-3.5" />
+                </span>
+              </button>
+            )}
             {viewing === undefined && !running && failedSinceScreen(records) && (
               <p className="text-destructive text-sm" data-testid="learn-failed">
                 {WP.failed}

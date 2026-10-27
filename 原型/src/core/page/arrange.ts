@@ -26,6 +26,10 @@ const KIND_LABEL: Record<ScreenBlockRef['kind'], string> = {
   pending: '正在做的组件',
 };
 
+function kindLabel(b: ScreenBlockRef): string {
+  return b.kind === 'learner' && b.op === true ? '学习者在组件上的操作' : KIND_LABEL[b.kind];
+}
+
 /** 给小模型的那段话：候选的旧块（时间 + 一句话指向，不给内容）、这一轮的新块、主模型的点名与放法。 */
 export function arrangeInput(
   candidates: Candidate[],
@@ -36,13 +40,12 @@ export function arrangeInput(
     '候选的旧块（按时间先后；每行：key · 时间 · 种类 · 一句话）：',
     ...(candidates.length > 0
       ? candidates.map(
-          (c) =>
-            `- ${c.ref.key} · ${localMinute(c.at)} · ${KIND_LABEL[c.ref.kind]} · ${c.ref.pointer}`,
+          (c) => `- ${c.ref.key} · ${localMinute(c.at)} · ${kindLabel(c.ref)} · ${c.ref.pointer}`,
         )
       : ['（没有）']),
     '',
     '这一轮的新块（按顺序；每行：key · 种类 · 一句话）：',
-    ...fresh.map((b) => `- ${b.key} · ${KIND_LABEL[b.kind]} · ${b.pointer}`),
+    ...fresh.map((b) => `- ${b.key} · ${kindLabel(b)} · ${b.pointer}`),
     '',
     '主模型点名要拿回的旧块（每条一句描述）：',
     ...(ask.bringBack.length > 0 ? ask.bringBack.map((d) => `- ${d}`) : ['（没有）']),

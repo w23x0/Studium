@@ -16,7 +16,7 @@ export type * from './records-cross.ts';
 /**
  * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 守卫 · nav 出选择卡（导航）
  * · retrieve 检索子代理（导航派的）· state 整理学习者状态 · pedagogy 记教法效果 · output 写产出对话
- * · find 找资料（联网列候选，学习者勾了才存）· editor 页面编辑员（学习对话沙盒里专管活页面）
+ * · find 找资料（联网列候选，学习者勾了才存）· editor 旧数据：10-26 的页面编辑员（不再开；W10 起学习对话派的子代理不是会话）
  */
 export const CONVERSATION_KINDS = [
   'main',

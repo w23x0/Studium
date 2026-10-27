@@ -25,7 +25,6 @@ import type { DerivedIndex } from './index/derived-index.ts';
 import { isSessionId, type DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
 import type {
-  ConversationSpec,
   ModelAdapter,
   ModelConversation,
   ModelDisclosure,
@@ -515,13 +514,6 @@ export class Hub {
       .filter((r) => r.type === 'model_session' && r.adapter === adapter)
       .at(-1);
     return resume?.type === 'model_session' ? { resumeToken: resume.token } : {};
-  }
-
-  /**
-   * 另开一个不挂在任何会话上的模型对话（学习者动了组件、框架另开的子代理，W10）：事件由调用方自己记。
-   */
-  openSide(spec: ConversationSpec): ModelConversation {
-    return this.opts.model.open(spec);
   }
 
   /** 推一条不来自正本的事件（组件试跑）。 */

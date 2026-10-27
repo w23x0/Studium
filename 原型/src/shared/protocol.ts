@@ -734,7 +734,7 @@ export type ServerEvent =
   | { type: 'record'; sessionId: string; line: number; record: NumberedRecord['record'] }
   | { type: 'delta'; sessionId: string; text: string }
   | { type: 'running'; sessionId: string; running: boolean }
-  /** 活页面的新一版先在学习者浏览器的隐藏小窗里试跑（会话/页面子代理.md「怎么改」）；sessionId = 学习对话。 */
+  /** 组件的新一版先在学习者浏览器的隐藏小窗里试跑（会话/页面子代理.md「怎么改」）；sessionId = 学习对话。 */
   | {
       type: 'page_trial';
       sessionId: string;

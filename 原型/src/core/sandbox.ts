@@ -81,7 +81,7 @@ export class Sandboxes {
     return join(this.o.dataDir, 'sandbox', sessionId);
   }
 
-  /** 学习对话的工作区（页面子代理的 `页面/` 也在这里）。 */
+  /** 学习对话的工作区（子代理的组件在 `组件/` 下，W10）。 */
   workdir(loopId: string): string {
     return join(this.root(loopId), '工作区');
   }

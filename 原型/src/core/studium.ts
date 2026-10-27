@@ -180,6 +180,8 @@ export class Studium {
       badRequest: (m) => new BadRequestError(m),
       toMaker: (loopId, component, text, awaited) =>
         this.components.onAction(loopId, component, text, awaited),
+      toRepair: (loopId, component, version, message) =>
+        this.components.onError(loopId, component, version, message),
     });
     this.components = new Components({
       hub: () => this.hub,
@@ -1237,6 +1239,8 @@ export class Studium {
   private async resumeShelved(loopId: string, by: 'button' | 'message'): Promise<void> {
     const opened = await this.hub.opened(loopId);
     if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
+    // 旧版开的学习对话不再跑新一轮（工具数组开场已定死，W10 §9 第 1 条）
+    if (opened.screens !== true) throw new BadRequestError(OLD_LOOP);
     const flags = foldLoop(await this.hub.records(loopId));
     if (flags.ended !== undefined) throw new BadRequestError('这次学习已经结束了。');
     if (flags.shelved === undefined) throw new BadRequestError('这次学习没有搁置。');
@@ -1277,6 +1281,8 @@ export class Studium {
       await this.o.objections.add(objection);
       return { objection, inLoop: false };
     }
+    // 还开着的旧版学习对话：异议要进那次学习、会跑新一轮，旧的不再跑（W10 §9 第 1 条）
+    if (opened.screens !== true) throw new BadRequestError(OLD_LOOP);
     const sent = await this.hub.send(
       loopId,
       { role: 'learner', text: body },

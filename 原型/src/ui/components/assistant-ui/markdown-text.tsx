@@ -1,4 +1,4 @@
-// 来自 assistant-ui 模板 0.0.121（MIT）；加了公式（remark-math + KaTeX）与流式公式预处理；
+// 来自 assistant-ui 模板 0.0.121（MIT）；加了公式（remark-math + KaTeX）与流式公式预处理、中日韩标点旁的加粗（remark-cjk-friendly）；
 // 书里出处标记换成链接、再由链接组件画成出处小标签。
 
 import '@assistant-ui/react-markdown/styles/dot.css';
@@ -9,6 +9,7 @@ import {
   unstable_memoizeMarkdownComponents as memoizeMarkdownComponents,
   useIsMarkdownCodeBlock,
 } from '@assistant-ui/react-markdown';
+import remarkCjkFriendly from 'remark-cjk-friendly';
 import remarkGfm from 'remark-gfm';
 import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
@@ -25,6 +26,9 @@ import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button
 import { useCopyToClipboard } from '@/hooks/use-copy-to-clipboard';
 import { cn } from '@/lib/utils';
 
+/** 加粗等记号紧挨中日韩标点时也生效（如“**问题？**接着”；CommonMark 原规则在这里不认）。 */
+const REMARK = [remarkGfm, remarkCjkFriendly, remarkMath];
+
 const MarkdownTextImpl = () => {
   const streaming = useAuiState((s) => s.message.status?.type === 'running');
   const preprocess = useCallback(
@@ -33,7 +37,7 @@ const MarkdownTextImpl = () => {
   );
   return (
     <MarkdownTextPrimitive
-      remarkPlugins={[remarkGfm, remarkMath]}
+      remarkPlugins={REMARK}
       rehypePlugins={[rehypeKatex]}
       preprocess={preprocess}
       className="aui-md"
@@ -247,11 +251,7 @@ export const PlainMarkdown = memo(function PlainMarkdown(props: {
   );
   return (
     <div className="aui-md">
-      <Markdown
-        remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
-        components={plainComponents}
-      >
+      <Markdown remarkPlugins={REMARK} rehypePlugins={[rehypeKatex]} components={plainComponents}>
         {text}
       </Markdown>
     </div>

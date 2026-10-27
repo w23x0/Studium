@@ -741,7 +741,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   }
 
   /**
-   * 活页面里能用的本机库（KaTeX）：页面跑在不联网、来源不透明的小窗里，只能从这里取；
+   * 组件里能用的本机库（KaTeX）：组件跑在不联网、来源不透明的小窗里，只能从这里取；
    * 字体要跨来源，所以带 CORS 头。不要口令（同界面的静态文件）。
    */
   async function servePageLib(res: ServerResponse, rel: string): Promise<void> {
@@ -797,7 +797,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 
 class BadRequest extends Error {}
 
-/** 活页面能用的本机库的地址前缀（界面拼页面时用同一个，见 src/ui/page-frame.ts）。 */
+/** 组件能用的本机库的地址前缀（界面拼组件小窗时用同一个，见 src/ui/page-frame.ts）。 */
 const PAGE_LIB = '/page-lib';
 const KATEX_DIST = join(dirname(fileURLToPath(import.meta.resolve('katex/package.json'))), 'dist');
 

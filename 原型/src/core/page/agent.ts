@@ -324,12 +324,67 @@ export class Components {
 
   // ───────────── 学习者动了组件：框架另开一次子代理 ─────────────
 
+  /** 每个组件的框架另开的子代理排成一条：同一个组件一次只开一个（按发生先后）。 */
+  private readonly chains = new Map<string, Promise<void>>();
+
   /**
    * 回报先回做这个组件的一方（会话/学习对话.md §11.3「观测与回报」）：另开一次子代理，带上组件当前版
-   * （摊在 `组件/`）、当初的交代、学习者这次的操作。它按交代自己处理（改了就交）或往上报（report_to_main）；
-   * 改了组件没往上报的，改完报一句，跟学习者下次说话一起带上。
+   * （摊在 `组件/`）、这个组件最近一次派活的交代、学习者这次的操作。它按交代自己处理（改了就交）或往上报
+   * （report_to_main）；改了组件没往上报的，改完报一句，跟学习者下次说话一起带上。
    */
-  async onAction(loopId: string, component: string, text: string, awaited: boolean): Promise<void> {
+  onAction(loopId: string, component: string, text: string, awaited: boolean): Promise<void> {
+    return this.queue(loopId, component, () =>
+      this.runMaker(loopId, component, { kind: 'action', text, awaited }),
+    );
+  }
+
+  /** 组件在学习者那边运行时报错（W10 §9 第 9 条）：先另开做它的子代理修；修不好再按普通交回附给主模型。 */
+  onError(loopId: string, component: string, version: number, message: string): Promise<void> {
+    return this.queue(loopId, component, () =>
+      this.runMaker(loopId, component, { kind: 'error', version, message }),
+    );
+  }
+
+  private queue(loopId: string, component: string, fn: () => Promise<void>): Promise<void> {
+    const key = `${loopId}/${component}`;
+    const next = (this.chains.get(key) ?? Promise.resolve())
+      .then(() => this.waitIdle(loopId, component))
+      .then(fn);
+    this.chains.set(
+      key,
+      next.catch(() => undefined), // 失败由调用方记日志；链子不断，后面的照排
+    );
+    return next;
+  }
+
+  /**
+   * 这个组件有别的活还没交回（主模型派的子代理正在改它的文件夹）：重摊会抹掉它手上的改动，
+   * 等它交回再处理（最多等 10 分钟）。
+   */
+  private async waitIdle(loopId: string, component: string): Promise<void> {
+    for (let i = 0; i < 120; i++) {
+      const records = await this.hub.records(loopId);
+      const open = new Set(openTasks(records));
+      const busy = records.some(
+        ({ record: r }) =>
+          r.type === 'sandbox_action' &&
+          r.op === 'write' &&
+          r.task !== undefined &&
+          open.has(r.task) &&
+          (r.path ?? '').includes(`${COMPONENT_DIR}/${component}/`),
+      );
+      if (!busy) return;
+      await new Promise((resolve) => setTimeout(resolve, 5000));
+    }
+  }
+
+  private async runMaker(
+    loopId: string,
+    component: string,
+    why:
+      | { kind: 'action'; text: string; awaited: boolean }
+      | { kind: 'error'; version: number; message: string },
+  ): Promise<void> {
     const records = await this.hub.records(loopId);
     const v = latestVersions(records).get(component);
     if (v === undefined) return;
@@ -337,23 +392,27 @@ export class Components {
     for (const r of records) {
       if (r.record.type === 'subagent_started') this.briefs.set(r.record.taskId, r.record);
     }
-    const made = records.find(
-      (r) => r.record.type === 'component_version' && r.record.component === component,
+    // 这个组件最近一次由主模型派的活（框架另开的不算）：它的交代就是现在的交代
+    const lastTask = records.findLast(
+      ({ record: r }) =>
+        r.type === 'component_version' &&
+        r.component === component &&
+        r.task !== undefined &&
+        !r.task.startsWith('maker-'),
     )?.record;
-    const origin =
-      made?.type === 'component_version' && made.task !== undefined
-        ? this.briefs.get(made.task)
-        : undefined;
+    const taskOf = lastTask?.type === 'component_version' ? lastTask.task : undefined;
+    const origin = taskOf !== undefined ? this.briefs.get(taskOf) : undefined;
     await this.layout(loopId, component);
     await this.writeIndex(loopId);
     const task = `maker-${randomBytes(4).toString('hex')}`;
     const sb = await this.o.sandbox(loopId);
+    const awaited = why.kind === 'action' && why.awaited;
     const said = { up: false };
     const report: ToolSpec = {
       name: 'report_to_main',
-      description: '往上报给主对话一句话（按交代要报的才报）。',
+      description: '往上报给主对话一句话（按交代要报的才报；报错修不好时报哪里坏了）。',
       input: {
-        text: z.string().describe('一句看得懂的话，说学习者做了什么、你怎么处理的'),
+        text: z.string().describe('一句看得懂的话，说发生了什么、你怎么处理的'),
         awaited: z.boolean().optional().describe('要主对话马上回应时为 true'),
       },
       run: async (a) => {
@@ -364,14 +423,14 @@ export class Components {
       },
     };
     const conv = this.hub.adapter.open({
-      systemPrompt: `${this.o.prompt}\n\n组件目录（完整路径）：${this.dir(loopId)}\n\n这一次是框架叫你：学习者动了你做的组件。按当初的交代处理——要改组件就改了用 submit_component 交；交代说要报给主对话的，调 report_to_main 报一句；交代里没说要处理的就什么都不做。最后用一句话说你做了什么。`,
+      systemPrompt: `${this.o.prompt}\n\n组件目录（完整路径）：${this.dir(loopId)}\n\n这一次是框架叫你，不是主对话派的：学习者动了你做的组件，或组件在学习者那边运行时报错。学习者的操作按当初的交代处理——要改组件就改了用 submit_component 交；交代说要报给主对话的，调 report_to_main 报一句；交代里没说要处理的就什么都不做。报错就先修，改好用 submit_component 交；修不好就调 report_to_main 说哪里坏了。最后用一句话说你做了什么。`,
       tools: [this.submitTool(loopId, task), report],
       sandbox: {
         // 工作区就是 `组件/`：它只写得到组件（记录/读写权限.md 页面子代理行）
         workdir: this.dir(loopId),
         readOnly: [
           ...sb.readOnly.filter((e) => materialPaths(sb).includes(e.path)),
-          ...(this.wantsPosition(made?.type === 'component_version' ? made.task : undefined)
+          ...(this.wantsPosition(taskOf)
             ? sb.readOnly.filter((e) => positionPaths(sb).includes(e.path))
             : []),
         ],
@@ -382,16 +441,26 @@ export class Components {
       profile: 'subagent',
       ephemeral: true,
     });
+    const head =
+      why.kind === 'action'
+        ? [
+            `学习者动了你做的组件「${v.pointer}」（在 ${COMPONENT_DIR}/${component}/）：${why.text}`,
+            why.awaited ? '（这个操作在等回应。）' : '（这个操作不等回应。）',
+          ]
+        : [
+            `你做的组件「${v.pointer}」（在 ${COMPONENT_DIR}/${component}/，第 ${String(why.version)} 版）在学习者那边运行时报错：`,
+            why.message.slice(0, 1500),
+            '先修好它。',
+          ];
     let last = '';
     try {
       for await (const e of conv.send({
         role: 'program',
         plain: true,
         text: [
-          `学习者动了你做的组件「${v.pointer}」（在 ${COMPONENT_DIR}/${component}/）：${text}`,
-          awaited ? '（这个操作在等回应。）' : '（这个操作不等回应。）',
+          ...head,
           '',
-          '当初主对话交代你的：',
+          '这个组件最近一次主对话交代你的：',
           origin?.brief ?? origin?.description ?? '（没找到当初的交代）',
         ].join('\n'),
       })) {
@@ -425,8 +494,9 @@ export class Components {
     const changed = (await this.hub.records(loopId)).some(
       (r) => r.record.type === 'component_version' && r.record.task === task,
     );
+    if (said.up) return;
     // 自己改了组件、没往上报的：改完报一句，跟学习者下次说话一起带上（§11.3「子代理自己改了组件」）
-    if (changed && !said.up) {
+    if (changed) {
       await this.reportUp(
         loopId,
         component,
@@ -434,6 +504,18 @@ export class Components {
         last !== '' ? last : '改了这个组件',
         false,
         true,
+      );
+      return;
+    }
+    // 报错没修好、也没说：按普通的子代理交回附给主模型（§9 第 9 条）
+    if (why.kind === 'error') {
+      await this.reportUp(
+        loopId,
+        component,
+        task,
+        `组件运行时报错，没修好：${why.message.slice(0, 300)}${last !== '' ? `（子代理：${last.slice(0, 300)}）` : ''}`,
+        false,
+        false,
       );
     }
   }

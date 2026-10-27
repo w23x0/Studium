@@ -58,3 +58,18 @@ export function failedSinceScreen(records: NumberedRecord[]): boolean {
   const last = screensOf(records).at(-1)?.line ?? 0;
   return records.some(({ line, record: r }) => line > last && r.type === 'turn_failed');
 }
+
+/**
+ * 收口那一行（界面说明 §2.6「收口时」）：最后一次申请收口之后还没有收尾记录 = 正在整理；有了 = 整理好了
+ * （verdictLine 给面板定位）。守卫 10-23 起不把关，这里只说整理好了，不说学没学会。
+ */
+export function closeLine(
+  records: NumberedRecord[],
+): { kind: 'closing' } | { kind: 'done'; verdictLine: number } | undefined {
+  let out: { kind: 'closing' } | { kind: 'done'; verdictLine: number } | undefined;
+  for (const { line, record: r } of records) {
+    if (r.type === 'close_requested') out = { kind: 'closing' };
+    if (r.type === 'guard_verdict') out = { kind: 'done', verdictLine: line };
+  }
+  return out;
+}

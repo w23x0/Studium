@@ -57,7 +57,12 @@ export interface ClaudeAgentSdkOptions {
 /** 进程内工具一次调用的上限：30 分钟（一次导航连检索在真模型上要几分钟）。 */
 const TOOL_TIMEOUT_MS = 30 * 60 * 1000;
 
-export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions): Options {
+export function sdkOptionsFor(
+  spec: ConversationSpec,
+  o: ClaudeAgentSdkOptions,
+  /** 子代理的一次工具调用（tool_use id）属于哪件活（task_id）；认不出返回 undefined。 */
+  taskOfCall?: (toolUseId: string) => string | undefined,
+): Options {
   const server = createSdkMcpServer({
     name: SERVER,
     // 我们的工具里有整段跑完一个会话的（plan_next 跑完导航、retrieve 跑完检索子代理），常超过一分钟；
@@ -129,7 +134,7 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
       ? {
           additionalDirectories: readOnlyDirs(sb),
           permissionMode: 'default' as const,
-          canUseTool: sandboxPermission(sb, subs),
+          canUseTool: sandboxPermission(sb, subs, taskOfCall),
           // 派子代理不经 canUseTool（框架自己放行），同一套判断挂在调用前的钩子上
           ...(subs.length > 0
             ? {
@@ -176,9 +181,24 @@ export interface ToolUse {
  * Bash 放行（命令由沙盒卡）；派子代理与给它发消息放行；其余工具不给用。相对路径按工作区解析。
  * 子代理的调用带 agentID（会话/页面子代理.md：外围只做能写哪些文件、交时检查、试跑）。
  */
-export function sandboxPermission(sb: SandboxSpec, subs: SubagentSpec[] = []): CanUseTool {
+export function sandboxPermission(
+  sb: SandboxSpec,
+  subs: SubagentSpec[] = [],
+  taskOfCall?: (toolUseId: string) => string | undefined,
+): CanUseTool {
   return (toolName, input, opts): Promise<PermissionResult> =>
-    Promise.resolve(decide(sb, subs, toolName, input, opts.agentID));
+    Promise.resolve(
+      decide(
+        sb,
+        subs,
+        toolName,
+        input,
+        // 是哪件活：按这次调用的 tool_use id 认（调用所在的子代理消息 → 派它的 Agent 调用 → task_started 的
+        // task_id），不假设 SDK 的 agentID 就是 task_id；认不出（消息还没到）才退回 agentID。
+        // 10-27 真模型核过一次（0.3.293，4 次调用）：两者相同，按调用认的都认得出
+        opts.agentID === undefined ? undefined : (taskOfCall?.(opts.toolUseID) ?? opts.agentID),
+      ),
+    );
 }
 
 /** 派子代理前的钩子：和 canUseTool 同一套判断，拦下时把原因交回给模型。 */
@@ -209,7 +229,7 @@ function decide(
   subs: SubagentSpec[],
   toolName: string,
   input: Record<string, unknown>,
-  /** 子代理做的：它的编号（SDK 的 agent_id，同 task_id）；主模型做的为 undefined。 */
+  /** 子代理做的：它这件活的编号（task_id）；主模型做的为 undefined。 */
   agentId?: string,
 ): PermissionResult {
   const bySubagent = agentId !== undefined;
@@ -454,6 +474,8 @@ class SdkConversation implements ModelConversation {
   private readonly briefs = new Map<string, string>();
   /** 派子代理的那次调用（tool_use id）→ 这件活的编号（task_id）。 */
   private readonly taskOf = new Map<string, string>();
+  /** 子代理消息里的工具调用（tool_use id）→ 它属于哪次派活（派它的 Agent 调用的 tool_use id）。 */
+  private readonly callParent = new Map<string, string>();
   private handlers: Parameters<NonNullable<ModelConversation['listen']>>[0] | undefined;
 
   constructor(
@@ -469,7 +491,13 @@ class SdkConversation implements ModelConversation {
 
   private start(): void {
     if (this.output !== undefined) return;
-    const q = query({ prompt: this.input, options: sdkOptionsFor(this.spec, this.options) });
+    const q = query({
+      prompt: this.input,
+      options: sdkOptionsFor(this.spec, this.options, (id) => {
+        const parent = this.callParent.get(id);
+        return parent !== undefined ? this.taskOf.get(parent) : undefined;
+      }),
+    });
     this.close_ = () => {
       q.close();
     };
@@ -644,6 +672,7 @@ class SdkConversation implements ModelConversation {
       for (const b of blocks(msg.message.content)) {
         if (b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') {
           this.toolUses.set(b.id, { name: b.name, input: b.input ?? {} });
+          if (msg.parent_tool_use_id !== null) this.callParent.set(b.id, msg.parent_tool_use_id);
           const prompt = b.input?.prompt;
           if ((b.name === 'Agent' || b.name === 'Task') && typeof prompt === 'string') {
             this.briefs.set(b.id, prompt);

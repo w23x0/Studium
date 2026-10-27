@@ -47,6 +47,8 @@ export interface ScreensDeps {
   badRequest: (message: string) => Error;
   /** 学习者动了组件、要先回做它的子代理时：框架另开一次子代理（agent.ts）。 */
   toMaker?: (loopId: string, component: string, text: string, awaited: boolean) => Promise<void>;
+  /** 组件运行时报错：先另开做它的子代理修（W10 §9 第 9 条）。 */
+  toRepair?: (loopId: string, component: string, version: number, message: string) => Promise<void>;
 }
 
 export class Screens {
@@ -197,7 +199,13 @@ export class Screens {
       // 学习者在组件上的操作也是学习者的块（§11.1：学习者说的话与操作同一身份）
       if (r.type === 'component_action') {
         out.push({
-          ref: { kind: 'learner', key: `u${String(line)}`, pointer: gist('', r.text), line },
+          ref: {
+            kind: 'learner',
+            key: `u${String(line)}`,
+            pointer: gist('', r.text),
+            line,
+            op: true,
+          },
           at: r.at,
           line,
         });
@@ -434,6 +442,10 @@ export class Screens {
       version,
       message: message.slice(0, 2000),
     });
+    // 先回做它的子代理修；修不好它会按普通交回报上来（不直接附给主模型）
+    this.o.toRepair?.(loopId, component, version, message).catch((e: unknown) => {
+      console.error(`学习 ${loopId} 交给子代理修组件失败：`, e);
+    });
   }
 
   // ───────────── 试跑 ─────────────
@@ -467,7 +479,7 @@ export class Screens {
 
   /**
    * 上一轮之后攒着的（会话/学习对话.md §11.3「何时跑一轮」）：学习者在组件上报给主对话的操作（没等回应的）、
-   * 子代理改了组件或往上报的（没等回应的）、组件在学习者那边报的错、框架对不上时回的一句；按时间各一条，
+   * 子代理改了组件或往上报的（没等回应的；组件报错修不好的也走这里）、框架对不上时回的一句；按时间各一条，
    * 附在这一轮的输入前面。从正本现算（上一条 turn_context 之后），重启也不丢。
    */
   async preface(loopId: string): Promise<string> {
@@ -487,9 +499,6 @@ export class Screens {
         }
         if (r.type === 'component_report' && !r.awaited) {
           return [`${head} 子代理交回（${name(r.component)}）：${r.text}`];
-        }
-        if (r.type === 'component_error') {
-          return [`${head} ${name(r.component)}在学习者那边运行时报错：${r.message.slice(0, 300)}`];
         }
         if (r.type === 'screen_note') return [`${head} 框架：${r.text}`];
         return [];
