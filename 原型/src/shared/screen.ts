@@ -2,6 +2,7 @@
 // 每一轮学习者眼前的屏幕由主模型这一轮的输出定；一屏 = 一张块清单。块按内容指纹存一份，清单也按指纹存；
 // 正本只记第几屏与清单指纹（记录类型在 records.ts）。本文件是核心与界面共用的形状。
 // 块的 key、组件编号、版本号只在程序与界面里用，不进主模型上下文。
+import type { Ticket } from './records.ts';
 
 /** 屏幕上的一块：从哪来 + 指向（一句话）。 */
 export type ScreenBlockRef =
@@ -14,7 +15,12 @@ export type ScreenBlockRef =
   /** 一个组件；显示哪一版按这一屏的时间现算（当前屏 = 最新版）。 */
   | { kind: 'component'; key: string; pointer: string; component: string }
   /** 还在做的组件：占位，子代理交上后换成它做的组件。 */
-  | { kind: 'pending'; key: string; pointer: string; task: string };
+  | { kind: 'pending'; key: string; pointer: string; task: string }
+  /**
+   * 程序推来的块（§11.3「程序推来的块上屏」）：开场（line = 开场那条 program_fact）、收尾记录（line = 那条
+   * guard_verdict）。上屏只显示学习者在界面别处本来就看得到的部分，只给模型看的（沙盒路径等）不上屏。
+   */
+  | { kind: 'opening' | 'closing'; key: string; pointer: string; line: number };
 
 /** 一屏 = 一张块清单：从上到下一行行，一行里有两块 = 并排。 */
 export interface ScreenManifest {
@@ -45,7 +51,11 @@ export type ResolvedBlock =
       version: number;
       blocks: { id: string; html: string }[];
     }
-  | { kind: 'pending'; key: string; pointer: string };
+  | { kind: 'pending'; key: string; pointer: string }
+  /** 开场：显示那时的单子（同学习页顶上单子条的几项，加路线动作）。 */
+  | { kind: 'opening'; key: string; pointer: string; ticket?: Ticket }
+  /** 收尾记录：显示整理的内容（同“看整理的内容”那份）；界面按 verdictLine 取。 */
+  | { kind: 'closing'; key: string; pointer: string; verdictLine: number };
 
 /** GET /sessions/:id/screens：有过哪些屏（第几屏、哪一行、什么时候）。 */
 export interface ScreenListResponse {

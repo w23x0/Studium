@@ -166,7 +166,10 @@ export class Screens {
     }
   }
 
-  /** 可点名的旧块：主模型写过的、学习者说过的、子代理交回的、组件（最新版）、还在做的组件；按时间先后。 */
+  /**
+   * 可点名的旧块：主模型写过的、学习者说过的、子代理交回的、组件（最新版）、还在做的组件，
+   * 加上程序推来的开场与收尾记录（守卫交回之后才有）；按时间先后。
+   */
   private async candidates(
     loopId: string,
     records: NumberedRecord[],
@@ -187,8 +190,38 @@ export class Screens {
       }
       if (r.type === 'subagent_result') done.add(r.taskId);
     }
+    let opening = false;
     for (const { line, record: r } of records) {
       if (line > beforeLine && r.type !== 'component_version') continue;
+      // 开场：开学习时程序交的第一条事实（§11.3「程序推来的块上屏」：上屏只显示单子）
+      if (r.type === 'program_fact' && !opening) {
+        opening = true;
+        const first = records[0]?.record;
+        const ticket = first?.type === 'session_opened' ? first.ticket : undefined;
+        out.push({
+          ref: {
+            kind: 'opening',
+            key: `o${String(line)}`,
+            pointer: gist('开场：这次学习的单子——', ticket?.newPoint ?? ''),
+            line,
+          },
+          at: r.at,
+          line,
+        });
+      }
+      // 收尾记录：守卫交回了的才算（没交回的 problem 那条不是收尾记录）
+      if (r.type === 'guard_verdict' && r.problem === undefined) {
+        out.push({
+          ref: {
+            kind: 'closing',
+            key: `v${String(line)}`,
+            pointer: gist('收尾记录：这次学到了什么——', r.understanding?.[0]?.text ?? r.basis),
+            line,
+          },
+          at: r.at,
+          line,
+        });
+      }
       if (r.type === 'user_message') {
         out.push({
           ref: { kind: 'learner', key: `u${String(line)}`, pointer: gist('', r.text), line },
@@ -322,6 +355,15 @@ export class Screens {
         const text = r?.type === 'subagent_result' || r?.type === 'component_report' ? r.text : '';
         return { ...base, kind: 'subagent', text };
       }
+      case 'opening': {
+        // 只给单子（学习者在单子条上本来就看得到的）；开场里的沙盒路径、资料核对这些只给模型看
+        const first = records[0]?.record;
+        const ticket = first?.type === 'session_opened' ? first.ticket : undefined;
+        return { ...base, kind: 'opening', ...(ticket !== undefined ? { ticket } : {}) };
+      }
+      case 'closing':
+        // 整理的内容由界面按这一行取（同“看整理的内容”那份）
+        return { ...base, kind: 'closing', verdictLine: b.line };
       case 'component':
       case 'pending': {
         const v = versionAt(records, b, until);

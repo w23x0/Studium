@@ -476,6 +476,8 @@ class SdkConversation implements ModelConversation {
   private readonly taskOf = new Map<string, string>();
   /** 子代理消息里的工具调用（tool_use id）→ 它属于哪次派活（派它的 Agent 调用的 tool_use id）。 */
   private readonly callParent = new Map<string, string>();
+  /** 本轮主模型这一侧收到的服务报错（SDK 造的助手消息，外层 error 有值）；本轮结果出来时取走。 */
+  private readonly apiErrors: { code: string; text: string }[] = [];
   private handlers: Parameters<NonNullable<ModelConversation['listen']>>[0] | undefined;
 
   constructor(
@@ -565,17 +567,19 @@ class SdkConversation implements ModelConversation {
   }
 
   /** 一个事件交给谁：主模型这一轮的进当前一轮（没有就开一轮“模型自己起的”）；子代理的另交。 */
-  private route(ev: ModelEvent | { kind: 'result'; failed: boolean; reason: string }): void {
+  private route(
+    ev: ModelEvent | { kind: 'result'; failed: boolean; reason: string; notice?: string },
+  ): void {
     if (ev.kind === 'result') {
       if (this.current === undefined) return;
       if (!this.stamped) this.pending.shift();
       if (this.pending.length > 0) {
         // 还有插话没并进本轮：SDK 会接着为它另跑一轮，读到它的结果再收尾
-        if (ev.failed) this.current.push({ kind: 'turn_error', reason: ev.reason });
+        if (ev.failed) this.current.push(turnError(ev));
         this.stamped = false;
         return;
       }
-      this.finishTurn(ev.failed ? { kind: 'turn_error', reason: ev.reason } : { kind: 'turn_end' });
+      this.finishTurn(ev.failed ? turnError(ev) : { kind: 'turn_end' });
       return;
     }
     const sideOnly =
@@ -609,8 +613,10 @@ class SdkConversation implements ModelConversation {
   /** 一条 SDK 消息 → 我们的事件（有状态：工具调用配对、子代理认人）。 */
   private eventsOf(
     msg: SDKMessage,
-  ): (ModelEvent | { kind: 'result'; failed: boolean; reason: string })[] {
-    const out: (ModelEvent | { kind: 'result'; failed: boolean; reason: string })[] = [];
+  ): (ModelEvent | { kind: 'result'; failed: boolean; reason: string; notice?: string })[] {
+    const out: (
+      ModelEvent | { kind: 'result'; failed: boolean; reason: string; notice?: string }
+    )[] = [];
     const sid = 'session_id' in msg ? msg.session_id : undefined;
     if (sid !== undefined && sid !== this.sessionId) {
       this.sessionId = sid;
@@ -652,7 +658,8 @@ class SdkConversation implements ModelConversation {
       }
       return out;
     }
-    if (msg.type === 'assistant') this.model(msg.message.model, out);
+    // 服务报错时 SDK 造的那条助手消息（model 是 "<synthetic>"）不是实际执行的模型
+    if (msg.type === 'assistant' && msg.error === undefined) this.model(msg.message.model, out);
     if (msg.type === 'stream_event') {
       const ev = msg.event;
       if (
@@ -703,8 +710,9 @@ class SdkConversation implements ModelConversation {
     if (msg.type === 'assistant') {
       const text = msg.message.content.flatMap((b) => (b.type === 'text' ? [b.text] : [])).join('');
       if (msg.parent_tool_use_id !== null) {
-        // 子代理说的话不进主模型这一轮；记下最后一段，做完时作为它交回的
-        if (text !== '') this.lastWords.set(msg.parent_tool_use_id, text);
+        // 子代理说的话不进主模型这一轮；记下最后一段，做完时作为它交回的（服务报错那句不算它说的）
+        if (text !== '' && msg.error === undefined)
+          this.lastWords.set(msg.parent_tool_use_id, text);
         return out;
       }
       // SDK 在回复上标出本轮已经并进来的用户消息（含中途插话）
@@ -716,13 +724,20 @@ class SdkConversation implements ModelConversation {
         const i = this.pending.indexOf(u);
         if (i >= 0) this.pending.splice(i, 1);
       }
-      if (text !== '') out.push({ kind: 'assistant_text', text });
+      if (msg.error !== undefined) {
+        // 服务报错（额度用完、鉴权失败、过载……）：SDK 把报错句当一条助手消息交回，外层标 error。
+        // 那句不是模型说的话，不交 assistant_text；收着，本轮结果出来时记进失败事件
+        this.apiErrors.push({ code: msg.error, text });
+      } else if (text !== '') out.push({ kind: 'assistant_text', text });
     }
     if (msg.type === 'result') {
+      const errs = this.apiErrors.splice(0);
+      const notice = errs.map((e) => (e.text !== '' ? e.text : e.code)).join('；');
       out.push({
         kind: 'result',
-        failed: msg.subtype !== 'success' || msg.is_error,
-        reason: failReason(msg),
+        failed: msg.subtype !== 'success' || msg.is_error || errs.length > 0,
+        reason: `${failReason(msg)}${errs.length > 0 ? `；服务报错：${errs.map((e) => e.code).join('、')}` : ''}`,
+        ...(notice !== '' ? { notice } : {}),
       });
     }
     return out;
@@ -730,7 +745,7 @@ class SdkConversation implements ModelConversation {
 
   private model(
     reported: string | undefined,
-    out: (ModelEvent | { kind: 'result'; failed: boolean; reason: string })[],
+    out: (ModelEvent | { kind: 'result'; failed: boolean; reason: string; notice?: string })[],
   ): void {
     if (reported !== undefined && reported !== '' && reported !== this.reportedModel) {
       this.reportedModel = reported;
@@ -865,6 +880,14 @@ export async function listModelCapabilities(cwd?: string): Promise<ModelCapabili
     input.end();
     q.close();
   }
+}
+
+function turnError(ev: { reason: string; notice?: string }): ModelEvent {
+  return {
+    kind: 'turn_error',
+    reason: ev.reason,
+    ...(ev.notice !== undefined ? { notice: ev.notice } : {}),
+  };
 }
 
 /** 本轮失败的原因：带上 SDK 给的错误原文（如沙盒缺依赖、续接不到会话），只写 subtype 看不出哪里坏了。 */

@@ -150,8 +150,8 @@ export type ModelEvent =
   | SubagentEvent
   /** 本轮结束。 */
   | { kind: 'turn_end' }
-  /** 本轮失败；对话仍可继续。 */
-  | { kind: 'turn_error'; reason: string };
+  /** 本轮失败；对话仍可继续。notice = 服务交回的报错原句（不是模型的话，不当 assistant_text 交）。 */
+  | { kind: 'turn_error'; reason: string; notice?: string };
 
 export interface ModelConversation {
   /** 发一条输入，流式拿回本轮事件，直到 turn_end 或 turn_error。一次只跑一轮。 */

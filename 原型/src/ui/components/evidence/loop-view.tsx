@@ -399,8 +399,30 @@ function Verdict(props: {
       {v.request !== undefined && (
         <div className="text-muted-foreground text-xs">{W.askedBy(v.request.by)}</div>
       )}
+      <VerdictBody sessionId={loop.sessionId} verdict={v} />
+      <ModelLine model={v.model} />
+      <ObjectionList objections={v.objections} />
+      <ObjectionForm
+        label={W.objectJudgement}
+        submit={(text) =>
+          api.objectToVerdict(loop.sessionId, v.line, text).then((x) => x.objection)
+        }
+        onDone={props.onObjected}
+      />
+    </Card>
+  );
+}
+
+/**
+ * 整理的内容（理由、没整理成的原因、学到的逐条带原话）：面板里的这张卡与学习页上点名拿回的收尾记录共用
+ * （会话/学习对话.md §11.3「程序推来的块上屏」）。
+ */
+export function VerdictBody(props: { sessionId: string; verdict: GuardVerdictView }) {
+  const v = props.verdict;
+  return (
+    <>
       <Field label={W.reason}>
-        <ReasonText text={v.basis} sessionId={loop.sessionId} />
+        <ReasonText text={v.basis} sessionId={props.sessionId} />
       </Field>
       {v.problem !== undefined && <Field label={W.problem}>{v.problem}</Field>}
       {v.understanding.length > 0 && (
@@ -413,12 +435,12 @@ function Verdict(props: {
                 <span className="flex flex-wrap items-center gap-2">
                   <Badge tone="accent">{u.strength}</Badge>
                   {u.lines.length > 0 && (
-                    <JumpLine loopId={loop.sessionId} line={u.lines[0] ?? 0} label={W.jumpTo} />
+                    <JumpLine loopId={props.sessionId} line={u.lines[0] ?? 0} label={W.jumpTo} />
                   )}
                 </span>
                 <span className="flex flex-col gap-1.5">
                   {u.quotes.map((q) => (
-                    <Quote key={q.line} quote={q} sessionId={loop.sessionId} />
+                    <Quote key={q.line} quote={q} sessionId={props.sessionId} />
                   ))}
                 </span>
               </span>
@@ -426,15 +448,6 @@ function Verdict(props: {
           </span>
         </Field>
       )}
-      <ModelLine model={v.model} />
-      <ObjectionList objections={v.objections} />
-      <ObjectionForm
-        label={W.objectJudgement}
-        submit={(text) =>
-          api.objectToVerdict(loop.sessionId, v.line, text).then((x) => x.objection)
-        }
-        onDone={props.onObjected}
-      />
-    </Card>
+    </>
   );
 }

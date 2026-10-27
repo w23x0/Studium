@@ -186,6 +186,11 @@ export interface TurnFailed {
   type: 'turn_failed';
   at: string;
   reason: string;
+  /**
+   * 模型服务交回的报错原句（如额度用完时 SDK 把“You've hit your session limit…”当一条助手消息交回）。
+   * 它不是模型说的话：只记在这里，不记成 assistant_message。10-27 前的旧数据里这句仍在 assistant_message 里。
+   */
+  notice?: string;
 }
 
 export interface CloseRequested {

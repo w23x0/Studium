@@ -24,6 +24,8 @@ const KIND_LABEL: Record<ScreenBlockRef['kind'], string> = {
   subagent: '子代理交回',
   component: '组件',
   pending: '正在做的组件',
+  opening: '开场（程序推来的）',
+  closing: '收尾记录（程序推来的）',
 };
 
 function kindLabel(b: ScreenBlockRef): string {
@@ -144,7 +146,7 @@ function firstWords(text: string): string {
   return t.length > 40 ? `${t.slice(0, 40)}…` : t;
 }
 
-/** 学习者的话、子代理交回给小模型看的一句话：开头几个字。 */
+/** 学习者的话、子代理交回、开场、收尾记录给小模型看的一句话：开头几个字。 */
 export function gist(prefix: string, text: string): string {
   return `${prefix}${firstWords(text)}`;
 }

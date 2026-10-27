@@ -2697,7 +2697,9 @@ export class Studium {
         bring_back: z
           .array(z.string())
           .optional()
-          .describe('要拿回屏幕的旧块，每条一句极简短的描述，如“那道弹簧题”“学习者刚才的推导”'),
+          .describe(
+            '要拿回屏幕的旧块，每条一句极简短的描述，如“那道弹簧题”“学习者刚才的推导”；开场与守卫的收尾记录也能拿回，学习者看到的分别是单子和整理的内容',
+          ),
         layout: z
           .string()
           .optional()

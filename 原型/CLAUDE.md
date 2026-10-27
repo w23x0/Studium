@@ -65,7 +65,7 @@
 
 每个会话一个 `var/sessions/<会话 id>.jsonl`，一行一条，行号 = 引用地址。类型见 `src/shared/records.ts`：
 `session_opened`（含单子 `ticket`）· `user_message`（异议带 `objection`，附图带 `images`）· `assistant_message` ·
-`model_raw`（适配层吐出的原始消息，含思考块）· `model_session`（续接凭据）· `model_used` · `turn_failed` ·
+`model_raw`（适配层吐出的原始消息，含思考块）· `model_session`（续接凭据）· `model_used` · `turn_failed`（服务交回的报错句记在 `notice`，不记成 `assistant_message`）·
 `program_fact` · `tool_call` · `sandbox_action`（沙盒里的读 / 写 / 跑命令；`tag` 由程序按路径打：`教学工具:<文件名>`）·
 `close_requested` `guard_verdict`（含 `understanding` 与这一轮实际执行的 `model`）`loop_ended` `after_loop_step`
 （搁置与恢复 `loop_shelved` `loop_resumed`）· `ticket_edited` ·

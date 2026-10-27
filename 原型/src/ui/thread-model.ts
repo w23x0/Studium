@@ -164,7 +164,12 @@ export function toUiMessages(
           toolGroup(id, line).narration.push(r.text.trim());
           break;
         }
-        const text = r.type === 'assistant_message' ? r.text : '（这次回复没完成，可以再发一次）';
+        const text =
+          r.type === 'assistant_message'
+            ? r.text
+            : r.notice !== undefined
+              ? `（这次回复没完成：${r.notice}；可以再发一次）`
+              : '（这次回复没完成，可以再发一次）';
         const prev = out.at(-1);
         // 同一轮里的多段助手文字合成一条显示
         if (prev?.role === 'assistant' && prev.failed !== true) {

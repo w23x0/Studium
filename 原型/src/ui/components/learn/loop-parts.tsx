@@ -25,8 +25,6 @@ export function currentTicket(records: NumberedRecord[]): Ticket | undefined {
 export function TicketStrip(props: { ticket: Ticket }) {
   const [open, setOpen] = useState(false);
   const t = props.ticket;
-  const known = t.startPoints.filter((p) => p.source !== '假定');
-  const assumed = t.startPoints.filter((p) => p.source === '假定');
   return (
     <div data-testid="ticket-strip" className="bg-muted/50 rounded-lg px-3 py-1.5">
       <button
@@ -43,18 +41,33 @@ export function TicketStrip(props: { ticket: Ticket }) {
         <span className="text-muted-foreground shrink-0">{W.loopTopic}</span>
         <MathPreview text={t.newPoint} className={open ? '' : 'line-clamp-1'} />
       </button>
-      {open && (
-        <dl className="mt-1.5 flex flex-col gap-1.5 ps-5.5 text-sm">
-          <TicketItem label={W.clause} text={t.clause} />
-          {known.length > 0 && (
-            <TicketItem label={W.startPoints} text={known.map((p) => p.point).join('；')} />
-          )}
-          {assumed.length > 0 && (
-            <TicketItem label={W.startSource.假定} text={assumed.map((p) => p.point).join('；')} />
-          )}
-        </dl>
-      )}
+      {open && <TicketDetails ticket={t} className="mt-1.5 ps-5.5" />}
     </div>
+  );
+}
+
+/**
+ * 单子条点开后的几项（学完应该能、从哪出发、先假定你会的）；学习页上点名拿回的开场也用它，
+ * 另加新点与路线动作（会话/学习对话.md §11.3「程序推来的块上屏」）。
+ */
+export function TicketDetails(props: { ticket: Ticket; className?: string; opening?: boolean }) {
+  const t = props.ticket;
+  const known = t.startPoints.filter((p) => p.source !== '假定');
+  const assumed = t.startPoints.filter((p) => p.source === '假定');
+  return (
+    <dl className={`flex flex-col gap-1.5 text-sm ${props.className ?? ''}`}>
+      {props.opening === true && <TicketItem label={W.loopTopic} text={t.newPoint} />}
+      <TicketItem label={W.clause} text={t.clause} />
+      {known.length > 0 && (
+        <TicketItem label={W.startPoints} text={known.map((p) => p.point).join('；')} />
+      )}
+      {assumed.length > 0 && (
+        <TicketItem label={W.startSource.假定} text={assumed.map((p) => p.point).join('；')} />
+      )}
+      {props.opening === true && t.routeAction !== '' && (
+        <TicketItem label={W.routeAction} text={t.routeAction} />
+      )}
+    </dl>
   );
 }
 

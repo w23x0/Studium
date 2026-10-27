@@ -53,10 +53,17 @@ export function justSaid(
   );
 }
 
-/** 最后一屏之后有没有一轮没跑成（界面上说一句，不进屏幕）。 */
-export function failedSinceScreen(records: NumberedRecord[]): boolean {
+/**
+ * 最后一屏之后没跑成的那一轮（界面上说一句，不进屏幕）：有就回它（带服务交回的报错句，如额度几点恢复），
+ * 没有就是 undefined。
+ */
+export function failedSinceScreen(records: NumberedRecord[]): { notice?: string } | undefined {
   const last = screensOf(records).at(-1)?.line ?? 0;
-  return records.some(({ line, record: r }) => line > last && r.type === 'turn_failed');
+  const f = records
+    .flatMap(({ line, record: r }) => (line > last && r.type === 'turn_failed' ? [r] : []))
+    .at(-1);
+  if (f === undefined) return undefined;
+  return f.notice !== undefined ? { notice: f.notice } : {};
 }
 
 /**

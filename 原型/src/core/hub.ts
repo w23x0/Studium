@@ -433,6 +433,7 @@ export class Hub {
           type: 'turn_failed',
           at: this.iso(),
           reason: ev.reason,
+          ...(ev.notice !== undefined ? { notice: ev.notice } : {}),
         });
         break;
       case 'subagent':

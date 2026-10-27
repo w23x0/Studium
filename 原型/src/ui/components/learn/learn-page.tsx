@@ -29,7 +29,10 @@ import { LongtermBanner } from '../longterm/loop-extras.tsx';
 import { StageCheckBanner } from '../stage-check.tsx';
 import { TopBar } from '../top-bar.tsx';
 import { ComponentFrame } from './component-frame.tsx';
-import { currentTicket, LoopBar, TicketStrip } from './loop-parts.tsx';
+import { useLoad } from '../../hooks/use-load.ts';
+import { VerdictBody } from '../evidence/loop-view.tsx';
+import { Loading } from '../evidence/parts.tsx';
+import { currentTicket, LoopBar, TicketDetails, TicketStrip } from './loop-parts.tsx';
 
 export function LearnPage(props: {
   sessionId: string;
@@ -55,6 +58,7 @@ export function LearnPage(props: {
   const ended = state.kind === 'ended';
   const live = viewing === undefined && !ended;
   const refresh = useMemo(() => screenRefreshKey(records), [records]);
+  const failed = useMemo(() => failedSinceScreen(records), [records]);
   const [screen, setScreen] = useState<ScreenResponse | undefined>(undefined);
   const [replyTo, setReplyTo] = useState<{ key: string; pointer: string } | undefined>(undefined);
   const scroller = useRef<HTMLDivElement>(null);
@@ -195,9 +199,9 @@ export function LearnPage(props: {
                 </span>
               </button>
             )}
-            {viewing === undefined && !running && failedSinceScreen(records) && (
+            {viewing === undefined && !running && failed !== undefined && (
               <p className="text-destructive text-sm" data-testid="learn-failed">
-                {WP.failed}
+                {WP.failed(failed.notice)}
               </p>
             )}
             {viewing === undefined && running && (
@@ -300,6 +304,17 @@ function Block(props: {
         />
       );
       break;
+    case 'opening':
+      body = (
+        <div className="bg-muted/50 flex flex-col gap-1.5 rounded-lg px-3 py-2">
+          <div className="text-muted-foreground text-xs">{WP.openingBlock}</div>
+          {b.ticket !== undefined && <TicketDetails ticket={b.ticket} opening />}
+        </div>
+      );
+      break;
+    case 'closing':
+      body = <ClosingBlock loopId={props.loopId} verdictLine={b.verdictLine} />;
+      break;
     case 'pending':
       body = (
         <div className="text-muted-foreground flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm">
@@ -324,6 +339,22 @@ function Block(props: {
           <ReplyIcon className="size-3" />
           {WP.replyHere}
         </button>
+      )}
+    </div>
+  );
+}
+
+/** 点名拿回的收尾记录：整理的内容，同“看整理的内容”点开那份（依据面板的判定卡里那几项）。 */
+function ClosingBlock(props: { loopId: string; verdictLine: number }) {
+  const r = useLoad(`loop:${props.loopId}`, () => api.loopEvidence(props.loopId));
+  const v = r.data?.loop.verdicts.find((x) => x.line === props.verdictLine);
+  return (
+    <div className="bg-muted/50 flex flex-col gap-3 rounded-lg px-3 py-2 text-sm">
+      <div className="text-muted-foreground text-xs">{WP.closingBlock}</div>
+      {v !== undefined ? (
+        <VerdictBody sessionId={props.loopId} verdict={v} />
+      ) : (
+        <Loading error={r.error} />
       )}
     </div>
   );
