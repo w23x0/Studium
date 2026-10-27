@@ -25,6 +25,7 @@ import type { DerivedIndex } from './index/derived-index.ts';
 import { isSessionId, type DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
 import type {
+  ConversationSpec,
   ModelAdapter,
   ModelConversation,
   ModelDisclosure,
@@ -105,6 +106,11 @@ export class Hub {
 
   get modelName(): string {
     return this.opts.model.name;
+  }
+
+  /** 模型接口本身：框架另开的一次性对话（学习对话里框架另开的子代理，W10 §9 第 4 条）用。 */
+  get adapter(): ModelAdapter {
+    return this.opts.model;
   }
 
   /**
@@ -511,7 +517,14 @@ export class Hub {
     return resume?.type === 'model_session' ? { resumeToken: resume.token } : {};
   }
 
-  /** 推一条不来自正本的事件（活页面试跑）。 */
+  /**
+   * 另开一个不挂在任何会话上的模型对话（学习者动了组件、框架另开的子代理，W10）：事件由调用方自己记。
+   */
+  openSide(spec: ConversationSpec): ModelConversation {
+    return this.opts.model.open(spec);
+  }
+
+  /** 推一条不来自正本的事件（组件试跑）。 */
   broadcast(e: ServerEvent): void {
     this.emit(e);
   }

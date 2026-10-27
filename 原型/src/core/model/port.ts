@@ -55,6 +55,8 @@ export interface SubagentSpec {
   writable: string;
   /** 它还能读的（绝对路径，目录或单个文件）；不给 = 只读得到 `writable`。 */
   readable?: string[];
+  /** 某件活另外能读的（按这件活的编号，如派它画学习位置图时给位置依据）。 */
+  readableFor?: (task: string | undefined) => string[];
   /** 它还在做上一件（主模型这时再派一个同名的会被拦下，叫它等或用 SendMessage 接着说）；不给 = 不限个数。 */
   busy?: () => boolean;
 }

@@ -65,7 +65,7 @@ import { InputError, type Inputs } from '../inputs.ts';
 import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { inputsRoute } from './inputs-routes.ts';
 import { longtermRoute } from './longterm-routes.ts';
-import { pageRoute } from './page-routes.ts';
+import { screenRoute } from './screen-routes.ts';
 import { outputsRoute } from './outputs-routes.ts';
 import { sidebarRoute } from './sidebar-routes.ts';
 import type { SidebarStore } from '../sidebar.ts';
@@ -181,7 +181,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     if (parts[1] === 'sources' && (await sourcesRoute(req, res, parts, method, sources, studium)))
       return;
     if (await sidebarRoute(req, res, parts, method, { store: opts.sidebar, hub, studium })) return;
-    if (await pageRoute(req, res, parts, method, studium)) return;
+    if (await screenRoute(req, res, parts, method, studium)) return;
     if (
       await inputsRoute(
         req,

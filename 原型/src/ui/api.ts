@@ -152,7 +152,7 @@ export const api = {
   pageError: (loopId: string, body: PageErrorRequest) =>
     call<object>(`/sessions/${loopId}/page/error`, { method: 'POST', body: JSON.stringify(body) }),
   pageTrial: (loopId: string, trialId: string, body: PageTrialResult) =>
-    call<object>(`/sessions/${loopId}/page/trial/${trialId}`, {
+    call<object>(`/sessions/${loopId}/screens/trial/${trialId}`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),

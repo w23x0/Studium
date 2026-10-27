@@ -178,7 +178,7 @@ export interface ToolUse {
  */
 export function sandboxPermission(sb: SandboxSpec, subs: SubagentSpec[] = []): CanUseTool {
   return (toolName, input, opts): Promise<PermissionResult> =>
-    Promise.resolve(decide(sb, subs, toolName, input, opts.agentID !== undefined));
+    Promise.resolve(decide(sb, subs, toolName, input, opts.agentID));
 }
 
 /** 派子代理前的钩子：和 canUseTool 同一套判断，拦下时把原因交回给模型。 */
@@ -189,7 +189,7 @@ function agentGate(sb: SandboxSpec, subs: SubagentSpec[]): HookCallback {
       typeof input.tool_input === 'object' && input.tool_input !== null
         ? (input.tool_input as Record<string, unknown>)
         : {};
-    const r = decide(sb, subs, input.tool_name, toolInput, input.agent_id !== undefined);
+    const r = decide(sb, subs, input.tool_name, toolInput, input.agent_id);
     return Promise.resolve(
       r.behavior === 'deny'
         ? {
@@ -209,15 +209,21 @@ function decide(
   subs: SubagentSpec[],
   toolName: string,
   input: Record<string, unknown>,
-  bySubagent = false,
+  /** 子代理做的：它的编号（SDK 的 agent_id，同 task_id）；主模型做的为 undefined。 */
+  agentId?: string,
 ): PermissionResult {
+  const bySubagent = agentId !== undefined;
   const own = new Set(subs.flatMap((a) => a.ownTools.map((t) => `mcp__${SERVER}__${t}`)));
   if (toolName.startsWith(`mcp__${SERVER}__`)) {
     return own.has(toolName) && !bySubagent ? deny('这个工具是子代理用的') : allow(input);
   }
   // 子代理只读得到它能写的与给它的（记录/读写权限.md 页面子代理行）
   const subCanRead = (abs: string) =>
-    subs.some((a) => within(abs, a.writable) || (a.readable ?? []).some((r) => within(abs, r)));
+    subs.some(
+      (a) =>
+        within(abs, a.writable) ||
+        [...(a.readable ?? []), ...(a.readableFor?.(agentId) ?? [])].some((r) => within(abs, r)),
+    );
   switch (toolName) {
     case 'Read': {
       const abs = pathOf(sb, input.file_path);

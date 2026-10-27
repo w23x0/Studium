@@ -1,9 +1,9 @@
 // 对话原文 → 给模型读的带行号文本（00 原则 8）。行号 = 正本 JSONL 的行号，引用只写行号。
-// 只放对话本身（学习者、教学、程序推的事、子代理交回）与学习者在页面上的操作；沙盒动作、工具调用、原始消息不放
-// （守卫不读教学侧推理）。块编号、版本号不进（会话/学习对话.md §11「版本」）。
+// 只放对话本身（学习者、教学、程序推的事、子代理交回）与学习者在组件上的操作；沙盒动作、工具调用、原始消息不放
+// （守卫不读教学侧推理）。块编号、组件编号、版本号不进（会话/学习对话.md §11.2 主模型行）。
+import type { PageAction } from '../shared/page.ts';
 import type { LogRecord, NumberedRecord } from '../shared/records.ts';
 import { localMinute } from '../shared/time.ts';
-import { describeActions } from './page/live-page.ts';
 
 export function renderTranscript(records: NumberedRecord[]): string {
   const out: string[] = [];
@@ -16,15 +16,25 @@ export function renderTranscript(records: NumberedRecord[]): string {
   return out.join('\n');
 }
 
-/** 一条记录在对话原文里谁说了什么；学习者在页面上的操作与子代理交回也算（会话/学习对话.md §3）。 */
+/** 一条记录在对话原文里谁说了什么；学习者在组件上的操作与子代理交回也算（会话/学习对话.md §3）。 */
 function speech(r: LogRecord): { who: string; text: string } | undefined {
   switch (r.type) {
     case 'user_message':
-      return { who: '学习者', text: r.text };
+      return {
+        who: '学习者',
+        text: r.replyTo !== undefined ? `（回在「${r.replyTo.pointer}」下面）${r.text}` : r.text,
+      };
     case 'assistant_message':
       return { who: '教学', text: r.text };
     case 'program_fact':
       return { who: '程序', text: r.text };
+    case 'component_action':
+      return { who: '学习者', text: `（在组件上）${r.text}` };
+    case 'component_report':
+      return { who: '子代理交回', text: r.text };
+    case 'screen_note':
+      return { who: '框架', text: r.text };
+    // 旧数据（10-26 的活页面）：学习者在页面上的动作
     case 'page_actions':
       return { who: '学习者', text: `（在页面上）${describeActions(r.actions)}` };
     case 'subagent_result':
@@ -59,6 +69,7 @@ export function guardView(records: NumberedRecord[]): string {
       (r) =>
         r.record.type === 'user_message' ||
         r.record.type === 'assistant_message' ||
+        r.record.type === 'component_action' ||
         r.record.type === 'page_actions' ||
         r.record.type === 'page_rollback' ||
         (r.record.type === 'page_version' && r.record.by === 'editor'),
@@ -66,11 +77,27 @@ export function guardView(records: NumberedRecord[]): string {
   );
 }
 
-/** 行号是不是学习者自己说的话或在页面上做的事（守卫引用的证据只认这种行）。 */
+/** 行号是不是学习者自己说的话或在组件 / 旧页面上做的事（守卫引用的证据只认这种行）。 */
 export function learnerLines(records: NumberedRecord[]): Set<number> {
   return new Set(
     records
-      .filter((r) => r.record.type === 'user_message' || r.record.type === 'page_actions')
+      .filter(
+        (r) =>
+          r.record.type === 'user_message' ||
+          r.record.type === 'component_action' ||
+          r.record.type === 'page_actions',
+      )
       .map((r) => r.line),
   );
+}
+
+/** 旧数据：10-26 活页面上的动作各一句（块编号不进上下文，只说做了什么）。 */
+function describeActions(actions: PageAction[]): string {
+  return actions
+    .map((a) => {
+      if (a.kind === 'toggle') return `${a.open ? '展开' : '折起'}了一块`;
+      const detail = a.detail === undefined ? '' : `：${JSON.stringify(a.detail).slice(0, 600)}`;
+      return `「${a.name}」${detail}`;
+    })
+    .join('；');
 }

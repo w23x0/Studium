@@ -54,8 +54,7 @@ import { locate, type LocateDeps } from './locate.ts';
 import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
-import { PageAgent } from './page/agent.ts';
-import { LivePages } from './page/live-page.ts';
+import { Components } from './page/agent.ts';
 import { ARRANGE_TOOL, Screens } from './page/screens.ts';
 import { PageStore } from './page/store.ts';
 import { currentTicket } from './ticket.ts';
@@ -137,11 +136,8 @@ export class Studium {
   /** 上传与分流（工单 W9）。 */
   private readonly uploads: Uploads;
 
-  /** 活页面：版本、学习者在页面上的动作、试跑（会话/学习对话.md §11）。 */
-  readonly pages: LivePages;
-
-  /** 页面子代理的外围：能写哪些文件、交时检查、试跑（会话/页面子代理.md）。 */
-  readonly pageAgent: PageAgent;
+  /** 学习对话的子代理的外围：组件摊成文件、能读写哪些、交时检查、试跑（会话/页面子代理.md）。 */
+  readonly components: Components;
 
   /** 学习者看到的屏幕：每轮照主模型的输出摆一屏、学习者在组件上的操作、试跑（会话/学习对话.md §11）。 */
   readonly screens: Screens;
@@ -171,30 +167,27 @@ export class Studium {
       },
       positionText: (id) => this.positionBasis(id),
     });
-    const pageStore = new PageStore(join(o.dataDir, 'pages'));
-    this.pages = new LivePages({
-      hub: () => this.hub,
-      store: pageStore,
-      iso: () => this.iso(),
-      newId: (prefix) => this.newId(prefix),
-      assertOpen: (id) => this.assertOpenLoop(id),
-      badRequest: (m) => new BadRequestError(m),
-    });
+    // 屏幕与组件按块按指纹存在 `<数据>/screens/`（旧活页面的 `pages/` 原样留着，不再写）
+    const screenStore = new PageStore(join(o.dataDir, 'screens'));
     this.screens = new Screens({
       hub: () => this.hub,
-      store: new PageStore(join(o.dataDir, 'screens')),
+      store: screenStore,
       iso: () => this.iso(),
       newId: (prefix) => this.newId(prefix),
       arrange:
         o.arrange ?? (() => Promise.reject(new Error('没配框架小模型：主模型点名的旧块对不上'))),
       assertOpen: (id) => this.assertActiveLoop(id),
       badRequest: (m) => new BadRequestError(m),
+      toMaker: (loopId, component, text, awaited) =>
+        this.components.onAction(loopId, component, text, awaited),
     });
-    this.pageAgent = new PageAgent({
+    this.components = new Components({
       hub: () => this.hub,
-      pages: this.pages,
-      store: pageStore,
+      screens: this.screens,
+      store: screenStore,
+      iso: () => this.iso(),
       workdir: (id) => this.sandboxes.workdir(id),
+      sandbox: (id) => this.sandboxes.forLoop(id),
       assertOpen: (id) => this.assertActiveLoop(id),
       // 旧数据里的“页面编辑员”会话种类还在，它的提示词文件就是子代理的提示词
       prompt: o.prompts.editor,
@@ -274,7 +267,7 @@ export class Studium {
 
   attach(hub: Hub): void {
     this.hubRef = hub;
-    this.pageAgent.attach(hub);
+    this.components.attach(hub);
   }
 
   private get hub(): Hub {
@@ -301,7 +294,7 @@ export class Studium {
           // 上一轮之后攒着的（学习者在组件上的操作、子代理报的、框架回的一句），按时间接在这一轮前面
           // （会话/学习对话.md §3、§11.3）
           preface: (sessionId: string) => this.screens.preface(sessionId),
-          subagents: async (sessionId: string) => [await this.pageAgent.spec(sessionId)],
+          subagents: async (sessionId: string) => [await this.components.spec(sessionId)],
           timeline: true,
           // 主模型一轮输出完：框架照它的输出摆一屏（会话/学习对话.md §11.1）
           afterTurn: (sessionId: string, fromLine: number) =>
@@ -1417,7 +1410,7 @@ export class Studium {
     // 守卫按收口那一刻的单子写：学习者改过就用改后的（工单 W6 §9）
     const ticket = currentTicket(records);
     // 守卫读得到改后学习者看到的页面（记录/对话与事件记录.md）
-    const page = await this.pages.textForGuard(loopId);
+    const page = await this.screens.textForGuard(loopId);
     await this.hub.send(guard.sessionId, {
       role: 'program',
       text: [
@@ -2644,9 +2637,9 @@ export class Studium {
   // ───────────── 学习对话 ─────────────
 
   /**
-   * 学习对话的工具：两个命令（工单 W4 §5.5）+ 页面子代理交改动用的 submit_page（只给子代理）。资料、学过的记录、
-   * 状态、教法记录与教学工具都在沙盒里当只读文件读；工作区是模型自己的草稿（沙盒动作，程序当场记）；
-   * 改活页面用框架自带的派子代理（会话/页面子代理.md）。
+   * 学习对话的工具：两个命令（工单 W4 §5.5）+ 子代理交组件用的 submit_component（只给子代理）+ 说给框架的口
+   * arrange_screen（W10）。资料、学过的记录、状态、教法记录与教学工具都在沙盒里当只读文件读；工作区是模型自己的
+   * 草稿（沙盒动作，程序当场记）；组件用框架自带的派子代理做（会话/页面子代理.md）。
    */
   private loopTools(loopId: string): ToolSpec[] {
     return [
@@ -2670,7 +2663,7 @@ export class Studium {
           return ok('这次学习已按“没合上就结束”处理；下一步由项目那边安排。和学习者道别即可。');
         },
       },
-      this.pageAgent.submitTool(loopId),
+      this.components.submitTool(loopId),
       this.arrangeTool(),
     ];
   }
@@ -2683,7 +2676,7 @@ export class Studium {
     return {
       name: ARRANGE_TOOL,
       description:
-        '说给框架听：这一轮学习者的屏幕上放什么。学习者只看得到你每轮放上屏幕的——这一轮你写的话，加上你在这里点名拿回的旧块；没点名的不在屏幕上。每轮先调一次，再写给学习者的话。',
+        '说给框架听：这一轮学习者的屏幕上放什么。学习者只看得到你每轮放上屏幕的——这一轮你写的话，加上你在这里点名拿回的旧块；没点名的不在屏幕上。一轮的话可以分成几段（parts），每段一句指向；分开的段以后能单独点名拿回（例如只拿回题目、不带前面的开场白），不分就只能整段拿回。每轮先调一次，再写给学习者的话。',
       input: {
         parts: z
           .array(
