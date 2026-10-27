@@ -1409,7 +1409,7 @@ export class Studium {
     this.guardTarget.set(guard.sessionId, records);
     // 守卫按收口那一刻的单子写：学习者改过就用改后的（工单 W6 §9）
     const ticket = currentTicket(records);
-    // 守卫读得到改后学习者看到的页面（记录/对话与事件记录.md）
+    // 守卫读得到学习者看到的屏幕（记录/对话与事件记录.md）；怎么算等 #67，先给最后一屏上组件的文字（W10 §9 第 6 条）
     const page = await this.screens.textForGuard(loopId);
     await this.hub.send(guard.sessionId, {
       role: 'program',
@@ -1417,7 +1417,7 @@ export class Studium {
         '这次学习的单子：',
         ticket ? this.describeTicket(ticket) : '（缺单子）',
         '',
-        '这次学习的对话（L 后是行号；只放双方对话与学习者在页面上做的；程序事实、模型一侧的沙盒动作不给）：',
+        '这次学习的对话（L 后是行号；只放双方对话与学习者在组件上做的；程序事实、模型一侧的沙盒动作不给）：',
         guardView(records),
         ...(page !== undefined ? ['', page] : []),
       ].join('\n'),
