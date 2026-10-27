@@ -79,6 +79,8 @@ export class Screens {
       r.type === 'subagent_started' && r.agent === SUBAGENT ? [r] : [],
     );
     if (texts.length === 0 && ask === undefined && started.length === 0) return;
+    // 这一轮没跑成（如额度用完，SDK 会把报错当一句话交回）：不出新屏，屏幕不变；界面另说一句
+    if (turn.some((r) => r.record.type === 'turn_failed')) return;
     const a: ArrangeAsk = ask ?? { parts: [], bringBack: [] };
 
     // 这一轮的新块：主模型的话（按它说的切块）+ 这一轮派出去、还没做好的组件（占位）
@@ -192,6 +194,14 @@ export class Screens {
           line,
         });
       }
+      // 学习者在组件上的操作也是学习者的块（§11.1：学习者说的话与操作同一身份）
+      if (r.type === 'component_action') {
+        out.push({
+          ref: { kind: 'learner', key: `u${String(line)}`, pointer: gist('', r.text), line },
+          at: r.at,
+          line,
+        });
+      }
       if (r.type === 'subagent_result' && r.agent === SUBAGENT) {
         out.push({
           ref: { kind: 'subagent', key: `s${String(line)}`, pointer: gist('', r.text), line },
@@ -296,7 +306,8 @@ export class Screens {
         return { ...base, kind: 'text', text: await this.o.store.block(loopId, b.hash, 'md') };
       case 'learner': {
         const r = at(b.line);
-        return { ...base, kind: 'learner', text: r?.type === 'user_message' ? r.text : '' };
+        const text = r?.type === 'user_message' || r?.type === 'component_action' ? r.text : '';
+        return { ...base, kind: 'learner', text };
       }
       case 'subagent': {
         const r = at(b.line);
@@ -389,7 +400,10 @@ export class Screens {
         to: g.to,
       });
       if (g.to !== 'main' && this.o.toMaker !== undefined) {
-        await this.o.toMaker(loopId, g.component, text, awaited);
+        // 先回做它的子代理：框架另开一次，在后台跑（要几秒到几十秒），不挡学习者那边的请求
+        this.o.toMaker(loopId, g.component, text, awaited).catch((e: unknown) => {
+          console.error(`学习 ${loopId} 交给做组件的子代理失败：`, e);
+        });
       }
       if (g.to !== 'maker' && awaited) {
         // 等回应的操作当场交给主模型：身份是学习者，和说的话一样；在跑就并进本轮

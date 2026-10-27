@@ -1,5 +1,6 @@
-// 中间的对话页：主对话、谈方向、导航（只看）、学习对话、写产出、找资料共用一个外壳，
+// 中间的对话页：主对话、谈方向、导航（只看）、写产出、找资料共用一个外壳，
 // 顶上面包屑（项目名去项目页）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
+// 学习对话（W10 起按屏幕跑）走 learn/learn-page.tsx；旧版开的学习对话还在这里，按消息流只看（W10 §9 第 1、2 条）。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AssistantRuntimeProvider,
@@ -7,35 +8,28 @@ import {
   type AppendMessage,
   type ThreadMessageLike,
 } from '@assistant-ui/react';
-import { ArrowRightIcon, ChevronDownIcon, ChevronRightIcon, EllipsisIcon } from 'lucide-react';
+import { ArrowRightIcon } from 'lucide-react';
 import { Thread } from '@/components/assistant-ui/thread';
 import { Button } from '@/components/ui/button';
-import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
-import { MathPreview } from '@/components/input/math-preview';
 import type { SessionSummary } from '../../shared/protocol.ts';
-import type { NumberedRecord, Ticket } from '../../shared/records.ts';
+import type { NumberedRecord } from '../../shared/records.ts';
 import { api } from '../api.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { useOpenSession } from '../open-session.ts';
 import { CurrentSessionContext, HighlightContext, type Focus } from '../panel.ts';
 import {
-  loopSide,
   loopState,
   reviewWindow,
   talkEnded,
   toUiMessages,
-  type LoopSide,
   type UiMessage,
 } from '../thread-model.ts';
 import { forLearner } from '../learner-text.ts';
 import { W } from '../wording.ts';
-import { LongtermBanner, ReviewBanner, UnclosedEndBar } from './longterm/loop-extras.tsx';
+import { ReviewBanner } from './longterm/loop-extras.tsx';
+import { currentTicket, EndedBar, OldLoopBar, TicketStrip } from './learn/loop-parts.tsx';
 import { OutputTaskBar } from './outputs/outputs-section.tsx';
 import type { PickedFile } from './project-materials.tsx';
-import { StageCheckBanner } from './stage-check.tsx';
-import { hasPage, LivePagePane } from './live-page.tsx';
-import { useLayout } from '../layout.ts';
-import { WP } from '../wording-page.ts';
 import { TopBar } from './top-bar.tsx';
 
 export function Conversation(props: {
@@ -154,7 +148,6 @@ export function Conversation(props: {
     },
   });
 
-  const side = useMemo(() => (kind === 'loop' ? loopSide(records) : undefined), [kind, records]);
   const ticket = useMemo(
     () => (kind === 'loop' ? currentTicket(records) : undefined),
     [kind, records],
@@ -164,10 +157,6 @@ export function Conversation(props: {
     kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
   // 导航会话只给学习者看它怎么想的，不交互（会话/导航.md「会话形态」）；页面编辑员也只看
   const watchOnly = kind === 'nav' || kind === 'editor';
-  // 学习对话旁边的活页面（会话/学习对话.md §11）：有了才占位；窄屏点开盖满全屏
-  const { narrow } = useLayout();
-  const showPage = kind === 'loop' && hasPage(records);
-  const [pageOpen, setPageOpen] = useState(false);
   const footer = watchOnly ? undefined : kind === 'main' ? (
     props.hasGoal ? (
       <MainBar projectId={props.projectId} running={running} onError={onError} />
@@ -182,11 +171,10 @@ export function Conversation(props: {
       />
     ) : undefined
   ) : (
-    <LoopBar
+    // 旧版开的学习对话：只看，留“搁着”（W10 §9 第 1 条）
+    <OldLoopBar
       sessionId={sessionId}
       records={records}
-      side={side ?? NO_SIDE}
-      running={running}
       onError={onError}
       onBack={props.onBackToMain}
       projectId={props.projectId}
@@ -209,26 +197,6 @@ export function Conversation(props: {
       {kind === 'loop' && (
         <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-1.5 px-4 pb-2 text-sm empty:hidden">
           {ticket !== undefined && <TicketStrip ticket={ticket} />}
-          {side !== undefined && (
-            <LongtermBanner
-              side={side}
-              loopId={sessionId}
-              projectId={props.projectId}
-              titleOf={titleOf}
-            />
-          )}
-          {side?.stageCheck === true && <StageCheckBanner />}
-          {showPage && narrow && (
-            <Button
-              variant="outline"
-              size="sm"
-              className="self-start"
-              data-testid="open-page"
-              onClick={() => setPageOpen(true)}
-            >
-              {WP.openPage}
-            </Button>
-          )}
         </div>
       )}
       {kind === 'talk' && review === undefined && (
@@ -239,15 +207,6 @@ export function Conversation(props: {
     </div>
   );
 
-  const page = showPage ? (
-    <LivePagePane
-      loopId={sessionId}
-      records={records}
-      ended={ended}
-      onError={onError}
-      {...(narrow ? { onClose: () => setPageOpen(false) } : {})}
-    />
-  ) : undefined;
   const thread = (
     <Thread
       header={header}
@@ -265,10 +224,8 @@ export function Conversation(props: {
                 : '马上开始…'
       }
       footer={footer}
-      disabled={ended || watchOnly}
-      placeholder={
-        side?.shelved !== undefined ? W.shelvedPlaceholder : running ? '可以随时插话…' : '回复…'
-      }
+      disabled={ended || watchOnly || kind === 'loop'}
+      placeholder={running ? '可以随时插话…' : '回复…'}
       onSend={async (text, images) => {
         await api.send(sessionId, text, images);
       }}
@@ -286,86 +243,13 @@ export function Conversation(props: {
   return (
     <CurrentSessionContext.Provider value={sessionId}>
       <HighlightContext.Provider value={focus?.lines ?? NO_LINES}>
-        <AssistantRuntimeProvider runtime={runtime}>
-          {page === undefined ? (
-            thread
-          ) : narrow ? (
-            <>
-              {thread}
-              {pageOpen && <div className="fixed inset-0 z-40">{page}</div>}
-            </>
-          ) : (
-            <div className="flex h-full min-h-0">
-              <div className="flex min-w-0 flex-1 flex-col">{thread}</div>
-              <div className="w-[min(50%,44rem)] shrink-0 border-l">{page}</div>
-            </div>
-          )}
-        </AssistantRuntimeProvider>
+        <AssistantRuntimeProvider runtime={runtime}>{thread}</AssistantRuntimeProvider>
       </HighlightContext.Provider>
     </CurrentSessionContext.Provider>
   );
 }
 
 const NO_LINES: readonly number[] = [];
-const NO_SIDE: LoopSide = {};
-
-/** 这次学习现在的单子：开场那张，改过就用最后改成的。 */
-function currentTicket(records: NumberedRecord[]): Ticket | undefined {
-  let t: Ticket | undefined;
-  for (const { record: r } of records) {
-    if (r.type === 'session_opened' && r.ticket !== undefined) t = r.ticket;
-    if (r.type === 'ticket_edited') t = r.after;
-  }
-  return t;
-}
-
-/** 学习对话顶部：这次学什么（一行），点开见学完应该能、从哪出发、先假定你会的（界面说明 §2.6）。 */
-function TicketStrip(props: { ticket: Ticket }) {
-  const [open, setOpen] = useState(false);
-  const t = props.ticket;
-  const known = t.startPoints.filter((p) => p.source !== '假定');
-  const assumed = t.startPoints.filter((p) => p.source === '假定');
-  return (
-    <div data-testid="ticket-strip" className="bg-muted/50 rounded-lg px-3 py-1.5">
-      <button
-        type="button"
-        aria-expanded={open}
-        className="flex w-full items-start gap-1.5 text-left"
-        onClick={() => setOpen((o) => !o)}
-      >
-        {open ? (
-          <ChevronDownIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-        ) : (
-          <ChevronRightIcon className="text-muted-foreground mt-0.5 size-4 shrink-0" />
-        )}
-        <span className="text-muted-foreground shrink-0">{W.loopTopic}</span>
-        <MathPreview text={t.newPoint} className={open ? '' : 'line-clamp-1'} />
-      </button>
-      {open && (
-        <dl className="mt-1.5 flex flex-col gap-1.5 ps-5.5 text-sm">
-          <TicketItem label={W.clause} text={t.clause} />
-          {known.length > 0 && (
-            <TicketItem label={W.startPoints} text={known.map((p) => p.point).join('；')} />
-          )}
-          {assumed.length > 0 && (
-            <TicketItem label={W.startSource.假定} text={assumed.map((p) => p.point).join('；')} />
-          )}
-        </dl>
-      )}
-    </div>
-  );
-}
-
-function TicketItem(props: { label: string; text: string }) {
-  return (
-    <div className="flex flex-col">
-      <dt className="text-muted-foreground text-xs">{props.label}</dt>
-      <dd>
-        <MathPreview text={props.text} />
-      </dd>
-    </div>
-  );
-}
 
 /** 开出这个对话的那个对话的记录（谈方向、导航要回看主对话里的东西）。 */
 function useParentRecords(parent: string | undefined) {
@@ -444,20 +328,6 @@ function NavIntro(props: { parent: string | undefined; navId: string }) {
   );
 }
 
-function EndedBar(props: { text: string; onBack: () => void }) {
-  return (
-    <div
-      data-testid="ended-bar"
-      className="text-muted-foreground flex flex-wrap items-center justify-center gap-3 text-sm"
-    >
-      {props.text}
-      <Button size="sm" onClick={props.onBack}>
-        {W.backToMain}
-      </Button>
-    </div>
-  );
-}
-
 /** 主对话输入框上方的建议：下一步学什么（有方向后常驻，界面说明 §2.3）。 */
 function MainBar(props: { projectId: string; running: boolean; onError: (e: unknown) => void }) {
   const [busy, setBusy] = useState(false);
@@ -479,127 +349,6 @@ function MainBar(props: { projectId: string; running: boolean; onError: (e: unkn
         <ArrowRightIcon />
         {W.nextStep}
       </Button>
-    </div>
-  );
-}
-
-/** 学习对话底栏：主按钮“我觉得懂了”；“…”里是“搁着，以后再学”（界面说明 §2.6、§3）。 */
-function LoopBar(props: {
-  sessionId: string;
-  records: NumberedRecord[];
-  side: LoopSide;
-  running: boolean;
-  onError: (e: unknown) => void;
-  onBack: () => void;
-  projectId: string;
-  projectTitle: string;
-}) {
-  const { side } = props;
-  const state = loopState(props.records);
-  const act = (fn: () => Promise<unknown>) => {
-    fn().catch(props.onError);
-  };
-  if (state.kind === 'ended') {
-    if (!state.closed) {
-      return (
-        <UnclosedEndBar
-          loopId={props.sessionId}
-          projectId={props.projectId}
-          projectTitle={props.projectTitle}
-          onBack={props.onBack}
-          onError={props.onError}
-        />
-      );
-    }
-    return <EndedBar text={W.loopDone} onBack={props.onBack} />;
-  }
-  const endLater = (
-    <Menu>
-      <MenuTrigger
-        aria-label={W.moreActions}
-        data-testid="loop-more"
-        disabled={props.running}
-        className="text-muted-foreground hover:text-foreground hover:bg-muted flex size-7 items-center justify-center rounded-md disabled:opacity-50"
-      >
-        <EllipsisIcon className="size-4" />
-      </MenuTrigger>
-      <MenuContent side="top" align="end" className="max-w-72">
-        <MenuItem
-          data-testid="end-unclosed"
-          onClick={() => act(() => api.endUnclosed(props.sessionId))}
-        >
-          <span className="flex flex-col gap-0.5">
-            <span>{W.endLater}</span>
-            <span className="text-muted-foreground text-xs">{W.endLaterHint}</span>
-          </span>
-        </MenuItem>
-      </MenuContent>
-    </Menu>
-  );
-  if (side.shelved !== undefined) {
-    // 以前点过“先放一放”的（旧数据）：接着学，或搁着
-    return (
-      <div
-        data-testid="shelved-bar"
-        className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 text-sm"
-      >
-        <span>
-          {W.shelvedBar}
-          {side.shelved.note !== undefined && (
-            <span className="text-muted-foreground ms-2">
-              {W.shelvedNote}：{side.shelved.note}
-            </span>
-          )}
-        </span>
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            disabled={props.running}
-            onClick={() => act(() => api.resume(props.sessionId))}
-          >
-            {W.resume}
-          </Button>
-          {endLater}
-        </div>
-      </div>
-    );
-  }
-  if (state.kind === 'awaiting_confirm') {
-    return (
-      <div
-        data-testid="confirm-bar"
-        className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 text-sm"
-      >
-        <span>{W.confirmBar}</span>
-        <div className="flex items-center gap-1">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={() => {
-              // 再补一句：回到输入框接着说
-              document.querySelector<HTMLTextAreaElement>('main textarea')?.focus();
-            }}
-          >
-            {W.confirmMore}
-          </Button>
-          <Button size="sm" onClick={() => act(() => api.confirmClose(props.sessionId))}>
-            {W.confirmGo}
-          </Button>
-        </div>
-      </div>
-    );
-  }
-  return (
-    <div className="flex items-center justify-end gap-1">
-      <Button
-        size="sm"
-        data-testid="request-close"
-        disabled={props.running || state.closeRequested}
-        onClick={() => act(() => api.requestClose(props.sessionId))}
-      >
-        {state.closeRequested ? W.closingShort : W.understood}
-      </Button>
-      {endLater}
     </div>
   );
 }

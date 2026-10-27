@@ -66,12 +66,13 @@ import type {
   VersionResponse,
 } from '../shared/output.ts';
 import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
+import type { PageTrialResult } from '../shared/page.ts';
 import type {
-  PageActionsRequest,
-  PageContentResponse,
-  PageErrorRequest,
-  PageTrialResult,
-} from '../shared/page.ts';
+  ComponentActionRequest,
+  ComponentErrorRequest,
+  ScreenListResponse,
+  ScreenResponse,
+} from '../shared/screen.ts';
 
 function token(): string {
   const fromUrl = new URLSearchParams(location.search).get('token');
@@ -141,17 +142,21 @@ export const api = {
   loopRelations: (mainId: string) =>
     call<LoopRelationsResponse>(`/projects/${mainId}/loop-relations`),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
-  // ── 活页面（会话/学习对话.md §11） ──
-  pageContent: (loopId: string, version: number) =>
-    call<PageContentResponse>(`/sessions/${loopId}/page/${String(version)}`),
-  pageActions: (loopId: string, body: PageActionsRequest) =>
-    call<object>(`/sessions/${loopId}/page/actions`, {
+  // ── 学习页：屏幕与组件（会话/学习对话.md §11） ──
+  screens: (loopId: string) => call<ScreenListResponse>(`/sessions/${loopId}/screens`),
+  screen: (loopId: string, n: number) =>
+    call<ScreenResponse>(`/sessions/${loopId}/screens/${String(n)}`),
+  screenAction: (loopId: string, body: ComponentActionRequest) =>
+    call<object>(`/sessions/${loopId}/screens/action`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  pageError: (loopId: string, body: PageErrorRequest) =>
-    call<object>(`/sessions/${loopId}/page/error`, { method: 'POST', body: JSON.stringify(body) }),
-  pageTrial: (loopId: string, trialId: string, body: PageTrialResult) =>
+  screenError: (loopId: string, body: ComponentErrorRequest) =>
+    call<object>(`/sessions/${loopId}/screens/error`, {
+      method: 'POST',
+      body: JSON.stringify(body),
+    }),
+  screenTrial: (loopId: string, trialId: string, body: PageTrialResult) =>
     call<object>(`/sessions/${loopId}/screens/trial/${trialId}`, {
       method: 'POST',
       body: JSON.stringify(body),
@@ -162,10 +167,20 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  send: (id: string, text: string, images?: MessageImageInput[]) =>
+  send: (
+    id: string,
+    text: string,
+    images?: MessageImageInput[],
+    /** 学习页：回在某一块下面（W10）。 */
+    replyTo?: { key: string; pointer: string },
+  ) =>
     call<object>(`/sessions/${id}/messages`, {
       method: 'POST',
-      body: JSON.stringify(images !== undefined && images.length > 0 ? { text, images } : { text }),
+      body: JSON.stringify({
+        text,
+        ...(images !== undefined && images.length > 0 ? { images } : {}),
+        ...(replyTo !== undefined ? { replyTo } : {}),
+      }),
     }),
   // ── 输入：图片原样上传、转写 ──
   uploadImage: async (blob: Blob, name?: string, derivedFrom?: string) => {

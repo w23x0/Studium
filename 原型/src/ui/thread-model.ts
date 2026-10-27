@@ -270,9 +270,6 @@ export function toUiMessages(
         // 旧数据（10-26 起不做退回）：标一行退回到哪
         push({ id, role: 'system', text: WP.rolledBackLine(r.to, r.reason), line });
         break;
-      case 'subagent_result':
-        push({ id, role: 'system', text: WP.agentReturned(r.text), line });
-        break;
       case 'program_fact': {
         // 程序事实是给模型看的，不显示；唯一例外：阶段复盘交回主对话的那一句（像学完一段那样显示一行）
         const back = parseReviewReturned(r.text);

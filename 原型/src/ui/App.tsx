@@ -8,7 +8,8 @@ import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import { api } from './api.ts';
 import { Conversation } from './components/conversation.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
-import { PageTrials } from './components/live-page.tsx';
+import { LearnPage } from './components/learn/learn-page.tsx';
+import { PageTrials } from './components/learn/trials.tsx';
 import { ProjectHome } from './components/project-home.tsx';
 import { NewProject } from './components/sidebar/new-project.tsx';
 import { Sidebar } from './components/sidebar/sidebar.tsx';
@@ -353,7 +354,41 @@ export function App() {
                   page === 'chat' &&
                   // 列表读回来、认得出是哪种对话再画（不把还没认出的当学习对话显示）
                   project !== undefined &&
-                  (current === projectId || currentSession !== undefined) && (
+                  (current === projectId || currentSession !== undefined) &&
+                  (currentSession?.kind === 'loop' ? (
+                    // 学习对话按屏幕跑（W10）；旧版开的学习对话交回消息流只看
+                    <LearnPage
+                      key={current}
+                      sessionId={current}
+                      title={currentSession.title}
+                      projectId={projectId}
+                      projectTitle={project.title}
+                      titleOf={titleOf}
+                      headerExtra={panelButton}
+                      onError={fail}
+                      onBackToMain={() => openMain(projectId)}
+                      onProject={() => openProjectHome(projectId)}
+                      oldLoop={
+                        <Conversation
+                          key={current}
+                          sessionId={current}
+                          kind="loop"
+                          parent={currentSession.parent}
+                          title={currentSession.title}
+                          projectId={projectId}
+                          projectTitle={project.title}
+                          hasGoal={project.goal !== undefined}
+                          titleOf={titleOf}
+                          isReview={isReview}
+                          focus={focus?.sessionId === current ? focus : undefined}
+                          headerExtra={panelButton}
+                          onError={fail}
+                          onBackToMain={() => openMain(projectId)}
+                          onProject={() => openProjectHome(projectId)}
+                        />
+                      }
+                    />
+                  ) : (
                     <Conversation
                       key={current}
                       sessionId={current}
@@ -371,7 +406,7 @@ export function App() {
                       onBackToMain={() => openMain(projectId)}
                       onProject={() => openProjectHome(projectId)}
                     />
-                  )}
+                  ))}
               </main>
               {panel.open && (
                 <aside

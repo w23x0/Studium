@@ -14,7 +14,8 @@ import remarkMath from 'remark-math';
 import rehypeKatex from 'rehype-katex';
 import 'katex/dist/katex.min.css';
 import { useAuiState } from '@assistant-ui/react';
-import { type FC, memo, useCallback } from 'react';
+import Markdown, { type Components } from 'react-markdown';
+import { type FC, memo, useCallback, useMemo } from 'react';
 import { prepareMath } from '@/lib/math';
 import { CitationChip } from '@/components/sources/citation';
 import { citationIndex, linkCitations } from '@/source-model';
@@ -64,7 +65,8 @@ const CodeHeader: FC<CodeHeaderProps> = ({ language, code }) => {
   );
 };
 
-const defaultComponents = memoizeMarkdownComponents({
+/** 两种渲染共用的标签样式（assistant-ui 的消息里、学习页的文字块里）。 */
+const mdComponents = {
   h1: ({ className, ...props }) => (
     <h1
       className={cn(
@@ -226,5 +228,56 @@ const defaultComponents = memoizeMarkdownComponents({
       />
     );
   },
-  CodeHeader,
+} satisfies Parameters<typeof memoizeMarkdownComponents>[0];
+
+const defaultComponents = memoizeMarkdownComponents({ ...mdComponents, CodeHeader });
+
+/**
+ * 不靠 assistant-ui 消息上下文的同款渲染（W10 学习页的文字块）：公式、表格、出处标记照旧；
+ * streaming 时没写完的公式先显示原文（实现选型「公式流式显示」）。代码块不带复制栏。
+ */
+export const PlainMarkdown = memo(function PlainMarkdown(props: {
+  text: string;
+  streaming?: boolean;
+}) {
+  const streaming = props.streaming === true;
+  const text = useMemo(
+    () => prepareMath(linkCitations(props.text, streaming), streaming),
+    [props.text, streaming],
+  );
+  return (
+    <div className="aui-md">
+      <Markdown
+        remarkPlugins={[remarkGfm, remarkMath]}
+        rehypePlugins={[rehypeKatex]}
+        components={plainComponents}
+      >
+        {text}
+      </Markdown>
+    </div>
+  );
 });
+
+const plainComponents: Components = {
+  // 两边的类型写法不同（assistant-ui 的与 react-markdown 的），标签样式是同一套
+  ...(mdComponents as Components),
+  pre: ({ className, ...props }) => (
+    <pre
+      className={cn(
+        'aui-md-pre border-border/50 bg-muted/30 my-3 overflow-x-auto rounded-xl border p-3.5 text-[13px] leading-relaxed',
+        className,
+      )}
+      {...props}
+    />
+  ),
+  code: ({ className, ...props }) => (
+    <code
+      className={cn(
+        className === undefined &&
+          'aui-md-inline-code bg-muted rounded-md px-1.5 py-0.5 font-mono text-[0.85em]',
+        className,
+      )}
+      {...props}
+    />
+  ),
+};

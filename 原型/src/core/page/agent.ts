@@ -333,6 +333,10 @@ export class Components {
     const records = await this.hub.records(loopId);
     const v = latestVersions(records).get(component);
     if (v === undefined) return;
+    // 服务重启后主对话还没开时，交代只在正本里：先补进来
+    for (const r of records) {
+      if (r.record.type === 'subagent_started') this.briefs.set(r.record.taskId, r.record);
+    }
     const made = records.find(
       (r) => r.record.type === 'component_version' && r.record.component === component,
     )?.record;
