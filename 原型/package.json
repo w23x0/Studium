@@ -11,6 +11,7 @@
     "@vitejs/plugin-react": "^6.1.2",
     "eslint": "^10.12.0",
     "globals": "^17.13.0",
+    "playwright-core": "1.62.1",
     "prettier": "^3.9.9",
     "tailwindcss": "^4.3.3",
     "tsx": "^4.23.15",
@@ -57,6 +58,7 @@
     "dev": "tsx watch src/core/main.ts",
     "replay": "tsx src/core/tape/cli.ts",
     "review": "node scripts/review.mjs",
-    "backup": "node scripts/backup.mjs"
+    "backup": "node scripts/backup.mjs",
+    "screenshot": "node scripts/screenshot.mjs"
   }
 }
