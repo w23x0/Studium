@@ -2,7 +2,7 @@
 // 环境变量：STUDIUM_CLAUDE_MODEL · STUDIUM_PROFILES · STUDIUM_DATA · STUDIUM_PORT · STUDIUM_TOKEN
 // · STUDIUM_TAPE（录带文件：给了就录这次运行，供 npm run replay 离线回放；宜配一个新的空 STUDIUM_DATA）
 import { randomBytes } from 'node:crypto';
-import { existsSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createApp } from './app.ts';
@@ -22,10 +22,21 @@ function pickModel(dataRoot: string): ModelAdapter {
   });
 }
 
+// 口令存在数据目录里，重启不变：手机上的书签一直能用
+function savedToken(dataRoot: string): string {
+  const file = join(dataRoot, 'token');
+  if (existsSync(file)) return readFileSync(file, 'utf8').trim();
+  const fresh = randomBytes(24).toString('hex');
+  mkdirSync(dataRoot, { recursive: true });
+  writeFileSync(file, `${fresh}\n`, { mode: 0o600 });
+  return fresh;
+}
+
 const uiDir = join(root, 'dist/ui');
-const token = process.env.STUDIUM_TOKEN ?? randomBytes(16).toString('hex');
+const dataRoot = resolve(process.env.STUDIUM_DATA ?? join(root, 'var'));
+const token = process.env.STUDIUM_TOKEN ?? savedToken(dataRoot);
 const app = await createApp({
-  dataRoot: resolve(process.env.STUDIUM_DATA ?? join(root, 'var')),
+  dataRoot,
   model: pickModel,
   token,
   port: Number(process.env.STUDIUM_PORT ?? 4317),

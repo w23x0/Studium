@@ -832,7 +832,9 @@ function send(res: ServerResponse, status: number, body: object | ErrorResponse)
 }
 
 function hostAllowed(host: string | undefined, port: number): boolean {
-  // 挡 DNS 重绑定：只认本机地址
+  // 挡 DNS 重绑定：只认本机地址，加上手机经 `tailscale serve` 来的 ts.net 名字
+  // （ts.net 的解析归 Tailscale 管，外人没法把它指到本机）
+  if (host?.endsWith('.ts.net') === true) return true;
   return host === `127.0.0.1:${String(port)}` || host === `localhost:${String(port)}`;
 }
 

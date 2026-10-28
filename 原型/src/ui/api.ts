@@ -75,7 +75,7 @@ function token(): string {
   const fromUrl = new URLSearchParams(location.search).get('token');
   if (fromUrl !== null) {
     sessionStorage.setItem('studium-token', fromUrl);
-    history.replaceState(null, '', location.pathname);
+    history.replaceState(null, '', location.pathname + location.hash);
     return fromUrl;
   }
   return sessionStorage.getItem('studium-token') ?? '';
