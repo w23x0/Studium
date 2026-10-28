@@ -224,7 +224,8 @@ export function Conversation(props: {
                 : '马上开始…'
       }
       footer={footer}
-      disabled={ended || watchOnly || kind === 'loop'}
+      // 谈方向谈定只是收起：输入框留着，学习者再说话就重开（10-28）
+      disabled={(ended && kind !== 'talk') || watchOnly || kind === 'loop'}
       placeholder={running ? '可以随时插话…' : '回复…'}
       onSend={async (text, images) => {
         await api.send(sessionId, text, images);

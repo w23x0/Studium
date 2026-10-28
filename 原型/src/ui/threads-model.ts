@@ -1,22 +1,10 @@
 // 讨论串（项目对话右边那一栏）的纯转换：一个项目开出去的任务对话 → 等你 / 进行中 / 已结束。
-// 想调“什么算结束、什么算等你、每行带什么小标签”，只改下面 GROUP_OF 与 TAG_OF 两张表。
+// 分组规则在 `../shared/threads.ts`（主对话每轮附上的讨论串清单也用它）；每行带什么小标签改下面 TAG_OF。
 import type { SessionMark, SessionSummary } from '../shared/protocol.ts';
+import { THREAD_KINDS, threadGroup, type ThreadGroup } from '../shared/threads.ts';
 import { W } from './wording.ts';
 
-export type ThreadGroup = 'waiting' | 'running' | 'ended';
-
-/** 讨论串里列的对话种类（主对话本身、后台整理不列）。 */
-const THREAD_KINDS = new Set<SessionSummary['kind']>(['talk', 'loop', 'nav', 'find', 'output']);
-
-/** 记号 → 分组；没有记号 = 进行中。 */
-const GROUP_OF: Record<SessionMark, ThreadGroup> = {
-  guarded: 'waiting', // 守卫整理好了，等学习者点“学完了”或再补一句
-  candidates: 'waiting', // 找资料交回候选，等学习者勾
-  shelved: 'running', // 学习停着：没结束，点开说句话就接上
-  closed: 'ended',
-  unclosed: 'ended', // 没合上就结束 = 设计里的“搁着”
-  ended: 'ended',
-};
+export type { ThreadGroup };
 
 /** 行尾的小标签（没有的不显示）。 */
 const TAG_OF: Partial<Record<SessionMark, string>> = {
@@ -44,7 +32,7 @@ export function threadGroups(
   for (const s of sessions) {
     if (s.parent !== projectId || !THREAD_KINDS.has(s.kind)) continue;
     const tag = s.mark !== undefined ? TAG_OF[s.mark] : undefined;
-    out[s.mark !== undefined ? GROUP_OF[s.mark] : 'running'].push({
+    out[threadGroup(s)].push({
       id: s.sessionId,
       kind: s.kind,
       title: s.title,

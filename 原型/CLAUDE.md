@@ -70,7 +70,7 @@
 `close_requested` `guard_verdict`（含 `understanding` 与这一轮实际执行的 `model`）`loop_ended` `after_loop_step`
 （搁置与恢复 `loop_shelved` `loop_resumed`）· `ticket_edited` ·
 `project_goal` `project_title`（项目名随方向变，开头那行不改）· `turn_context`（主对话每轮附上的当前事实，`forLine` 指那轮输入的行）·
-`task_opened` `talk_ended`（畅谈）· `conversation_pointer` · `project_material` `project_deadline`（项目资料与期限）·
+`task_opened` `talk_ended`（畅谈）· 讨论串（`thread_closed` `thread_reopened` 结束与重开，`thread_title` 自起标题，`branch_requested` 学习对话请开分叉）· `conversation_pointer` · `project_material` `project_deadline`（项目资料与期限）·
 `upload_routed`（上传的一份分到资料还是学过的，改判再记一条）· `project_instructions`（项目说明，每改一次一条，当前 = 最后一条）·
 `find_candidates` `candidates_picked`（找资料对话交回的候选、学习者勾了哪些）·
 屏幕（W10：`screen` 第几屏与清单指纹、小模型耗时 · `component_version` · `component_action`（学习者）· `component_report`（框架另开的子代理交回的）· `component_error` · `screen_note`（框架回主模型的一句）；`session_opened.screens` 标按屏幕跑，`user_message.replyTo` 回在某块下）·

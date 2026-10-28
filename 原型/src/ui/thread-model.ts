@@ -8,6 +8,7 @@ import type {
   RevisitKind,
 } from '../shared/records.ts';
 import { parseReviewReturned } from '../shared/records-longterm.ts';
+import { threadEnded } from '../shared/threads.ts';
 import { judgementLine, W } from './wording.ts';
 import { WP } from './wording-page.ts';
 import { sandboxLabel, toolLabel, WT } from './wording-tools.ts';
@@ -336,9 +337,9 @@ export function reviewWindow(records: NumberedRecord[]): ReviewWindow | undefine
   return first?.type === 'session_opened' ? first.review : undefined;
 }
 
-/** 畅谈对话交回了没有。 */
+/** 畅谈对话现在算不算交回了（交回后学习者又接着说就重开，以最后一条为准）。 */
 export function talkEnded(records: NumberedRecord[]): boolean {
-  return records.some((r) => r.record.type === 'talk_ended');
+  return threadEnded(records);
 }
 
 /** 旧数据：以前界面上点“先放一放”没写原因时发的备注（这个按钮已去掉，读旧记录时仍要认出来）。 */

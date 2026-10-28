@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
 import { CONVERSATION_KIND_LABELS } from '../shared/protocol.ts';
+import { REOPENABLE_KINDS, THREAD_KINDS, threadEnded, threadGroup } from '../shared/threads.ts';
 import type {
   AddMaterialRequest,
   MaterialSource,
@@ -32,6 +33,7 @@ import {
   type LogRecord,
   type NumberedRecord,
   type RouteDecision,
+  type SessionOpened,
   type Ticket,
   type Understanding,
 } from '../shared/records.ts';
@@ -318,6 +320,7 @@ export class Studium {
             this.readImportTool(),
             this.settleGoalTool(sessionId),
             ...this.longterm.reviewTools(sessionId),
+            this.threadTitleTool(sessionId),
           ];
         case 'loop':
           // 学习对话在沙盒里跑（只读资料与记录、可写工作区），工具只剩两个命令
@@ -346,10 +349,14 @@ export class Studium {
           return [this.stateQueryTool(), this.strategyTool(sessionId)];
         case 'output':
           // 写产出对话只读资料；写产出新版本的工具由 Outputs 给
-          return [...this.readTools(sessionId), ...this.o.outputs.sessionTools(sessionId)];
+          return [
+            ...this.readTools(sessionId),
+            ...this.o.outputs.sessionTools(sessionId),
+            this.threadTitleTool(sessionId),
+          ];
         case 'find':
           // 找资料：联网搜（模型服务自带），只挂交回候选这一个工具（会话/找资料.md）
-          return [this.candidatesTool(sessionId)];
+          return [this.candidatesTool(sessionId), this.threadTitleTool(sessionId)];
         case 'editor':
           // 旧数据里的页面编辑员会话（10-26 起改成学习对话派的子代理），不再开
           return [];
@@ -890,8 +897,12 @@ export class Studium {
       ...(replyTo !== undefined && opened.kind === 'loop' ? { replyTo } : {}),
     };
     const recs = await this.hub.records(sessionId);
-    if (recs.some((r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended')) {
+    if (recs.some((r) => r.record.type === 'loop_ended')) {
       throw new BadRequestError('这段对话已经结束了，回到项目里接着聊。');
+    }
+    // 结束的讨论串只是收起来：学习者再说话就重开（照 Claude 项目的讨论串，10-28）
+    if (REOPENABLE_KINDS.has(opened.kind) && threadEnded(recs)) {
+      await this.hub.record(sessionId, { type: 'thread_reopened', at: this.iso(), by: 'learner' });
     }
     // 搁置着的一次学习里学习者又说话 = 接着学（先恢复，再交这句话）
     if (foldLoop(recs).shelved !== undefined) await this.resumeShelved(sessionId, 'message');
@@ -1398,8 +1409,27 @@ export class Studium {
         detail: err instanceof Error ? err.message : String(err),
       });
     }
+    await this.backToBranchOrigin(loopId, closed);
     this.organizeStateLater(`一段学习（${loopId}）结束了`, loopId);
     this.background('教法记录整理', () => this.recordStrategy(loopId));
+  }
+
+  /** 分叉（单子带 return_to）结束：告诉原来那次学习，它接着往下（照 Claude 项目里讨论串按事件醒来）。 */
+  private async backToBranchOrigin(loopId: string, closed: boolean): Promise<void> {
+    const back = currentTicket(await this.hub.records(loopId))?.returnTo;
+    if (back === undefined) return;
+    const recs = await this.hub.records(back).catch((e: unknown) => {
+      if (e instanceof NotFoundError) return undefined;
+      throw e;
+    });
+    if (recs === undefined || recs.some((r) => r.record.type === 'loop_ended')) return;
+    const opened = await this.hub.opened(loopId);
+    await this.hub.send(back, {
+      role: 'program',
+      text: closed
+        ? `为这次学习另开的「${opened.title}」（${loopId}）学完了（学习者已确认）；学到什么可用记录里的守卫判定看。学习者回来时，对照当初说的返回条件接着学。`
+        : `为这次学习另开的「${opened.title}」（${loopId}）没学完就结束了，先搁着。学习者回来时问问他想先补完还是接着这里学。`,
+    });
   }
 
   // ───────────── 守卫 ─────────────
@@ -2269,6 +2299,8 @@ export class Studium {
       await this.instructionsBlock(mainId),
       '── 各次学习现在的样子 ──',
       ...(await this.learningsNow(mainId)),
+      '── 讨论串（本项目开出去的对话，最近的在前）──',
+      ...this.threadsNow(mainId),
       decision?.record.type === 'route_decision'
         ? `最新路线决定 L${String(decision.line)}：${decision.record.decision}（理由：${decision.record.reason}）`
         : '还没有路线决定',
@@ -2280,6 +2312,25 @@ export class Studium {
       );
     }
     return out.join('\n');
+  }
+
+  /**
+   * 本项目开出去的讨论串：会话 id、种类、标题、等你 / 进行中 / 已结束、最近活动；分组与界面讨论串栏同一处规则
+   * （`shared/threads.ts`）。已结束的只列最近几条。
+   */
+  private threadsNow(mainId: string): string[] {
+    const label = { waiting: '等你', running: '进行中', ended: '已结束' } as const;
+    const rows = this.hub
+      .listSessions()
+      .filter((s) => s.parent === mainId && THREAD_KINDS.has(s.kind))
+      .sort((a, b) => (b.lastAt ?? b.openedAt).localeCompare(a.lastAt ?? a.openedAt));
+    if (rows.length === 0) return ['还没有开过'];
+    const open = rows.filter((s) => threadGroup(s) !== 'ended');
+    const ended = rows.filter((s) => threadGroup(s) === 'ended').slice(0, 8);
+    return [...open, ...ended].map(
+      (s) =>
+        `- ${s.sessionId}（${CONVERSATION_KIND_LABELS[s.kind]}）「${s.title}」${label[threadGroup(s)]} · 最近 ${localMinute(s.lastAt ?? s.openedAt)}`,
+    );
   }
 
   /** 本项目各次学习现在的样子：在学 / 搁着 / 学完（记录/单子与路线.md「全局」）。 */
@@ -2393,9 +2444,22 @@ export class Studium {
         name: 'plan_next',
         description:
           '学习者要下一步时调用：另开一个会话把下一次学什么想清楚、定下来并直接开这次学习（要几分钟，学习者可点进去看它怎么想的）；它也可能先要问学习者一件事。学习者不想学上次定的那个时，同样调用，把他的话写进 reason。',
-        input: { reason: z.string().describe('学习者怎么说的、为什么现在要下一步，一两句') },
+        input: {
+          reason: z.string().describe('学习者怎么说的、为什么现在要下一步，一两句'),
+          branch_of: z
+            .string()
+            .optional()
+            .describe('一次学习请另开一次先补一段时，填那次学习的会话 id；别的时候不填'),
+        },
         run: async (a) => {
-          const r = await this.planNext(`学习者在主对话里要下一步：${a.reason as string}`, mainId);
+          const reason = a.reason as string;
+          let trigger = `学习者在主对话里要下一步：${reason}`;
+          if (typeof a.branch_of === 'string' && a.branch_of.trim() !== '') {
+            const t = await this.branchTrigger(mainId, a.branch_of.trim());
+            if (t.startsWith('!')) return err(t.slice(1));
+            trigger = `${t}\n主对话补一句：${reason}`;
+          }
+          const r = await this.planNext(trigger, mainId);
           const said =
             r.kind === 'opened'
               ? `定下了，学习对话已开：「${r.title}」。为什么是它：${r.reason}。跟学习者说一句学什么、为什么，入口已经放在主对话里。`
@@ -2489,7 +2553,193 @@ export class Studium {
           return ok('入口已放好。');
         },
       },
+      ...this.threadControlTools(mainId),
       this.o.outputs.mainTool(mainId),
+    ];
+  }
+
+  /**
+   * 学习对话请开分叉时导航的开场依据：照学习对话最后一条 branch_requested 拼，不由主对话转述。
+   * 站不住返回以 ! 开头的一句话。
+   */
+  private async branchTrigger(mainId: string, loopId: string): Promise<string> {
+    const opened = await this.hub.opened(loopId).catch((e: unknown) => {
+      if (e instanceof NotFoundError) return undefined;
+      throw e;
+    });
+    if (opened?.kind !== 'loop' || opened.parent !== mainId)
+      return `!本项目里没有这次学习：${loopId}`;
+    const recs = await this.hub.records(loopId);
+    const req = recs.filter((r) => r.record.type === 'branch_requested').at(-1);
+    if (req?.record.type !== 'branch_requested') return `!这次学习没有请开分叉：${loopId}`;
+    if (recs.some((r) => r.record.type === 'loop_ended')) return `!这次学习已经结束了：${loopId}`;
+    const q = req.record;
+    return [
+      `一次学习「${opened.title}」（${loopId}）中途请另开一次先补一段（它的第 ${String(req.line)} 行，学习者已同意）：`,
+      `先学：${q.need}`,
+      `为什么：${q.why}（依据 ${q.lines.map((l) => `${loopId}:${String(l)}`).join('、')}，可用 read_session 读）`,
+      `回到那次学习前要满足：${q.returnCondition}`,
+      `定的这一次 return_to 填 ${loopId}（补完回到那次学习）；route_action 写补前置或旁支。`,
+    ].join('\n');
+  }
+
+  /** 主对话管讨论串（照 Claude 项目的协调者，10-28）：读、传话、按学习者的话结束 / 重开。 */
+  private threadControlTools(mainId: string): ToolSpec[] {
+    const thread = async (id: string): Promise<SessionOpened | string> => {
+      const opened = await this.hub.opened(id).catch((e: unknown) => {
+        if (e instanceof NotFoundError) return undefined;
+        throw e;
+      });
+      if (opened?.parent !== mainId || !THREAD_KINDS.has(opened.kind)) {
+        return `本项目里没有这个讨论串：${id}`;
+      }
+      return opened;
+    };
+    const loopRefusal =
+      '一次学习由学习者在学习页里结束（学完了 / 搁着），主对话不替他结束或重开；用 point_to_conversation 给他放个入口。';
+    return [
+      {
+        name: 'read_thread',
+        description:
+          '读本项目某个讨论串里的对话原文（带行号与时间）：学习者问那边谈到哪了、要你接着那边的事说话之前，先读，不凭印象。会话 id 在每轮附着的讨论串清单里。',
+        input: {
+          session: z.string(),
+          from_line: z.number().int().optional(),
+          to_line: z.number().int().optional(),
+        },
+        run: async (a) => {
+          const t = await thread(a.session as string);
+          if (typeof t === 'string') return err(t);
+          const from = (a.from_line as number | undefined) ?? 1;
+          const to = (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER;
+          const recs = (await this.hub.records(t.sessionId)).filter(
+            (r) =>
+              r.line >= from &&
+              r.line <= to &&
+              (r.record.type === 'user_message' || r.record.type === 'assistant_message'),
+          );
+          return ok(renderTranscript(recs) || '（这一段没有对话）');
+        },
+      },
+      {
+        name: 'message_thread',
+        description:
+          '学习者在主对话里说的话是给某个已有讨论串的（接着那边谈、补一句要求、改个说法）时调用：把话转过去，那边接着跑，跑完把它回的那句交给你。学习者的原话用 learner_lines 指行号，程序原样附上，你不用转述；text 只写你要补的一句（为什么转、要那边做什么）。讨论串已结束的会重新打开。导航不交互，不能传话。',
+        input: {
+          session: z.string().describe('讨论串的会话 id'),
+          learner_lines: z
+            .array(z.number().int())
+            .min(1)
+            .describe('学习者在主对话里那几句话的行号'),
+          text: z.string().describe('你补的一句：为什么转过去、要那边做什么'),
+        },
+        run: async (a) => {
+          const t = await thread(a.session as string);
+          if (typeof t === 'string') return err(t);
+          if (t.kind === 'nav')
+            return err('导航不交互；学习者要改下一步，带上他的话再调用 plan_next。');
+          const recs = await this.hub.records(t.sessionId);
+          if (t.kind === 'loop') {
+            if (t.screens !== true) return err(OLD_LOOP);
+            if (recs.some((r) => r.record.type === 'loop_ended')) {
+              return err('这次学习已经结束了；要接着学，学习者回项目说下一步，导航会安排接着学。');
+            }
+            if (foldLoop(recs).shelved !== undefined) {
+              return err(
+                '这次学习停着；学习者点进去说句话就接上，用 point_to_conversation 给他放个入口。',
+              );
+            }
+          }
+          const main = await this.hub.records(mainId);
+          const quoted: string[] = [];
+          for (const line of a.learner_lines as number[]) {
+            const r = main.find((x) => x.line === line)?.record;
+            if (r?.type !== 'user_message') return err(`主对话第 ${String(line)} 行不是学习者的话`);
+            quoted.push(`[主对话第 ${String(line)} 行] ${r.text}`);
+          }
+          if (REOPENABLE_KINDS.has(t.kind) && threadEnded(recs)) {
+            await this.hub.record(t.sessionId, {
+              type: 'thread_reopened',
+              at: this.iso(),
+              by: 'main',
+              reason: '主对话转来学习者的话',
+            });
+          }
+          const { line, done } = await this.hub.send(t.sessionId, {
+            role: 'program',
+            text: [
+              '学习者在项目主对话里说了下面的话，主对话转到这里（原话由程序照抄）：',
+              ...quoted,
+              `主对话补一句：${(a.text as string).trim()}`,
+              '接着这边的事回应学习者；他会在这里看到你的回答。',
+            ].join('\n'),
+          });
+          await this.hub.record(mainId, {
+            type: 'conversation_pointer',
+            at: this.iso(),
+            sessionId: t.sessionId,
+          });
+          await done;
+          const reply = (await this.hub.records(t.sessionId))
+            .filter((r) => r.line > line && r.record.type === 'assistant_message')
+            .at(-1)?.record;
+          const said = reply?.type === 'assistant_message' ? reply.text : '';
+          return ok(
+            said !== ''
+              ? `已转过去，入口放在主对话里。那边回的：${said.length > 600 ? `${said.slice(0, 600)}…` : said}`
+              : '已转过去，入口放在主对话里；那边这一轮没有说话。',
+          );
+        },
+      },
+      {
+        name: 'close_thread',
+        description:
+          '学习者明确说某个讨论串不要了、到此为止时调用：结束它（只是收起，学习者再说话或你调 reopen_thread 就重开）。学习者没明确说不调。一次学习不能这样结束。',
+        input: {
+          session: z.string(),
+          reason: z.string().describe('学习者怎么说的（主对话行号 + 一句）'),
+        },
+        run: async (a) => {
+          const t = await thread(a.session as string);
+          if (typeof t === 'string') return err(t);
+          if (!REOPENABLE_KINDS.has(t.kind))
+            return err(t.kind === 'loop' ? loopRefusal : '导航定了单子就自己结束，不用结束它。');
+          if (threadEnded(await this.hub.records(t.sessionId))) return err('它已经结束了。');
+          await this.hub.record(t.sessionId, {
+            type: 'thread_closed',
+            at: this.iso(),
+            by: 'main',
+            reason: a.reason as string,
+          });
+          return ok('已结束（收进已结束）；跟学习者说一句即可。');
+        },
+      },
+      {
+        name: 'reopen_thread',
+        description:
+          '学习者要接着某个已结束的讨论串（谈方向、找资料、写产出）时调用：重新打开，并用 point_to_conversation 放入口；要把他的话带过去就直接用 message_thread（会自动重开）。一次学习不能重开。',
+        input: {
+          session: z.string(),
+          reason: z.string().describe('学习者怎么说的（主对话行号 + 一句）'),
+        },
+        run: async (a) => {
+          const t = await thread(a.session as string);
+          if (typeof t === 'string') return err(t);
+          if (!REOPENABLE_KINDS.has(t.kind)) {
+            return err(
+              t.kind === 'loop' ? loopRefusal : '导航不能重开；要重新定下一步，调用 plan_next。',
+            );
+          }
+          if (!threadEnded(await this.hub.records(t.sessionId))) return err('它还开着。');
+          await this.hub.record(t.sessionId, {
+            type: 'thread_reopened',
+            at: this.iso(),
+            by: 'main',
+            reason: a.reason as string,
+          });
+          return ok('已重新打开。');
+        },
+      },
     ];
   }
 
@@ -2535,7 +2785,8 @@ export class Studium {
       },
       run: async (a) => {
         const recs = await this.hub.records(talkId);
-        if (recs.some((r) => r.record.type === 'talk_ended')) return err('已经交回过了');
+        // 交回过、学习者又接着谈（重开）的，可以再交一版
+        if (threadEnded(recs)) return err('已经交回过了');
         const opened = await this.hub.opened(talkId);
         const mainId = opened.parent;
         if (mainId === undefined) return err('找不到这个对话所属的项目');
@@ -2635,7 +2886,9 @@ export class Studium {
           text: `谈方向的对话（${talkId}）交回了：方向目标是“${text}”，项目名改为“${title}”。`,
         });
         this.organizeStateLater(`畅谈对话（${talkId}）结束了`, talkId);
-        return ok('方向已交回项目，本对话结束。和学习者简短说一句就好。');
+        return ok(
+          '方向已交回项目，本对话先收起。和学习者简短说一句就好；他要是接着说，对话会重新打开，在这一版上接着谈、谈定再交一次。',
+        );
       },
     };
   }
@@ -2669,9 +2922,67 @@ export class Studium {
           return ok('这次学习已按“没合上就结束”处理；下一步由项目那边安排。和学习者道别即可。');
         },
       },
+      {
+        name: 'request_branch',
+        description:
+          '这次学习中途发现要先学别的（缺前置、要走一段旁支），已经跟学习者说清依据、学习者同意先去学时调用：请项目另开一次学习（分叉）。这次学习照样开着；那一次学完会通知你，回来接着学。学习者没同意不调。',
+        input: {
+          need: z.string().describe('要先学什么，一句话'),
+          why: z.string().describe('为什么要先学它，一两句'),
+          return_condition: z.string().describe('回到这次学习前要满足什么'),
+          lines: z
+            .array(z.number().int())
+            .min(1)
+            .describe('依据的行号（学习者的话或表现、学习者同意的那句）'),
+        },
+        run: async (a) => {
+          await this.assertActiveLoop(loopId);
+          const recs = await this.hub.records(loopId);
+          const last = recs.at(-1)?.line ?? 0;
+          const lines = a.lines as number[];
+          const bad = lines.filter((l) => l < 1 || l > last);
+          if (bad.length > 0) return err(`第 ${bad.join('、')} 行不在这次学习的记录里`);
+          const need = (a.need as string).trim();
+          if (need === '') return err('need 要写要先学什么');
+          await this.hub.record(loopId, {
+            type: 'branch_requested',
+            at: this.iso(),
+            need,
+            why: (a.why as string).trim(),
+            returnCondition: (a.return_condition as string).trim(),
+            lines,
+          });
+          const opened = await this.hub.opened(loopId);
+          if (opened.parent === undefined) return err('找不到这次学习所属的项目');
+          await this.hub.send(opened.parent, {
+            role: 'program',
+            text: `一次学习「${opened.title}」（${loopId}）请另开一次学习先补一段（学习者已同意）：先学${need}。调用 plan_next，branch_of 填 ${loopId}；定下来后跟学习者说一句先学什么、学完回哪里。`,
+          });
+          return ok(
+            '已转给项目，那边定下来会另开一次学习，学习者从项目里进去。这次学习照样开着；那一次学完会通知你。跟学习者说一句就好。',
+          );
+        },
+      },
       this.components.submitTool(loopId),
       this.arrangeTool(),
     ];
+  }
+
+  /** 讨论串自己起的总结标题（照 Claude 项目的讨论串标题，10-28）：开头起一个，谈的东西变了再改。 */
+  private threadTitleTool(sessionId: string): ToolSpec {
+    return {
+      name: 'set_title',
+      description:
+        '给这个对话起个标题：第一次回学习者时就起，几个字说清这里在谈什么（学习者在列表里只凭它找回这里）；谈的东西变了再改。不用跟学习者提。',
+      input: { title: z.string().describe('几个字，用学习者的说法') },
+      run: async (a) => {
+        const title = (a.title as string).trim();
+        if (title === '') return err('标题不能是空的');
+        if (title.length > 30) return err('标题太长，几个字就好');
+        await this.hub.record(sessionId, { type: 'thread_title', at: this.iso(), title });
+        return ok('标题已改。');
+      },
+    };
   }
 
   /**

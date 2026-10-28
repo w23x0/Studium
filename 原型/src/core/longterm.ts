@@ -14,6 +14,7 @@ import {
   type ReminderKind,
 } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub } from './hub.ts';
+import { threadEnded } from '../shared/threads.ts';
 import type { Learned } from './learned.ts';
 import { routeDeviations } from './route-deviations.ts';
 import type { StateStore } from './knowledge/state.ts';
@@ -356,7 +357,7 @@ export class LongTerm {
           const opened = await this.hub.opened(talkId);
           if (opened.review === undefined) return fail('这不是阶段复盘的对话，不能用这个工具。');
           const recs = await this.hub.records(talkId);
-          if (recs.some((r) => r.record.type === 'talk_ended')) return fail('已经交回过了。');
+          if (threadEnded(recs)) return fail('已经交回过了。');
           const summary = (a.summary as string).trim();
           if (summary === '') return fail('summary 不能是空的。');
           const mainId = opened.parent;
@@ -372,7 +373,9 @@ export class LongTerm {
             role: 'program',
             text: reviewReturnedFact(talkId, summary),
           });
-          return ok('复盘已交回项目，本对话结束。和学习者简短说一句就好。');
+          return ok(
+            '复盘已交回项目，本对话先收起；学习者接着说会重新打开。和学习者简短说一句就好。',
+          );
         },
       },
     ];

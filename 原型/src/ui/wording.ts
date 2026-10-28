@@ -65,7 +65,7 @@ export const W = {
   confirmGo: '学完了',
   loopDone: '这部分学完了。',
   unclosedDone: '搁着了，下次要下一步时会一起考虑。',
-  talkDone: '方向记好了。',
+  talkDone: '方向记好了。还想改就接着说，会重新打开。',
   talkIntro: '在这里说清想学到什么程度；谈定后方向会记进项目。',
   talkFrom: '从你在项目对话里说的这句开始：',
   navIntro: '导航自己跑完，这里只看它怎么想的。',
@@ -664,7 +664,7 @@ export const W = {
   reviewBadge: '复盘',
   reviewBanner: (since: string, until: string) => `复盘：回头看 ${since} 到 ${until} 学的`,
   reviewWelcome: '我们回头看看这段时间学得怎么样。',
-  reviewEnded: '复盘好了，交回项目了。',
+  reviewEnded: '复盘好了，交回项目了。还想聊就接着说。',
   reviewEndedLine: (summary: string) => `复盘交回项目了：${summary}`,
   reviewTask: '一起复盘这段时间',
   // 路线偏差（现算的三类，只说事实）
