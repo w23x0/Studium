@@ -1,4 +1,4 @@
-// 左栏的纯转换：项目与对话 + 左栏操作的现状（置顶 / 藏起来 / 改名）→ 置顶、最近（按时间分组）、全部项目、搜索结果。单测覆盖。
+// 左栏的纯转换：项目与对话 + 左栏操作的现状（置顶 / 藏起来 / 改名）→ 置顶、最近（只列项目）、全部项目、搜索结果。
 import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import type { SidebarRef, SidebarView } from '../shared/sidebar.ts';
 import { W } from './wording.ts';
@@ -35,8 +35,11 @@ export interface SidebarData {
   chats: ChatItem[];
   /** 置顶的（后置顶的在前），藏起来的不算。 */
   pinned: SidebarItem[];
-  /** 没置顶的对话，最近活动的在前。 */
-  recents: ChatItem[];
+  /**
+   * 没置顶的项目，最近活动的在前。左栏只列项目、点了进项目对话；任务对话在项目对话右边的讨论串里
+   * （Studium 没有不属于项目的零散对话，所以不像 Claude 那样把对话按天列在左栏）。
+   */
+  recents: ProjectItem[];
 }
 
 export const EMPTY_VIEW: SidebarView = { pinned: [], hidden: [], titles: {} };
@@ -126,42 +129,8 @@ export function buildSidebar(input: {
       r.kind === 'project' ? projects.find((p) => p.id === r.id) : chats.find((c) => c.id === r.id);
     if (item !== undefined) pinned.push(item);
   }
-  const recents = chats.filter((c) => !has(view.pinned, 'session', c.id));
+  const recents = projects.filter((p) => !has(view.pinned, 'project', p.id));
   return { projects, chats, pinned, recents };
-}
-
-export type Bucket = 'today' | 'yesterday' | 'week' | 'earlier';
-
-const DAY = 24 * 60 * 60 * 1000;
-
-/** 按本地日历日算：今天、昨天、7 天内（2–6 天前）、更早。 */
-export function timeBucket(at: string, now: Date): Bucket {
-  const d = new Date(at);
-  if (Number.isNaN(d.getTime())) return 'earlier';
-  const startOf = (x: Date) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime();
-  const days = Math.round((startOf(now) - startOf(d)) / DAY);
-  if (days <= 0) return 'today';
-  if (days === 1) return 'yesterday';
-  if (days < 7) return 'week';
-  return 'earlier';
-}
-
-const ORDER: readonly Bucket[] = ['today', 'yesterday', 'week', 'earlier'];
-
-/** 最近的对话分组（只列有东西的组，组内保持原来的先后）。 */
-export function groupByTime<T extends { lastAt: string }>(
-  items: readonly T[],
-  now: Date,
-): { bucket: Bucket; items: T[] }[] {
-  const groups = new Map<Bucket, T[]>();
-  for (const it of items) {
-    const b = timeBucket(it.lastAt, now);
-    groups.set(b, [...(groups.get(b) ?? []), it]);
-  }
-  return ORDER.flatMap((b) => {
-    const list = groups.get(b);
-    return list !== undefined ? [{ bucket: b, items: list }] : [];
-  });
 }
 
 /** 搜索：项目按名字、对话按名字（主对话按“项目对话”这个叫法与项目名），不分大小写。 */
@@ -195,28 +164,4 @@ export function chatTitle(c: ChatItem): string {
 /** 列表行的小字：主对话写“项目对话”，任务对话写所在项目。 */
 export function chatSub(c: ChatItem): string {
   return c.chatKind === 'main' ? W.projectChat : c.projectTitle;
-}
-
-/**
- * 打开页面以后左栏行的先后不跟着活动跳（界面说明 §1.1）：第一次见到时记下名次与时间，之后照记下的排；
- * 新出现的对话排最前。刷新页面再按最近活动重排。seen 由调用方保存（每个左栏一份）。
- */
-export function stableOrder(
-  items: readonly ChatItem[],
-  seen: Map<string, { rank: number; lastAt: string }>,
-): ChatItem[] {
-  const first = seen.size === 0;
-  let top = Math.min(0, ...[...seen.values()].map((v) => v.rank));
-  items.forEach((c, i) => {
-    if (seen.has(c.id)) return;
-    // 第一次一起见到的按原来的先后；之后新来的放最前
-    seen.set(c.id, { rank: first ? i : --top, lastAt: c.lastAt });
-  });
-  return items
-    .map((c) => {
-      const s = seen.get(c.id);
-      return { c: s !== undefined ? { ...c, lastAt: s.lastAt } : c, rank: s?.rank ?? 0 };
-    })
-    .sort((a, b) => a.rank - b.rank)
-    .map((x) => x.c);
 }

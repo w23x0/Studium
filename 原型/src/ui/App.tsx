@@ -1,8 +1,8 @@
-// 外壳：左栏 · 中间一页（全部项目 / 新建项目 / 项目页 / 某个对话）· 右侧面板。
+// 外壳：左栏 · 中间一页（全部项目 / 新建项目 / 项目页 / 某个对话）· 右边：讨论串（在项目的对话里）或依据面板。
 // 现在在哪写进地址（#/…），刷新、后退回原处；窄屏时左栏变抽屉、面板盖满全屏（界面说明 §1.1、§1.5）。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
-import { PanelRightCloseIcon, PanelRightOpenIcon } from 'lucide-react';
+import { ListTreeIcon, PanelRightCloseIcon, PanelRightOpenIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import { api } from './api.ts';
@@ -14,6 +14,7 @@ import { ProjectHome } from './components/project-home.tsx';
 import { NewProject } from './components/sidebar/new-project.tsx';
 import { Sidebar } from './components/sidebar/sidebar.tsx';
 import { ProjectsPage } from './components/sidebar/projects-page.tsx';
+import { ThreadsPanel } from './components/threads-panel.tsx';
 import { TopBar } from './components/top-bar.tsx';
 import { useSidebarView } from './hooks/use-sidebar.ts';
 import { LayoutContext, useNarrow } from './layout.ts';
@@ -32,6 +33,22 @@ import {
 import { formatRoute, parseRoute, sameRoute, type Route } from './route.ts';
 import { W } from './wording.ts';
 
+/** 这些记录到了要重读会话列表：新开对话、方向与项目名，以及会改讨论串分组的（见派生层 markOf）。 */
+const REFRESH_ON = new Set<string>([
+  'session_opened',
+  'project_goal',
+  'project_title',
+  'guard_verdict',
+  'loop_ended',
+  'loop_shelved',
+  'loop_resumed',
+  'close_requested',
+  'talk_ended',
+  'find_candidates',
+  'candidates_picked',
+  'choice_card',
+]);
+
 /** 右侧面板：开着时显示栈顶，面板里点开的东西压栈、可返回。 */
 interface PanelState {
   open: boolean;
@@ -49,6 +66,9 @@ export function App() {
   const [error, setError] = useState<string | undefined>();
   const [navOpen, setNavOpen] = useState(false);
   const narrow = useNarrow();
+  const [threadsWide, setThreadsWide] = useSetting('threadsOpen');
+  /** 窄屏时讨论串盖满全屏，只在点了按钮时开（不记住）。 */
+  const [threadsNarrow, setThreadsNarrow] = useState(false);
   const fail = useCallback((e: unknown) => {
     setError(e instanceof Error ? e.message : String(e));
   }, []);
@@ -68,6 +88,7 @@ export function App() {
     if (pid(routeRef.current) !== pid(r)) setPanel((p) => ({ ...p, open: false }));
     setRoute(r);
     setNavOpen(false);
+    setThreadsNarrow(false);
   }, []);
 
   // 地址 ↔ 现在在哪：页面换了写进地址（留一条历史）；后退、手改地址时照地址换页
@@ -108,15 +129,9 @@ export function App() {
 
   useEffect(() => {
     refresh().catch(fail);
-    // 新开的对话、新谈定的方向、项目改名时刷新
+    // 新开的对话、新谈定的方向、项目改名、讨论串的状态变了时刷新
     return api.events((e) => {
-      if (
-        e.type === 'record' &&
-        (e.record.type === 'session_opened' ||
-          e.record.type === 'project_goal' ||
-          e.record.type === 'project_title')
-      )
-        refresh().catch(fail);
+      if (e.type === 'record' && REFRESH_ON.has(e.record.type)) refresh().catch(fail);
     });
   }, [refresh, fail]);
 
@@ -171,7 +186,7 @@ export function App() {
     (id: string) => sessions.find((s) => s.sessionId === id)?.title,
     [sessions],
   );
-  /** 左栏点项目：进项目页。 */
+  /** 面包屑点项目名：进项目页。 */
   const openProjectHome = (id: string) => go({ page: 'overview', projectId: id });
   const openMain = (id: string) => go({ page: 'chat', projectId: id, current: id });
   const showSession = useCallback(
@@ -247,6 +262,30 @@ export function App() {
     </TooltipIconButton>
   );
   const top = panel.stack.at(-1) ?? { kind: 'home' };
+  // 讨论串：在项目的对话里才有；依据面板开着时让位给它
+  const inChat = page === 'chat' && projectId !== undefined;
+  const threadsOpen = narrow ? threadsNarrow : threadsWide;
+  const setThreadsOpen = narrow ? setThreadsNarrow : setThreadsWide;
+  const threadsShown = inChat && threadsOpen && !panel.open;
+  const threadsButton = inChat && !threadsShown && (
+    <TooltipIconButton
+      tooltip={W.threads.open}
+      data-testid="threads-toggle"
+      className="size-8"
+      onClick={() => {
+        setPanel((p) => ({ ...p, open: false }));
+        setThreadsOpen(true);
+      }}
+    >
+      <ListTreeIcon />
+    </TooltipIconButton>
+  );
+  const chatHeaderExtra = (
+    <>
+      {threadsButton}
+      {panelButton}
+    </>
+  );
 
   const sidebarEl = (
     <Sidebar
@@ -255,7 +294,7 @@ export function App() {
       view={sidebar.view}
       active={{ page: page ?? 'projects', projectId, current }}
       onAct={(req) => void sidebar.act(req)}
-      onOpenProject={openProjectHome}
+      onOpenProject={openMain}
       onOpenChat={open}
       onOpenProjects={() => go({ page: 'projects' })}
       onNewProject={() => go({ page: 'new' })}
@@ -301,7 +340,7 @@ export function App() {
                       <TopBar crumbs={[{ label: W.sidebar.allProjects }]} right={panelButton} />
                     }
                     onAct={(req) => void sidebar.act(req)}
-                    onOpenProject={openProjectHome}
+                    onOpenProject={openMain}
                     onNewProject={() => go({ page: 'new' })}
                   />
                 )}
@@ -364,7 +403,7 @@ export function App() {
                       projectId={projectId}
                       projectTitle={project.title}
                       titleOf={titleOf}
-                      headerExtra={panelButton}
+                      headerExtra={chatHeaderExtra}
                       onError={fail}
                       onBackToMain={() => openMain(projectId)}
                       onProject={() => openProjectHome(projectId)}
@@ -381,7 +420,7 @@ export function App() {
                           titleOf={titleOf}
                           isReview={isReview}
                           focus={focus?.sessionId === current ? focus : undefined}
-                          headerExtra={panelButton}
+                          headerExtra={chatHeaderExtra}
                           onError={fail}
                           onBackToMain={() => openMain(projectId)}
                           onProject={() => openProjectHome(projectId)}
@@ -401,13 +440,32 @@ export function App() {
                       titleOf={titleOf}
                       isReview={isReview}
                       focus={focus?.sessionId === current ? focus : undefined}
-                      headerExtra={panelButton}
+                      headerExtra={chatHeaderExtra}
                       onError={fail}
                       onBackToMain={() => openMain(projectId)}
                       onProject={() => openProjectHome(projectId)}
                     />
                   ))}
               </main>
+              {threadsShown && (
+                <aside
+                  className={cn(
+                    'bg-sidebar flex shrink-0 flex-col',
+                    narrow ? 'fixed inset-0 z-50' : 'w-72 border-s',
+                  )}
+                >
+                  <ThreadsPanel
+                    projectId={projectId}
+                    sessions={sessions}
+                    current={current}
+                    onOpen={(id) => {
+                      setThreadsNarrow(false);
+                      open(id);
+                    }}
+                    onClose={() => setThreadsOpen(false)}
+                  />
+                </aside>
+              )}
               {panel.open && (
                 <aside
                   className={cn(

@@ -28,6 +28,19 @@ export const W = {
   learnEmpty: '还没开始学。在项目对话里说想学什么，或点“下一步学什么”。',
   closedMore: (n: number) => `全部 ${String(n)} 次`,
   otherChats: '其他对话',
+  /** 讨论串：项目对话右边一栏，列这个项目开出去的任务对话。 */
+  threads: {
+    title: '讨论串',
+    open: '打开讨论串',
+    close: '收起讨论串',
+    waiting: '等你',
+    running: '进行中',
+    ended: '已结束',
+    empty: '还没开过。谈方向、下一步学什么、找资料都会在这里列一条。',
+    tagGuarded: '等你点“学完了”',
+    tagCandidates: '等你勾',
+    tagClosed: '学完',
+  },
 
   // ── 下一步 ──
   askNext: '下一步学什么？',

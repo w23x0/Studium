@@ -1,6 +1,6 @@
 // 左栏（布局与交互照 Claude 桌面版）：收起 / 展开 · 搜索 · 新建项目（先问想学什么）· 项目（全部项目页）·
-// 置顶 · 最近（各项目的所有对话按最近活动分组）· 底部账号。项目点进去是项目页，对话树在项目页里，不在这里展开。
-import { useMemo, useRef, useState, type ReactNode } from 'react';
+// 置顶 · 最近（只列项目，按最近活动）· 底部账号。点项目进项目对话；任务对话在项目对话右边的讨论串里。
+import { useMemo, useState, type ReactNode } from 'react';
 import {
   BookOpenIcon,
   CompassIcon,
@@ -25,9 +25,7 @@ import {
   buildSidebar,
   chatSub,
   chatTitle,
-  groupByTime,
   isPinned,
-  stableOrder,
   type ChatItem,
   type ProjectItem,
   type SidebarItem,
@@ -72,7 +70,6 @@ const CHAT_ICON: Record<ChatItem['chatKind'], ReactNode> = {
 export function Sidebar(props: SidebarProps) {
   const [savedCollapsed, setCollapsed] = useSetting('sidebarCollapsed');
   const collapsed = savedCollapsed && props.drawer !== true;
-  const seen = useRef(new Map<string, { rank: number; lastAt: string }>());
   const [searching, setSearching] = useState(false);
   const activity = useActivity();
   const data = useMemo(
@@ -133,7 +130,6 @@ export function Sidebar(props: SidebarProps) {
     );
   }
 
-  const groups = groupByTime(stableOrder(data.recents, seen.current), new Date());
   return (
     <aside
       data-testid="sidebar"
@@ -178,21 +174,12 @@ export function Sidebar(props: SidebarProps) {
           </Section>
         )}
         <Section title={S.recents} testId="sidebar-recents">
-          {groups.length === 0 && (
+          {data.recents.length === 0 && data.pinned.length === 0 && (
             <li className="text-muted-foreground px-2 py-1 text-xs">{S.noRecents}</li>
           )}
-          {groups.map((g) => (
-            <li key={g.bucket} className="flex flex-col gap-0.5">
-              <div className="text-muted-foreground/80 px-2 pt-1 text-[0.7rem]">
-                {S.buckets[g.bucket]}
-              </div>
-              <ul className="flex flex-col gap-0.5">
-                {g.items.map((c) => (
-                  <li key={c.id}>
-                    <Row item={c} {...props} />
-                  </li>
-                ))}
-              </ul>
+          {data.recents.map((p) => (
+            <li key={p.id}>
+              <Row item={p} {...props} />
             </li>
           ))}
         </Section>
@@ -241,7 +228,7 @@ function ProjectRow(props: SidebarProps & { item: ProjectItem }) {
   return (
     <SidebarRow
       testId="sidebar-project"
-      active={props.active.page === 'overview' && props.active.projectId === item.id}
+      active={props.active.projectId === item.id && props.active.page !== 'projects'}
       icon={
         <KindIcon>
           <FolderIcon />

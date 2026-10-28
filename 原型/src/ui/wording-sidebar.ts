@@ -22,9 +22,7 @@ export const WS = {
   noGoalYet: '还没谈方向',
   pinned: '置顶',
   recents: '最近',
-  noRecents: '还没有对话。',
-  /** 最近里的时间分组。 */
-  buckets: { today: '今天', yesterday: '昨天', week: '7 天内', earlier: '更早' } as const,
+  noRecents: '还没有项目。',
   /** 最近里各种对话的叫法（主对话的那条用项目对话）。 */
   chatKind: {
     talk: '谈话',

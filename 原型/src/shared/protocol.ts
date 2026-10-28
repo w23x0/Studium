@@ -27,7 +27,16 @@ export interface SessionSummary {
   parent?: string;
   /** 学习对话的来历：接着哪段没学完的学的（resume）。 */
   from?: { kind: 'resume'; loop: string };
+  /** 这条对话最近一条“状态记录”说到哪了；没有 = 还在进行。讨论串怎么分组由界面按它定。 */
+  mark?: SessionMark;
 }
+
+/**
+ * 派生层记下的对话状态（只记事实，不分组）：
+ * guarded 守卫交回、等学习者点“学完了” · closed / unclosed 学习合上 / 没合上就结束 · shelved 学习停着 ·
+ * candidates 找资料交回候选、等学习者勾 · ended 谈方向谈定、找资料勾完、导航定了单子。
+ */
+export type SessionMark = 'guarded' | 'closed' | 'unclosed' | 'shelved' | 'candidates' | 'ended';
 
 export interface ProjectResponse {
   mainSessionId: string;

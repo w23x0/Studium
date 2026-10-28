@@ -2,13 +2,13 @@
 // 启动时按每个正本已索引到的行号补齐；运行中由 Hub 每追加一行就同步写一行。
 import { DatabaseSync } from 'node:sqlite';
 import { rmSync } from 'node:fs';
-import type { SessionSummary } from '../../shared/protocol.ts';
+import type { SessionMark, SessionSummary } from '../../shared/protocol.ts';
 import type { LogRecord, NumberedRecord, SessionOpened } from '../../shared/records.ts';
 import { sessionFrom } from '../hub.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 5;
+const SCHEMA_VERSION = 6;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -70,15 +70,26 @@ export class DerivedIndex {
       this.db
         .prepare('UPDATE sessions SET withdrawn = 1, last_at = ? WHERE session_id = ?')
         .run(record.at, sessionId);
+    } else if (record.type === 'choice_card') {
+      // 导航定了单子：单子记在主对话里，导航那条对话算结束（另记一张表，重建时不怕导航那行还没建）
+      this.db
+        .prepare('INSERT OR REPLACE INTO nav_done (session_id) VALUES (?)')
+        .run(record.navSessionId);
+      this.touch(sessionId, record.at);
     } else if (record.type === 'project_title') {
       // 项目名随方向变：正本开头那行不改，派生层取最新一条
       this.db
         .prepare('UPDATE sessions SET title = ?, last_at = ? WHERE session_id = ?')
         .run(record.title, record.at, sessionId);
     } else {
-      this.db
-        .prepare('UPDATE sessions SET last_at = ? WHERE session_id = ?')
-        .run(record.at, sessionId);
+      const mark = markOf(record);
+      if (mark !== undefined) {
+        this.db
+          .prepare('UPDATE sessions SET mark = ?, last_at = ? WHERE session_id = ?')
+          .run(mark, record.at, sessionId);
+      } else {
+        this.touch(sessionId, record.at);
+      }
     }
     this.db
       .prepare(
@@ -87,10 +98,17 @@ export class DerivedIndex {
       .run(sessionId, line, record.type, record.at, searchableText(record));
   }
 
+  private touch(sessionId: string, at: string): void {
+    this.db.prepare('UPDATE sessions SET last_at = ? WHERE session_id = ?').run(at, sessionId);
+  }
+
   listSessions(): SessionSummary[] {
     const rows = this.db
       .prepare(
-        'SELECT session_id, kind, title, parent, from_kind, from_loop, opened_at, last_at FROM sessions WHERE withdrawn = 0 ORDER BY opened_at DESC',
+        `SELECT s.session_id, s.kind, s.title, s.parent, s.from_kind, s.from_loop, s.opened_at, s.last_at,
+           CASE WHEN n.session_id IS NOT NULL THEN 'ended' ELSE s.mark END AS mark
+         FROM sessions s LEFT JOIN nav_done n ON n.session_id = s.session_id
+         WHERE s.withdrawn = 0 ORDER BY s.opened_at DESC`,
       )
       .all() as {
       session_id: string;
@@ -101,6 +119,7 @@ export class DerivedIndex {
       from_loop: string | null;
       opened_at: string;
       last_at: string | null;
+      mark: SessionMark | null;
     }[];
     return rows.map((r) => ({
       sessionId: r.session_id,
@@ -112,6 +131,7 @@ export class DerivedIndex {
       ...(r.from_kind !== null && r.from_loop !== null
         ? { from: { kind: r.from_kind, loop: r.from_loop } }
         : {}),
+      ...(r.mark !== null ? { mark: r.mark } : {}),
     }));
   }
 
@@ -163,7 +183,11 @@ function createSchema(db: DatabaseSync): void {
       from_loop TEXT,
       opened_at TEXT NOT NULL,
       last_at TEXT NOT NULL,
-      withdrawn INTEGER NOT NULL DEFAULT 0
+      withdrawn INTEGER NOT NULL DEFAULT 0,
+      mark TEXT
+    );
+    CREATE TABLE nav_done (
+      session_id TEXT PRIMARY KEY
     );
     CREATE TABLE records (
       session_id TEXT NOT NULL,
@@ -175,6 +199,31 @@ function createSchema(db: DatabaseSync): void {
     );
     PRAGMA user_version = ${String(SCHEMA_VERSION)};
   `);
+}
+
+/**
+ * 会改对话状态的记录 → 记号；null = 回到进行中（停着的学习又接上、又申请收口在整理）。
+ * 别的记录不动记号。
+ */
+function markOf(r: LogRecord): SessionMark | null | undefined {
+  switch (r.type) {
+    case 'guard_verdict':
+      return 'guarded';
+    case 'loop_ended':
+      return r.closed ? 'closed' : 'unclosed';
+    case 'loop_shelved':
+      return 'shelved';
+    case 'loop_resumed':
+    case 'close_requested':
+      return null;
+    case 'talk_ended':
+    case 'candidates_picked':
+      return 'ended';
+    case 'find_candidates':
+      return 'candidates';
+    default:
+      return undefined;
+  }
 }
 
 /** 学习对话的来历（分叉 / 接着学），给会话列表用。 */
