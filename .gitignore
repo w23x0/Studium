@@ -77,3 +77,7 @@ research_tree/logs/**
 
 # 书库整本抽取（书的原文摘录不进仓库）
 书库处理/runs/
+
+# Obsidian 本机插件（各设备自装，不进仓库）
+.obsidian/plugins/
+.obsidian/community-plugins.json
