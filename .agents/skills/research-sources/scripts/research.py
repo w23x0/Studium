@@ -5,6 +5,7 @@
   search  <查询> [<查询> ...]   论文检索：arXiv + OpenAlex，多个查询并发
   get     <id|url> [...]        论文全文 → md，存缓存目录，打印路径
   cites   <id|doi>              谁引用了这篇（OpenAlex）
+  web     <查询> [...]          本机 SearXNG 泛搜索：去重、丢掉 related suggestions
   page    <url> [...]           任意网页 → md（博客、文档）
   hn      <查询> [...]          Hacker News 讨论检索（Algolia）
   thread  <hn 帖子 id>          Hacker News 一帖的全部评论 → md
@@ -14,6 +15,7 @@ OpenAlex 可选密钥：$OPENALEX_KEY。
 """
 
 import argparse
+import base64
 import html
 import json
 import os
@@ -260,6 +262,91 @@ def cmd_search(args):
                 print(f"- 失败：{e}")
 
 
+def _clean_url(url):
+    p = urllib.parse.urlsplit(url)
+    q = [(k, v) for k, v in urllib.parse.parse_qsl(p.query, keep_blank_values=True)
+         if not k.lower().startswith("utm_")]
+    return urllib.parse.urlunsplit((
+        p.scheme.lower(), p.netloc.lower(), p.path.rstrip("/") or "/",
+        urllib.parse.urlencode(q), "",
+    ))
+
+
+def _snippet(text, limit=240):
+    text = re.sub(r"\s+", " ", text or "").strip()
+    return text if len(text) <= limit else text[:limit - 1] + "…"
+
+
+def searxng(q, n, time_range=None, engines=None, categories=None, language=None):
+    """查本机 SearXNG，去重、丢掉 engine 的 related-search suggestions。"""
+    endpoint = os.environ.get("SEARXNG_ENDPOINT", "http://127.0.0.1:8080").rstrip("/")
+    params = {"q": q, "format": "json"}
+    for k, v in (("time_range", time_range), ("engines", engines),
+                 ("categories", categories), ("language", language)):
+        if v:
+            params[k] = v
+    headers = {"User-Agent": UA, "Accept": "application/json"}
+    if os.environ.get("SEARXNG_TOKEN"):
+        headers["Authorization"] = "Bearer " + os.environ["SEARXNG_TOKEN"]
+    if os.environ.get("SEARXNG_BASIC"):
+        headers["Authorization"] = "Basic " + base64.b64encode(
+            os.environ["SEARXNG_BASIC"].encode()).decode()
+    req = urllib.request.Request(endpoint + "/search?" + urllib.parse.urlencode(params), headers=headers)
+    with urllib.request.urlopen(req, timeout=30) as r:
+        body = r.read().decode(r.headers.get_content_charset() or "utf-8", "replace")
+    try:
+        data = json.loads(body)
+    except json.JSONDecodeError:
+        raise RuntimeError(f"SearXNG 没返回 JSON（{endpoint} 可访问吗？formats 里有 json 吗？）")
+    rows, seen = [], set()
+    for r in data.get("results") or []:
+        url = (r.get("url") or "").strip()
+        if not url:
+            continue
+        key = _clean_url(url)
+        if key in seen:
+            continue
+        seen.add(key)
+        rows.append({
+            "title": (r.get("title") or url).strip(),
+            "url": url,
+            "snippet": _snippet(r.get("content") or r.get("snippet")),
+            "engine": r.get("engine") or "",
+            "date": r.get("publishedDate") or r.get("published_date") or "",
+        })
+        if len(rows) >= n:
+            break
+    return rows, data.get("unresponsive_engines") or []
+
+
+def cmd_web(args):
+    n = max(1, min(args.n, 50))
+    for q in args.query:
+        try:
+            rows, failed = searxng(q, n, args.time_range, args.engines,
+                                   args.categories, args.language)
+        except Exception as e:
+            print(f"## {q}\n- 失败：{e}")
+            continue
+        if args.json:
+            print(json.dumps({"query": q, "results": rows,
+                              "unresponsive_engines": failed}, ensure_ascii=False, indent=1))
+        else:
+            print(f"\n## {q}")
+            for i, r in enumerate(rows, 1):
+                meta = " · ".join(x for x in (r["engine"], r["date"][:10]) if x)
+                print(f"{i}. {r['title']}\n   {r['url']}")
+                if r["snippet"]:
+                    print(f"   {r['snippet']}")
+                if meta:
+                    print(f"   [{meta}]")
+            if not rows:
+                print("- 无结果")
+        if failed:
+            detail = "; ".join(f"{e}: {m}" for e, m in failed)
+            print(f"上游引擎失败：{detail}", file=sys.stderr)
+
+
 def _save(name, text, header, kind="papers"):
     os.makedirs(os.path.join(CACHE, kind), exist_ok=True)
     path = os.path.join(CACHE, kind, re.sub(r"[^\w.\-]+", "_", name)[:120] + ".md")
@@ -410,6 +497,11 @@ def main():
     s.add_argument("--source", default="arxiv,openalex")
     g = sub.add_parser("get"); g.add_argument("ids", nargs="+")
     c = sub.add_parser("cites"); c.add_argument("id"); c.add_argument("--n", type=int, default=25)
+    w = sub.add_parser("web"); w.add_argument("query", nargs="+"); w.add_argument("--n", type=int, default=10)
+    w.add_argument("--time-range", choices=["day", "month", "year"])
+    w.add_argument("--engines", help='逗号分隔，如 "google cse,yahoo"')
+    w.add_argument("--categories"); w.add_argument("--language")
+    w.add_argument("--json", action="store_true")
     p = sub.add_parser("page"); p.add_argument("urls", nargs="+"); p.add_argument("--jina", action="store_true")
     h = sub.add_parser("hn"); h.add_argument("query", nargs="+"); h.add_argument("--n", type=int, default=10)
     h.add_argument("--since", help="YYYY-MM-DD")
@@ -419,6 +511,8 @@ def main():
         cmd_search(args)
     elif args.cmd == "get":
         _run_many(get_one, args.ids)
+    elif args.cmd == "web":
+        cmd_web(args)
     elif args.cmd == "page":
         _run_many(lambda u: get_page(u, args.jina), args.urls)
     elif args.cmd == "cites":

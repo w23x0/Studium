@@ -22,8 +22,8 @@ description:
 | GitHub 找仓库 / 找代码 | `gh search repos "<词>" --sort stars --limit 10`；`gh search code "<符号或字符串>" --limit 20`（代码检索约 10 次 / 分钟） | `gh` 已登录 |
 | GitHub 读源码 | `git clone --depth 1 <repo> "$CACHE/repos/<名>"`，再 Grep / Read；只看一个文件用 `gh api repos/<o>/<r>/contents/<路径> --jq .content \| base64 -d` | — |
 | GitHub 议题 / 讨论 | `gh search issues "<词>" --repo <o>/<r>`；`gh issue view <n> -R <o>/<r> --comments` | — |
-| X 讨论 | SearXNG MCP：`mcp__searxng__web_search`（`site: x.com`、`time_range`）找帖；`mcp__searxng__fetch_page <帖子链接>` 读正文（免登录，带引用原帖与点赞数）；`mcp__searxng__x_user_posts <账号>` 看某人最近的帖 | 本机实测可用；X 搜索只有 Yahoo 一个引擎回结果，覆盖有限 |
-| 泛搜索（另一个搜索后端） | `mcp__searxng__web_search`，可加 `categories: science` 同时查 arXiv / PubMed / Semantic Scholar | 学术类结果噪声大，只用来发现线索 |
+| X 讨论 | 先搜帖：omp 用内置 `web_search`（`site:x.com`、`recency`），Claude Code 用 `mcp__searxng__web_search`；读正文：omp 的 `read` 会直说需要 xAI 凭据（`xai-oauth` / `XAI_API_KEY`），没有就走浏览器 CDP；Claude Code 的 MCP 有 `fetch_page` / `x_user_posts` | 本机实测 X 搜索只有 Yahoo 一个引擎回结果，覆盖有限（2026-10-25） |
+| 泛搜索（线索发现） | `research.py web "<查询>" [--n 10] [--time-range day\|month\|year] [--engines "google cse,yahoo"]`；默认 `$SEARXNG_ENDPOINT`（`http://127.0.0.1:8080`），本机 omp 经 gateway 用 `8081`。输出已去重、丢掉引擎的 related suggestions；`--json` 给程序读 | 只用来定位；要引用必须回原文。学术类改 `categories` 或直接用 arXiv / OpenAlex |
 | Reddit、ACM DL 等出版商页 | 加载 web-access，走浏览器 CDP（带用户登录态） | curl 与 SearXNG 读 Reddit 都拿不到正文；需要用户 Chrome 打开远程调试 |
 
 脚本路径：`${CLAUDE_SKILL_DIR}/scripts/research.py`，用 `python3 -I` 跑（只用标准库，PDF 要本机 `pdftotext`）。
