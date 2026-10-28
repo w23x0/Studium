@@ -1,10 +1,8 @@
-// 项目页（照 Claude 项目；工单 W9 §4.7；界面说明 §2.7–§2.10）：顶上项目名、一行方向、下一步学什么与进项目对话、
-// 齿轮（设置弹窗：名字、期限），下面三个页签——学习（今天该做的 · 在学 / 搁着 / 学完 · 其他对话 · 右栏提醒与复盘）
-// · 资料（本项目资料、添加入口、在别处学过的、我的产出）· 记着什么（项目说明、方向、学过的、状态）。记住上次停在哪个页签。
+// 项目页（照 Claude 项目；界面说明 §2.7–§2.10）：顶上项目名（学习者自己起）、期限、齿轮（设置弹窗：名字、期限）与进项目对话，
+// 下面三个页签——学习（今天该做的 · 在学 / 搁着 / 学完 · 右栏提醒与复盘）· 资料（本项目资料、添加入口、在别处学过的、
+// 我的产出）· 记着什么（项目说明、方向、学过的、状态）。讨论串在项目对话右边，这里不再列。记住上次停在哪个页签。
 import { useState, type ReactNode } from 'react';
 import {
-  ArrowRightIcon,
-  ChevronRightIcon,
   CircleCheckIcon,
   CircleDotIcon,
   CircleParkingIcon,
@@ -13,18 +11,12 @@ import {
   MessageCircleIcon,
   SettingsIcon,
 } from 'lucide-react';
-import type {
-  LoopLoad,
-  LoopStatus,
-  ProjectOverview,
-  SessionSummary,
-} from '../../shared/protocol.ts';
+import type { LoopLoad, LoopStatus, ProjectOverview } from '../../shared/protocol.ts';
 import type { Learning } from '../../shared/protocol-learned.ts';
 import { Button } from '@/components/ui/button';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { cn } from '@/lib/utils';
 import { api } from '../api.ts';
-import { goalRows } from '../goal-model.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { projectGroups, type LearnedRow, type UnclosedRow } from '../learned-model.ts';
 import { useOpenSession } from '../open-session.ts';
@@ -38,7 +30,6 @@ import { Badge, Loading } from './evidence/parts.tsx';
 import { RemindersSection } from './longterm/reminders.tsx';
 import { ReviewsSection } from './longterm/reviews.tsx';
 import { TodaySection } from './longterm/today.tsx';
-import { ProjectChats } from './project-chats.tsx';
 import { Modal } from './input/modal.tsx';
 
 type Tab = 'learn' | 'materials' | 'memory';
@@ -65,14 +56,10 @@ function saveTab(t: Tab): void {
 
 export function ProjectHome(props: {
   projectId: string;
-  /** 这个项目里的学习、谈话、写产出、找资料对话（学习以外的列在“其他对话”）。 */
-  tasks: SessionSummary[];
   header: ReactNode;
   /** 右侧面板开着：主区窄了，右栏（提醒、复盘）先收起（界面说明 §2.11）。 */
   panelOpen: boolean;
   onOpenChat: () => void;
-  /** “下一步学什么”：发到项目对话并跳过去。 */
-  onNextStep: () => void;
   onRename: (title: string) => void;
   onError: (e: unknown) => void;
 }) {
@@ -96,10 +83,7 @@ export function ProjectHome(props: {
               <Head
                 overview={o}
                 onOpenChat={props.onOpenChat}
-                onNextStep={props.onNextStep}
-                onGoal={() => pick('memory')}
                 onSettings={() => setSettings(true)}
-                quiet={tab !== 'learn'}
               />
               {settings && (
                 <Settings
@@ -151,7 +135,6 @@ export function ProjectHome(props: {
                         <LoadNotice load={o.load} />
                         <Groups projectId={props.projectId} overview={o} onError={props.onError} />
                         <Relations projectId={props.projectId} />
-                        <ProjectChats projectId={props.projectId} tasks={props.tasks} />
                       </div>
                       {!props.panelOpen && (
                         <aside className="flex min-w-0 flex-col gap-6">
@@ -186,7 +169,7 @@ export function ProjectHome(props: {
   );
 }
 
-/** 设置（齿轮，小弹窗）：项目名、期限。模型配置不在这里（开发者面板）。 */
+/** 设置（齿轮，小弹窗）：项目名、期限。模型配置不在这里。 */
 function Settings(props: {
   projectId: string;
   title: string;
@@ -227,74 +210,29 @@ function Settings(props: {
   );
 }
 
-/**
- * 页头（界面说明 §2.7）：项目名 · 期限 · 齿轮；方向只放一行（学成后能的第一条，点了去“记着什么”看全）；
- * 两个按钮：下一步学什么（有方向时是主按钮）、进项目对话。
- */
+/** 页头（界面说明 §2.7）：项目名 · 期限 · 齿轮 · 进项目对话。 */
 function Head(props: {
   overview: ProjectOverview;
   onOpenChat: () => void;
-  onNextStep: () => void;
-  onGoal: () => void;
   onSettings: () => void;
-  /** 别的页签有自己的主按钮（资料的“添加”）：这里退成次要的，一屏只留一个主按钮。 */
-  quiet: boolean;
 }) {
   const o = props.overview;
-  const rows = goalRows(o.goalView);
-  const line = rows.find((x) => x.kind === 'ability') ?? rows.find((x) => x.kind === 'text');
-  const more = rows.filter((x) => x.kind === 'ability').length > 1;
   return (
-    <div className="flex flex-col gap-3">
-      <div className="flex items-center gap-2">
-        <h1 className="font-serif text-2xl tracking-tight">{o.title}</h1>
-        {o.deadline !== undefined && <Badge tone="neutral">{`${W.deadline} ${o.deadline}`}</Badge>}
-        <TooltipIconButton
-          tooltip={W.settings}
-          data-testid="project-settings-button"
-          className="text-muted-foreground ms-auto size-8"
-          onClick={props.onSettings}
-        >
-          <SettingsIcon />
-        </TooltipIconButton>
-      </div>
-      {line !== undefined ? (
-        <button
-          type="button"
-          data-testid="goal-line"
-          className="text-muted-foreground hover:text-foreground flex items-start gap-1.5 text-left text-sm"
-          onClick={props.onGoal}
-        >
-          <span className="shrink-0">{W.goal}</span>
-          <span className="text-foreground line-clamp-2">{line.text}</span>
-          {more && <span className="shrink-0">{W.goalMore}</span>}
-          <ChevronRightIcon className="mt-0.5 size-3.5 shrink-0" />
-        </button>
-      ) : (
-        <p className="text-muted-foreground text-sm">{W.goalMissing}</p>
-      )}
-      <div className="flex flex-wrap gap-2">
-        {line !== undefined && (
-          <Button
-            size="sm"
-            variant={props.quiet ? 'outline' : 'default'}
-            data-testid="home-next-step"
-            onClick={props.onNextStep}
-          >
-            <ArrowRightIcon />
-            {W.nextStep}
-          </Button>
-        )}
-        <Button
-          variant={line !== undefined || props.quiet ? 'outline' : 'default'}
-          size="sm"
-          data-testid="home-open-chat"
-          onClick={props.onOpenChat}
-        >
-          <MessageCircleIcon />
-          {W.backToChat}
-        </Button>
-      </div>
+    <div className="flex items-center gap-2">
+      <h1 className="font-serif text-2xl tracking-tight">{o.title}</h1>
+      {o.deadline !== undefined && <Badge tone="neutral">{`${W.deadline} ${o.deadline}`}</Badge>}
+      <TooltipIconButton
+        tooltip={W.settings}
+        data-testid="project-settings-button"
+        className="text-muted-foreground ms-auto size-8"
+        onClick={props.onSettings}
+      >
+        <SettingsIcon />
+      </TooltipIconButton>
+      <Button variant="outline" size="sm" data-testid="home-open-chat" onClick={props.onOpenChat}>
+        <MessageCircleIcon />
+        {W.backToChat}
+      </Button>
     </div>
   );
 }

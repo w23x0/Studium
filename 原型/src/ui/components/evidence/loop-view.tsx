@@ -1,4 +1,4 @@
-// 一段学习的依据：单子（按文字逐行，可改）、改过的几行、每次是否学会的判断（实际理解逐条带证据强度、
+// 一段学习的依据：单子（按文字逐行，可改）、改过的几行、守卫写的收尾记录（这次学到了什么：理解逐条带证据强度、
 // 理由、原话、不同看法）、老师的观察记录、用到的教法；没合上的另带结束原话与当时的路线决定。
 import { useEffect, useRef, useState } from 'react';
 import type {
@@ -17,7 +17,7 @@ import { understandingRows } from '../../verdict-model.ts';
 import { W } from '../../wording.ts';
 import { forLearner } from '../../learner-text.ts';
 import { toolCounts } from '../../teaching-model.ts';
-import { ToolChip } from './tools-view.tsx';
+import { ToolChip } from './tool-chip.tsx';
 import {
   Badge,
   Card,

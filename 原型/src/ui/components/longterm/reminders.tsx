@@ -64,12 +64,7 @@ export function RemindersSection(props: {
       )}
       {!r.data ? (
         <Loading error={r.error} />
-      ) : reminders.length === 0 ? (
-        // 空着时只说一句这是干什么的（界面说明 §1.3）
-        !adding && (
-          <p className="text-muted-foreground text-xs leading-relaxed">{W.remindersHint}</p>
-        )
-      ) : (
+      ) : reminders.length === 0 ? null : (
         <ul className="flex flex-col gap-1.5">
           {reminders.map((x) => (
             <li

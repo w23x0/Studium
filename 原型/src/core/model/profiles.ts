@@ -1,4 +1,5 @@
 // 模型与思考强度按会话类分开配：配置项，不全局一个（`docs/设计/实现选型.md`）。
+import { EXTRA_PROFILE_KEYS } from '../../shared/protocol.ts';
 import { CONVERSATION_KINDS, type ConversationKind } from '../../shared/records.ts';
 
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
@@ -14,7 +15,7 @@ export interface Profile {
  * 不是会话种类、也要单独配模型的两样（W10）：学习对话派的子代理（会话/页面子代理.md「模型」单独配）、
  * 框架里对块摆屏的小模型（实现选型「框架小模型」）。
  */
-export const EXTRA_PROFILE_KEYS = ['subagent', 'framework'] as const;
+export { EXTRA_PROFILE_KEYS };
 export type ProfileKey = ConversationKind | (typeof EXTRA_PROFILE_KEYS)[number];
 const PROFILE_KEYS: readonly string[] = [...CONVERSATION_KINDS, ...EXTRA_PROFILE_KEYS];
 

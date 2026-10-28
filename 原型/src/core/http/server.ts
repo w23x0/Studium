@@ -25,8 +25,6 @@ import type {
   ObjectionResponse,
   ObjectionsResponse,
   RecordConfirmationRequest,
-  TeachingToolResponse,
-  TeachingToolsResponse,
   ProjectOverviewResponse,
   RecordObjectionRequest,
   SessionModelResponse,
@@ -685,10 +683,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       }
       const objections = ev.objections(kind, q.get('record') ?? undefined);
       send(res, 200, { objections } satisfies ObjectionsResponse);
-    } else if (a === 'teaching-tools' && n === 2) {
-      send(res, 200, (await ev.teachingTools()) satisfies TeachingToolsResponse);
-    } else if (a === 'teaching-tools' && n === 3 && b !== undefined) {
-      send(res, 200, (await ev.teachingTool(decodeURIComponent(b))) satisfies TeachingToolResponse);
     } else if (a === 'disclosure' && n === 2) {
       send(res, 200, ev.disclosure() satisfies DisclosureResponse);
     } else {

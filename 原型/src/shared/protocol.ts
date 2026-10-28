@@ -406,26 +406,6 @@ export interface AfterTeachingView {
   text: string;
 }
 
-export interface TeachingToolView {
-  name: string;
-  /** 适用条件，一句话。 */
-  applies: string;
-  origin: '官方' | '学习者自己';
-  source: string;
-  /** 如“agent 起草，未经产品负责人审”。 */
-  status: string;
-}
-
-export interface TeachingToolsResponse {
-  tools: TeachingToolView[];
-  /** 装不上的文件与原因。 */
-  problems: string[];
-}
-
-export interface TeachingToolResponse {
-  tool: TeachingToolView & { text: string };
-}
-
 export interface StateRecordView {
   id: string;
   at: string;
@@ -516,16 +496,12 @@ export interface DisclosureResponse {
     sessions: { kind: ConversationKind; label: string }[];
     note?: string;
   };
-  /** 各类会话配的模型与强度；model 为空 = 没单独指定（用服务默认，实际执行的模型记在每条记录里）。 */
+  /**
+   * 各类会话（加学习对话派的子代理、学习页的框架小模型）配的模型与强度；
+   * model 为空 = 没单独指定（用服务默认，实际执行的模型记在每条记录里）。
+   */
   sessions: {
-    kind: ConversationKind;
-    label: string;
-    model: string | null;
-    effort: string | null;
-  }[];
-  /** 批 8 起新增的会话类（写产出），格式同 sessions。 */
-  laterSessions: {
-    kind: ConversationKind;
+    kind: DisclosureRowKind;
     label: string;
     model: string | null;
     effort: string | null;
@@ -540,14 +516,22 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   main: '项目主对话',
   talk: '谈方向',
   loop: '学习对话',
-  guard: '判断学没学会',
+  guard: '守卫（写收尾记录）',
   nav: '导航',
   retrieve: '检索子代理',
   state: '状态整理',
   pedagogy: '教法记录整理',
   output: '写产出',
   find: '找资料',
-  editor: '页面编辑员',
+  editor: '页面编辑员（旧数据）',
+};
+
+/** 不是会话、也单独配模型的两样（`src/core/model/profiles.ts` 的 EXTRA_PROFILE_KEYS）。 */
+export const EXTRA_PROFILE_KEYS = ['subagent', 'framework'] as const;
+export type DisclosureRowKind = ConversationKind | (typeof EXTRA_PROFILE_KEYS)[number];
+export const EXTRA_PROFILE_LABELS: Record<(typeof EXTRA_PROFILE_KEYS)[number], string> = {
+  subagent: '学习对话派的子代理',
+  framework: '学习页摆屏幕的小模型',
 };
 
 export * from './output.ts';

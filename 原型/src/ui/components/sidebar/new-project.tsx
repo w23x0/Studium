@@ -1,37 +1,34 @@
-// 新建项目：先问一句想学什么（界面说明 §3），这句作为项目对话的第一句发出，然后进项目对话接着谈。
+// 新建项目（照 Claude 项目）：项目名由学习者自己起；想学什么可以先写一句，作为项目对话的第一句发出，然后进项目对话接着谈。
 import { useState, type ReactNode } from 'react';
-import { ArrowUpIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { api } from '../../api.ts';
 import { W } from '../../wording.ts';
 
 const S = W.sidebar;
 
-/** 项目名先用这句话的开头（谈定方向后会改成方向的名字）。 */
-function draftTitle(text: string): string {
-  const first = text.trim().split(/[。！？!?\n]/)[0] ?? '';
-  return first.length > 18 ? `${first.slice(0, 18)}…` : first;
-}
-
 export function NewProject(props: {
   header: ReactNode;
   onCreated: (mainSessionId: string) => void;
   onError: (e: unknown) => void;
 }) {
+  const [name, setName] = useState('');
   const [text, setText] = useState('');
   const [busy, setBusy] = useState(false);
   const go = () => {
+    const n = name.trim();
     const t = text.trim();
-    if (t === '' || busy) return;
+    if (n === '' || busy) return;
     setBusy(true);
     api
-      .createProject(draftTitle(t))
+      .createProject(n)
       .then(async (r) => {
         // 项目已经建好：第一句没发出去也进项目对话（报错），不留在这页让人再点一次又建一个
-        try {
-          await api.send(r.mainSessionId, t);
-        } catch (e) {
-          props.onError(e);
+        if (t !== '') {
+          try {
+            await api.send(r.mainSessionId, t);
+          } catch (e) {
+            props.onError(e);
+          }
         }
         props.onCreated(r.mainSessionId);
       })
@@ -44,23 +41,32 @@ export function NewProject(props: {
     <div data-testid="new-project" className="flex h-full flex-col">
       {props.header}
       <div className="flex flex-1 flex-col items-center justify-center px-4 pb-24">
-        <div className="flex w-full max-w-xl flex-col gap-4">
-          <h1 className="font-serif text-center text-2xl">{S.newAsk}</h1>
-          <p className="text-muted-foreground text-center text-sm">{S.newHint}</p>
-          <form
-            className="bg-card focus-within:border-foreground/30 flex items-end gap-2 rounded-2xl border p-3 shadow-xs"
-            onSubmit={(e) => {
-              e.preventDefault();
-              go();
-            }}
-          >
-            <textarea
+        <form
+          className="flex w-full max-w-xl flex-col gap-4 text-sm"
+          onSubmit={(e) => {
+            e.preventDefault();
+            go();
+          }}
+        >
+          <h1 className="font-serif text-2xl">{S.newProjectLong}</h1>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-muted-foreground">{S.newName}</span>
+            <input
               autoFocus
+              data-testid="new-project-name"
+              placeholder={S.newNamePlaceholder}
+              className="bg-card focus:border-foreground/30 rounded-xl border px-3 py-2 text-[0.95rem] outline-none"
+              value={name}
+              onChange={(e) => setName(e.target.value)}
+            />
+          </label>
+          <label className="flex flex-col gap-1.5">
+            <span className="text-muted-foreground">{S.newAsk}</span>
+            <textarea
               data-testid="new-project-input"
-              aria-label={S.newAsk}
               rows={3}
               placeholder={S.newPlaceholder}
-              className="max-h-60 min-h-16 flex-1 resize-none bg-transparent text-[0.95rem] outline-none"
+              className="bg-card focus:border-foreground/30 max-h-60 min-h-16 resize-none rounded-xl border px-3 py-2 text-[0.95rem] outline-none"
               value={text}
               onChange={(e) => setText(e.target.value)}
               onKeyDown={(e) => {
@@ -70,16 +76,11 @@ export function NewProject(props: {
                 }
               }}
             />
-            <Button
-              type="submit"
-              size="icon"
-              aria-label={S.newGo}
-              disabled={busy || text.trim() === ''}
-            >
-              <ArrowUpIcon />
-            </Button>
-          </form>
-        </div>
+          </label>
+          <Button type="submit" className="self-end" disabled={busy || name.trim() === ''}>
+            {S.newGo}
+          </Button>
+        </form>
       </div>
     </div>
   );

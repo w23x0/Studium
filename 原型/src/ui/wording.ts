@@ -10,8 +10,6 @@ export const W = {
   // ── 项目页 ──
   projectHome: '项目页', // 项目页（Overview）
   projectChat: '项目对话', // 主对话
-  goal: '学成后能', // 方向目标（页头只放一行）
-  goalMore: '全部方向',
   goalSavedLine: '记下了你的方向，在项目页“记着什么”里能看全。',
   goalMissing: '还没谈定。在项目对话里说说你想学什么。',
   backToChat: '进项目对话',
@@ -25,9 +23,8 @@ export const W = {
   groupHints: {
     unclosed: '没学完就先结束的；下次要下一步时会一起考虑',
   },
-  learnEmpty: '还没开始学。在项目对话里说想学什么，或点“下一步学什么”。',
+  learnEmpty: '还没有学过。',
   closedMore: (n: number) => `全部 ${String(n)} 次`,
-  otherChats: '其他对话',
   /** 讨论串：项目对话右边一栏，列这个项目开出去的任务对话。 */
   threads: {
     title: '讨论串',
@@ -46,9 +43,7 @@ export const W = {
   askNext: '下一步学什么？',
 
   // ── 依据面板 ──
-  panelOpen: '打开开发者面板',
   panelClose: '关上',
-  panelHomeTitle: '开发者面板',
   panelLoopTitle: '这次学习',
   panelSourceTitle: '出处',
   whereAmI: '现在在哪',
@@ -73,7 +68,6 @@ export const W = {
   navStart: '开始学',
   navWhy: '为什么：',
   panelBack: '返回',
-  panelHome: '可以看的东西',
   loopBasis: '这次学习的记录', // 学习依据
   loopBasisShort: '看记录',
   status: {
@@ -128,14 +122,6 @@ export const W = {
   learned: '我学会的',
   myState: '我的状态', // 状态记录
   myStateEmpty: '还没整理过。',
-  currentState: '现在的状态',
-  stage: '所处阶段',
-  basisSpan: '依据的时间段',
-  stateRecords: '整理时依据的观察',
-  stateOutput: { 承载读数: '当前读数', 解释候选: '一种可能的解释' } satisfies Record<
-    StateRecordView['output'],
-    string
-  >,
   timeRange: '时间范围',
   teaching: '对我用过的教法', // 教法记录（与下面的“教学方法库”分开叫）
   teachingEmpty: '还没有对你用过的教法记录。',
@@ -410,23 +396,8 @@ export const W = {
   originCard: '导航定的下一次学习',
 
   // ── 教法：老师可以取用的教学方法、每轮的教法强度、状态确认（批 7） ──
-  tools: '教学方法库', // 教学工具库（通用策略知识层）
-  toolsHint:
-    '老师教的时候可以取用的做法。每份写了什么时候用、怎么做、怎么看出学会没有、要注意什么。',
-  toolsEmpty: '还没有可用的教法。',
-  toolOrigin: { 官方: '自带的', 学习者自己: '你自己加的' } as const,
-  toolApplies: '什么时候用',
-  toolSource: '依据',
-  toolStatus: '状态',
-  toolDraft: '起草未审',
-  toolMissing: '找不到这份教法了（可能被改名或删掉）。',
-  toolProblems: '没能装上的文件',
-  toolProblemsHint: '这些文件格式不对或和自带的重名，老师用不到它们；改好后会自动装上。',
-  toolsMine: '自己加教法',
-  toolsMineHint:
-    '把写好的 Markdown 文件放进数据目录下的 teaching-tools 文件夹（没设过数据目录时是 原型/var/teaching-tools/），格式照自带的那几份：标题是名字，下面三行写“适用条件”“来源”“状态”，再分“做法”“怎么引出证据”“注意边界”三节。老师下次取用时就能看到；和自带的重名的不会装上。',
   toolsUsedHere: '这次学习用到的教法',
-  toolsUsedHint: '老师按需取用的；点开看全文。',
+  toolsUsedHint: '老师按需取用的。',
   toolsUsedNone: '这次没取用过。',
   toolTimes: (n: number) => `${String(n)} 次`,
   // 阶段验收（练习整块删了以后只留说明）
@@ -595,7 +566,6 @@ export const W = {
   reviewDue: (n: number) => `上次回头看之后又学完了 ${String(n)} 段，可以复盘一下`,
   // 提醒
   reminders: '提醒',
-  remindersHint: '到了那天会出现在“今天该做的”里；只在这里提醒，不发通知。',
   reminderKind: {
     recheck: '复检',
     resume: '接着学',
@@ -653,7 +623,6 @@ export const W = {
   resumedByAfter: '学',
   // 阶段复盘
   review: '阶段复盘',
-  reviewHint: '回头看看这段时间学了什么、哪里没学完、接下来怎么走；谈完交回项目一句话。',
   reviewStart: '复盘一下',
   reviewPickSince: '选从哪天起',
   reviewSince: '从哪天起（不选就从上次复盘起）',

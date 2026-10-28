@@ -72,6 +72,12 @@
   }
 }
 
+/* 浏览器自带的滚动条跟着深浅色走，深色时不出白条 */
+:root {
+  color-scheme: light dark;
+  scrollbar-color: var(--border) transparent;
+}
+
 @layer base {
   * {
     @apply border-border;

@@ -5,8 +5,6 @@ import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { cn } from '@/lib/utils';
 import {
-  ActionBarPrimitive,
-  AuiIf,
   ErrorPrimitive,
   MessagePrimitive,
   ThreadPrimitive,
@@ -15,10 +13,8 @@ import {
 import {
   ArrowDownIcon,
   ArrowRightIcon,
-  CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  CopyIcon,
   LoaderIcon,
 } from 'lucide-react';
 import { api } from '@/api';
@@ -191,23 +187,6 @@ const AssistantMessage: FC = () => {
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
       </div>
-      {done && (
-        <ActionBarPrimitive.Root
-          autohide="not-last"
-          className="text-muted-foreground ms-0 mt-1 flex gap-1"
-        >
-          <ActionBarPrimitive.Copy asChild>
-            <TooltipIconButton tooltip="复制">
-              <AuiIf condition={(s) => s.message.isCopied}>
-                <CheckIcon />
-              </AuiIf>
-              <AuiIf condition={(s) => !s.message.isCopied}>
-                <CopyIcon />
-              </AuiIf>
-            </TooltipIconButton>
-          </ActionBarPrimitive.Copy>
-        </ActionBarPrimitive.Root>
-      )}
     </MessagePrimitive.Root>
   );
 };

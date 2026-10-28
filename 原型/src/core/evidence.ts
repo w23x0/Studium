@@ -2,11 +2,14 @@
 // 只读：不写任何记录；异议的写入在 studium.ts。
 import {
   CONVERSATION_KIND_LABELS,
+  EXTRA_PROFILE_KEYS,
+  EXTRA_PROFILE_LABELS,
   modelInfoOf,
   type CardOptionView,
   type CardView,
   type CurrentStateView,
   type DisclosureResponse,
+  type DisclosureRowKind,
   type GoalView,
   type LoopLoad,
   type LoopRelationView,
@@ -22,8 +25,6 @@ import {
   type SourceView,
   type StateRecordView,
   type StrategyView,
-  type TeachingToolResponse,
-  type TeachingToolsResponse,
   type TicketEditView,
   type TicketView,
 } from '../shared/protocol.ts';
@@ -43,8 +44,8 @@ import type { Learned } from './learned.ts';
 import { locate } from './locate.ts';
 import { currentTicket } from './ticket.ts';
 
-/** 批 8 起新增的会话类：外发披露里单列在 laterSessions。 */
-const LATER_KINDS: ConversationKind[] = ['output', 'retrieve'];
+/** 旧数据里才有的会话类（10-26 起不再开）：不列进外发披露的模型表。 */
+const RETIRED_KINDS: ConversationKind[] = ['editor'];
 import { foldLoop, LOAD_HEAVY, PARKING_PILE } from './loop-state.ts';
 import type { PedagogyStore } from './knowledge/pedagogy.ts';
 import type { StateStore } from './knowledge/state.ts';
@@ -602,37 +603,6 @@ export class Evidence {
     };
   }
 
-  // ───────────── 教学工具 ─────────────
-
-  async teachingTools(): Promise<TeachingToolsResponse> {
-    const { tools, problems } = await this.d.teaching.list();
-    return {
-      tools: tools.map(({ name, applies, origin, source, status }) => ({
-        name,
-        applies,
-        origin,
-        source,
-        status,
-      })),
-      problems,
-    };
-  }
-
-  async teachingTool(name: string): Promise<TeachingToolResponse> {
-    const t = await this.d.teaching.get(name);
-    if (!t) throw new NotFoundError(`没有叫「${name}」的教学工具`);
-    return {
-      tool: {
-        name: t.name,
-        applies: t.applies,
-        origin: t.origin,
-        source: t.source,
-        status: t.status,
-        text: t.text,
-      },
-    };
-  }
-
   /** 异议存放处里的全部异议（可按种类、记录 id 过滤）。 */
   objections(kind?: string, recordId?: string): ObjectionView[] {
     return this.d.objections
@@ -654,9 +624,9 @@ export class Evidence {
   disclosure(): DisclosureResponse {
     const d = this.d.hub.disclosure;
     const kinds = Object.keys(CONVERSATION_KIND_LABELS) as ConversationKind[];
-    const sessionRow = (kind: ConversationKind) => ({
+    const row = (kind: DisclosureRowKind, label: string) => ({
       kind,
-      label: CONVERSATION_KIND_LABELS[kind],
+      label,
       model: d?.profiles[kind]?.model ?? d?.defaultModel ?? null,
       effort: d?.profiles[kind]?.effort ?? null,
     });
@@ -671,7 +641,9 @@ export class Evidence {
         '你对这些记录提的异议',
         '你的产出物（笔记、推导、论文、方法比较）的当前版本和你的修改（在“写产出”对话里会读到）',
         '你加的图片（只在转写时送去；对话里只送转写出的文字）',
-        '畅谈和导航对话里模型拟的联网搜索词与要打开的网址',
+        '畅谈、导航、找资料对话里模型拟的联网搜索词与要打开的网址',
+        '学习页上的文字块和你在组件上的操作（学习对话派的子代理、摆屏幕的小模型会读到）',
+        '你上传的文本文件的文件名和开头一段（归资料还是学过的拿不准时，送去判一次）',
       ],
       webSearch: {
         sessions: this.d.webSearchKinds().map((kind) => ({
@@ -680,9 +652,12 @@ export class Evidence {
         })),
         note: '这些对话里模型可以自己联网搜索、打开网页：搜索词和网址由模型从对话与记录里拟出，经上面的模型服务发出；搜到的内容回到对话里。',
       },
-      sessions: kinds.filter((k) => !LATER_KINDS.includes(k)).map(sessionRow),
-      // 批 8 起新增的会话类单列（早先的验收测试规定 sessions 就是原来那八类，不能往里加）
-      laterSessions: kinds.filter((k) => LATER_KINDS.includes(k)).map(sessionRow),
+      sessions: [
+        ...kinds
+          .filter((k) => !RETIRED_KINDS.includes(k))
+          .map((k) => row(k, CONVERSATION_KIND_LABELS[k])),
+        ...EXTRA_PROFILE_KEYS.map((k) => row(k, EXTRA_PROFILE_LABELS[k])),
+      ],
       note: '没单独指定模型的会话用服务的默认模型；每条记录里的“模型”是实际执行的那个，取不到时会写明只是适配器名。',
       inputs: this.d.inputs?.disclosure(d) ?? [],
     };

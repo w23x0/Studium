@@ -78,7 +78,7 @@ export type PlanResult = (
 /** 出发点的来源（学过的记录 / 自述 / 假定）。 */
 type StartSource = (typeof START_SOURCES)[number];
 
-/** 学习者离开多久算“隔了一阵回来”，回来时程序追加离开多久。 */
+/** 状态整理开场里，学习者两句话之间隔多久标一句“停了约…”。 */
 const AWAY_MS = 30 * 60 * 1000;
 /** 旧版开的学习对话（W10 前，开场的提示词与工具已定死）：只看，要接着学另开一次（W10 §9 第 1 条）。 */
 const OLD_LOOP = '这次学习是旧版开的，只能看；要接着学，请回项目另开一次。';
@@ -880,8 +880,8 @@ export class Studium {
   }
 
   /**
-   * 学习者在某个对话里发话。隔了一阵回来：学习对话每条带时间，模型自己看得出离开多久，不另推
-   * （`docs/设计/01-流程.md`「暂停」）；别的对话不带时间，过了半小时先追加一句离开多久。
+   * 学习者在某个对话里发话。隔了一阵回来：每条都带时间，模型自己看得出离开多久，不设门槛、不另推
+   * （`docs/设计/01-流程.md`「暂停」）。
    * images = 附图的来历（批 4，文字已并进 text）。
    */
   async learnerSays(
@@ -910,21 +910,13 @@ export class Studium {
       .map((r) => r.record)
       .filter((r) => r.type === 'user_message' || r.type === 'assistant_message')
       .at(-1);
+    await this.hub.send(sessionId, { role: 'learner', text }, meta);
     if (last !== undefined) {
       const away = this.now().getTime() - Date.parse(last.at);
-      if (away > AWAY_MS && (await this.hub.opened(sessionId)).kind !== 'loop') {
-        await this.hub.send(sessionId, {
-          role: 'program',
-          text: `学习者离开了约 ${formatDuration(away)}，现在回来了。`,
-        });
-      }
-      await this.hub.send(sessionId, { role: 'learner', text }, meta);
       if (away > LONG_AWAY_MS) {
         this.organizeStateLater(`学习者隔了约 ${formatDuration(away)} 回来`, sessionId);
       }
-      return;
     }
-    await this.hub.send(sessionId, { role: 'learner', text }, meta);
   }
 
   /**
@@ -2751,7 +2743,7 @@ export class Studium {
       description:
         '方向谈清了（学成后能做什么、每块为什么学、学习者认可的理由）时调用：把方向目标交回项目，本对话随之结束。只调一次。',
       input: {
-        title: z.string().describe('方向目标短名：几个字，同时作项目名'),
+        title: z.string().describe('方向目标短名：几个字（项目名由学习者自己起，不跟着改）'),
         abilities: z
           .array(
             z.object({
@@ -2795,7 +2787,7 @@ export class Studium {
         const title = typeof a.title === 'string' ? a.title.trim() : '';
         if (title === '') {
           return err(
-            '要给 title（方向目标的短名，几个字，同时作项目名）。参数形状是 { title, abilities: [{ ability, reason }] }；旧的“一句话方向 + 项目名”两个参数不再用。',
+            '要给 title（方向目标的短名，几个字）。参数形状是 { title, abilities: [{ ability, reason }] }；旧的“一句话方向 + 项目名”两个参数不再用。',
           );
         }
         const rawAbilities = a.abilities;
@@ -2869,7 +2861,6 @@ export class Studium {
           talkSessionId: talkId,
           ...(previous !== undefined ? { supersedes: previous.line } : {}),
         });
-        await this.hub.record(mainId, { type: 'project_title', at, title, source: 'goal' });
         if (deadline !== undefined && deadline !== '') {
           await this.hub.record(mainId, { type: 'project_deadline', at, deadline });
         }
@@ -2883,7 +2874,7 @@ export class Studium {
         await this.hub.record(talkId, { type: 'talk_ended', at, goal: text, title });
         await this.hub.send(mainId, {
           role: 'program',
-          text: `谈方向的对话（${talkId}）交回了：方向目标是“${text}”，项目名改为“${title}”。`,
+          text: `谈方向的对话（${talkId}）交回了：方向目标是“${text}”。`,
         });
         this.organizeStateLater(`畅谈对话（${talkId}）结束了`, talkId);
         return ok(

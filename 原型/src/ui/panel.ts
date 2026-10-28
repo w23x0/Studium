@@ -4,7 +4,6 @@ import type { BBox } from '../shared/protocol.ts';
 
 /** 面板里能看的东西。 */
 export type PanelTarget =
-  | { kind: 'home' }
   /**
    * verdictLine：滚到这次判断；
    * editTicket：打开就展开改单子。
@@ -14,8 +13,6 @@ export type PanelTarget =
   | { kind: 'learned'; loopId?: string }
   | { kind: 'state' }
   | { kind: 'teaching' }
-  /** 教法（教学工具）：不给名字 = 列表；给名字 = 这一份的全文。 */
-  | { kind: 'tools'; name?: string }
   | { kind: 'disclosure' }
   /** 资料浏览：不给 book = 资料列表；给 book（资料 id）= 这份资料的文件清单。 */
   | { kind: 'materials'; book?: string }

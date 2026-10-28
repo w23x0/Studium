@@ -72,9 +72,7 @@ export function ReviewsSection(props: { projectId: string; onError: (e: unknown)
       )}
       {!r.data ? (
         <Loading error={r.error} />
-      ) : reviews.length === 0 ? (
-        <p className="text-muted-foreground text-xs leading-relaxed">{W.reviewHint}</p>
-      ) : (
+      ) : reviews.length === 0 ? null : (
         <div className="flex flex-col gap-1.5">
           <div className="text-muted-foreground text-xs">{W.reviewsPast}</div>
           {reviews.map((x) => (

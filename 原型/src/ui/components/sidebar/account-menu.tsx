@@ -1,19 +1,15 @@
-// 左栏底部的账号：弹出菜单——设置（开发者模式开关）、语言（现在只有中文）。没做的（退出登录）不摆出来。
-import { useState } from 'react';
-import { ChevronsUpDownIcon, GlobeIcon, SettingsIcon } from 'lucide-react';
+// 左栏底部的账号：弹出菜单——语言（现在只有中文）。没做的（退出登录）不摆出来。
+import { ChevronsUpDownIcon, GlobeIcon } from 'lucide-react';
 import {
   Menu,
   MenuContent,
-  MenuItem,
   MenuRadioGroup,
   MenuRadioItem,
   MenuSubmenu,
   MenuSubmenuTrigger,
   MenuTrigger,
 } from '@/components/ui/menu';
-import { Modal } from '@/components/input/modal';
 import { cn } from '@/lib/utils';
-import { useSetting } from '../../settings.ts';
 import { W } from '../../wording.ts';
 
 const S = W.sidebar;
@@ -27,7 +23,6 @@ function Avatar() {
 }
 
 export function AccountMenu(props: { collapsed: boolean }) {
-  const [settings, setSettings] = useState(false);
   return (
     <>
       <Menu>
@@ -48,10 +43,6 @@ export function AccountMenu(props: { collapsed: boolean }) {
           )}
         </MenuTrigger>
         <MenuContent side="top" align="start" className="min-w-52">
-          <MenuItem data-testid="open-settings" onClick={() => setSettings(true)}>
-            <SettingsIcon />
-            {S.settings}
-          </MenuItem>
           <MenuSubmenu>
             <MenuSubmenuTrigger>
               <GlobeIcon />
@@ -66,32 +57,6 @@ export function AccountMenu(props: { collapsed: boolean }) {
           </MenuSubmenu>
         </MenuContent>
       </Menu>
-      {settings && <SettingsDialog onClose={() => setSettings(false)} />}
     </>
-  );
-}
-
-function SettingsDialog(props: { onClose: () => void }) {
-  const [dev, setDev] = useSetting('devMode');
-  return (
-    <Modal label={S.settings} onClose={props.onClose} className="w-[min(28rem,92vw)] p-5">
-      <div className="flex flex-col gap-4 text-sm">
-        <h2 className="font-medium">{S.settings}</h2>
-        <label className="flex items-start gap-3">
-          <span className="flex flex-1 flex-col gap-0.5">
-            <span>{S.devMode}</span>
-            <span className="text-muted-foreground text-xs">{S.devModeHint}</span>
-          </span>
-          <input
-            type="checkbox"
-            role="switch"
-            data-testid="dev-mode"
-            className="accent-primary mt-0.5 size-4"
-            checked={dev}
-            onChange={(e) => setDev(e.target.checked)}
-          />
-        </label>
-      </div>
-    </Modal>
   );
 }

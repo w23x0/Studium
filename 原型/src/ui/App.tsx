@@ -2,7 +2,7 @@
 // 现在在哪写进地址（#/…），刷新、后退回原处；窄屏时左栏变抽屉、面板盖满全屏（界面说明 §1.1、§1.5）。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
-import { ListTreeIcon, PanelRightCloseIcon, PanelRightOpenIcon } from 'lucide-react';
+import { ListTreeIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import { api } from './api.ts';
@@ -64,7 +64,7 @@ export function App() {
   const [loaded, setLoaded] = useState(false);
   /** 中间显示什么；地址里有就照地址（刷新回原处），没有等项目读回来再定。 */
   const [route, setRoute] = useState<Route | undefined>(() => parseRoute(window.location.hash));
-  const [panel, setPanel] = useState<PanelState>({ open: false, stack: [{ kind: 'home' }] });
+  const [panel, setPanel] = useState<PanelState>({ open: false, stack: [] });
   const [focus, setFocus] = useState<Focus | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [navOpen, setNavOpen] = useState(false);
@@ -76,7 +76,6 @@ export function App() {
     setError(e instanceof Error ? e.message : String(e));
   }, []);
   const sidebar = useSidebarView(fail);
-  const [devMode] = useSetting('devMode');
   /** 对话改过的名字叠上去（左栏“重命名”）。 */
   const sessions = useMemo(
     () => withTitles(rawSessions, sidebar.view.titles),
@@ -173,17 +172,6 @@ export function App() {
   const project = projects.find((p) => p.mainSessionId === projectId);
   const reviewIds = useReviewIds(projectId);
   const isReview = useCallback((id: string) => reviewIds.has(id), [reviewIds]);
-  const tasks = sessions
-    .filter(
-      (s) =>
-        (s.kind === 'loop' ||
-          s.kind === 'talk' ||
-          s.kind === 'output' ||
-          s.kind === 'find' ||
-          s.kind === 'nav') &&
-        s.parent === projectId,
-    )
-    .sort((a, b) => a.openedAt.localeCompare(b.openedAt));
   const currentSession = sessions.find((s) => s.sessionId === current);
   const titleOf = useCallback(
     (id: string) => sessions.find((s) => s.sessionId === id)?.title,
@@ -219,7 +207,7 @@ export function App() {
     () => ({
       show: (t) =>
         setPanel((p) => {
-          if (!p.open) return { open: true, stack: [{ kind: 'home' }, t] };
+          if (!p.open) return { open: true, stack: [t] };
           const top = p.stack.at(-1);
           if (JSON.stringify(top) === JSON.stringify(t)) return p;
           return { open: true, stack: [...p.stack.slice(-19), t] };
@@ -227,8 +215,7 @@ export function App() {
       replace: (t) =>
         setPanel((p) => ({
           open: true,
-          stack:
-            p.open && p.stack.length > 1 ? [...p.stack.slice(0, -1), t] : [{ kind: 'home' }, t],
+          stack: p.open && p.stack.length > 0 ? [...p.stack.slice(0, -1), t] : [t],
         })),
       jump: (sessionId, lines, scroll = true) => {
         seq.current += 1;
@@ -240,31 +227,7 @@ export function App() {
     [open],
   );
 
-  const loopId = currentSession?.kind === 'loop' && page === 'chat' ? current : undefined;
-  const togglePanel = () =>
-    setPanel((p) =>
-      p.open
-        ? { ...p, open: false }
-        : {
-            open: true,
-            stack:
-              loopId !== undefined
-                ? [{ kind: 'home' }, { kind: 'loop', loopId }]
-                : [{ kind: 'home' }],
-          },
-    );
-  // 开发者模式关掉时不给打开面板的按钮（对话里的出处、判断的“为什么”照样能在面板里打开）
-  const panelButton = devMode && (
-    <TooltipIconButton
-      tooltip={panel.open ? W.panelClose : W.panelOpen}
-      data-testid="panel-toggle"
-      className="size-8"
-      onClick={togglePanel}
-    >
-      {panel.open ? <PanelRightCloseIcon /> : <PanelRightOpenIcon />}
-    </TooltipIconButton>
-  );
-  const top = panel.stack.at(-1) ?? { kind: 'home' };
+  const top = panel.stack.at(-1);
   // 讨论串：在项目的对话里才有；依据面板开着时让位给它
   const inChat = page === 'chat' && projectId !== undefined;
   const threadsOpen = narrow ? threadsNarrow : threadsWide;
@@ -282,12 +245,6 @@ export function App() {
     >
       <ListTreeIcon />
     </TooltipIconButton>
-  );
-  const chatHeaderExtra = (
-    <>
-      {threadsButton}
-      {panelButton}
-    </>
   );
 
   const sidebarEl = (
@@ -339,9 +296,7 @@ export function App() {
                     sessions={rawSessions}
                     view={sidebar.view}
                     loaded={loaded}
-                    header={
-                      <TopBar crumbs={[{ label: W.sidebar.allProjects }]} right={panelButton} />
-                    }
+                    header={<TopBar crumbs={[{ label: W.sidebar.allProjects }]} />}
                     onAct={(req) => void sidebar.act(req)}
                     onOpenProject={openMain}
                     onNewProject={() => go({ page: 'new' })}
@@ -369,7 +324,6 @@ export function App() {
                   <ProjectHome
                     key={projectId}
                     projectId={projectId}
-                    tasks={tasks}
                     panelOpen={panel.open && !narrow}
                     header={
                       <TopBar
@@ -377,14 +331,9 @@ export function App() {
                           { label: W.sidebar.allProjects, onClick: () => go({ page: 'projects' }) },
                           { label: project.title },
                         ]}
-                        right={panelButton}
                       />
                     }
                     onOpenChat={() => openMain(projectId)}
-                    onNextStep={() => {
-                      openMain(projectId);
-                      api.send(projectId, W.askNext).catch(fail);
-                    }}
                     onRename={(title) =>
                       void sidebar.act({ kind: 'project', id: projectId, action: 'rename', title })
                     }
@@ -406,7 +355,7 @@ export function App() {
                       projectId={projectId}
                       projectTitle={project.title}
                       titleOf={titleOf}
-                      headerExtra={chatHeaderExtra}
+                      headerExtra={threadsButton}
                       onError={fail}
                       onBackToMain={() => openMain(projectId)}
                       onProject={() => openProjectHome(projectId)}
@@ -423,7 +372,7 @@ export function App() {
                           titleOf={titleOf}
                           isReview={isReview}
                           focus={focus?.sessionId === current ? focus : undefined}
-                          headerExtra={chatHeaderExtra}
+                          headerExtra={threadsButton}
                           onError={fail}
                           onBackToMain={() => openMain(projectId)}
                           onProject={() => openProjectHome(projectId)}
@@ -443,7 +392,7 @@ export function App() {
                       titleOf={titleOf}
                       isReview={isReview}
                       focus={focus?.sessionId === current ? focus : undefined}
-                      headerExtra={chatHeaderExtra}
+                      headerExtra={threadsButton}
                       onError={fail}
                       onBackToMain={() => openMain(projectId)}
                       onProject={() => openProjectHome(projectId)}
@@ -469,7 +418,7 @@ export function App() {
                   />
                 </aside>
               )}
-              {panel.open && (
+              {panel.open && top !== undefined && (
                 <aside
                   className={cn(
                     'bg-sidebar flex shrink-0 flex-col',
@@ -488,11 +437,9 @@ export function App() {
                 >
                   <EvidencePanel
                     target={top}
-                    // 首页目录只在开发者模式：不是开发者模式时退到第一项为止
-                    canBack={panel.stack.length > (devMode ? 1 : 2)}
+                    canBack={panel.stack.length > 1}
                     onBack={() => setPanel((p) => ({ ...p, stack: p.stack.slice(0, -1) }))}
                     onClose={() => setPanel((p) => ({ ...p, open: false }))}
-                    loopId={loopId}
                   />
                 </aside>
               )}

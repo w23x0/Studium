@@ -14,9 +14,10 @@ export const WS = {
   newProjectLong: '新建项目',
   projects: '项目', // 打开全部项目页
   allProjects: '全部项目',
-  noProjects: '还没有项目。点“新建项目”，说一句想学什么就能开始。',
-  newAsk: '想学什么？',
-  newHint: '说一句就行，比如“想搞懂矩阵乘法为什么是行乘列”。接下来在项目对话里接着谈。',
+  noProjects: '还没有项目。',
+  newName: '项目名',
+  newNamePlaceholder: '给项目起个名字',
+  newAsk: '想学什么（可以不填）',
   newPlaceholder: '想学的东西、想做成的事…',
   newGo: '开始',
   noGoalYet: '还没谈方向',
@@ -48,9 +49,6 @@ export const WS = {
   // ── 账号 ──
   account: '我',
   accountMenu: '账号',
-  settings: '设置',
   language: '语言',
   chinese: '中文',
-  devMode: '开发者模式',
-  devModeHint: '打开后，右上角可以打开旁边的面板，看资料、记录、教法和外发内容。',
 } as const;

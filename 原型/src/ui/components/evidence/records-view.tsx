@@ -22,11 +22,11 @@ import {
   ObjectionForm,
   ObjectionList,
   Quote,
-  Section,
   Time,
 } from './parts.tsx';
+import { stillValid } from '../../state-model.ts';
 import { StateTimeline } from './state-timeline.tsx';
-import { ToolChip } from './tools-view.tsx';
+import { ToolChip } from './tool-chip.tsx';
 
 function Quotes(props: { quotes: QuoteView[]; sessionId: string }) {
   if (props.quotes.length === 0) return null;
@@ -87,6 +87,7 @@ export function StateView() {
   const [view, setView] = useState<'list' | 'timeline'>('list');
   if (!r.data) return <Loading error={r.error} />;
   const { current, records } = r.data;
+  const valid = stillValid(records, current?.text);
   return (
     <div className="flex flex-col gap-5">
       <h2 className="font-serif text-lg">{W.myState}</h2>
@@ -110,27 +111,13 @@ export function StateView() {
         </div>
       )}
       {view === 'timeline' && records.length > 0 && <StateTimeline />}
-      {view === 'list' && current === undefined && records.length === 0 && (
+      {view === 'list' && valid.length === 0 && (
         <div className="text-muted-foreground text-sm">{W.myStateEmpty}</div>
       )}
-      {view === 'list' && current !== undefined && (
-        <Section title={W.currentState}>
-          <Card className="flex flex-col gap-3">
-            <div className="font-serif whitespace-pre-wrap">{current.text}</div>
-            {current.stage !== '' && <Field label={W.stage}>{current.stage}</Field>}
-            {current.basisSpan !== '' && <Field label={W.basisSpan}>{current.basisSpan}</Field>}
-            <Time at={current.at} />
-            <ModelLine model={current.model} />
-          </Card>
-        </Section>
-      )}
-      {view === 'list' && records.length > 0 && (
-        <Section title={W.stateRecords}>
-          {[...records].reverse().map((s) => (
-            <StateRecord key={s.id} record={s} onObjected={r.reload} />
-          ))}
-        </Section>
-      )}
+      {view === 'list' &&
+        [...valid]
+          .reverse()
+          .map((s) => <StateRecord key={s.id} record={s} onObjected={r.reload} />)}
     </div>
   );
 }
@@ -152,7 +139,6 @@ function StateRecord(props: { record: StateRecordView; onObjected: () => void })
             {W.sourceWas(W.sourceLevel[s.source])}
           </span>
         )}
-        <Badge>{W.stateOutput[s.output]}</Badge>
         <span className="ms-auto">
           <Time at={s.at} />
         </span>
@@ -171,11 +157,9 @@ function StateRecord(props: { record: StateRecordView; onObjected: () => void })
           </button>
         </div>
       )}
-      {s.timeRange !== '' && <Field label={W.timeRange}>{s.timeRange}</Field>}
       {s.refs.map((ref) => (
         <Quotes key={ref.sessionId} quotes={ref.quotes} sessionId={ref.sessionId} />
       ))}
-      <ModelLine model={s.model} />
       <StateVerdict record={s} onDone={props.onObjected} />
       <Objections
         kind="state"

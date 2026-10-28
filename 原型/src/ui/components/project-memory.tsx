@@ -9,13 +9,14 @@ import {
   HistoryIcon,
   ScrollTextIcon,
 } from 'lucide-react';
-import type { ProjectOverview } from '../../shared/protocol.ts';
+import type { ProjectOverview, StateRecordView } from '../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '../api.ts';
 import { shortTime } from '../evidence-model.ts';
 import { goalRows } from '../goal-model.ts';
 import { useLoad } from '../hooks/use-load.ts';
+import { stillValid } from '../state-model.ts';
 import { usePanel } from '../panel.ts';
 import { forLearner } from '../learner-text.ts';
 import { W } from '../wording.ts';
@@ -70,7 +71,7 @@ export function MemoryTab(props: {
         )}
       </Block>
       <StateBlock />
-      {/* 不靠开发者模式也能看到：用过的教法、教法库、内容送往哪里（设计 00 §7：外发可知、依据可见） */}
+      {/* 用过的教法、内容送往哪里（设计 00 §7：外发可知、依据可见） */}
       <div
         data-testid="memory-more"
         className="flex flex-wrap items-center gap-x-4 gap-y-1 text-sm"
@@ -83,14 +84,6 @@ export function MemoryTab(props: {
           onClick={() => panel.show({ kind: 'teaching' })}
         >
           {W.teaching}
-        </Button>
-        <Button
-          variant="link"
-          size="xs"
-          className="px-0"
-          onClick={() => panel.show({ kind: 'tools' })}
-        >
-          {W.tools}
         </Button>
         <Button
           variant="link"
@@ -229,8 +222,8 @@ function StateBlock() {
     >
       {!r.data ? (
         <Loading error={r.error} />
-      ) : r.data.current !== undefined ? (
-        <StatePoints text={r.data.current.text} />
+      ) : r.data.records.length > 0 ? (
+        <StatePoints records={stillValid(r.data.records, r.data.current?.text)} />
       ) : (
         <span className="text-muted-foreground">{W.memoryStateEmpty}</span>
       )}
@@ -268,23 +261,15 @@ function Block(props: {
   );
 }
 
-/**
- * 当前状态那段（模型写的）摊成要点：每条一句人话，不露编号（界面说明 §2.10）；
- * “已拿掉…”这类整理过程留给“看详细”。
- */
-function StatePoints(props: { text: string }) {
-  const points = props.text
-    .split('\n')
-    .map((l) => l.trim())
-    .filter((l) => l.startsWith('- ') || l.startsWith('• '))
-    .map((l) => forLearner(l.slice(2)));
-  if (points.length === 0) {
-    return <span className="whitespace-pre-wrap">{forLearner(props.text)}</span>;
-  }
+/** 现在还算数的几条（state-model.ts）：每条一句话，标是你说的还是观察到的。 */
+function StatePoints(props: { records: StateRecordView[] }) {
   return (
     <ul data-testid="state-points" className="flex list-disc flex-col gap-1 ps-5">
-      {points.map((p, i) => (
-        <li key={i}>{p}</li>
+      {[...props.records].reverse().map((x) => (
+        <li key={x.id}>
+          {x.text}
+          <span className="text-muted-foreground"> · {W.sourceLevel[x.sourceLevel]}</span>
+        </li>
       ))}
     </ul>
   );

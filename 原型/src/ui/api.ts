@@ -33,8 +33,6 @@ import type {
   ProjectInstructionsResponse,
   ImportTextResponse,
   LoopRelationsResponse,
-  TeachingToolsResponse,
-  TeachingToolResponse,
   ConfirmationResponse,
   AddReminderRequest,
   RouteDeviationsResponse,
@@ -228,9 +226,6 @@ export const api = {
   objectToRecord: (req: RecordObjectionRequest) =>
     call<ObjectionResponse>('/objections', { method: 'POST', body: JSON.stringify(req) }),
   // ── 教法（批 7）：教学工具、对状态的确认 / 否认 ──
-  teachingTools: () => call<TeachingToolsResponse>('/teaching-tools'),
-  teachingTool: (name: string) =>
-    call<TeachingToolResponse>(`/teaching-tools/${encodeURIComponent(name)}`),
   confirmState: (recordId: string, verdict: 'confirm' | 'deny', note?: string) =>
     call<ConfirmationResponse>('/state/confirmations', {
       method: 'POST',

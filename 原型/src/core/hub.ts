@@ -239,13 +239,13 @@ export class Hub {
             }
           : { type: 'program_fact', at: this.iso(), text: input.text },
       ));
-    // 证据引用照模型最顺手的方式：交给模型的每条消息前印它在正本里的行号（00 原则 8）；
-    // 按时间线的会话再带上时间、不包标记
+    // 证据引用照模型最顺手的方式：交给模型的每条消息前印它在正本里的行号（00 原则 8）与时间，
+    // 离开多久模型自己看（01-流程.md「暂停」）；按时间线的会话不包标记
     const timeline = this.opts.kinds(live.kind).timeline === true;
     const delivered: TurnInput = {
       role: input.role,
       ...(timeline ? { plain: true } : {}),
-      text: `[第 ${String(line)} 行${timeline ? ` · ${localMinute(this.iso())}` : ''}] ${
+      text: `[第 ${String(line)} 行 · ${localMinute(this.iso())}] ${
         objection !== undefined
           ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
           : ''
