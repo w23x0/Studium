@@ -28,6 +28,9 @@ const RELOAD_ON = new Set([
   'reminder_added',
   'reminder_closed',
   'talk_ended',
+  'thread_closed',
+  'thread_reopened',
+  'thread_title',
   'task_opened',
   // 导入入口与项目页（工单 W9）：分流、改判；项目说明；找资料的候选与存所选
   'upload_routed',

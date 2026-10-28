@@ -388,6 +388,50 @@ export interface TalkEnded {
   review?: ReviewWindow;
 }
 
+/**
+ * 讨论串结束 / 重开（10-28，照 Claude 项目的讨论串：结束只是收起，再说话就重开）。
+ * 谈方向交回、找资料勾完照旧算结束；这两条是另外的：主对话按学习者的话结束，学习者或主对话重开。
+ * 一次学习不走这里（合上 / 没合上就结束有自己的记录，不能重开）。
+ */
+export interface ThreadClosed {
+  type: 'thread_closed';
+  at: string;
+  by: 'main';
+  reason: string;
+}
+
+export interface ThreadReopened {
+  type: 'thread_reopened';
+  at: string;
+  /** learner = 学习者在已结束的讨论串里又说话；main = 主对话传话或按学习者的话重开。 */
+  by: 'learner' | 'main';
+  reason?: string;
+}
+
+/** 讨论串自己起的总结标题（谈的东西变了再起一条）；开头那行的名字不改，界面取最新一条。 */
+export interface ThreadTitle {
+  type: 'thread_title';
+  at: string;
+  title: string;
+}
+
+/**
+ * 学习对话请项目开分叉（补前置、旁支）：学习者同意后由学习对话提出，程序转给主对话，
+ * 主对话开导航时程序照这条拼开场（不由主对话转述）。
+ */
+export interface BranchRequested {
+  type: 'branch_requested';
+  at: string;
+  /** 要先学什么，一句话。 */
+  need: string;
+  /** 为什么要先学它（依据）。 */
+  why: string;
+  /** 回到这次学习前要满足什么。 */
+  returnCondition: string;
+  /** 依据在本学习对话里的行号（学习者的话或表现）。 */
+  lines: number[];
+}
+
 /** 主对话把学习者指向某个已有对话（跟进某次学习时）。 */
 export interface ConversationPointer {
   type: 'conversation_pointer';
@@ -511,6 +555,10 @@ export type LogRecord =
   | TaskOpened
   | ProjectTitle
   | TalkEnded
+  | ThreadClosed
+  | ThreadReopened
+  | ThreadTitle
+  | BranchRequested
   | ConversationPointer
   | ProjectMaterial
   | ProjectDeadline

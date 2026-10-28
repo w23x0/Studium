@@ -8,7 +8,7 @@ import { sessionFrom } from '../hub.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 6;
+const SCHEMA_VERSION = 7;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -76,8 +76,8 @@ export class DerivedIndex {
         .prepare('INSERT OR REPLACE INTO nav_done (session_id) VALUES (?)')
         .run(record.navSessionId);
       this.touch(sessionId, record.at);
-    } else if (record.type === 'project_title') {
-      // 项目名随方向变：正本开头那行不改，派生层取最新一条
+    } else if (record.type === 'project_title' || record.type === 'thread_title') {
+      // 项目名随方向变、讨论串自己起的标题：正本开头那行不改，派生层取最新一条
       this.db
         .prepare('UPDATE sessions SET title = ?, last_at = ? WHERE session_id = ?')
         .run(record.title, record.at, sessionId);
@@ -202,7 +202,7 @@ function createSchema(db: DatabaseSync): void {
 }
 
 /**
- * 会改对话状态的记录 → 记号；null = 回到进行中（停着的学习又接上、又申请收口在整理）。
+ * 会改对话状态的记录 → 记号；null = 回到进行中（停着的学习又接上、又申请收口在整理、结束的讨论串又重开）。
  * 别的记录不动记号。
  */
 function markOf(r: LogRecord): SessionMark | null | undefined {
@@ -218,7 +218,10 @@ function markOf(r: LogRecord): SessionMark | null | undefined {
       return null;
     case 'talk_ended':
     case 'candidates_picked':
+    case 'thread_closed':
       return 'ended';
+    case 'thread_reopened':
+      return null;
     case 'find_candidates':
       return 'candidates';
     default:
