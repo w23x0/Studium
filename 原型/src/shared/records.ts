@@ -80,6 +80,11 @@ export interface SessionOpened {
    * （开场的提示词与工具已定死），只看、不再跑新一轮。
    */
   screens?: true;
+  /**
+   * 学习页用哪种（10-29 #74 试验）：'stream' = 竖流，主模型一个人管（页面从正本放一遍算出来，src/shared/stream-page.ts）；
+   * 没有 = 区域图（主模型 + 子代理 + 框架小模型）。开学习时按设置定，之后不变。
+   */
+  page?: 'stream';
 }
 
 export interface UserMessage {
@@ -92,6 +97,15 @@ export interface UserMessage {
   images?: ImageInput[];
   /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3 学习者回话）：key 只在程序里用，pointer 是那块的一句话。 */
   replyTo?: { key: string; pointer: string };
+  /** 竖流学习页：学习者选中页面上一段再说的（第几行里的哪段原文，或哪个组件）。 */
+  quote?: MessageQuote;
+}
+
+/** 学习者选中的页面上的一处：某一行里的一段原文，或一个组件（组件名 = 主模型起的名字）。 */
+export interface MessageQuote {
+  line?: number;
+  text?: string;
+  component?: string;
 }
 
 /** 学习者消息里的一张图片：原图在输入存放处（只追加），转写由模型接口做、学习者发送前可改。 */
@@ -586,7 +600,18 @@ export type LogRecord =
   | ComponentReport
   | ComponentError
   | ScreenNote
-  | LayoutChanged;
+  | LayoutChanged
+  | ContextUsed;
+
+/** 一轮跑完时主模型上下文有多大（10-29 起，所有会话；只记、不显示）：最后一次回话的 input + 缓存读 + 缓存写。 */
+export interface ContextUsed {
+  type: 'context_used';
+  at: string;
+  /** 上下文大小（token）。 */
+  tokens: number;
+  /** 这一轮主模型输出了多少（token，各次回话相加）。 */
+  output: number;
+}
 
 /** 主模型派出的子代理开始了（框架自带的子代理机制，后台跑；会话/页面子代理.md）。 */
 export interface SubagentStarted {
@@ -677,6 +702,8 @@ export interface ComponentAction {
   awaited: boolean;
   /** 先交给谁（子代理按交代做进组件代码）。 */
   to: 'maker' | 'main' | 'both';
+  /** 组件更新的“现在的状态”（竖流学习页，照 MCP Apps 的 update-model-context）：只留最后一次，下次学习者说话时带上。 */
+  state?: true;
 }
 
 /** 框架另开的子代理（学习者动了它做的组件后）交回的一句：往上报的，或自己改了组件后报的。 */

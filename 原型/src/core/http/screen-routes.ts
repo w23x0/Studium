@@ -1,6 +1,11 @@
 // 学习页的接口（会话/学习对话.md §11）：/api/sessions/<学习 id>/screens/…
 // 现在的页面（布局 + 解好的块）、学习者在组件上的操作、组件运行时报错、试跑结果。类型在 src/shared/screen.ts。
 import type { IncomingMessage, ServerResponse } from 'node:http';
+import {
+  LEARN_PAGE_MODES,
+  type LearnPageMode,
+  type LearnPageSettingBody,
+} from '../../shared/protocol.ts';
 import { ACTION_TARGETS, type ActionTarget, type LearnPageResponse } from '../../shared/screen.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 
@@ -15,6 +20,24 @@ export async function screenRoute(
   studium: Studium,
 ): Promise<boolean> {
   const [, a, id, b, c, d] = parts;
+  // 新开的学习用哪种学习页（10-29 #74：竖流 / 区域图）
+  if (a === 'settings' && id === 'learn-page' && parts.length === 3) {
+    if (method === 'GET') {
+      send(res, 200, { mode: await studium.learnPage.get() } satisfies LearnPageSettingBody);
+      return true;
+    }
+    if (method === 'PUT') {
+      const body = ((await readJson(req)) ?? {}) as Record<string, unknown>;
+      if (!(LEARN_PAGE_MODES as readonly unknown[]).includes(body.mode)) {
+        throw new BadRequestError(`mode 要是 ${LEARN_PAGE_MODES.join(' / ')}`);
+      }
+      const mode = body.mode as LearnPageMode;
+      await studium.learnPage.set(mode);
+      send(res, 200, { mode } satisfies LearnPageSettingBody);
+      return true;
+    }
+    return false;
+  }
   if (a !== 'sessions' || id === undefined || b !== 'screens') return false;
   const screens = studium.screens;
   const n = parts.length;
@@ -34,6 +57,7 @@ export async function screenRoute(
       text,
       awaited: body.awaited === true,
       to,
+      state: body.state === true,
     });
     send(res, 200, {});
     return true;

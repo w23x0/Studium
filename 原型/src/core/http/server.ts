@@ -402,6 +402,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           note?: unknown;
           images?: unknown;
           replyTo?: unknown;
+          quote?: unknown;
         };
         const note = typeof body.note === 'string' ? body.note : '学习者在界面上点了按钮';
         switch (action) {
@@ -414,11 +415,31 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
               typeof r?.key === 'string' && typeof r.pointer === 'string'
                 ? { key: r.key.slice(0, 100), pointer: r.pointer.slice(0, 200) }
                 : undefined;
+            // 竖流学习页：选中页面上一处再说的（10-29 #74）
+            const q = body.quote as
+              { line?: unknown; text?: unknown; component?: unknown } | null | undefined;
+            const quote =
+              q !== undefined && q !== null
+                ? {
+                    ...(typeof q.line === 'number' && Number.isInteger(q.line)
+                      ? { line: q.line }
+                      : {}),
+                    ...(typeof q.text === 'string' && q.text.trim() !== ''
+                      ? { text: q.text.slice(0, 4000) }
+                      : {}),
+                    ...(typeof q.component === 'string' && q.component.trim() !== ''
+                      ? { component: q.component.slice(0, 100) }
+                      : {}),
+                  }
+                : undefined;
             await studium.learnerSays(
               id,
               m.text,
               m.images.length > 0 ? m.images : undefined,
               replyTo,
+              quote !== undefined && (quote.text !== undefined || quote.component !== undefined)
+                ? quote
+                : undefined,
             );
             send(res, 202, {});
             return;

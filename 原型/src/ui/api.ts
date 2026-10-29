@@ -50,7 +50,10 @@ import type {
   StateTimelineResponse,
   TicketEditRequest,
   TicketEditResponse,
+  LearnPageMode,
+  LearnPageSettingBody,
 } from '../shared/protocol.ts';
+import type { MessageQuote } from '../shared/records.ts';
 import type {
   AddLiteratureRequest,
   CompareResponse,
@@ -167,6 +170,8 @@ export const api = {
     images?: MessageImageInput[],
     /** 学习页：回在某一块下面（W10）。 */
     replyTo?: { key: string; pointer: string },
+    /** 竖流学习页：选中页面上一处再说的（10-29 #74）。 */
+    quote?: MessageQuote,
   ) =>
     call<object>(`/sessions/${id}/messages`, {
       method: 'POST',
@@ -174,7 +179,15 @@ export const api = {
         text,
         ...(images !== undefined && images.length > 0 ? { images } : {}),
         ...(replyTo !== undefined ? { replyTo } : {}),
+        ...(quote !== undefined ? { quote } : {}),
       }),
+    }),
+  // ── 设置：新开的学习用哪种学习页（10-29 #74）──
+  learnPageSetting: () => call<LearnPageSettingBody>('/settings/learn-page'),
+  setLearnPageSetting: (mode: LearnPageMode) =>
+    call<LearnPageSettingBody>('/settings/learn-page', {
+      method: 'PUT',
+      body: JSON.stringify({ mode } satisfies LearnPageSettingBody),
     }),
   // ── 输入：图片原样上传、转写 ──
   uploadImage: async (blob: Blob, name?: string, derivedFrom?: string) => {

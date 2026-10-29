@@ -27,6 +27,23 @@ export const WP = {
   /** 收口：守卫写好了（10-23 起守卫不把关，只说整理好了）。 */
   closed: '这次学到了什么已整理好',
   seeClosed: '看整理的内容',
+  // ── 竖流学习页（10-29 #74 试验）──
+  /** 学习者选中页面上一段再说话时，输入框上方那条。 */
+  quoting: (text: string) => `回在：『${text}』`,
+  quotingComponent: (name: string) => `回在：组件「${name}」`,
+  /** 学习者的话前面：他是选中哪处说的。 */
+  quotedLine: (text: string) => `『${text}』`,
+  /** 组件上方的名字（点一下 = 就这个组件说话）。 */
+  componentName: (name: string) => `组件「${name}」`,
+  pickComponent: '就这个组件说',
+  /** 学习者在组件上的操作（等回应的，如提交答案）。 */
+  onComponent: (name: string) => `在「${name}」上`,
+  /** 学习者最后一次说话之后主模型动过的块。 */
+  marks: { new: '新', edited: '改过', moved: '挪过', back: '拿回' } as const,
+  /** 设置里：新开的学习用哪种学习页。 */
+  modeTitle: '学习页',
+  modes: { stream: '竖流（主模型一个人管）', grid: '区域图（三方）' } as const,
+  modeHint: '只管之后新开的学习',
   /** 旧版开的学习对话（W10 §9 第 1 条）。 */
   oldLoop: '这次学习是旧版开的，只能看；要接着学，请回项目另开一次。',
   /** 旧数据里的退回（10-26 前）。 */

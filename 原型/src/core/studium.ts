@@ -30,6 +30,7 @@ import {
   type GuardVerdict,
   type ImageInput,
   type LearnerObjection,
+  type MessageQuote,
   type LogRecord,
   type NumberedRecord,
   type RouteDecision,
@@ -59,6 +60,8 @@ import { describeSandbox, Sandboxes } from './sandbox.ts';
 import { Components } from './page/agent.ts';
 import { ARRANGE_TOOL, Screens } from './page/screens.ts';
 import { PageStore } from './page/store.ts';
+import { streamTools } from './page/stream-tools.ts';
+import { LearnPageSetting } from './learn-page-setting.ts';
 import { currentTicket } from './ticket.ts';
 import { guardView, learnerLines, renderTranscript } from './transcript.ts';
 import { Uploads, type RouteJudge } from './uploads.ts';
@@ -113,6 +116,11 @@ export interface StudiumOptions {
   judge?: RouteJudge;
   /** 框架小模型的一次调用（W10：对块、摆屏）；不给 = 主模型点名的旧块一律对不上。 */
   arrange?: (input: string) => Promise<{ text: string; model?: string }>;
+  /**
+   * 学习对话提示词里“页面”那一段，按学习页的种类接进 loop.md 的 {{页面}}（10-29 #74）：grid = 区域图（三方），
+   * stream = 竖流（主模型一个人管）。不给 = 只用 loop.md（{{页面}} 去掉）。
+   */
+  loopPages?: { grid: string; stream: string };
   now?: () => Date;
 }
 
@@ -144,8 +152,15 @@ export class Studium {
   /** 学习者看到的屏幕：每轮照主模型的输出摆一屏、学习者在组件上的操作、试跑（会话/学习对话.md §11）。 */
   readonly screens: Screens;
 
+  /** 屏幕与组件的块（按指纹存）。 */
+  private readonly screenStore: PageStore;
+
+  /** 新开的学习用哪种学习页（界面设置里切，10-29 #74）。 */
+  readonly learnPage: LearnPageSetting;
+
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
+    this.learnPage = new LearnPageSetting(join(o.dataDir, 'ui', 'learn-page.json'));
     this.learned = new Learned({
       hub: () => this.hub,
       dir: o.dataDir,
@@ -171,6 +186,7 @@ export class Studium {
     });
     // 屏幕与组件按块按指纹存在 `<数据>/screens/`（旧活页面的 `pages/` 原样留着，不再写）
     const screenStore = new PageStore(join(o.dataDir, 'screens'));
+    this.screenStore = screenStore;
     this.screens = new Screens({
       hub: () => this.hub,
       store: screenStore,
@@ -293,12 +309,19 @@ export class Studium {
     ...(kind === 'talk' || kind === 'nav' || kind === 'find' ? { webSearch: true } : {}),
     ...(kind === 'loop'
       ? {
+          systemPromptFor: async (sessionId: string) => {
+            const stream = await this.isStream(sessionId);
+            const part = stream ? this.o.loopPages?.stream : this.o.loopPages?.grid;
+            return this.o.prompts.loop.replace('{{页面}}', (part ?? '').trim());
+          },
           sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
           beforeTurn: (sessionId: string) => this.sandboxes.refreshLoop(sessionId),
           // 上一轮之后攒着的（学习者在组件上的操作、子代理报的、框架回的一句），按时间接在这一轮前面
           // （会话/学习对话.md §3、§11.3）
           preface: (sessionId: string) => this.screens.preface(sessionId),
-          subagents: async (sessionId: string) => [await this.components.spec(sessionId)],
+          // 竖流学习页：主模型自己写组件，不派子代理（10-29 #74）
+          subagents: async (sessionId: string) =>
+            (await this.isStream(sessionId)) ? [] : [await this.components.spec(sessionId)],
           timeline: true,
           // 主模型一轮输出完：框架照它的输出摆一屏（会话/学习对话.md §11.1）
           afterTurn: (sessionId: string, fromLine: number) =>
@@ -324,7 +347,7 @@ export class Studium {
           ];
         case 'loop':
           // 学习对话在沙盒里跑（只读资料与记录、可写工作区），工具只剩两个命令
-          return this.loopTools(sessionId);
+          return this.loopToolsFor(sessionId);
         case 'guard':
           return [...this.readTools(sessionId), this.verdictTool(sessionId)];
         case 'nav':
@@ -889,12 +912,14 @@ export class Studium {
     text: string,
     images?: ImageInput[],
     replyTo?: { key: string; pointer: string },
+    quote?: MessageQuote,
   ): Promise<void> {
     const opened = await this.hub.opened(sessionId);
     if (opened.kind === 'loop' && opened.screens !== true) throw new BadRequestError(OLD_LOOP);
     const meta = {
       ...(images !== undefined && images.length > 0 ? { images } : {}),
       ...(replyTo !== undefined && opened.kind === 'loop' ? { replyTo } : {}),
+      ...(quote !== undefined && opened.page === 'stream' ? { quote } : {}),
     };
     const recs = await this.hub.records(sessionId);
     if (recs.some((r) => r.record.type === 'loop_ended')) {
@@ -1050,11 +1075,13 @@ export class Studium {
         ended?.record.type === 'loop_ended' ? ended.record.at : (await this.hub.opened(origId)).at;
       resumeOf = { fromLoop: origId, endedAt: at };
     }
+    const stream = (await this.learnPage.get()) === 'stream';
     const loop = await this.hub.createSession('loop', {
       title: picked.title,
       parent: mainId,
       ticket: picked.ticket,
       screens: true,
+      ...(stream ? { page: 'stream' as const } : {}),
       ...(resumeOf !== undefined ? { resumeOf } : {}),
     });
     await this.hub.record(mainId, {
@@ -2891,6 +2918,31 @@ export class Studium {
    * arrange_screen（W10）。资料、学过的记录、状态、教法记录与教学工具都在沙盒里当只读文件读；工作区是模型自己的
    * 草稿（沙盒动作，程序当场记）；组件用框架自带的派子代理做（会话/页面子代理.md）。
    */
+  /** 这次学习用竖流学习页（10-29 #74）。 */
+  async isStream(loopId: string): Promise<boolean> {
+    return (await this.hub.opened(loopId)).page === 'stream';
+  }
+
+  /** 学习对话的工具按学习页的种类：区域图 = 两个命令 + 子代理交组件 + 说给框架；竖流 = 命令 + 页面工具。 */
+  private async loopToolsFor(loopId: string): Promise<ToolSpec[]> {
+    const all = this.loopTools(loopId);
+    if (!(await this.isStream(loopId))) return all;
+    const commands = all.filter((t) => t.name !== ARRANGE_TOOL && t.name !== 'submit_component');
+    return [
+      ...commands,
+      ...streamTools(
+        {
+          hub: () => this.hub,
+          screens: this.screens,
+          store: this.screenStore,
+          iso: () => this.iso(),
+          assertOpen: (id) => this.assertActiveLoop(id),
+        },
+        loopId,
+      ),
+    ];
+  }
+
   private loopTools(loopId: string): ToolSpec[] {
     return [
       {

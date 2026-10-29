@@ -32,8 +32,9 @@ import { useLoad } from '../../hooks/use-load.ts';
 import { VerdictBody } from '../evidence/loop-view.tsx';
 import { Loading } from '../evidence/parts.tsx';
 import { currentTicket, LoopBar, TicketDetails, TicketStrip } from './loop-parts.tsx';
+import { StreamPage } from './stream-page.tsx';
 
-export function LearnPage(props: {
+export interface LearnPageProps {
   sessionId: string;
   title: string;
   projectId: string;
@@ -45,9 +46,29 @@ export function LearnPage(props: {
   onProject: () => void;
   /** 旧版开的学习对话：交回消息流只看。 */
   oldLoop: ReactNode;
-}) {
+}
+
+/** 订阅到的这次学习：记录、正在写的字、在不在跑、读完没有。 */
+export interface LearnStream {
+  records: NumberedRecord[];
+  draft: string;
+  running: boolean;
+  loaded: boolean;
+}
+
+/** 按这次学习开时定的学习页种类分：竖流（10-29 #74 试验，stream-page.tsx）或区域图（下面的 GridPage）。 */
+export function LearnPage(props: LearnPageProps) {
+  const stream = useStream(props.sessionId, props.onError);
+  const opened = stream.records[0]?.record;
+  if (opened?.type === 'session_opened' && opened.page === 'stream') {
+    return <StreamPage {...props} stream={stream} />;
+  }
+  return <GridPage {...props} stream={stream} />;
+}
+
+function GridPage(props: LearnPageProps & { stream: LearnStream }) {
   const { sessionId, onError, titleOf } = props;
-  const { records, draft, running, loaded } = useStream(sessionId, onError);
+  const { records, draft, running, loaded } = props.stream;
   const opened = records[0]?.record;
   const state = useMemo(() => loopState(records), [records]);
   const ended = state.kind === 'ended';
@@ -377,14 +398,13 @@ function ClosingBlock(props: { loopId: string; verdictLine: number }) {
 }
 
 /** 订阅这次学习的记录、正在写的字、在不在跑（同对话页的外壳，学习页自己一份）。 */
-function useStream(
-  sessionId: string,
-  onError: (e: unknown) => void,
-): { records: NumberedRecord[]; draft: string; running: boolean; loaded: boolean } {
+function useStream(sessionId: string, onError: (e: unknown) => void): LearnStream {
   const [records, setRecords] = useState<NumberedRecord[]>([]);
   const [draft, setDraft] = useState('');
   const [running, setRunning] = useState(false);
   const [loaded, setLoaded] = useState(false);
+  // 竖流学习页：主模型的一条话记下就已经在页面上了，正在写的那段随之收起
+  const streamPage = useRef(false);
   useEffect(() => {
     let alive = true;
     const stop = api.events((e) => {
@@ -397,6 +417,7 @@ function useStream(
       if (e.type === 'record') {
         // 页面改好了，正在写的那段就收起（它已经在页面上）
         if (e.record.type === 'layout' || e.record.type === 'screen') setDraft('');
+        if (e.record.type === 'assistant_message' && streamPage.current) setDraft('');
         setRecords((rs) =>
           rs.some((r) => r.line === e.line) ? rs : [...rs, { line: e.line, record: e.record }],
         );
@@ -406,6 +427,8 @@ function useStream(
       .records(sessionId)
       .then((r) => {
         if (!alive) return;
+        const first = r.records[0]?.record;
+        streamPage.current = first?.type === 'session_opened' && first.page === 'stream';
         setRecords((rs) => {
           const byLine = new Map(r.records.map((x) => [x.line, x]));
           for (const x of rs) byLine.set(x.line, x);

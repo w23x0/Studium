@@ -13,6 +13,7 @@ import {
   TEACHING_TOOL_TAG,
   type ConversationKind,
   type ImageInput,
+  type MessageQuote,
   type LogRecord,
   type NumberedRecord,
   type ResumeOrigin,
@@ -20,6 +21,7 @@ import {
   type SessionOpened,
   type Ticket,
 } from '../shared/records.ts';
+import { quotePrefix } from '../shared/stream-page.ts';
 import { localMinute } from '../shared/time.ts';
 import type { DerivedIndex } from './index/derived-index.ts';
 import { isSessionId, type DataDir } from './log/data-dir.ts';
@@ -38,8 +40,10 @@ import type {
 
 export interface KindConfig {
   systemPrompt: string;
+  /** 按会话算系统提示（学习对话按学习页的种类接不同的一段）；没有就用 systemPrompt。开模型对话时算一次。 */
+  systemPromptFor?(sessionId: string): Promise<string>;
   /** 本会话的工具；sessionId 让工具知道自己属于哪个会话。 */
-  tools(sessionId: string): ToolSpec[];
+  tools(sessionId: string): ToolSpec[] | Promise<ToolSpec[]>;
   /** 这个会话在沙盒里跑时给它的沙盒（没有 = 不给通用执行）；开模型对话时算一次。 */
   sandbox?(sessionId: string): Promise<SandboxSpec | undefined>;
   /** 每轮发给模型之前调用（插话不调）：刷新沙盒里那些每轮重渲染的只读文件。 */
@@ -150,6 +154,8 @@ export class Hub {
       review?: ReviewWindow;
       /** 学习对话按屏幕跑（W10）。 */
       screens?: true;
+      /** 学习页用竖流（10-29 #74 试验）。 */
+      page?: 'stream';
     },
   ): Promise<SessionSummary> {
     const at = this.now();
@@ -168,6 +174,7 @@ export class Hub {
       ...(meta.resumeOf !== undefined ? { resumeOf: meta.resumeOf } : {}),
       ...(meta.review !== undefined ? { review: meta.review } : {}),
       ...(meta.screens === true ? { screens: true as const } : {}),
+      ...(meta.page !== undefined ? { page: meta.page } : {}),
     };
     await this.append(sessionId, opened);
     return summary(opened);
@@ -218,12 +225,15 @@ export class Hub {
       recorded?: number;
       /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3）：记成和那块有关；交给模型时写那块的一句话。 */
       replyTo?: { key: string; pointer: string };
+      /** 竖流学习页：学习者选中页面上一处再说的（交给模型时开头写明选中了哪段）。 */
+      quote?: MessageQuote;
     } = {},
   ): Promise<{ line: number; done: Promise<void> }> {
     const live = await this.ensureLive(sessionId);
     const objection = input.role === 'learner' ? meta.objection : undefined;
     const images = input.role === 'learner' ? meta.images : undefined;
     const replyTo = input.role === 'learner' ? meta.replyTo : undefined;
+    const quote = input.role === 'learner' ? meta.quote : undefined;
     const line =
       meta.recorded ??
       (await this.append(
@@ -236,6 +246,7 @@ export class Hub {
               ...(objection !== undefined ? { objection } : {}),
               ...(images !== undefined && images.length > 0 ? { images } : {}),
               ...(replyTo !== undefined ? { replyTo } : {}),
+              ...(quote !== undefined ? { quote } : {}),
             }
           : { type: 'program_fact', at: this.iso(), text: input.text },
       ));
@@ -249,7 +260,9 @@ export class Hub {
         objection !== undefined
           ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
           : ''
-      }${replyTo !== undefined ? `（回在「${replyTo.pointer}」下面）` : ''}${input.text}`,
+      }${replyTo !== undefined ? `（回在「${replyTo.pointer}」下面）` : ''}${
+        quote !== undefined ? quotePrefix(quote) : ''
+      }${input.text}`,
     };
     let resolve!: () => void;
     const done = new Promise<void>((r) => (resolve = r));
@@ -458,6 +471,14 @@ export class Hub {
               },
         );
         break;
+      case 'usage':
+        await this.append(sessionId, {
+          type: 'context_used',
+          at: this.iso(),
+          tokens: ev.context,
+          output: ev.output,
+        });
+        break;
       case 'turn_end':
         break;
     }
@@ -478,9 +499,11 @@ export class Hub {
   ): Promise<ModelConversation> {
     const sandbox = await cfg.sandbox?.(sessionId);
     const subagents = sandbox !== undefined ? await cfg.subagents?.(sessionId) : undefined;
+    const systemPrompt = (await cfg.systemPromptFor?.(sessionId)) ?? cfg.systemPrompt;
+    const tools = await cfg.tools(sessionId);
     const conv = this.opts.model.open({
-      systemPrompt: cfg.systemPrompt,
-      tools: cfg.tools(sessionId).map((t) => this.logged(sessionId, t)),
+      systemPrompt,
+      tools: tools.map((t) => this.logged(sessionId, t)),
       session: { id: sessionId, kind },
       ...(sandbox !== undefined ? { sandbox } : {}),
       ...(subagents !== undefined && subagents.length > 0 ? { subagents } : {}),

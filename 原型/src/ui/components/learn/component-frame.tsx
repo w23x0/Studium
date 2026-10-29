@@ -44,6 +44,10 @@ export function ComponentFrame(props: {
         api.screenError(loopId, { component, version, message: m.message }).catch(onError);
         return;
       }
+      if (m.kind === 'state') {
+        api.screenAction(loopId, { component, text: m.text, state: true }).catch(onError);
+        return;
+      }
       if (m.kind === 'action') {
         api
           .screenAction(loopId, {

@@ -3,6 +3,7 @@
 // （守卫不读教学侧推理）。块编号、组件编号、版本号不进（会话/学习对话.md §11.2 主模型行）。
 import type { PageAction } from '../shared/page.ts';
 import type { LogRecord, NumberedRecord } from '../shared/records.ts';
+import { quotePrefix } from '../shared/stream-page.ts';
 import { localMinute } from '../shared/time.ts';
 
 export function renderTranscript(records: NumberedRecord[]): string {
@@ -22,7 +23,12 @@ function speech(r: LogRecord): { who: string; text: string } | undefined {
     case 'user_message':
       return {
         who: '学习者',
-        text: r.replyTo !== undefined ? `（回在「${r.replyTo.pointer}」下面）${r.text}` : r.text,
+        text:
+          r.replyTo !== undefined
+            ? `（回在「${r.replyTo.pointer}」下面）${r.text}`
+            : r.quote !== undefined
+              ? `${quotePrefix(r.quote)}${r.text}`
+              : r.text,
       };
     case 'assistant_message':
       return { who: '教学', text: r.text };

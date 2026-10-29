@@ -87,6 +87,8 @@ export interface ComponentActionRequest {
   /** 等回应（如提交答案）：立刻跑一轮，不攒。 */
   awaited?: boolean;
   to?: ActionTarget;
+  /** 竖流学习页：组件“现在的状态”（只留最后一次，下次学习者说话时带上）。 */
+  state?: boolean;
 }
 
 export interface ComponentErrorRequest {

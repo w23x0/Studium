@@ -464,6 +464,8 @@ class SdkConversation implements ModelConversation {
   private readonly pending: string[] = [];
   /** 本轮里 SDK 已标出答到了哪些输入（老版本不标）。 */
   private stamped = false;
+  /** 本轮主模型每次回话的用量（按 message id；同一次回话会拆成几条 SDK 消息）。 */
+  private readonly usage = new Map<string, { context: number; output: number }>();
   /** 见过、还没配上结果的工具调用（按 tool_use id）；沙盒动作由它配对。 */
   private readonly toolUses = new Map<string, ToolUse>();
   /** 派子代理的那次调用（tool_use id）→ 子代理名字。 */
@@ -586,7 +588,8 @@ class SdkConversation implements ModelConversation {
       ev.kind === 'subagent' ||
       (ev.kind === 'sandbox_action' && ev.agent !== undefined) ||
       ev.kind === 'session' ||
-      ev.kind === 'model';
+      ev.kind === 'model' ||
+      ev.kind === 'usage';
     if (this.current === undefined && sideOnly) {
       this.handlers?.side(ev);
       return;
@@ -720,6 +723,23 @@ class SdkConversation implements ModelConversation {
         msg.user_message_uuids ??
         (msg.user_message_uuid !== undefined ? [msg.user_message_uuid] : []);
       if (answered.length > 0) this.stamped = true;
+      const u = msg.message.usage as
+        | {
+            input_tokens?: number | null;
+            cache_read_input_tokens?: number | null;
+            cache_creation_input_tokens?: number | null;
+            output_tokens?: number | null;
+          }
+        | undefined;
+      if (u !== undefined && msg.error === undefined) {
+        this.usage.set(msg.message.id, {
+          context:
+            (u.input_tokens ?? 0) +
+            (u.cache_read_input_tokens ?? 0) +
+            (u.cache_creation_input_tokens ?? 0),
+          output: u.output_tokens ?? 0,
+        });
+      }
       for (const u of answered) {
         const i = this.pending.indexOf(u);
         if (i >= 0) this.pending.splice(i, 1);
@@ -731,6 +751,18 @@ class SdkConversation implements ModelConversation {
       } else if (text !== '') out.push({ kind: 'assistant_text', text });
     }
     if (msg.type === 'result') {
+      const used = [...this.usage.values()];
+      this.usage.clear();
+      const last = used.at(-1);
+      if (last !== undefined && last.context > 0) {
+        // 输出取本轮结果里的总数（流式时每条回话上的用量只是开头那一刻的）；没有再按各次回话加
+        const total = (msg as { usage?: { output_tokens?: number | null } }).usage?.output_tokens;
+        out.push({
+          kind: 'usage',
+          context: last.context,
+          output: total ?? used.reduce((n, x) => n + x.output, 0),
+        });
+      }
       const errs = this.apiErrors.splice(0);
       const notice = errs.map((e) => (e.text !== '' ? e.text : e.code)).join('；');
       out.push({

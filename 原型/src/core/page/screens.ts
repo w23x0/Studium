@@ -14,6 +14,7 @@ import type {
 } from '../../shared/screen.ts';
 import type { PageTrialResult } from '../../shared/page.ts';
 import type { ComponentVersion, LogRecord, NumberedRecord } from '../../shared/records.ts';
+import { replayStream, streamPageText } from '../../shared/stream-page.ts';
 import { localMinute } from '../../shared/time.ts';
 import type { Hub } from '../hub.ts';
 import {
@@ -65,7 +66,10 @@ export class Screens {
   private readonly written = new Map<string, Map<string, Candidate>>();
   private readonly buffers = new Map<
     string,
-    { items: { component: string; text: string; to: ActionTarget }[]; timer: NodeJS.Timeout }
+    {
+      items: { component: string; text: string; to: ActionTarget; state: boolean }[];
+      timer: NodeJS.Timeout;
+    }
   >();
   private readonly trials = new Map<string, (r: PageTrialResult) => void>();
 
@@ -79,7 +83,9 @@ export class Screens {
 
   /** 主模型一轮输出完：把这一轮的新块放上页面、照它的布局指令改布局（什么都没说、没写就不改）。 */
   async afterTurn(loopId: string, fromLine: number): Promise<void> {
-    if ((await this.hub.opened(loopId)).screens !== true) return;
+    const opened = await this.hub.opened(loopId);
+    // 竖流学习页（10-29 #74）不摆布局：页面从正本算，主模型自己用页面工具改
+    if (opened.screens !== true || opened.page === 'stream') return;
     const records = await this.hub.records(loopId);
     const turn = records.filter((r) => r.line > fromLine);
     const texts = turn.flatMap(({ line, record: r }) =>
@@ -468,9 +474,13 @@ export class Screens {
    */
   async act(
     loopId: string,
-    req: { component: string; text: string; awaited: boolean; to: ActionTarget },
+    req: { component: string; text: string; awaited: boolean; to: ActionTarget; state?: boolean },
   ): Promise<void> {
     await this.o.assertOpen(loopId);
+    // 竖流学习页：组件是主模型自己写的，操作都直接给主模型；“现在的状态”只留最后一次（照 MCP Apps）
+    const stream = (await this.hub.opened(loopId)).page === 'stream';
+    const to: ActionTarget = stream ? 'main' : req.to;
+    const state = stream && req.state === true;
     const records = await this.hub.records(loopId);
     if (
       !records.some(
@@ -481,14 +491,14 @@ export class Screens {
     }
     const buf = this.buffers.get(loopId);
     if (buf !== undefined) clearTimeout(buf.timer);
-    const items = [...(buf?.items ?? []), { component: req.component, text: req.text, to: req.to }];
+    const items = [...(buf?.items ?? []), { component: req.component, text: req.text, to, state }];
     const timer = setTimeout(() => {
       this.flush(loopId, false).catch((e: unknown) => {
         console.error('组件操作落盘失败：', e);
       });
     }, MERGE_MS);
     this.buffers.set(loopId, { items, timer });
-    if (req.awaited) await this.flush(loopId, true);
+    if (req.awaited && !state) await this.flush(loopId, true);
   }
 
   private async flush(loopId: string, awaited: boolean): Promise<void> {
@@ -497,11 +507,16 @@ export class Screens {
     clearTimeout(buf.timer);
     this.buffers.delete(loopId);
     // 连续的合成一条：同一个组件、同一个去处的并在一起
-    const groups = new Map<string, { component: string; to: ActionTarget; texts: string[] }>();
+    // 状态只留同一个组件的最后一次
+    const groups = new Map<
+      string,
+      { component: string; to: ActionTarget; state: boolean; texts: string[] }
+    >();
     for (const it of buf.items) {
-      const k = `${it.component}|${it.to}`;
-      const g = groups.get(k) ?? { component: it.component, to: it.to, texts: [] };
-      g.texts.push(it.text);
+      const k = `${it.component}|${it.to}|${String(it.state)}`;
+      const g = groups.get(k) ?? { component: it.component, to: it.to, state: it.state, texts: [] };
+      if (it.state) g.texts = [it.text];
+      else g.texts.push(it.text);
       groups.set(k, g);
     }
     for (const g of groups.values()) {
@@ -511,9 +526,11 @@ export class Screens {
         at: this.o.iso(),
         component: g.component,
         text,
-        awaited,
+        awaited: awaited && !g.state,
         to: g.to,
+        ...(g.state ? { state: true as const } : {}),
       });
+      if (g.state) continue;
       if (g.to !== 'main' && this.o.toMaker !== undefined) {
         // 先回做它的子代理：框架另开一次，在后台跑（要几秒到几十秒），不挡学习者那边的请求
         this.o.toMaker(loopId, g.component, text, awaited).catch((e: unknown) => {
@@ -549,6 +566,8 @@ export class Screens {
       version,
       message: message.slice(0, 2000),
     });
+    // 竖流学习页：组件是主模型写的，报错攒到下一轮附给它（preface）
+    if ((await this.hub.opened(loopId)).page === 'stream') return;
     // 先回做它的子代理修；修不好它会按普通交回报上来（不直接附给主模型）
     this.o.toRepair?.(loopId, component, version, message).catch((e: unknown) => {
       console.error(`学习 ${loopId} 交给子代理修组件失败：`, e);
@@ -591,16 +610,30 @@ export class Screens {
    */
   async preface(loopId: string): Promise<string> {
     const records = await this.hub.records(loopId);
+    const stream = (await this.hub.opened(loopId)).page === 'stream';
     const lastCtx = records.filter((r) => r.record.type === 'turn_context').at(-1)?.line ?? 0;
     const pointers = new Map<string, string>();
     for (const { record: r } of records) {
       if (r.type === 'component_version') pointers.set(r.component, r.pointer);
     }
     const name = (c: string) => `「${pointers.get(c) ?? '一个组件'}」`;
-    return records
-      .filter((r) => r.line > lastCtx)
+    const since = records.filter((r) => r.line > lastCtx);
+    // 组件的“现在的状态”只带每个组件最后一次
+    const lastState = new Map<string, number>();
+    for (const { line, record: r } of since) {
+      if (r.type === 'component_action' && r.state === true) lastState.set(r.component, line);
+    }
+    return since
       .flatMap(({ line, record: r }) => {
         const head = `[第 ${String(line)} 行 · ${localMinute(r.at)}]`;
+        if (r.type === 'component_action' && r.state === true) {
+          return lastState.get(r.component) === line
+            ? [`${head} （${name(r.component)}现在的状态）${r.text}`]
+            : [];
+        }
+        if (r.type === 'component_error' && stream) {
+          return [`${head} 组件${name(r.component)}在学习者那边报错：${r.message}`];
+        }
         if (r.type === 'component_action' && !r.awaited && r.to !== 'maker') {
           return [`${head} （在${name(r.component)}上）${r.text}`];
         }
@@ -615,6 +648,16 @@ export class Screens {
 
   /** 守卫读的页面（W10 §9 第 6 条过渡）：现在页面上组件的一句话与可见文字。 */
   async textForGuard(loopId: string): Promise<string | undefined> {
+    if ((await this.hub.opened(loopId)).page === 'stream') {
+      const page = replayStream(await this.hub.records(loopId));
+      return [
+        '学习者收尾时的页面（从上到下；组件只给名字和上面的文字）：',
+        streamPageText(page, {
+          withOff: false,
+          component: (html) => visibleText(html).slice(0, 1500),
+        }),
+      ].join('\n');
+    }
     const p = await this.page(loopId);
     const comps = Object.values(p.blocks).flatMap((b) => (b.kind === 'component' ? [b] : []));
     if (comps.length === 0) return undefined;

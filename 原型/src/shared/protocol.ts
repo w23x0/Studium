@@ -942,3 +942,12 @@ export interface ImportTextResponse {
   import: Import;
   text: string;
 }
+
+/** 新开的学习用哪种学习页（10-29 #74 试验）：stream = 竖流（主模型一个人管），grid = 区域图（三方）。 */
+export const LEARN_PAGE_MODES = ['stream', 'grid'] as const;
+export type LearnPageMode = (typeof LEARN_PAGE_MODES)[number];
+
+/** GET / PUT /settings/learn-page。 */
+export interface LearnPageSettingBody {
+  mode: LearnPageMode;
+}

@@ -9,7 +9,9 @@ export type FrameMessage =
   | { kind: 'ready' }
   | { kind: 'error'; message: string }
   | { kind: 'height'; h: number }
-  | { kind: 'action'; text: string; to: ActionTarget; wait: boolean };
+  | { kind: 'action'; text: string; to: ActionTarget; wait: boolean }
+  /** 竖流学习页：组件“现在的状态”（照 MCP Apps 的 update-model-context，只留最后一次）。 */
+  | { kind: 'state'; text: string };
 
 /** 组件能用的本机库，地址同核心的 /page-lib（server.ts）。 */
 const LIB = '/page-lib/katex';
@@ -35,6 +37,9 @@ const BRIDGE = String.raw`(function () {
     send: function (text, opts) {
       var to = opts && TO[opts.to] ? opts.to : 'maker';
       post({ kind: 'action', text: String(text).slice(0, 1000), to: to, wait: !!(opts && opts.wait) });
+    },
+    setState: function (text) {
+      post({ kind: 'state', text: String(text).slice(0, 1000) });
     },
     math: function (el) { if (window.renderMathInElement) window.renderMathInElement(el || document.body, MATH); }
   };

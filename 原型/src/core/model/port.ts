@@ -148,6 +148,8 @@ export type ModelEvent =
   /** 沙盒里的一个动作（读 / 写 / 跑命令……），程序当场记进正本。 */
   | SandboxActionEvent
   | SubagentEvent
+  /** 一轮跑完时主模型上下文多大（最后一次回话的 input + 缓存读 + 缓存写）与这一轮输出了多少（token）。 */
+  | { kind: 'usage'; context: number; output: number }
   /** 本轮结束。 */
   | { kind: 'turn_end' }
   /** 本轮失败；对话仍可继续。notice = 服务交回的报错原句（不是模型的话，不当 assistant_text 交）。 */

@@ -120,6 +120,11 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const arrangePrompt = await readFile(join(here, 'prompts/arrange.md'), 'utf8');
   const studium = new Studium({
     prompts: await loadPrompts(),
+    // 学习对话提示词里“页面”那一段按学习页的种类接（10-29 #74：区域图 / 竖流）
+    loopPages: {
+      grid: await readFile(join(here, 'prompts/loop-grid.md'), 'utf8'),
+      stream: await readFile(join(here, 'prompts/loop-stream.md'), 'utf8'),
+    },
     // 上传分流：拿不准的交模型判一次（工单 W9 §4.2）；model 在下面才组装好，这里取用时再拿
     judge: (name, sample) => judgeUpload(modelRef(), routePrompt, name, sample),
     // 学习页的框架小模型（W10）：每轮一次，对块、摆屏
