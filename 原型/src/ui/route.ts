@@ -1,11 +1,9 @@
 // 地址里的“我在哪”（界面说明 §1.1）：刷新、浏览器后退都回到原处。口令在查询串里，页面位置放在 # 后面。
-// #/projects 全部项目 · #/new 新建项目 · #/p/<项目> 项目页 · #/p/<项目>/c/<对话> 某个对话（主对话的 id 就是项目 id）。
+// #/projects 全部项目 · #/new 新建项目 · #/p/<项目>/c/<对话> 某个对话（主对话的 id 就是项目 id）；
+// 旧书签 #/p/<项目>（10-29 前的项目页，已去掉）进项目对话。
 
 export type Route =
-  | { page: 'projects' }
-  | { page: 'new' }
-  | { page: 'overview'; projectId: string }
-  | { page: 'chat'; projectId: string; current: string };
+  { page: 'projects' } | { page: 'new' } | { page: 'chat'; projectId: string; current: string };
 
 export function parseRoute(hash: string): Route | undefined {
   const parts = hash
@@ -19,7 +17,7 @@ export function parseRoute(hash: string): Route | undefined {
     if (parts[2] === 'c' && parts[3] !== undefined) {
       return { page: 'chat', projectId: parts[1], current: parts[3] };
     }
-    return { page: 'overview', projectId: parts[1] };
+    return { page: 'chat', projectId: parts[1], current: parts[1] };
   }
   return undefined;
 }
@@ -31,8 +29,6 @@ export function formatRoute(r: Route): string {
       return '#/projects';
     case 'new':
       return '#/new';
-    case 'overview':
-      return `#/p/${e(r.projectId)}`;
     case 'chat':
       return `#/p/${e(r.projectId)}/c/${e(r.current)}`;
   }

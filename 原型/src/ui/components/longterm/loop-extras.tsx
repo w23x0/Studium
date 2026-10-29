@@ -1,6 +1,7 @@
 // 对话顶部与底部的长期功能（批 6）：复习 / 复检的说明、“接着《原来那段》学”（可点回去）、
 // 原来那段上的“已接着在《新的》学”、没学完就停下的那段底部“接着学”；阶段复盘对话顶部的时间段。
 import { CornerDownRightIcon, HistoryIcon, RotateCcwIcon } from 'lucide-react';
+import type { LoopBrief, ProjectOverview } from '../../../shared/protocol.ts';
 import type { ReviewWindow } from '../../../shared/records.ts';
 import { Button } from '@/components/ui/button';
 import { api } from '../../api.ts';
@@ -9,7 +10,6 @@ import { dayOf } from '../../longterm-model.ts';
 import { useOpenSession } from '../../open-session.ts';
 import type { LoopSide } from '../../thread-model.ts';
 import { W } from '../../wording.ts';
-import { findLoop } from './today.tsx';
 
 const LINK =
   'text-foreground decoration-primary/40 hover:decoration-primary underline underline-offset-4';
@@ -125,5 +125,13 @@ export function ReviewBanner(props: { window: ReviewWindow }) {
         {W.reviewBanner(dayOf(props.window.since), dayOf(props.window.until))}
       </div>
     </div>
+  );
+}
+
+/** 项目里一段学习的概要（各分组里找）。 */
+function findLoop(o: ProjectOverview, id: string): LoopBrief | undefined {
+  const g = o.groups;
+  return [...g.inProgress, ...g.closed, ...g.unclosed, ...(g.shelved ?? [])].find(
+    (l) => l.sessionId === id,
   );
 }

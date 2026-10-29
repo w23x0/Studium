@@ -1,12 +1,7 @@
 // 学习页的接口（会话/学习对话.md §11）：/api/sessions/<学习 id>/screens/…
-// 有过哪些屏、某一屏摆好的块（看以前的屏幕只读）、学习者在组件上的操作、组件运行时报错、试跑结果。类型在 src/shared/screen.ts。
+// 现在的页面（布局 + 解好的块）、学习者在组件上的操作、组件运行时报错、试跑结果。类型在 src/shared/screen.ts。
 import type { IncomingMessage, ServerResponse } from 'node:http';
-import {
-  ACTION_TARGETS,
-  type ActionTarget,
-  type ScreenListResponse,
-  type ScreenResponse,
-} from '../../shared/screen.ts';
+import { ACTION_TARGETS, type ActionTarget, type LearnPageResponse } from '../../shared/screen.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 
 const MAX_BODY = 1 << 16;
@@ -24,11 +19,7 @@ export async function screenRoute(
   const screens = studium.screens;
   const n = parts.length;
   if (n === 4 && method === 'GET') {
-    send(res, 200, (await screens.list(id)) satisfies ScreenListResponse);
-    return true;
-  }
-  if (n === 5 && method === 'GET' && c !== undefined && /^\d+$/.test(c)) {
-    send(res, 200, (await screens.resolve(id, Number(c))) satisfies ScreenResponse);
+    send(res, 200, (await screens.page(id)) satisfies LearnPageResponse);
     return true;
   }
   if (method !== 'POST') return false;

@@ -1,4 +1,4 @@
-// 右侧依据面板与对话高亮的共用入口：消息、项目页、面板里的链接经它打开面板、跳到对话某句。
+// 右侧依据面板与对话高亮的共用入口：消息、面板里的链接经它打开面板、跳到对话某句。
 import { createContext, useContext } from 'react';
 import type { BBox } from '../shared/protocol.ts';
 

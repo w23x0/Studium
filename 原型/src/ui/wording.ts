@@ -10,11 +10,9 @@ export const W = {
   // ── 项目页 ──
   projectHome: '项目页', // 项目页（Overview）
   projectChat: '项目对话', // 主对话
-  goalSavedLine: '记下了你的方向，在项目页“记着什么”里能看全。',
   goalMissing: '还没谈定。在项目对话里说说你想学什么。',
   backToChat: '进项目对话',
   backToMain: '回项目对话',
-  nextStep: '下一步学什么',
   groups: {
     inProgress: '在学',
     closed: '学完',
@@ -33,14 +31,13 @@ export const W = {
     waiting: '等你',
     running: '进行中',
     ended: '已结束',
-    empty: '还没开过。谈方向、下一步学什么、找资料都会在这里列一条。',
+    empty: '还没开过。谈方向、学习、找资料都会在这里列一条。',
     tagGuarded: '等你点“学完了”',
     tagCandidates: '等你勾',
     tagClosed: '学完',
   },
 
   // ── 下一步 ──
-  askNext: '下一步学什么？',
 
   // ── 依据面板 ──
   panelClose: '关上',
@@ -634,8 +631,6 @@ export const W = {
   reviewBanner: (since: string, until: string) => `复盘：回头看 ${since} 到 ${until} 学的`,
   reviewWelcome: '我们回头看看这段时间学得怎么样。',
   reviewEnded: '复盘好了，交回项目了。还想聊就接着说。',
-  reviewEndedLine: (summary: string) => `复盘交回项目了：${summary}`,
-  reviewTask: '一起复盘这段时间',
   // 路线偏差（现算的三类，只说事实）
   deviations: '没按推荐走的时候',
   deviationsHint: '只记下事实，给你自己回头看；不代表学得好不好。',
@@ -691,7 +686,7 @@ export const W = {
   importView: '看看',
   importHide: '收起',
   importDelete: '删掉',
-  filesSent: (n: number) => `收下了 ${String(n)} 份，到项目页「资料」看分到了哪`,
+  filesSent: (n: number) => `收下了 ${String(n)} 份`,
   // 记着什么
   memoryHint: '这里摊开系统记着的、关于这个项目和你的事；不对的地方可以改或提出来。',
   instructions: '项目说明',
@@ -703,7 +698,6 @@ export const W = {
   instructionsCount: (n: number, max: number) => `${String(n)} / ${String(max)} 字`,
   instructionsTooLong: (max: number) => `超过 ${String(max)} 字了，删掉一些再存`,
   instructionsHistory: '改过的版本',
-  instructionsChangedLine: '记进项目说明了（项目页「记着什么」可以看、可以改回）',
   instructionsBy: { learner: '你改的', main: '项目对话里代写的' } as const,
   memoryGoal: '方向',
   memoryLearned: '学过的',

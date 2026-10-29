@@ -1,27 +1,26 @@
-// 学习页（会话/学习对话.md §11）：一次学习只有一条上下文，学习者眼前是从这条线里取出的、此刻要看的一屏。
-// 每一屏由主模型这一轮的输出定，框架摆好（核心存成一张块清单）；这里照清单摆块：主模型的文字直接显示，
-// 组件放各自小窗，还没做好的先占位。可翻看以前任一屏（只看，不改屏幕也不改上下文）；一个总的回话处，每块下面也能回。
+// 学习页（会话/学习对话.md §11）：一次学习只有一条上下文，学习者眼前是一份一直在的页面。核心照主模型的布局指令
+// 改布局（区域图），这里照着摆块：宽屏按区域图，窄屏按阅读顺序排成一列；主模型的文字直接显示，组件放各自小窗，
+// 还没做好的先占位。不翻页、不看以前的版本；页面改了就滚到新放上来的那块。一个总的回话处，每块下面也能回。
 // 不放选择题、“我懂了”这类按钮（申请收口的“我觉得懂了”在底栏，01-流程 §4）。
 // 旧版开的学习对话（没有 session_opened.screens）交回消息流只看（W10 §9 第 1、2 条）。
-import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, LoaderIcon, ReplyIcon, XIcon } from 'lucide-react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ReactNode,
+} from 'react';
+import { ChevronRightIcon, LoaderIcon, ReplyIcon, XIcon } from 'lucide-react';
 import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
 import { InputComposer } from '@/components/input/composer';
 import { MathPreview } from '@/components/input/math-preview';
-import { Button } from '@/components/ui/button';
-import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
 import type { NumberedRecord } from '../../../shared/records.ts';
-import type { ResolvedBlock, ScreenResponse } from '../../../shared/screen.ts';
-import { localMinute } from '../../../shared/time.ts';
+import type { LearnPageResponse, ResolvedBlock } from '../../../shared/screen.ts';
 import { api } from '../../api.ts';
 import { CurrentSessionContext, usePanel } from '../../panel.ts';
-import {
-  closeLine,
-  failedSinceScreen,
-  justSaid,
-  screenRefreshKey,
-  screensOf,
-} from '../../screen-model.ts';
+import { closeLine, failedSinceScreen, justSaid, screenRefreshKey } from '../../screen-model.ts';
 import { loopSide, loopState } from '../../thread-model.ts';
 import { W } from '../../wording.ts';
 import { WP } from '../../wording-page.ts';
@@ -50,42 +49,44 @@ export function LearnPage(props: {
   const { sessionId, onError, titleOf } = props;
   const { records, draft, running, loaded } = useStream(sessionId, onError);
   const opened = records[0]?.record;
-  const screens = useMemo(() => screensOf(records), [records]);
-  const [viewing, setViewing] = useState<number | undefined>(undefined);
-  const current = screens.at(-1);
-  const shownN = viewing ?? current?.n;
   const state = useMemo(() => loopState(records), [records]);
   const ended = state.kind === 'ended';
-  const live = viewing === undefined && !ended;
+  const live = !ended;
   const refresh = useMemo(() => screenRefreshKey(records), [records]);
   const failed = useMemo(() => failedSinceScreen(records), [records]);
-  const [screen, setScreen] = useState<ScreenResponse | undefined>(undefined);
+  const [page, setPage] = useState<LearnPageResponse | undefined>(undefined);
   const [replyTo, setReplyTo] = useState<{ key: string; pointer: string } | undefined>(undefined);
   const scroller = useRef<HTMLDivElement>(null);
 
-  // 读要显示的那一屏：当前屏跟着新屏、组件换版、子代理开始 / 交回重读（占位换成组件）
+  // 读现在的页面：跟着布局换版、组件换版、子代理开始 / 交回重读（占位换成组件）
   useEffect(() => {
-    if (shownN === undefined) return;
     let alive = true;
     api
-      .screen(sessionId, shownN)
-      .then((s) => {
-        if (alive) setScreen(s);
+      .learnPage(sessionId)
+      .then((p) => {
+        if (alive) setPage(p);
       })
       .catch(onError);
     return () => {
       alive = false;
     };
-  }, [sessionId, shownN, refresh, onError]);
+  }, [sessionId, refresh, onError]);
 
-  // 换了一屏就回到顶上（一屏是一整个新的视野，不是往下接）
+  // 页面改了一版：滚到新放上来的第一块（页面一直在，新内容可能在中间，也可能在最下面）
+  // 布局不止一列时页面放宽（一列时保持读文字的宽度）
+  const wide = (page?.columns.trim().split(/\s+/).length ?? 1) > 1;
+  const shownV = page?.v;
+  const firstFresh = page?.fresh.find((n) => page.blocks[n] !== undefined);
   useEffect(() => {
-    scroller.current?.scrollTo({ top: 0 });
-  }, [shownN]);
+    if (shownV === undefined || firstFresh === undefined) return;
+    scroller.current
+      ?.querySelector(`[data-area="${firstFresh}"]`)
+      ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
+  }, [shownV, firstFresh]);
 
   const side = useMemo(() => loopSide(records), [records]);
   const ticket = useMemo(() => currentTicket(records), [records]);
-  const said = useMemo(() => (viewing === undefined ? justSaid(records) : []), [records, viewing]);
+  const said = useMemo(() => justSaid(records), [records]);
   const close = useMemo(() => closeLine(records), [records]);
   const panel = usePanel();
   const reply = useCallback((b: { key: string; pointer: string }) => {
@@ -123,43 +124,22 @@ export function LearnPage(props: {
             {side.stageCheck === true && <StageCheckBanner />}
           </div>
         </div>
-        {viewing !== undefined && (
-          <div className="bg-muted/60 flex shrink-0 flex-wrap items-center justify-center gap-2 px-3 py-2 text-xs">
-            <span>{WP.viewingOld(viewing)}</span>
-            <Button variant="outline" size="xs" onClick={() => setViewing(undefined)}>
-              {WP.backToNow}
-            </Button>
-          </div>
-        )}
         <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
-          <div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 py-4">
-            {screens.length > 1 && (
-              <History
-                screens={screens}
-                shown={shownN}
-                onPick={(n) => setViewing(n === current?.n ? undefined : n)}
+          <div
+            className={`mx-auto flex w-full flex-col gap-4 px-4 py-4 ${wide ? 'max-w-[76rem]' : 'max-w-[52rem]'}`}
+          >
+            {page !== undefined && Object.keys(page.blocks).length > 0 ? (
+              <PageGrid
+                page={page}
+                loopId={sessionId}
+                live={live}
+                onReply={reply}
+                onError={onError}
               />
+            ) : (
+              page !== undefined &&
+              draft === '' && <p className="text-muted-foreground">{WP.starting}</p>
             )}
-            {screen !== undefined && screen.n === shownN
-              ? screen.rows.map((row, i) => (
-                  <div
-                    key={`${String(screen.n)}-${String(i)}`}
-                    className={row.length > 1 ? 'grid gap-4 md:grid-cols-2' : 'flex flex-col'}
-                  >
-                    {row.map((b) => (
-                      <Block
-                        key={b.key}
-                        b={b}
-                        loopId={sessionId}
-                        live={live}
-                        onReply={reply}
-                        onError={onError}
-                      />
-                    ))}
-                  </div>
-                ))
-              : shownN === undefined &&
-                draft === '' && <p className="text-muted-foreground">{WP.starting}</p>}
             {said.map((m) => (
               <div key={m.line} className="flex flex-col items-end gap-1" data-testid="just-said">
                 <span className="text-muted-foreground text-xs">{WP.youSaid}</span>
@@ -173,7 +153,7 @@ export function LearnPage(props: {
                 </div>
               </div>
             ))}
-            {viewing === undefined && close?.kind === 'closing' && (
+            {close?.kind === 'closing' && (
               <p
                 className="text-muted-foreground flex items-center gap-2 text-sm"
                 data-testid="closing-line"
@@ -182,7 +162,7 @@ export function LearnPage(props: {
                 {WP.closing}
               </p>
             )}
-            {viewing === undefined && close?.kind === 'done' && (
+            {close?.kind === 'done' && (
               <button
                 type="button"
                 data-testid="judgement"
@@ -199,12 +179,12 @@ export function LearnPage(props: {
                 </span>
               </button>
             )}
-            {viewing === undefined && !running && failed !== undefined && (
+            {!running && failed !== undefined && (
               <p className="text-destructive text-sm" data-testid="learn-failed">
                 {WP.failed(failed.notice)}
               </p>
             )}
-            {viewing === undefined && running && (
+            {running && (
               <div className="border-primary/30 border-s-2 ps-4" data-testid="learn-draft">
                 {draft !== '' ? (
                   <PlainMarkdown text={draft} streaming />
@@ -256,7 +236,6 @@ export function LearnPage(props: {
                 onSend={async (text, images) => {
                   await api.send(sessionId, text, images, replyTo);
                   setReplyTo(undefined);
-                  setViewing(undefined);
                 }}
               />
             </div>
@@ -267,7 +246,44 @@ export function LearnPage(props: {
   );
 }
 
-/** 屏幕上的一块。当前屏、学习还开着时，每块下面能回话。 */
+/**
+ * 照布局摆块：元素按区域图的阅读顺序输出（窄屏就是一列），宽屏由 styles.css 的 .learn-grid 按区域图摆。
+ */
+function PageGrid(props: {
+  page: LearnPageResponse;
+  loopId: string;
+  live: boolean;
+  onReply: (b: { key: string; pointer: string }) => void;
+  onError: (e: unknown) => void;
+}) {
+  const { page } = props;
+  const style = {
+    '--learn-cols': page.columns,
+    '--learn-areas': page.areas.map((r) => `"${r}"`).join(' '),
+  } as CSSProperties;
+  return (
+    <div className="learn-grid" style={style} data-testid="learn-grid">
+      {Object.entries(page.blocks).map(([name, b]) => (
+        <div
+          key={name}
+          data-area={name}
+          className="min-w-0 scroll-mt-4"
+          style={{ '--learn-area': name } as CSSProperties}
+        >
+          <Block
+            b={b}
+            loopId={props.loopId}
+            live={props.live}
+            onReply={props.onReply}
+            onError={props.onError}
+          />
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/** 页面上的一块。学习还开着时，每块下面能回话。 */
 function Block(props: {
   b: ResolvedBlock;
   loopId: string;
@@ -360,33 +376,6 @@ function ClosingBlock(props: { loopId: string; verdictLine: number }) {
   );
 }
 
-/** 以前的屏幕：可翻看任一屏（只看）。 */
-function History(props: {
-  screens: { n: number; at: string }[];
-  shown: number | undefined;
-  onPick: (n: number) => void;
-}) {
-  return (
-    <Menu>
-      <MenuTrigger
-        data-testid="screen-history"
-        className="text-muted-foreground hover:bg-muted flex items-center gap-1 self-end rounded-md px-2 py-1 text-xs"
-      >
-        {WP.history} <ChevronDownIcon className="size-3.5" />
-      </MenuTrigger>
-      <MenuContent align="end">
-        {[...props.screens].reverse().map((s) => (
-          <MenuItem key={s.n} onClick={() => props.onPick(s.n)}>
-            <span className={s.n === props.shown ? 'font-medium' : ''}>
-              {WP.screenAt(s.n, localMinute(s.at).slice(-5))}
-            </span>
-          </MenuItem>
-        ))}
-      </MenuContent>
-    </Menu>
-  );
-}
-
 /** 订阅这次学习的记录、正在写的字、在不在跑（同对话页的外壳，学习页自己一份）。 */
 function useStream(
   sessionId: string,
@@ -406,8 +395,8 @@ function useStream(
         if (!e.running) setDraft('');
       }
       if (e.type === 'record') {
-        // 一屏摆好了，正在写的那段就收起（它已经在屏幕上）
-        if (e.record.type === 'screen') setDraft('');
+        // 页面改好了，正在写的那段就收起（它已经在页面上）
+        if (e.record.type === 'layout' || e.record.type === 'screen') setDraft('');
         setRecords((rs) =>
           rs.some((r) => r.line === e.line) ? rs : [...rs, { line: e.line, record: e.record }],
         );

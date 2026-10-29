@@ -51,8 +51,23 @@ const BRIDGE = String.raw`(function () {
   });
 })();`;
 
-/** 一个组件拼成的一页（srcdoc）。origin = 核心的地址（本机），KaTeX 从那里取。 */
-export function componentDoc(blocks: { id: string; html: string }[], origin: string): string {
+/** 组件小窗里能用的颜色（同界面的浅色 / 深色）；子代理的提示词里写了这几个变量名。 */
+const FRAME_COLORS = {
+  light: { bg: '#ffffff', fg: '#141413', muted: '#73726c', border: '#e5e3da', accent: '#c96442' },
+  dark: { bg: '#30302e', fg: '#f5f4ed', muted: '#a6a39b', border: '#3e3d39', accent: '#d97757' },
+};
+
+/**
+ * 一个组件拼成的一页（srcdoc）。origin = 核心的地址（本机），KaTeX 从那里取。dark = 界面现在是不是深色：
+ * 小窗的 color-scheme、底色与颜色变量跟着它（组件里的 prefers-color-scheme 也随之，小窗元素上要设同样的 color-scheme）。
+ */
+export function componentDoc(
+  blocks: { id: string; html: string }[],
+  origin: string,
+  dark = false,
+): string {
+  const c = dark ? FRAME_COLORS.dark : FRAME_COLORS.light;
+  const vars = `--studium-bg:${c.bg};--studium-fg:${c.fg};--studium-muted:${c.muted};--studium-border:${c.border};--studium-accent:${c.accent}`;
   const csp = [
     "default-src 'none'",
     `script-src 'unsafe-inline' 'unsafe-eval' ${origin}`,
@@ -67,7 +82,7 @@ export function componentDoc(blocks: { id: string; html: string }[], origin: str
     `<link rel="stylesheet" href="${origin}${LIB}/katex.min.css">`,
     `<script src="${origin}${LIB}/katex.min.js"></script>`,
     `<script src="${origin}${LIB}/contrib/auto-render.min.js"></script>`,
-    "<style>body{margin:0;padding:12px 14px;font:15px/1.65 system-ui,'PingFang SC','Noto Sans CJK SC',sans-serif;color:#1f1f1f;background:#fff}</style>",
+    `<style>:root{color-scheme:${dark ? 'dark' : 'light'};${vars}}body{margin:0;padding:12px 14px;font:15px/1.65 system-ui,'PingFang SC','Noto Sans CJK SC',sans-serif;color:var(--studium-fg);background:var(--studium-bg)}</style>`,
     `<script>${BRIDGE}</script>`,
     '</head><body>',
     ...blocks.map((b) => `<div data-block="${b.id}">\n${b.html}\n</div>`),

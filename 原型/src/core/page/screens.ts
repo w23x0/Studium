@@ -1,24 +1,31 @@
-// 学习者看到的屏幕（`docs/设计/会话/学习对话.md` §11）：一次学习只有一条上下文，每一轮屏幕由主模型这一轮的输出定。
-// 主模型一轮输出完，框架把这一轮新写的块、它点名拿回的旧块交框架小模型对上、摆好，存成一屏（一张块清单）、记正本。
-// 这里还管：解一屏给界面、学习者在组件上的操作（攒着 / 等回应立刻推 / 先回做它的子代理）、每轮附给主模型的事、
-// 组件在浏览器里试跑、守卫读的屏幕文字。块的 key、组件编号、版本号只在程序里用，不进主模型上下文。
+// 学习页（`docs/设计/会话/学习对话.md` §11）：一次学习只有一条上下文，学习者眼前是一份一直在的页面（区域图布局）。
+// 主模型一轮输出完，框架把这一轮新写的块放上页面：没给布局指令就接在最下面；给了就交框架小模型照指令改布局
+// （拿回、拿掉、挪），检查过了才换上，存成新一版、记正本。放上去的块一直在，主模型说拿掉才拿掉（10-29 起，取代每轮一屏）。
+// 这里还管：解页面给界面、学习者在组件上的操作（攒着 / 等回应立刻推 / 先回做它的子代理）、每轮附给主模型的事、
+// 组件在浏览器里试跑、守卫读的页面文字。块的名字、组件编号、版本号只在程序里用，不进主模型上下文。
 import type {
   ActionTarget,
   ComponentManifest,
+  PageLayout,
+  LearnPageResponse,
   ResolvedBlock,
   ScreenBlockRef,
-  ScreenListResponse,
   ScreenManifest,
-  ScreenResponse,
 } from '../../shared/screen.ts';
 import type { PageTrialResult } from '../../shared/page.ts';
 import type { ComponentVersion, LogRecord, NumberedRecord } from '../../shared/records.ts';
 import { localMinute } from '../../shared/time.ts';
 import type { Hub } from '../hub.ts';
 import {
+  appendBlocks,
   arrangeInput,
+  checkLayout,
+  EMPTY_LAYOUT,
+  fromScreen,
   gist,
+  nameOf,
   readAnswer,
+  readingOrder,
   splitParts,
   type ArrangeAsk,
   type Candidate,
@@ -32,6 +39,8 @@ export const ARRANGE_TOOL = 'arrange_screen';
 
 /** 学习者连续的操作在这么久之内合成一条。 */
 const MERGE_MS = 4000;
+/** 小模型交回的布局没过检查时，最多再让它交几次。 */
+const RETRIES = 1;
 /** 试跑等浏览器回话最多这么久；没人开着学习页就不等了，直接上（标“没试跑”）。 */
 const TRIAL_WAIT_MS = 20_000;
 
@@ -66,9 +75,9 @@ export class Screens {
     return this.o.hub();
   }
 
-  // ───────────── 摆屏 ─────────────
+  // ───────────── 改布局 ─────────────
 
-  /** 主模型一轮输出完：照这一轮的输出摆一屏（没输出就不出新屏，W10 §9 第 12 条）。 */
+  /** 主模型一轮输出完：把这一轮的新块放上页面、照它的布局指令改布局（什么都没说、没写就不改）。 */
   async afterTurn(loopId: string, fromLine: number): Promise<void> {
     if ((await this.hub.opened(loopId)).screens !== true) return;
     const records = await this.hub.records(loopId);
@@ -81,9 +90,9 @@ export class Screens {
       r.type === 'subagent_started' && r.agent === SUBAGENT ? [r] : [],
     );
     if (texts.length === 0 && ask === undefined && started.length === 0) return;
-    // 这一轮没跑成（如额度用完，SDK 会把报错当一句话交回）：不出新屏，屏幕不变；界面另说一句
+    // 这一轮没跑成（如额度用完，SDK 会把报错当一句话交回）：页面不变；界面另说一句
     if (turn.some((r) => r.record.type === 'turn_failed')) return;
-    const a: ArrangeAsk = ask ?? { parts: [], bringBack: [] };
+    const a: ArrangeAsk = ask ?? { parts: [], bringBack: [], remove: [] };
 
     // 这一轮的新块：主模型的话（按它说的切块）+ 这一轮派出去、还没做好的组件（占位）
     const firstLine = texts[0]?.line ?? fromLine + 1;
@@ -108,48 +117,60 @@ export class Screens {
       });
     }
 
-    const candidates = await this.candidates(loopId, records, fromLine);
-    let rows: string[][] = fresh.map((b) => [b.key]);
+    const page = await this.layoutOf(loopId, records);
+    const offPage = await this.offPage(loopId, records, fromLine, page);
+    let layout = appendBlocks(page, fresh);
     let matched: { desc: string; key?: string }[] = [];
     let ms: number | undefined;
     let model: string | undefined;
-    let failure: string | undefined;
-    // 没点名、没说放法：不用对、不用摆，新块照顺序一块一行（不调小模型）
-    if (a.bringBack.length > 0 || (a.layout !== undefined && a.layout.trim() !== '')) {
-      const started = Date.now();
-      try {
-        const r = await this.o.arrange(arrangeInput(candidates, fresh, a));
-        ms = Date.now() - started;
-        model = r.model;
-        const answer = readAnswer(r.text, candidates, fresh, a);
-        rows = answer.rows;
-        matched = answer.matches;
-      } catch (err) {
-        ms = Date.now() - started;
-        failure = err instanceof Error ? err.message : String(err);
-        console.error(`学习 ${loopId} 摆屏没成：`, err);
-        matched = a.bringBack.map((desc) => ({ desc }));
+    let retries = 0;
+    let fallback: string | undefined;
+    const hasAsk =
+      a.bringBack.length > 0 ||
+      a.remove.length > 0 ||
+      (a.layout !== undefined && a.layout.trim() !== '');
+    // 没点名、没说放法：新块照顺序接在最下面（不调小模型）
+    if (hasAsk) {
+      const t0 = Date.now();
+      let retry: { answer: string; errors: string[] } | undefined;
+      for (;;) {
+        try {
+          const r = await this.o.arrange(arrangeInput(page, offPage, fresh, a, retry));
+          model = r.model;
+          const answer = readAnswer(r.text, a);
+          matched = [...answer.bringBack, ...answer.remove];
+          const checked = checkLayout(page, answer, fresh, offPage);
+          if ('layout' in checked) {
+            layout = checked.layout;
+            break;
+          }
+          retry = { answer: r.text, errors: checked.errors };
+        } catch (err) {
+          retry = { answer: '', errors: [err instanceof Error ? err.message : String(err)] };
+        }
+        if (retries >= RETRIES) {
+          fallback = retry.errors.join('；').slice(0, 500);
+          console.error(`学习 ${loopId} 改布局没成，新块接在最下面：${fallback}`);
+          matched = [...a.bringBack, ...a.remove].map((desc) => ({ desc }));
+          break;
+        }
+        retries += 1;
       }
+      ms = Date.now() - t0;
     }
 
-    const byKey = new Map<string, ScreenBlockRef>([
-      ...candidates.map((c) => [c.ref.key, c.ref] as const),
-      ...fresh.map((b) => [b.key, b] as const),
-    ]);
-    const m: ScreenManifest = {
-      rows: rows.map((row) => row.flatMap((k) => byKey.get(k) ?? [])).filter((r) => r.length > 0),
-    };
-    const manifest = await this.o.store.putManifest(loopId, m);
-    const n = screensOf(records).length + 1;
+    const manifest = await this.o.store.putManifest(loopId, layout);
     await this.hub.record(loopId, {
-      type: 'screen',
+      type: 'layout',
       at: this.o.iso(),
-      n,
+      v: layoutsOf(records).length + 1,
       manifest,
       fromLine,
       ...(ms !== undefined ? { ms } : {}),
       ...(model !== undefined ? { model } : {}),
       ...(matched.length > 0 ? { matched } : {}),
+      ...(retries > 0 ? { retries } : {}),
+      ...(fallback !== undefined ? { fallback } : {}),
     });
     const at = this.o.iso();
     const mine = this.written.get(loopId);
@@ -161,9 +182,36 @@ export class Screens {
       await this.hub.record(loopId, {
         type: 'screen_note',
         at: this.o.iso(),
-        text: `框架没对上你点名拿回的${missed.join('')}（${failure !== undefined ? '框架这次出错了' : '找不到，或有几块都像'}），这一屏没放它；要放就换个说法再点一次。`,
+        text: `框架没对上你点名拿回或拿掉的${missed.join('')}（${fallback !== undefined ? '框架这次出错了' : '找不到，或有几块都像'}），页面上这几处没动；要动就换个说法再点一次。`,
       });
     }
+  }
+
+  /** 现在的布局：最后一版；10-29 前开的学习对话没有布局，就从最后一屏转；都没有就是空的。 */
+  private async layoutOf(loopId: string, records: NumberedRecord[]): Promise<PageLayout> {
+    const last = layoutsOf(records).at(-1);
+    if (last !== undefined) return this.o.store.manifest<PageLayout>(loopId, last.record.manifest);
+    const screen = screensOf(records).at(-1);
+    if (screen === undefined) return EMPTY_LAYOUT;
+    return fromScreen(await this.o.store.manifest<ScreenManifest>(loopId, screen.record.manifest));
+  }
+
+  /** 可以拿回的旧块：全部可点名的旧块里，不在页面上的（页面上的占位已换成组件的，那个组件也算在页面上）。 */
+  private async offPage(
+    loopId: string,
+    records: NumberedRecord[],
+    beforeLine: number,
+    page: PageLayout,
+  ): Promise<Candidate[]> {
+    const on = new Set(Object.keys(page.blocks));
+    for (const b of Object.values(page.blocks)) {
+      if (b.kind !== 'pending') continue;
+      const v = versionAt(records, b, Number.POSITIVE_INFINITY);
+      if (v !== undefined) on.add(v.component);
+    }
+    return (await this.candidates(loopId, records, beforeLine)).filter(
+      (c) => !on.has(nameOf(c.ref)),
+    );
   }
 
   /**
@@ -285,7 +333,7 @@ export class Screens {
     return out.sort((x, y) => x.line - y.line).map(({ ref, at }) => ({ ref, at }));
   }
 
-  /** 主模型写过的块（各屏清单里的文字块）；第一次用时从磁盘读回，之后跟着新屏加。 */
+  /** 主模型写过的块（各屏清单、各版布局里的文字块）；第一次用时从磁盘读回，之后跟着新屏加。 */
   private async writtenOf(
     loopId: string,
     records: NumberedRecord[],
@@ -293,11 +341,16 @@ export class Screens {
     const cached = this.written.get(loopId);
     if (cached !== undefined) return cached;
     const map = new Map<string, Candidate>();
+    const add = (b: ScreenBlockRef, at: string) => {
+      if (b.kind === 'text' && !map.has(b.key)) map.set(b.key, { ref: b, at });
+    };
     for (const { record: r } of screensOf(records)) {
       const m = await this.o.store.manifest<ScreenManifest>(loopId, r.manifest);
-      for (const b of m.rows.flat()) {
-        if (b.kind === 'text' && !map.has(b.key)) map.set(b.key, { ref: b, at: r.at });
-      }
+      for (const b of m.rows.flat()) add(b, r.at);
+    }
+    for (const { record: r } of layoutsOf(records)) {
+      const m = await this.o.store.manifest<PageLayout>(loopId, r.manifest);
+      for (const b of Object.values(m.blocks)) add(b, r.at);
     }
     this.written.set(loopId, map);
     return map;
@@ -305,33 +358,45 @@ export class Screens {
 
   // ───────────── 给界面 ─────────────
 
-  async list(loopId: string): Promise<ScreenListResponse> {
-    return {
-      screens: screensOf(await this.hub.records(loopId)).map(({ line, record: r }) => ({
-        n: r.n,
-        line,
-        at: r.at,
-      })),
-    };
-  }
-
-  /** 第 n 屏摆好的每一块。组件显示这一屏在前台时的那一版（当前屏 = 最新版）；占位换成做好的组件。 */
-  async resolve(loopId: string, n: number): Promise<ScreenResponse> {
+  /**
+   * 现在的页面：最后一版布局解好的每一块（组件显示最新版，占位换成做好的组件）；fresh = 这一版比上一版新放上去的。
+   * 同一个组件在页面上出现两次（派子代理改它时又占了一个位）只显示先放的那个。
+   */
+  async page(loopId: string): Promise<LearnPageResponse> {
     const records = await this.hub.records(loopId);
-    const all = screensOf(records);
-    const i = all.findIndex((s) => s.record.n === n);
-    const s = all[i];
-    if (s === undefined) throw this.o.badRequest(`没有第 ${String(n)} 屏`);
-    const until = all[i + 1]?.line ?? Number.POSITIVE_INFINITY;
-    const m = await this.o.store.manifest<ScreenManifest>(loopId, s.record.manifest);
+    const layouts = layoutsOf(records);
+    const last = layouts.at(-1);
+    const layout = await this.layoutOf(loopId, records);
+    const prev = layouts.at(-2);
+    const before =
+      prev !== undefined
+        ? new Set(
+            Object.keys(
+              (await this.o.store.manifest<PageLayout>(loopId, prev.record.manifest)).blocks,
+            ),
+          )
+        : new Set<string>();
     const at = (line: number) => records.find((r) => r.line === line)?.record;
-    const rows: ResolvedBlock[][] = [];
-    for (const row of m.rows) {
-      const out: ResolvedBlock[] = [];
-      for (const b of row) out.push(await this.resolveBlock(loopId, records, b, until, at));
-      rows.push(out);
+    const blocks: Record<string, ResolvedBlock> = {};
+    const shown = new Set<string>();
+    for (const name of readingOrder(layout.areas)) {
+      const ref = layout.blocks[name];
+      if (ref === undefined) continue;
+      const b = await this.resolveBlock(loopId, records, ref, Number.POSITIVE_INFINITY, at);
+      if (b.kind === 'component') {
+        if (shown.has(b.component)) continue;
+        shown.add(b.component);
+      }
+      blocks[name] = b;
     }
-    return { n, at: s.record.at, rows };
+    return {
+      v: last?.record.v ?? 0,
+      ...(last !== undefined ? { at: last.record.at } : {}),
+      columns: layout.columns,
+      areas: layout.areas,
+      blocks,
+      fresh: last !== undefined ? Object.keys(layout.blocks).filter((n) => !before.has(n)) : [],
+    };
   }
 
   private async resolveBlock(
@@ -548,15 +613,13 @@ export class Screens {
       .join('\n');
   }
 
-  /** 守卫读的屏幕（W10 §9 第 6 条过渡）：最后一屏里组件的一句话与可见文字。 */
+  /** 守卫读的页面（W10 §9 第 6 条过渡）：现在页面上组件的一句话与可见文字。 */
   async textForGuard(loopId: string): Promise<string | undefined> {
-    const last = screensOf(await this.hub.records(loopId)).at(-1);
-    if (last === undefined) return undefined;
-    const s = await this.resolve(loopId, last.record.n);
-    const comps = s.rows.flat().flatMap((b) => (b.kind === 'component' ? [b] : []));
+    const p = await this.page(loopId);
+    const comps = Object.values(p.blocks).flatMap((b) => (b.kind === 'component' ? [b] : []));
     if (comps.length === 0) return undefined;
     return [
-      '学习者最后一屏上的组件（每个：一句话、组件上的文字）：',
+      '学习者页面上的组件（每个：一句话、组件上的文字）：',
       ...comps.map(
         (c) =>
           `- ${c.pointer}：${c.blocks
@@ -569,6 +632,14 @@ export class Screens {
 }
 
 // ───────────── 纯函数 ─────────────
+
+export function layoutsOf(
+  records: NumberedRecord[],
+): { line: number; record: Extract<LogRecord, { type: 'layout' }> }[] {
+  return records.flatMap(({ line, record: r }) =>
+    r.type === 'layout' ? [{ line, record: r }] : [],
+  );
+}
 
 export function screensOf(
   records: NumberedRecord[],
@@ -584,12 +655,13 @@ function askOf(turn: NumberedRecord[]): ArrangeAsk | undefined {
     r.type === 'tool_call' && r.name === ARRANGE_TOOL && !r.isError ? [r.args] : [],
   );
   if (calls.length === 0) return undefined;
-  const ask: ArrangeAsk = { parts: [], bringBack: [] };
+  const ask: ArrangeAsk = { parts: [], bringBack: [], remove: [] };
   for (const raw of calls) {
     const a = raw as {
       parts?: { begins?: unknown; about?: unknown }[];
       about?: unknown;
       bring_back?: unknown[];
+      remove?: unknown[];
       layout?: unknown;
     };
     for (const p of a.parts ?? []) {
@@ -600,6 +672,8 @@ function askOf(turn: NumberedRecord[]): ArrangeAsk | undefined {
     if (typeof a.about === 'string' && a.about !== '') ask.about = a.about;
     for (const d of a.bring_back ?? [])
       if (typeof d === 'string' && d.trim() !== '') ask.bringBack.push(d.trim());
+    for (const d of a.remove ?? [])
+      if (typeof d === 'string' && d.trim() !== '') ask.remove.push(d.trim());
     if (typeof a.layout === 'string' && a.layout.trim() !== '') {
       ask.layout = ask.layout === undefined ? a.layout : `${ask.layout}；${a.layout}`;
     }
@@ -607,7 +681,7 @@ function askOf(turn: NumberedRecord[]): ArrangeAsk | undefined {
   return ask;
 }
 
-/** 组件 / 占位在某一屏下显示哪一版：until 之前最新的一版（占位 = 那件活交上的组件）。 */
+/** 组件 / 占位显示哪一版：until 之前最新的一版（占位 = 那件活交上的组件）。 */
 function versionAt(
   records: NumberedRecord[],
   b: Extract<ScreenBlockRef, { kind: 'component' | 'pending' }>,

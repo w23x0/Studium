@@ -10,19 +10,13 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  ChevronDownIcon,
-  ChevronRightIcon,
-  LoaderIcon,
-} from 'lucide-react';
+import { ArrowDownIcon, ArrowRightIcon, ChevronRightIcon, LoaderIcon } from 'lucide-react';
 import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
-import type { PickedFile } from '@/components/project-materials';
+import type { PickedFile } from '@/files';
 import { CandidateList } from '@/components/find-candidates';
-import type { CandidatesView, ToolGroup } from '@/thread-model';
+import type { CandidatesView } from '@/thread-model';
 import { ImageViewer } from '@/components/input/modal';
 import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
@@ -40,7 +34,6 @@ interface MessageMeta {
   objection?: { toLine: number; label: string };
   images?: string[];
   candidates?: CandidatesView;
-  tools?: ToolGroup;
   pending?: true;
 }
 
@@ -251,15 +244,13 @@ const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, verdict, line, candidates, tools, pending } = useMeta();
+  const { link, verdict, line, candidates, pending } = useMeta();
   const open = useOpenSession();
   const panel = usePanel();
   const sessionId = useCurrentSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
-      {tools !== undefined ? (
-        <ToolLine tools={tools} />
-      ) : pending === true ? (
+      {pending === true ? (
         <div
           data-testid="pending-line"
           className="text-muted-foreground flex items-center gap-2 text-sm"
@@ -307,42 +298,6 @@ interface UiLink {
   sessionId: string;
   label: string;
 }
-
-/** 工具行：一行摘要（用了什么、做了什么），点开看每一步与模型当时说的话（界面说明 §1.2）。 */
-const ToolLine: FC<{ tools: ToolGroup }> = ({ tools }) => {
-  const [open, setOpen] = useState(false);
-  // 只有结果另有显示的工具、也没说什么话：这一行不必出现
-  if (tools.labels.length === 0 && tools.narration.length === 0) return null;
-  return (
-    <div data-testid="tool-line" className="text-muted-foreground flex flex-col gap-1 text-xs">
-      <button
-        type="button"
-        aria-expanded={open}
-        className="hover:text-foreground flex items-center gap-1 self-start"
-        onClick={() => setOpen((o) => !o)}
-      >
-        {open ? (
-          <ChevronDownIcon className="size-3.5" />
-        ) : (
-          <ChevronRightIcon className="size-3.5" />
-        )}
-        {WT.summary(tools.labels)}
-      </button>
-      {open && (
-        <div className="border-border ms-1.5 flex flex-col gap-1 border-s ps-3">
-          {tools.narration.map((n, i) => (
-            <span key={`n${String(i)}`} className="italic">
-              {WT.narration}：{n}
-            </span>
-          ))}
-          {tools.labels.map((l, i) => (
-            <span key={`l${String(i)}`}>{l}</span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-};
 
 /**
  * 自己发了消息就滚到底；看历史时（离底部远）来了新内容不打扰。

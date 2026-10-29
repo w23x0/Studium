@@ -1,11 +1,10 @@
 // 讨论串：项目对话右边一栏（照 Claude 桌面版的讨论串），列这个项目开出去的任务对话。
-// 等你 → 进行中 → 已结束（默认收起）；分组规则在 threads-model.ts 的表里。
+// 等你 → 进行中 → 已结束（默认收起）；分组规则在 threads-model.ts 的表里。每行只有标题和一个小状态。
 import { useState, type ReactNode } from 'react';
 import {
   BookOpenIcon,
   ChevronDownIcon,
   ChevronRightIcon,
-  CompassIcon,
   LibraryIcon,
   MessagesSquareIcon,
   PenLineIcon,
@@ -14,7 +13,6 @@ import {
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { cn } from '@/lib/utils';
 import type { SessionSummary } from '../../shared/protocol.ts';
-import { shortTime } from '../evidence-model.ts';
 import { threadGroups, type ThreadGroup, type ThreadRow } from '../threads-model.ts';
 import { W } from '../wording.ts';
 
@@ -23,7 +21,6 @@ const T = W.threads;
 const ICON: Partial<Record<SessionSummary['kind'], ReactNode>> = {
   talk: <MessagesSquareIcon />,
   loop: <BookOpenIcon />,
-  nav: <CompassIcon />,
   find: <LibraryIcon />,
   output: <PenLineIcon />,
 };
@@ -31,11 +28,12 @@ const ICON: Partial<Record<SessionSummary['kind'], ReactNode>> = {
 export function ThreadsPanel(props: {
   projectId: string;
   sessions: readonly SessionSummary[];
+  isReview: (id: string) => boolean;
   current: string | undefined;
   onOpen: (id: string) => void;
   onClose: () => void;
 }) {
-  const groups = threadGroups(props.sessions, props.projectId);
+  const groups = threadGroups(props.sessions, props.projectId, props.isReview);
   const total = groups.waiting.length + groups.running.length + groups.ended.length;
   return (
     <div data-testid="threads-panel" className="flex h-full flex-col">
@@ -107,9 +105,6 @@ function Group(props: {
                 {r.tag !== undefined && (
                   <span className="text-muted-foreground shrink-0 text-[0.7rem]">{r.tag}</span>
                 )}
-                <span className="text-muted-foreground/70 shrink-0 text-[0.7rem]">
-                  {shortTime(r.at).slice(0, 5)}
-                </span>
               </button>
             </li>
           ))}

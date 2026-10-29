@@ -1,5 +1,5 @@
-// 左栏底部的账号：弹出菜单——语言（现在只有中文）。没做的（退出登录）不摆出来。
-import { ChevronsUpDownIcon, GlobeIcon } from 'lucide-react';
+// 左栏底部的账号：弹出菜单——外观（跟系统 / 浅色 / 深色）、语言（现在只有中文）。没做的（退出登录）不摆出来。
+import { ChevronsUpDownIcon, GlobeIcon, SunMoonIcon } from 'lucide-react';
 import {
   Menu,
   MenuContent,
@@ -10,6 +10,7 @@ import {
   MenuTrigger,
 } from '@/components/ui/menu';
 import { cn } from '@/lib/utils';
+import { useTheme, type Theme } from '../../theme.ts';
 import { W } from '../../wording.ts';
 
 const S = W.sidebar;
@@ -22,7 +23,10 @@ function Avatar() {
   );
 }
 
+const THEMES: Theme[] = ['system', 'light', 'dark'];
+
 export function AccountMenu(props: { collapsed: boolean }) {
+  const [theme, setTheme] = useTheme();
   return (
     <>
       <Menu>
@@ -43,6 +47,22 @@ export function AccountMenu(props: { collapsed: boolean }) {
           )}
         </MenuTrigger>
         <MenuContent side="top" align="start" className="min-w-52">
+          <MenuSubmenu>
+            <MenuSubmenuTrigger data-testid="theme-menu">
+              <SunMoonIcon />
+              <span className="flex-1">{S.theme}</span>
+              <span className="text-muted-foreground text-xs">{S.themes[theme]}</span>
+            </MenuSubmenuTrigger>
+            <MenuContent side="right" align="start">
+              <MenuRadioGroup value={theme} onValueChange={(v) => setTheme(v as Theme)}>
+                {THEMES.map((t) => (
+                  <MenuRadioItem key={t} value={t}>
+                    {S.themes[t]}
+                  </MenuRadioItem>
+                ))}
+              </MenuRadioGroup>
+            </MenuContent>
+          </MenuSubmenu>
           <MenuSubmenu>
             <MenuSubmenuTrigger>
               <GlobeIcon />

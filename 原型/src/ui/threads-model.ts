@@ -1,5 +1,6 @@
 // 讨论串（项目对话右边那一栏）的纯转换：一个项目开出去的任务对话 → 等你 / 进行中 / 已结束。
 // 分组规则在 `../shared/threads.ts`（主对话每轮附上的讨论串清单也用它）；每行带什么小标签改下面 TAG_OF。
+// 界面上只列学习者要点进去的：导航（定下一次学什么，只看不聊）与阶段复盘不列（10-29），主对话那边照旧看得到。
 import type { SessionMark, SessionSummary } from '../shared/protocol.ts';
 import { THREAD_KINDS, threadGroup, type ThreadGroup } from '../shared/threads.ts';
 import { W } from './wording.ts';
@@ -27,10 +28,12 @@ export interface ThreadRow {
 export function threadGroups(
   sessions: readonly SessionSummary[],
   projectId: string,
+  isReview: (id: string) => boolean = () => false,
 ): Record<ThreadGroup, ThreadRow[]> {
   const out: Record<ThreadGroup, ThreadRow[]> = { waiting: [], running: [], ended: [] };
   for (const s of sessions) {
     if (s.parent !== projectId || !THREAD_KINDS.has(s.kind)) continue;
+    if (s.kind === 'nav' || isReview(s.sessionId)) continue;
     const tag = s.mark !== undefined ? TAG_OF[s.mark] : undefined;
     out[threadGroup(s)].push({
       id: s.sessionId,

@@ -1,5 +1,5 @@
 // 中间的对话页：主对话、谈方向、导航（只看）、写产出、找资料共用一个外壳，
-// 顶上面包屑（项目名去项目页）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
+// 顶上面包屑（项目名回项目对话）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
 // 学习对话（W10 起按屏幕跑）走 learn/learn-page.tsx；旧版开的学习对话还在这里，按消息流只看（W10 §9 第 1、2 条）。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -10,7 +10,6 @@ import {
 } from '@assistant-ui/react';
 import { ArrowRightIcon } from 'lucide-react';
 import { Thread } from '@/components/assistant-ui/thread';
-import { Button } from '@/components/ui/button';
 import type { SessionSummary } from '../../shared/protocol.ts';
 import type { NumberedRecord } from '../../shared/records.ts';
 import { api } from '../api.ts';
@@ -29,7 +28,7 @@ import { W } from '../wording.ts';
 import { ReviewBanner } from './longterm/loop-extras.tsx';
 import { currentTicket, EndedBar, OldLoopBar, TicketStrip } from './learn/loop-parts.tsx';
 import { OutputTaskBar } from './outputs/outputs-section.tsx';
-import type { PickedFile } from './project-materials.tsx';
+import type { PickedFile } from '../files.ts';
 import { TopBar } from './top-bar.tsx';
 
 export function Conversation(props: {
@@ -40,8 +39,6 @@ export function Conversation(props: {
   title: string;
   projectId: string;
   projectTitle: string;
-  /** 项目谈定方向没有（主对话的“下一步学什么”只在有方向后出现）。 */
-  hasGoal: boolean;
   titleOf: (id: string) => string | undefined;
   isReview: (id: string) => boolean;
   focus: Focus | undefined;
@@ -49,7 +46,7 @@ export function Conversation(props: {
   onError: (e: unknown) => void;
   /** 回项目对话。 */
   onBackToMain: () => void;
-  /** 回项目页。 */
+  /** 点面包屑上的项目名（回项目对话）。 */
   onProject: () => void;
 }) {
   const { sessionId, kind, onError, titleOf, isReview, focus } = props;
@@ -127,7 +124,6 @@ export function Conversation(props: {
           ...(m.objection ? { objection: m.objection } : {}),
           ...(m.images ? { images: m.images } : {}),
           ...(m.candidates ? { candidates: m.candidates } : {}),
-          ...(m.tools ? { tools: m.tools } : {}),
           ...(m.pending ? { pending: m.pending } : {}),
         },
       },
@@ -157,11 +153,8 @@ export function Conversation(props: {
     kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
   // 导航会话只给学习者看它怎么想的，不交互（会话/导航.md「会话形态」）；页面编辑员也只看
   const watchOnly = kind === 'nav' || kind === 'editor';
-  const footer = watchOnly ? undefined : kind === 'main' ? (
-    props.hasGoal ? (
-      <MainBar projectId={props.projectId} running={running} onError={onError} />
-    ) : undefined
-  ) : kind === 'output' ? (
+  // 主对话不放按钮：要下一步、复盘这些都在对话里说（10-29）
+  const footer = watchOnly ? undefined : kind === 'main' ? undefined : kind === 'output' ? (
     <OutputTaskBar sessionId={sessionId} projectId={props.projectId} />
   ) : kind === 'find' ? undefined : kind === 'talk' ? (
     ended ? (
@@ -325,31 +318,6 @@ function NavIntro(props: { parent: string | undefined; navId: string }) {
           )}
         </button>
       )}
-    </div>
-  );
-}
-
-/** 主对话输入框上方的建议：下一步学什么（有方向后常驻，界面说明 §2.3）。 */
-function MainBar(props: { projectId: string; running: boolean; onError: (e: unknown) => void }) {
-  const [busy, setBusy] = useState(false);
-  return (
-    <div className="flex flex-wrap gap-2">
-      <Button
-        variant="outline"
-        size="sm"
-        data-testid="next-step"
-        disabled={busy || props.running}
-        onClick={() => {
-          setBusy(true);
-          api
-            .send(props.projectId, W.askNext)
-            .catch(props.onError)
-            .finally(() => setBusy(false));
-        }}
-      >
-        <ArrowRightIcon />
-        {W.nextStep}
-      </Button>
     </div>
   );
 }

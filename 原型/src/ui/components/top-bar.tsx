@@ -1,4 +1,4 @@
-// 每页顶上一条：左边面包屑（项目名永远去项目页），右边是这一页的小按钮（界面说明 §1.1）。
+// 每页顶上一条：左边面包屑（项目名回项目对话），右边是这一页的小按钮（界面说明 §1.1）。
 // 窄屏时最左边多一个打开左栏的按钮。
 import { Fragment, type ReactNode } from 'react';
 import { MenuIcon } from 'lucide-react';

@@ -44,11 +44,13 @@ export const WS = {
   cancel: '取消',
   removeTitle: '从列表里删掉？',
   removeProjectHint: '这个项目和里面的对话会从左栏与项目列表里消失；学过的记录都还在，不会删。',
-  removeChatHint: '这条对话会从左栏里消失；对话记录还在，在项目页里照样能打开。',
+  removeChatHint: '这条对话会从左栏里消失；对话记录还在，在讨论串里照样能打开。',
   removeGo: '删除',
   // ── 账号 ──
   account: '我',
   accountMenu: '账号',
   language: '语言',
   chinese: '中文',
+  theme: '外观',
+  themes: { system: '跟系统', light: '浅色', dark: '深色' } as const,
 } as const;

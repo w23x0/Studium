@@ -1,5 +1,6 @@
 // 公式预处理（04「实现时要守的」）：
-// ① `\(\)` `\[\]` 归一成 `$` `$$`；② 流式中没写完的公式先显示原文，写完再渲染。
+// ① `\(\)` `\[\]` 归一成 `$` `$$`；② 独占一行的 `$$…$$` 拆成三行（remark-math 只把 `$$` 单独成行的当独立公式，
+// 写在一行里会当行内公式：靠左、长了折行）；③ 流式中没写完的公式先显示原文，写完再渲染。
 // 代码块与行内代码里的内容不动。
 
 type Segment = { code: boolean; text: string };
@@ -21,7 +22,10 @@ function splitCode(text: string): Segment[] {
 function normalizeDelimiters(s: string): string {
   return s
     .replace(/\\\[([\s\S]*?)\\\]/g, (_, body: string) => `$$${body}$$`)
-    .replace(/\\\(([\s\S]*?)\\\)/g, (_, body: string) => `$${body}$`);
+    .replace(/\\\(([\s\S]*?)\\\)/g, (_, body: string) => `$${body}$`)
+    .replace(/^([ \t]*)\$\$((?:(?!\$\$)[^\n])+)\$\$[ \t]*$/gm, (_, indent: string, body: string) =>
+      [`${indent}$$`, `${indent}${body.trim()}`, `${indent}$$`].join('\n'),
+    );
 }
 
 /** 找最后一个没闭合的 `$` / `$$` 开头位置；都闭合了返回 -1。 */

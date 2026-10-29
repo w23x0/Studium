@@ -45,30 +45,6 @@ export function learnedRows(
     .sort((a, b) => (a.at === b.at ? 0 : a.at < b.at ? 1 : -1));
 }
 
-/** 项目页的三组：进行中（含搁置的，标出来）、合上、没合上（停车场 = 没合上那些的上层）。 */
-export function projectGroups(
-  ls: readonly Learning[],
-  shelvedIds: readonly string[] = [],
-): { inProgress: LearnedRow[]; closed: LearnedRow[]; unclosed: UnclosedRow[] } {
-  const rows = learnedRows(ls, shelvedIds);
-  const byId = new Map(ls.map((l) => [l.loopId, l]));
-  const unclosed: UnclosedRow[] = rows
-    .filter((r) => r.status === '没合上')
-    .map((r) => {
-      const l = byId.get(r.loopId);
-      return {
-        ...r,
-        ...(l?.endNote !== undefined ? { endNote: l.endNote } : {}),
-        ...(l?.routeDecision !== undefined ? { routeDecision: l.routeDecision } : {}),
-      };
-    });
-  return {
-    inProgress: rows.filter((r) => r.status === '进行中'),
-    closed: rows.filter((r) => r.status === '合上'),
-    unclosed,
-  };
-}
-
 export interface LearnedDetail {
   upper: {
     ticket: TicketRow[];

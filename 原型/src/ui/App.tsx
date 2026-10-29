@@ -1,4 +1,4 @@
-// 外壳：左栏 · 中间一页（全部项目 / 新建项目 / 项目页 / 某个对话）· 右边：讨论串（在项目的对话里）或依据面板。
+// 外壳：左栏 · 中间一页（全部项目 / 新建项目 / 某个对话）· 右边：讨论串（在项目的对话里）或依据面板。
 // 现在在哪写进地址（#/…），刷新、后退回原处；窄屏时左栏变抽屉、面板盖满全屏（界面说明 §1.1、§1.5）。
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
@@ -10,7 +10,6 @@ import { Conversation } from './components/conversation.tsx';
 import { EvidencePanel } from './components/evidence/panel.tsx';
 import { LearnPage } from './components/learn/learn-page.tsx';
 import { PageTrials } from './components/learn/trials.tsx';
-import { ProjectHome } from './components/project-home.tsx';
 import { NewProject } from './components/sidebar/new-project.tsx';
 import { Sidebar } from './components/sidebar/sidebar.tsx';
 import { ProjectsPage } from './components/sidebar/projects-page.tsx';
@@ -161,7 +160,6 @@ export function App() {
       return;
     }
     if (
-      route.page === 'chat' &&
       route.current !== route.projectId &&
       !rawSessions.some((s) => s.sessionId === route.current)
     ) {
@@ -177,8 +175,6 @@ export function App() {
     (id: string) => sessions.find((s) => s.sessionId === id)?.title,
     [sessions],
   );
-  /** 面包屑点项目名：进项目页。 */
-  const openProjectHome = (id: string) => go({ page: 'overview', projectId: id });
   const openMain = (id: string) => go({ page: 'chat', projectId: id, current: id });
   const showSession = useCallback(
     (id: string, list: SessionSummary[]) => {
@@ -320,26 +316,6 @@ export function App() {
                     onError={fail}
                   />
                 )}
-                {projectId !== undefined && page === 'overview' && project !== undefined && (
-                  <ProjectHome
-                    key={projectId}
-                    projectId={projectId}
-                    panelOpen={panel.open && !narrow}
-                    header={
-                      <TopBar
-                        crumbs={[
-                          { label: W.sidebar.allProjects, onClick: () => go({ page: 'projects' }) },
-                          { label: project.title },
-                        ]}
-                      />
-                    }
-                    onOpenChat={() => openMain(projectId)}
-                    onRename={(title) =>
-                      void sidebar.act({ kind: 'project', id: projectId, action: 'rename', title })
-                    }
-                    onError={fail}
-                  />
-                )}
                 {current !== undefined &&
                   projectId !== undefined &&
                   page === 'chat' &&
@@ -358,7 +334,7 @@ export function App() {
                       headerExtra={threadsButton}
                       onError={fail}
                       onBackToMain={() => openMain(projectId)}
-                      onProject={() => openProjectHome(projectId)}
+                      onProject={() => openMain(projectId)}
                       oldLoop={
                         <Conversation
                           key={current}
@@ -368,14 +344,13 @@ export function App() {
                           title={currentSession.title}
                           projectId={projectId}
                           projectTitle={project.title}
-                          hasGoal={project.goal !== undefined}
                           titleOf={titleOf}
                           isReview={isReview}
                           focus={focus?.sessionId === current ? focus : undefined}
                           headerExtra={threadsButton}
                           onError={fail}
                           onBackToMain={() => openMain(projectId)}
-                          onProject={() => openProjectHome(projectId)}
+                          onProject={() => openMain(projectId)}
                         />
                       }
                     />
@@ -388,14 +363,13 @@ export function App() {
                       title={currentSession?.title ?? ''}
                       projectId={projectId}
                       projectTitle={project.title}
-                      hasGoal={project.goal !== undefined}
                       titleOf={titleOf}
                       isReview={isReview}
                       focus={focus?.sessionId === current ? focus : undefined}
                       headerExtra={threadsButton}
                       onError={fail}
                       onBackToMain={() => openMain(projectId)}
-                      onProject={() => openProjectHome(projectId)}
+                      onProject={() => openMain(projectId)}
                     />
                   ))}
               </main>
@@ -409,6 +383,7 @@ export function App() {
                   <ThreadsPanel
                     projectId={projectId}
                     sessions={sessions}
+                    isReview={isReview}
                     current={current}
                     onOpen={(id) => {
                       setThreadsNarrow(false);

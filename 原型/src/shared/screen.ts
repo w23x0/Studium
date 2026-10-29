@@ -22,7 +22,7 @@ export type ScreenBlockRef =
    */
   | { kind: 'opening' | 'closing'; key: string; pointer: string; line: number };
 
-/** 一屏 = 一张块清单：从上到下一行行，一行里有两块 = 并排。 */
+/** 旧数据（10-29 前）：一屏 = 一张块清单，从上到下一行行，一行里有两块 = 并排。 */
 export interface ScreenManifest {
   rows: ScreenBlockRef[][];
 }
@@ -57,16 +57,27 @@ export type ResolvedBlock =
   /** 收尾记录：显示整理的内容（同“看整理的内容”那份）；界面按 verdictLine 取。 */
   | { kind: 'closing'; key: string; pointer: string; verdictLine: number };
 
-/** GET /sessions/:id/screens：有过哪些屏（第几屏、哪一行、什么时候）。 */
-export interface ScreenListResponse {
-  screens: { n: number; line: number; at: string }[];
+/**
+ * 学习页的布局（10-29 起，取代每轮一屏）：一次学习一份、一直在的区域图（CSS grid-template-areas 写法）。
+ * 只写每块在哪、占多大，内容按名字引用；放上去的块一直在，主模型明确拿掉才消失。每改一次存一版。
+ * 名字由框架按块起（如 t36_1、c1），不进主模型上下文。
+ */
+export interface PageLayout {
+  /** 列宽，如 "1fr 1fr"、"2fr 1fr"。 */
+  columns: string;
+  /** 区域图：每行一串名字，空格分开，"." = 空格子；同一名字占的格子必须是方块。 */
+  areas: string[];
+  blocks: Record<string, ScreenBlockRef>;
 }
 
-/** GET /sessions/:id/screens/:n：那一屏摆好的每一块。 */
-export interface ScreenResponse {
-  n: number;
-  at: string;
-  rows: ResolvedBlock[][];
+/** GET /sessions/:id/screens：现在的页面（布局 + 解好的每一块）；fresh = 这一版新放上去的名字。 */
+export interface LearnPageResponse {
+  v: number;
+  at?: string;
+  columns: string;
+  areas: string[];
+  blocks: Record<string, ResolvedBlock>;
+  fresh: string[];
 }
 
 /** POST /sessions/:id/screens/action：组件发出的一句话。 */

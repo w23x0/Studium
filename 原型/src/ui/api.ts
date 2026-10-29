@@ -67,8 +67,7 @@ import type { PageTrialResult } from '../shared/page.ts';
 import type {
   ComponentActionRequest,
   ComponentErrorRequest,
-  ScreenListResponse,
-  ScreenResponse,
+  LearnPageResponse,
 } from '../shared/screen.ts';
 
 function token(): string {
@@ -140,9 +139,7 @@ export const api = {
     call<LoopRelationsResponse>(`/projects/${mainId}/loop-relations`),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
   // ── 学习页：屏幕与组件（会话/学习对话.md §11） ──
-  screens: (loopId: string) => call<ScreenListResponse>(`/sessions/${loopId}/screens`),
-  screen: (loopId: string, n: number) =>
-    call<ScreenResponse>(`/sessions/${loopId}/screens/${String(n)}`),
+  learnPage: (loopId: string) => call<LearnPageResponse>(`/sessions/${loopId}/screens`),
   screenAction: (loopId: string, body: ComponentActionRequest) =>
     call<object>(`/sessions/${loopId}/screens/action`, {
       method: 'POST',

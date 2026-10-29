@@ -17,7 +17,7 @@ import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button
 import { useSpeech } from '@/hooks/use-speech';
 import { hasMath, insertFormula, needsSmallerCopy, scaledSize } from '@/input-model';
 import { cn } from '@/lib/utils';
-import type { PickedFile } from '@/components/project-materials';
+import type { PickedFile } from '@/files';
 import { W } from '@/wording';
 import {
   IMAGE_MIME_TYPES,

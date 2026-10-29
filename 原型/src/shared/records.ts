@@ -585,7 +585,8 @@ export type LogRecord =
   | ComponentAction
   | ComponentReport
   | ComponentError
-  | ScreenNote;
+  | ScreenNote
+  | LayoutChanged;
 
 /** 主模型派出的子代理开始了（框架自带的子代理机制，后台跑；会话/页面子代理.md）。 */
 export interface SubagentStarted {
@@ -614,7 +615,7 @@ export interface SubagentResult {
 // ───────────── 屏幕（W10，会话/学习对话.md §11；块与清单的形状在 screen.ts）─────────────
 
 /**
- * 第 n 屏：主模型一轮输出完、框架摆好的一屏。只记清单指纹，内容在 `<数据>/screens/<学习 id>/`。
+ * 旧数据（10-29 起不再产生，改记 layout）：第 n 屏：主模型一轮输出完、框架摆好的一屏。只记清单指纹，内容在 `<数据>/screens/<学习 id>/`。
  * fromLine = 这一轮从正本哪一行之后开始（这轮的输入行；模型自己起的一轮 = 开始前最后一行）。
  */
 export interface ScreenShown {
@@ -629,6 +630,27 @@ export interface ScreenShown {
   model?: string;
   /** 主模型点名拿回的描述各对到了没有（对上的 key 只在程序里用）。 */
   matched?: { desc: string; key?: string }[];
+}
+
+/**
+ * 学习页布局的第 v 版（10-29 起，会话/学习对话.md §11）：主模型一轮输出完，框架照它的布局指令改好的区域图。
+ * 只记布局指纹，布局（PageLayout）与块的内容在 `<数据>/screens/<学习 id>/`。fromLine 同 screen。
+ */
+export interface LayoutChanged {
+  type: 'layout';
+  at: string;
+  v: number;
+  manifest: string;
+  fromLine: number;
+  /** 框架小模型这次花了多久（毫秒）；没调（只把新块接在最下面）就不填。 */
+  ms?: number;
+  model?: string;
+  /** 主模型点名拿回 / 拿掉的描述各对到了没有（对上的名字只在程序里用）。 */
+  matched?: { desc: string; key?: string }[];
+  /** 小模型交回的布局没过检查、打回重来的次数。 */
+  retries?: number;
+  /** 打回后仍不行：保留旧布局、新块接在最下面。 */
+  fallback?: string;
 }
 
 /** 组件换了一版：子代理交上、框架查过（试跑过没有见 trialed）。内容在 `<数据>/screens/<学习 id>/`。 */
