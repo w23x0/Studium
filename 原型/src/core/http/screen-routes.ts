@@ -73,6 +73,12 @@ export async function screenRoute(
     return true;
   }
   if (n === 6 && c === 'trial' && d !== undefined) {
+    // 浏览器先说一声收到了（开始跑），跑完再交结果
+    if (body.received === true) {
+      screens.trialReceived(d);
+      send(res, 200, {});
+      return true;
+    }
     screens.trialResult(d, {
       ok: body.ok === true,
       ...(typeof body.error === 'string' ? { error: body.error.slice(0, 2000) } : {}),

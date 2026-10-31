@@ -96,14 +96,22 @@ export function streamTools(o: StreamToolDeps, loopId: string): ToolSpec[] {
             `组件太大（最多 ${String(MAX_BLOCK_BYTES / 1024)} KB）；大段数据用脚本生成，别写死在里面。`,
           );
         }
-        const records = await o.hub().records(loopId);
-        const page = replayStream(records);
-        const next = applyStreamOp(page, STREAM_TOOLS.put, a, Number.MAX_SAFE_INTEGER);
-        if ('error' in next) return err(next.error);
+        const check = async () =>
+          applyStreamOp(
+            replayStream(await o.hub().records(loopId)),
+            STREAM_TOOLS.put,
+            a,
+            Number.MAX_SAFE_INTEGER,
+          );
+        const first = await check();
+        if ('error' in first) return err(first.error);
         const trial = await o.screens.trial(loopId, [{ id: 'b1', html }]);
         if (trial !== undefined && !trial.ok) {
           return err(`试跑报错：${trial.error ?? '（没说是什么错）'}。这一版没上页面；改了再交。`);
         }
+        // 试跑要等几秒，这期间学习者可能说了话、页面变了：照最新的页面再试一次，和放正本时算的一样
+        const next = await check();
+        if ('error' in next) return err(`试跑期间页面变了：${next.error}`);
         // 组件的每一版照样记进事件记录（按块按指纹存一份，同区域图那边的组件）
         const hash = await o.store.putBlock(loopId, html);
         const m: ComponentManifest = { blocks: [{ id: 'b1', hash, summary: name }] };

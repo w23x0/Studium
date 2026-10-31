@@ -153,7 +153,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(body),
     }),
-  screenTrial: (loopId: string, trialId: string, body: PageTrialResult) =>
+  screenTrial: (loopId: string, trialId: string, body: PageTrialResult | { received: true }) =>
     call<object>(`/sessions/${loopId}/screens/trial/${trialId}`, {
       method: 'POST',
       body: JSON.stringify(body),

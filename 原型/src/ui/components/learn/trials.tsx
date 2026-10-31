@@ -17,6 +17,10 @@ export function PageTrials() {
       api.events((e) => {
         if (e.type !== 'page_trial') return;
         const html = componentDoc(e.blocks, location.origin);
+        // 先说一声收到了：核心据此知道有人开着界面，再等试跑结果；没人应它就不等了
+        api.screenTrial(e.sessionId, e.trialId, { received: true }).catch((err: unknown) => {
+          console.error('试跑收到的回话没交上：', err);
+        });
         setTrials((ts) => [...ts, { loopId: e.sessionId, trialId: e.trialId, html }]);
       }),
     [],

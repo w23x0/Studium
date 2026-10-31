@@ -42,8 +42,10 @@ export const ARRANGE_TOOL = 'arrange_screen';
 const MERGE_MS = 4000;
 /** 小模型交回的布局没过检查时，最多再让它交几次。 */
 const RETRIES = 1;
-/** 试跑等浏览器回话最多这么久；没人开着学习页就不等了，直接上（标“没试跑”）。 */
-const TRIAL_WAIT_MS = 20_000;
+/** 试跑先等浏览器说一声收到了：这么久没人应 = 没开着界面（或手机切到后台），不等了，直接上（标“没试跑”）。 */
+const TRIAL_ACK_MS = 3000;
+/** 浏览器收到之后，等它交回试跑结果最多这么久（浏览器那边 8 秒没加载完自己算没过）。 */
+const TRIAL_WAIT_MS = 15_000;
 
 export interface ScreensDeps {
   hub: () => Hub;
@@ -71,7 +73,10 @@ export class Screens {
       timer: NodeJS.Timeout;
     }
   >();
-  private readonly trials = new Map<string, (r: PageTrialResult) => void>();
+  private readonly trials = new Map<
+    string,
+    { received: () => void; done: (r: PageTrialResult) => void }
+  >();
 
   constructor(private readonly o: ScreensDeps) {}
 
@@ -583,22 +588,34 @@ export class Screens {
   ): Promise<PageTrialResult | undefined> {
     const trialId = this.o.newId('trial');
     return new Promise((resolve) => {
-      const timer = setTimeout(() => {
+      const giveUp = () => {
         this.trials.delete(trialId);
         resolve(undefined);
-      }, TRIAL_WAIT_MS);
-      this.trials.set(trialId, (r) => {
-        clearTimeout(timer);
-        this.trials.delete(trialId);
-        resolve(r);
+      };
+      let timer = setTimeout(giveUp, TRIAL_ACK_MS);
+      this.trials.set(trialId, {
+        received: () => {
+          clearTimeout(timer);
+          timer = setTimeout(giveUp, TRIAL_WAIT_MS);
+        },
+        done: (r) => {
+          clearTimeout(timer);
+          this.trials.delete(trialId);
+          resolve(r);
+        },
       });
       this.hub.broadcast({ type: 'page_trial', sessionId: loopId, trialId, blocks });
     });
   }
 
+  /** 浏览器说收到了要试跑的组件（开始跑）。 */
+  trialReceived(trialId: string): void {
+    this.trials.get(trialId)?.received();
+  }
+
   /** 浏览器交回试跑结果（几个标签页都开着时，先到的算）。 */
   trialResult(trialId: string, r: PageTrialResult): void {
-    this.trials.get(trialId)?.(r);
+    this.trials.get(trialId)?.done(r);
   }
 
   // ───────────── 每轮附给主模型的 ─────────────

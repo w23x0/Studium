@@ -57,17 +57,22 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
       ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [markKey]);
 
-  // 选中页面上一段文字：记成“第几行里的这段”（出自哪块由块上的 data-line 认）
-  const onSelect = () => {
+  // 选中页面上一段文字：记成“第几行里的这段”（出自哪块由块上的 data-line 认）。听选区变化而不是松开鼠标：
+  // 手机上长按选字不出 mouseup。点进输入框、发送后清掉选区时选区是空的，引用条照旧留着（有 × 可去掉）
+  useEffect(() => {
     if (!live) return;
-    const sel = window.getSelection();
-    const text = sel?.toString().trim() ?? '';
-    if (sel === null || text === '' || sel.anchorNode === null) return;
-    const el = sel.anchorNode instanceof Element ? sel.anchorNode : sel.anchorNode.parentElement;
-    const host = el?.closest<HTMLElement>('[data-line]');
-    if (host === null || host === undefined || !scroller.current?.contains(host)) return;
-    setQuote({ line: Number(host.dataset.line), text: text.slice(0, 2000) });
-  };
+    const onSelect = () => {
+      const sel = window.getSelection();
+      const text = sel?.toString().trim() ?? '';
+      if (sel === null || text === '' || sel.anchorNode === null) return;
+      const el = sel.anchorNode instanceof Element ? sel.anchorNode : sel.anchorNode.parentElement;
+      const host = el?.closest<HTMLElement>('[data-line]');
+      if (host === null || host === undefined || !scroller.current?.contains(host)) return;
+      setQuote({ line: Number(host.dataset.line), text: text.slice(0, 2000) });
+    };
+    document.addEventListener('selectionchange', onSelect);
+    return () => document.removeEventListener('selectionchange', onSelect);
+  }, [live]);
   const focusComposer = () =>
     document.querySelector<HTMLTextAreaElement>('[data-testid="learn-composer"] textarea')?.focus();
 
@@ -97,7 +102,7 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
             {side.stageCheck === true && <StageCheckBanner />}
           </div>
         </div>
-        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto" onMouseUp={onSelect}>
+        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
           <div
             className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 py-4"
             data-testid="learn-stream"
