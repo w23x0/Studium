@@ -2,7 +2,7 @@
 // 主模型一轮输出完，框架把这一轮新写的块放上页面：没给布局指令就接在最下面；给了就交框架小模型照指令改布局
 // （拿回、拿掉、挪），检查过了才换上，存成新一版、记正本。放上去的块一直在，主模型说拿掉才拿掉（10-29 起，取代每轮一屏）。
 // 这里还管：解页面给界面、学习者在组件上的操作（攒着 / 等回应立刻推 / 先回做它的子代理）、每轮附给主模型的事、
-// 组件在浏览器里试跑、守卫读的页面文字。块的名字、组件编号、版本号只在程序里用，不进主模型上下文。
+// 组件在浏览器里试跑。块的名字、组件编号、版本号只在程序里用，不进主模型上下文。
 import type {
   ActionTarget,
   ComponentManifest,
@@ -14,7 +14,6 @@ import type {
 } from '../../shared/screen.ts';
 import type { PageTrialResult } from '../../shared/page.ts';
 import type { ComponentVersion, LogRecord, NumberedRecord } from '../../shared/records.ts';
-import { replayStream, streamPageText } from '../../shared/stream-page.ts';
 import { localMinute } from '../../shared/time.ts';
 import type { Hub } from '../hub.ts';
 import {
@@ -227,7 +226,7 @@ export class Screens {
 
   /**
    * 可点名的旧块：主模型写过的、学习者说过的、子代理交回的、组件（最新版）、还在做的组件，
-   * 加上程序推来的开场与收尾记录（守卫交回之后才有）；按时间先后。
+   * 加上程序推来的开场与收尾那一句（旧数据：守卫交回的收尾记录）；按时间先后。
    */
   private async candidates(
     loopId: string,
@@ -268,7 +267,20 @@ export class Screens {
           line,
         });
       }
-      // 收尾记录：守卫交回了的才算（没交回的 problem 那条不是收尾记录）
+      // 收尾那一句：学习对话调 request_close 写的（10-31 起）
+      if (r.type === 'close_requested' && r.summary !== undefined && r.summary.trim() !== '') {
+        out.push({
+          ref: {
+            kind: 'closing',
+            key: `v${String(line)}`,
+            pointer: gist('收尾那一句：', r.summary),
+            line,
+          },
+          at: r.at,
+          line,
+        });
+      }
+      // 旧数据：守卫交回了的收尾记录（没交回的 problem 那条不是收尾记录）
       if (r.type === 'guard_verdict' && r.problem === undefined) {
         out.push({
           ref: {
@@ -437,9 +449,18 @@ export class Screens {
         const ticket = first?.type === 'session_opened' ? first.ticket : undefined;
         return { ...base, kind: 'opening', ...(ticket !== undefined ? { ticket } : {}) };
       }
-      case 'closing':
-        // 整理的内容由界面按这一行取（同“看整理的内容”那份）
-        return { ...base, kind: 'closing', verdictLine: b.line };
+      case 'closing': {
+        // 收尾那一句直接给；旧数据的守卫收尾记录由界面按这一行取（同“看整理的内容”那份）
+        const r = at(b.line);
+        return {
+          ...base,
+          kind: 'closing',
+          line: b.line,
+          ...(r?.type === 'close_requested' && r.summary !== undefined
+            ? { summary: r.summary }
+            : {}),
+        };
+      }
       case 'component':
       case 'pending': {
         const v = versionAt(records, b, until);
@@ -661,33 +682,6 @@ export class Screens {
         return [];
       })
       .join('\n');
-  }
-
-  /** 守卫读的页面（W10 §9 第 6 条过渡）：现在页面上组件的一句话与可见文字。 */
-  async textForGuard(loopId: string): Promise<string | undefined> {
-    if ((await this.hub.opened(loopId)).page === 'stream') {
-      const page = replayStream(await this.hub.records(loopId));
-      return [
-        '学习者收尾时的页面（从上到下；组件只给名字和上面的文字）：',
-        streamPageText(page, {
-          withOff: false,
-          component: (html) => visibleText(html).slice(0, 1500),
-        }),
-      ].join('\n');
-    }
-    const p = await this.page(loopId);
-    const comps = Object.values(p.blocks).flatMap((b) => (b.kind === 'component' ? [b] : []));
-    if (comps.length === 0) return undefined;
-    return [
-      '学习者页面上的组件（每个：一句话、组件上的文字）：',
-      ...comps.map(
-        (c) =>
-          `- ${c.pointer}：${c.blocks
-            .map((b) => visibleText(b.html))
-            .join(' ')
-            .slice(0, 1500)}`,
-      ),
-    ].join('\n');
   }
 }
 

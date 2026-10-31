@@ -1,6 +1,6 @@
 // 对话原文 → 给模型读的带行号文本（00 原则 8）。行号 = 正本 JSONL 的行号，引用只写行号。
-// 只放对话本身（学习者、教学、程序推的事、子代理交回）与学习者在组件上的操作；沙盒动作、工具调用、原始消息不放
-// （守卫不读教学侧推理）。块编号、组件编号、版本号不进（会话/学习对话.md §11.2 主模型行）。
+// 只放对话本身（学习者、教学、程序推的事、子代理交回）与学习者在组件上的操作；沙盒动作、工具调用、原始消息不放。
+// 块编号、组件编号、版本号不进（会话/学习对话.md §11.2 主模型行）。
 import type { PageAction } from '../shared/page.ts';
 import type { LogRecord, NumberedRecord } from '../shared/records.ts';
 import { quotePrefix } from '../shared/stream-page.ts';
@@ -63,27 +63,7 @@ function speech(r: LogRecord): { who: string; text: string } | undefined {
   }
 }
 
-/**
- * 守卫读的那份：按“谁做的”过滤（会话/守卫.md §2「开场给」、记录/对话与事件记录.md §3）——
- * 只留双方对话（学习者的话 + 给学习者的话）；单子另给。
- * 不进守卫的：程序事实（开场交付与中途推来的事实是给学习对话的，学习者没看到，开场里还有沙盒路径）、
- * 沙盒动作、原始消息、工具调用。
- */
-export function guardView(records: NumberedRecord[]): string {
-  return renderTranscript(
-    records.filter(
-      (r) =>
-        r.record.type === 'user_message' ||
-        r.record.type === 'assistant_message' ||
-        r.record.type === 'component_action' ||
-        r.record.type === 'page_actions' ||
-        r.record.type === 'page_rollback' ||
-        (r.record.type === 'page_version' && r.record.by === 'editor'),
-    ),
-  );
-}
-
-/** 行号是不是学习者自己说的话或在组件 / 旧页面上做的事（守卫引用的证据只认这种行）。 */
+/** 行号是不是学习者自己说的话或在组件 / 旧页面上做的事（引用学习者的证据只认这种行）。 */
 export function learnerLines(records: NumberedRecord[]): Set<number> {
   return new Set(
     records

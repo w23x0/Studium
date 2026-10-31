@@ -36,7 +36,7 @@ const KIND_LABEL: Record<ScreenBlockRef['kind'], string> = {
   component: '组件',
   pending: '正在做的组件',
   opening: '开场（程序推来的）',
-  closing: '收尾记录（程序推来的）',
+  closing: '收尾那一句（旧数据是守卫的收尾记录）',
 };
 
 function kindLabel(b: ScreenBlockRef): string {

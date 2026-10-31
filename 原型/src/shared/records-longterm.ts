@@ -9,7 +9,7 @@ export interface Revisit {
   kind: RevisitKind;
   /** 回看的是哪次学习（学习会话 id）。 */
   ofLoop: string;
-  /** 那次学习里守卫判定所在的行号；没给 = 只看那次的单子与判定，不点具体某一行。 */
+  /** 旧数据：那次学习里守卫判定所在的行号（10-31 起导航不再填）；没给 = 只看那次的单子与判定，不点具体某一行。 */
   verdictLine?: number;
 }
 

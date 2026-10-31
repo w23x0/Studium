@@ -1,5 +1,5 @@
 // “我学会的”：按学习列（记录/学过的记录.md「分层」）——每次学习一行（标题、状态、时间），最新的在前；
-// 点开看上层（单子、没合上的结束原话与路线决定）与中层（守卫的收尾记录：理解逐条 + 证据强度 + 模型），
+// 点开看上层（单子、没合上的结束原话与路线决定）与中层（收尾那一句；旧数据是守卫的收尾记录：理解逐条 + 证据强度 + 模型），
 // 可跳到那次对话的原文；外部导入单列、标“未验证”。另有“没按推荐走的时候”（路线偏差）。
 import { useState } from 'react';
 import { ChevronDownIcon, ChevronRightIcon } from 'lucide-react';
@@ -125,8 +125,18 @@ function LearnedDetailView(props: { learning: Learning; projectId: string | unde
           </Field>
         )}
       </Section>
+      {d.closing !== undefined && (
+        <Section title={W.learnedMiddle}>
+          <Field label={W.closingByModel}>
+            <span className="flex flex-col gap-1">
+              <span className="whitespace-pre-wrap">{d.closing.summary}</span>
+              <JumpButton jump={d.closing.jump} label={W.jumpTo} />
+            </span>
+          </Field>
+        </Section>
+      )}
       {d.middle !== undefined && (
-        <Section title={W.learnedMiddle} hint={W.understandingHint}>
+        <Section title={`${W.learnedMiddle}（${W.oldRecord}）`} hint={W.understandingHint}>
           <Field label={W.whyJudged}>
             <span className="flex flex-col gap-1">
               <span>{d.middle.basis}</span>

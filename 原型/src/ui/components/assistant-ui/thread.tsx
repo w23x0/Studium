@@ -30,7 +30,7 @@ interface MessageMeta {
   line?: number;
   lines?: number[];
   link?: UiLink;
-  verdict?: { closed: boolean };
+  verdict?: { closed: boolean; said?: true };
   objection?: { toLine: number; label: string };
   images?: string[];
   candidates?: CandidatesView;
@@ -265,12 +265,12 @@ const SystemMessage: FC = () => {
           type="button"
           data-testid="judgement"
           className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm"
-          onClick={() => panel.show({ kind: 'loop', loopId: sessionId, verdictLine: line })}
+          onClick={() => panel.show({ kind: 'loop', loopId: sessionId, focusLine: line })}
         >
           <span className="bg-border h-px w-4" />
           {text}
           <span className="text-primary flex items-center text-xs opacity-80 group-hover:opacity-100">
-            {W.whyJudged}
+            {verdict.said === true ? W.seeClosingSaid : W.whyJudged}
             <ChevronRightIcon className="size-3.5" />
           </span>
         </button>

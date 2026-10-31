@@ -22,10 +22,11 @@ const PROFILE_KEYS: readonly string[] = [...CONVERSATION_KINDS, ...EXTRA_PROFILE
 export type Profiles = Partial<Record<ProfileKey, Profile>>;
 
 /**
- * 默认：主对话低强度；找资料中等；畅谈、学习对话、守卫、导航、检索子代理、状态整理高强度；教法记录整理没规定，不设；
+ * 默认：主对话低强度；找资料中等；畅谈、学习对话、导航、检索子代理、状态整理高强度；教法记录整理没规定，不设；
  * 学习对话的子代理用 Sonnet、中等强度（会话/页面子代理.md：主对话用 Opus 时子代理用 Opus 或 Sonnet，可选更快的）；
  * 框架小模型用 Haiku 5.5（实现选型「框架小模型」），强度不设（用 SDK 默认）。
- * `editor` 一行留给旧数据（10-26 的页面编辑员会话，不再开）。
+ * `editor` 一行留给旧数据（10-26 的页面编辑员会话，不再开）；`guard` 一行同理（守卫 10-31 起不再开，
+ * STUDIUM_PROFILES 里配了也不报错、不起作用）。
  */
 export const DEFAULT_PROFILES: Profiles = {
   main: { effort: 'low' },

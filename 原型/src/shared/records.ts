@@ -14,7 +14,7 @@ export type * from './records-longterm.ts';
 export type * from './records-cross.ts';
 
 /**
- * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 守卫 · nav 出选择卡（导航）
+ * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 旧数据：守卫（10-31 起不再开）· nav 出选择卡（导航）
  * · retrieve 检索子代理（导航派的）· state 整理学习者状态 · pedagogy 记教法效果 · output 写产出对话
  * · find 找资料（联网列候选，学习者勾了才存）· editor 旧数据：10-26 的页面编辑员（不再开；W10 起学习对话派的子代理不是会话）
  */
@@ -56,7 +56,7 @@ export interface Ticket {
   resumeOf?: string;
   /** 跨领域的单子：补习型 / 对比链接型；同领域内的没有。 */
   crossDomain?: CrossDomain;
-  /** 阶段验收（批 9）：这次学习里的练习都标阶段验收、默认不给提示；守卫照常判。没有 = 日常学习。 */
+  /** 阶段验收（批 9）：这次学习里的练习都标阶段验收、默认不给提示。没有 = 日常学习。 */
   stageCheck?: boolean;
 }
 
@@ -66,7 +66,7 @@ export interface SessionOpened {
   sessionId: string;
   kind: ConversationKind;
   title: string;
-  /** 从哪个会话开出来的（学习对话 → 主对话；守卫 → 学习对话）。 */
+  /** 从哪个会话开出来的（学习对话 → 主对话；旧数据：守卫 → 学习对话）。 */
   parent?: string;
   ticket?: Ticket;
   /** 挂在父会话的哪一行下（畅谈对话 → 主对话里那条学习者消息）。 */
@@ -211,7 +211,13 @@ export interface CloseRequested {
   type: 'close_requested';
   at: string;
   by: 'model' | 'learner';
+  /** 模型申请时的理由（10-31 起可空；学习者申请时是程序代写的一句）。 */
   reason: string;
+  /**
+   * 收尾那一句（10-31 起，取代守卫）：学习对话调 request_close 时写的——这次做了什么、停在哪。
+   * 只有模型申请时有；学习者点“我觉得懂了”的那条没有。旧行没有这一项。
+   */
+  summary?: string;
 }
 
 /** 一条证据的独立程度：独立完成 / 提示后完成 / 答案暴露后。 */
@@ -232,7 +238,7 @@ export interface Understanding {
   durability: (typeof DURABILITY)[number];
 }
 
-/** 守卫判定，程序已核对引用行。 */
+/** 旧数据：守卫判定，程序已核对引用行（10-31 起不再产生，收尾由学习对话写 close_requested.summary）。 */
 export interface GuardVerdict {
   type: 'guard_verdict';
   at: string;
@@ -823,7 +829,7 @@ export interface PageError {
   message: string;
 }
 
-/** 学习者异议指向什么：守卫的一次判定（学习会话 + 判定所在行），或教法记录 / 状态记录的一条（记录 id）。 */
+/** 学习者异议指向什么：守卫的一次判定（旧数据，学习会话 + 判定所在行），或教法记录 / 状态记录的一条（记录 id）。 */
 export type ObjectionTarget =
   | { kind: 'guard_verdict'; loopSessionId: string; line: number }
   | { kind: 'pedagogy' | 'state'; recordId: string };

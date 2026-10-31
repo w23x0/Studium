@@ -33,7 +33,7 @@ export interface SessionSummary {
 
 /**
  * 派生层记下的对话状态（只记事实，不分组）：
- * guarded 守卫交回、等学习者点“学完了” · closed / unclosed 学习合上 / 没合上就结束 · shelved 学习停着 ·
+ * guarded 收尾那一句到了（旧数据：守卫交回）、等学习者点“学完了” · closed / unclosed 学习合上 / 没合上就结束 · shelved 学习停着 ·
  * candidates 找资料交回候选、等学习者勾 · ended 谈方向谈定、找资料勾完、导航定了单子。
  */
 export type SessionMark = 'guarded' | 'closed' | 'unclosed' | 'shelved' | 'candidates' | 'ended';
@@ -212,6 +212,19 @@ export interface RouteDecisionView {
   superseded: boolean;
 }
 
+/** 收尾那一句（10-31 起取代守卫判定）：学习对话调 request_close 写的。 */
+export interface ClosingView {
+  /** 那条 close_requested 在学习正本里的行号。 */
+  line: number;
+  at: string;
+  summary: string;
+  /** 模型申请时写的理由（可没有）。 */
+  reason?: string;
+  /** 这一句之前学习者点过“我觉得懂了”（那条 close_requested 的行号）。 */
+  learnerAsked?: number;
+}
+
+/** 旧数据：守卫判定（10-31 起不再产生）。 */
 export interface GuardVerdictView {
   /** 判定在那次学习正本里的行号（异议指向它）。 */
   line: number;
@@ -254,6 +267,9 @@ export interface LoopEvidence {
   routeDecision?: RouteDecisionView;
   /** 学习对话（教学侧）用的模型。 */
   model: ModelInfo;
+  /** 收尾那一句，按行号升序（10-31 起）。 */
+  closings: ClosingView[];
+  /** 旧数据：守卫判定。 */
   verdicts: GuardVerdictView[];
   /** 这次学习取用过的教学工具（按取用顺序，含重复取用）。 */
   teachingToolsUsed: TeachingToolUseView[];
@@ -270,7 +286,7 @@ export interface LoopBrief {
   endedAt?: string;
   status: LoopStatus;
   newPoint?: PointRef;
-  /** 最近一次守卫判定。 */
+  /** 旧数据：最近一次守卫判定（10-31 起不再产生）。 */
   lastVerdict?: { closed: boolean; line: number };
   /** 搁置着（status 仍是 in_progress）。 */
   shelved?: { at: string; note: string };
@@ -516,7 +532,7 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   main: '项目主对话',
   talk: '谈方向',
   loop: '学习对话',
-  guard: '守卫（写收尾记录）',
+  guard: '守卫（旧数据）',
   nav: '导航',
   retrieve: '检索子代理',
   state: '状态整理',

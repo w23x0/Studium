@@ -1,6 +1,6 @@
 // 竖流学习页（10-29 #74 试验，与区域图并存）：主模型一个人管页面。页面不另存，从正本放一遍算出来——
 // 开场在最上面，主模型的每条话、学习者的每句话按时间接在最下面；主模型调页面工具（改、拿掉、挪、拿回、交组件）
-// 成功的那次 tool_call 照做。核心（工具、守卫）与界面都用这里的纯函数，算出来的一样。
+// 成功的那次 tool_call 照做。核心（工具）与界面都用这里的纯函数，算出来的一样。
 // 改法照 Claude Code 的 Edit：按一段原文替换，原文在页面上必须唯一。
 import type { MessageQuote, NumberedRecord, Ticket } from './records.ts';
 
@@ -274,7 +274,7 @@ function splice(on: StreamBlock[], at: number, b: StreamBlock): StreamBlock[] {
   return [...on.slice(0, at), b, ...on.slice(at)];
 }
 
-/** 给模型看的页面（read_page）与守卫读的页面：每块一个头，正文照原样；末尾列拿掉的（能拿回）。 */
+/** 给模型看的页面（read_page）：每块一个头，正文照原样；末尾列拿掉的（能拿回）。 */
 export function streamPageText(
   page: StreamPage,
   opts: { withOff?: boolean; component?: (html: string) => string } = {},

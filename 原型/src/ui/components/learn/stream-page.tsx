@@ -2,7 +2,7 @@
 // 从上往下一列：开场、主模型的话、学习者的话、主模型写的组件。学习者上次说话之后主模型新放、改过、挪过、拿回的块标出来。
 // 学习者选中页面上一段文字（或点组件上方的名字）再说话，输入框上方出现引用条，发送时带上；块下面不挂回话处。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { ChevronRightIcon, LoaderIcon, QuoteIcon, XIcon } from 'lucide-react';
+import { LoaderIcon, QuoteIcon, XIcon } from 'lucide-react';
 import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
 import { InputComposer } from '@/components/input/composer';
 import { MathPreview } from '@/components/input/math-preview';
@@ -14,7 +14,7 @@ import {
   type StreamMark,
 } from '../../../shared/stream-page.ts';
 import { api } from '../../api.ts';
-import { CurrentSessionContext, usePanel } from '../../panel.ts';
+import { CurrentSessionContext } from '../../panel.ts';
 import { closeLine } from '../../screen-model.ts';
 import { loopSide, loopState } from '../../thread-model.ts';
 import { W } from '../../wording.ts';
@@ -24,7 +24,13 @@ import { StageCheckBanner } from '../stage-check.tsx';
 import { TopBar } from '../top-bar.tsx';
 import { ComponentFrame } from './component-frame.tsx';
 import type { LearnPageProps, LearnStream } from './learn-page.tsx';
-import { currentTicket, LoopBar, TicketDetails, TicketStrip } from './loop-parts.tsx';
+import {
+  CloseLineView,
+  currentTicket,
+  LoopBar,
+  TicketDetails,
+  TicketStrip,
+} from './loop-parts.tsx';
 
 export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
   const { sessionId, onError, titleOf } = props;
@@ -41,7 +47,6 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
   const side = useMemo(() => loopSide(records), [records]);
   const ticket = useMemo(() => currentTicket(records), [records]);
   const close = useMemo(() => closeLine(records), [records]);
-  const panel = usePanel();
   const [quote, setQuote] = useState<MessageQuote | undefined>(undefined);
   const scroller = useRef<HTMLDivElement>(null);
 
@@ -124,32 +129,7 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
                 onError={onError}
               />
             ))}
-            {close?.kind === 'closing' && (
-              <p
-                className="text-muted-foreground flex items-center gap-2 text-sm"
-                data-testid="closing-line"
-              >
-                <LoaderIcon className="size-3.5 animate-spin" />
-                {WP.closing}
-              </p>
-            )}
-            {close?.kind === 'done' && (
-              <button
-                type="button"
-                data-testid="judgement"
-                className="text-muted-foreground hover:text-foreground group flex items-center gap-2 self-start text-sm"
-                onClick={() =>
-                  panel.show({ kind: 'loop', loopId: sessionId, verdictLine: close.verdictLine })
-                }
-              >
-                <span className="bg-border h-px w-4" />
-                {WP.closed}
-                <span className="text-primary flex items-center text-xs opacity-80 group-hover:opacity-100">
-                  {WP.seeClosed}
-                  <ChevronRightIcon className="size-3.5" />
-                </span>
-              </button>
-            )}
+            <CloseLineView sessionId={sessionId} close={close} />
             {!running && failed !== undefined && (
               <p className="text-destructive text-sm" data-testid="learn-failed">
                 {WP.failed(failed.notice)}

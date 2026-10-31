@@ -12,14 +12,14 @@ import {
   type CSSProperties,
   type ReactNode,
 } from 'react';
-import { ChevronRightIcon, LoaderIcon, ReplyIcon, XIcon } from 'lucide-react';
+import { LoaderIcon, ReplyIcon, XIcon } from 'lucide-react';
 import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
 import { InputComposer } from '@/components/input/composer';
 import { MathPreview } from '@/components/input/math-preview';
 import type { NumberedRecord } from '../../../shared/records.ts';
 import type { LearnPageResponse, ResolvedBlock } from '../../../shared/screen.ts';
 import { api } from '../../api.ts';
-import { CurrentSessionContext, usePanel } from '../../panel.ts';
+import { CurrentSessionContext } from '../../panel.ts';
 import { closeLine, failedSinceScreen, justSaid, screenRefreshKey } from '../../screen-model.ts';
 import { loopSide, loopState } from '../../thread-model.ts';
 import { W } from '../../wording.ts';
@@ -31,7 +31,13 @@ import { ComponentFrame } from './component-frame.tsx';
 import { useLoad } from '../../hooks/use-load.ts';
 import { VerdictBody } from '../evidence/loop-view.tsx';
 import { Loading } from '../evidence/parts.tsx';
-import { currentTicket, LoopBar, TicketDetails, TicketStrip } from './loop-parts.tsx';
+import {
+  CloseLineView,
+  currentTicket,
+  LoopBar,
+  TicketDetails,
+  TicketStrip,
+} from './loop-parts.tsx';
 import { StreamPage } from './stream-page.tsx';
 
 export interface LearnPageProps {
@@ -109,7 +115,6 @@ function GridPage(props: LearnPageProps & { stream: LearnStream }) {
   const ticket = useMemo(() => currentTicket(records), [records]);
   const said = useMemo(() => justSaid(records), [records]);
   const close = useMemo(() => closeLine(records), [records]);
-  const panel = usePanel();
   const reply = useCallback((b: { key: string; pointer: string }) => {
     setReplyTo(b);
     document.querySelector<HTMLTextAreaElement>('[data-testid="learn-composer"] textarea')?.focus();
@@ -174,32 +179,7 @@ function GridPage(props: LearnPageProps & { stream: LearnStream }) {
                 </div>
               </div>
             ))}
-            {close?.kind === 'closing' && (
-              <p
-                className="text-muted-foreground flex items-center gap-2 text-sm"
-                data-testid="closing-line"
-              >
-                <LoaderIcon className="size-3.5 animate-spin" />
-                {WP.closing}
-              </p>
-            )}
-            {close?.kind === 'done' && (
-              <button
-                type="button"
-                data-testid="judgement"
-                className="text-muted-foreground hover:text-foreground group flex items-center gap-2 self-start text-sm"
-                onClick={() =>
-                  panel.show({ kind: 'loop', loopId: sessionId, verdictLine: close.verdictLine })
-                }
-              >
-                <span className="bg-border h-px w-4" />
-                {WP.closed}
-                <span className="text-primary flex items-center text-xs opacity-80 group-hover:opacity-100">
-                  {WP.seeClosed}
-                  <ChevronRightIcon className="size-3.5" />
-                </span>
-              </button>
-            )}
+            <CloseLineView sessionId={sessionId} close={close} />
             {!running && failed !== undefined && (
               <p className="text-destructive text-sm" data-testid="learn-failed">
                 {WP.failed(failed.notice)}
@@ -350,7 +330,15 @@ function Block(props: {
       );
       break;
     case 'closing':
-      body = <ClosingBlock loopId={props.loopId} verdictLine={b.verdictLine} />;
+      body =
+        b.summary !== undefined ? (
+          <div className="bg-muted/50 flex flex-col gap-1.5 rounded-lg px-3 py-2 text-sm">
+            <div className="text-muted-foreground text-xs">{WP.closingBlock}</div>
+            <div className="whitespace-pre-wrap">{b.summary}</div>
+          </div>
+        ) : (
+          <OldClosingBlock loopId={props.loopId} line={b.line} />
+        );
       break;
     case 'pending':
       body = (
@@ -381,13 +369,13 @@ function Block(props: {
   );
 }
 
-/** 点名拿回的收尾记录：整理的内容，同“看整理的内容”点开那份（依据面板的判定卡里那几项）。 */
-function ClosingBlock(props: { loopId: string; verdictLine: number }) {
+/** 旧数据：点名拿回的守卫收尾记录，整理的内容同“看整理的内容”点开那份（依据面板的判定卡里那几项）。 */
+function OldClosingBlock(props: { loopId: string; line: number }) {
   const r = useLoad(`loop:${props.loopId}`, () => api.loopEvidence(props.loopId));
-  const v = r.data?.loop.verdicts.find((x) => x.line === props.verdictLine);
+  const v = r.data?.loop.verdicts.find((x) => x.line === props.line);
   return (
     <div className="bg-muted/50 flex flex-col gap-3 rounded-lg px-3 py-2 text-sm">
-      <div className="text-muted-foreground text-xs">{WP.closingBlock}</div>
+      <div className="text-muted-foreground text-xs">{WP.oldClosingBlock}</div>
       {v !== undefined ? (
         <VerdictBody sessionId={props.loopId} verdict={v} />
       ) : (

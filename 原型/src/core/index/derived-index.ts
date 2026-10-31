@@ -202,19 +202,22 @@ function createSchema(db: DatabaseSync): void {
 }
 
 /**
- * 会改对话状态的记录 → 记号；null = 回到进行中（停着的学习又接上、又申请收口在整理、结束的讨论串又重开）。
+ * 会改对话状态的记录 → 记号；null = 回到进行中（停着的学习又接上、学习者点了“我觉得懂了”、结束的讨论串又重开）。
  * 别的记录不动记号。
  */
 function markOf(r: LogRecord): SessionMark | null | undefined {
   switch (r.type) {
     case 'guard_verdict':
+      // 旧数据：守卫写好收尾记录，等学习者确认
       return 'guarded';
+    case 'close_requested':
+      // 收尾那一句到了（10-31 起，学习对话写的）= 等学习者确认；学习者点“我觉得懂了”那条 = 还在学
+      return r.summary !== undefined && r.summary.trim() !== '' ? 'guarded' : null;
     case 'loop_ended':
       return r.closed ? 'closed' : 'unclosed';
     case 'loop_shelved':
       return 'shelved';
     case 'loop_resumed':
-    case 'close_requested':
       return null;
     case 'talk_ended':
     case 'candidates_picked':

@@ -57,15 +57,14 @@ export interface App {
 /** 全部会话种类（提示词一个种类一份，按这个名单装载）。 */
 const KINDS: readonly ConversationKind[] = CONVERSATION_KINDS;
 
-/** 用证据标准的会话：提示词后面接 prompts/evidence.md。只给守卫：学习对话拿到这把尺子会照着去造证据（10-23）。 */
-const EVIDENCE_KINDS: ConversationKind[] = ['guard'];
+/** 不再开的会话种类：没有自己的提示词文件（守卫 10-31 起不再开，guard.md 与接在它后面的 evidence.md 已删）。 */
+const RETIRED_PROMPT_KINDS: readonly ConversationKind[] = ['guard'];
 
 export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
-  const evidence = await readFile(join(here, 'prompts/evidence.md'), 'utf8');
   const entries = await Promise.all(
     KINDS.map(async (k) => {
-      const own = await readFile(join(here, `prompts/${k}.md`), 'utf8');
-      return [k, EVIDENCE_KINDS.includes(k) ? `${own}\n${evidence}` : own] as const;
+      if (RETIRED_PROMPT_KINDS.includes(k)) return [k, ''] as const;
+      return [k, await readFile(join(here, `prompts/${k}.md`), 'utf8')] as const;
     }),
   );
   return Object.fromEntries(entries) as Record<ConversationKind, string>;

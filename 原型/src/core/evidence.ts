@@ -1,4 +1,4 @@
-// 依据可见：把守卫判定、单子与出处、教法记录 / 状态记录整理成界面能直接读的只读视图。
+// 依据可见：把收尾那一句（旧数据：守卫判定）、单子与出处、教法记录 / 状态记录整理成界面能直接读的只读视图。
 // 只读：不写任何记录；异议的写入在 studium.ts。
 import {
   CONVERSATION_KIND_LABELS,
@@ -13,6 +13,7 @@ import {
   type GoalView,
   type LoopLoad,
   type LoopRelationView,
+  type ClosingView,
   type GuardVerdictView,
   type LoopBrief,
   type LoopEvidence,
@@ -44,8 +45,8 @@ import type { Learned } from './learned.ts';
 import { locate } from './locate.ts';
 import { currentTicket } from './ticket.ts';
 
-/** 旧数据里才有的会话类（10-26 起不再开）：不列进外发披露的模型表。 */
-const RETIRED_KINDS: ConversationKind[] = ['editor'];
+/** 旧数据里才有的会话类（页面编辑员 10-26、守卫 10-31 起不再开）：不列进外发披露的模型表。 */
+const RETIRED_KINDS: ConversationKind[] = ['editor', 'guard'];
 import { foldLoop, LOAD_HEAVY, PARKING_PILE } from './loop-state.ts';
 import type { PedagogyStore } from './knowledge/pedagogy.ts';
 import type { StateStore } from './knowledge/state.ts';
@@ -75,7 +76,7 @@ export interface EvidenceDeps {
 export class Evidence {
   constructor(private readonly d: EvidenceDeps) {}
 
-  // ───────────── 一次学习：守卫判定、单子 ─────────────
+  // ───────────── 一次学习：收尾那一句（旧数据：守卫判定）、单子 ─────────────
 
   async loop(loopId: string): Promise<LoopEvidence> {
     const opened = await this.d.hub.opened(loopId);
@@ -90,6 +91,27 @@ export class Evidence {
         ? await this.loopRouteDecision(recs, opened.parent)
         : undefined;
     const objections = this.loopObjections(loopId, recs);
+    // 收尾那一句（10-31 起）：带 summary 的 close_requested；前面最近一次学习者点“我觉得懂了”的一并带上
+    const closings: ClosingView[] = [];
+    let learnerAsked: number | undefined;
+    for (const r of recs) {
+      if (r.record.type === 'user_message') learnerAsked = undefined;
+      if (r.record.type !== 'close_requested') continue;
+      const c = r.record;
+      if (c.summary === undefined || c.summary.trim() === '') {
+        if (c.by === 'learner') learnerAsked = r.line;
+        continue;
+      }
+      closings.push({
+        line: r.line,
+        at: c.at,
+        summary: c.summary,
+        ...(c.reason.trim() !== '' ? { reason: c.reason } : {}),
+        ...(learnerAsked !== undefined ? { learnerAsked } : {}),
+      });
+      learnerAsked = undefined;
+    }
+    // 旧数据：守卫判定
     const verdicts: GuardVerdictView[] = [];
     for (const r of recs) {
       if (r.record.type !== 'guard_verdict') continue;
@@ -145,6 +167,7 @@ export class Evidence {
       ...(now !== undefined ? { ticket: await this.ticketView(now, this.editViews(recs)) } : {}),
       ...(unclosedDecision !== undefined ? { routeDecision: unclosedDecision } : {}),
       model: await this.d.hub.modelInfo(loopId),
+      closings,
       verdicts,
       teachingToolsUsed: toolUsesOf(recs),
       objections,

@@ -51,6 +51,9 @@ export interface LearnedDetail {
     endNote?: string;
     routeDecision?: { line: number; decision: string; reason: string; jump?: JumpRef };
   };
+  /** 中层：收尾那一句（10-31 起学习对话写的）。 */
+  closing?: { line: number; summary: string; jump: JumpRef };
+  /** 旧数据：中层是通过的守卫判定。 */
   middle?: {
     line: number;
     closed: boolean;
@@ -68,7 +71,7 @@ export interface JumpRef {
   lines: number[];
 }
 
-/** 展开一次学习：上层（单子、没合上的结束原话与路线决定）+ 中层（通过的判定）+ 对话原文入口。 */
+/** 展开一次学习：上层（单子、没合上的结束原话与路线决定）+ 中层（收尾那一句；旧数据是通过的判定）+ 对话原文入口。 */
 export function learnedDetail(l: Learning, projectId?: string): LearnedDetail {
   const rd = l.routeDecision;
   return {
@@ -88,6 +91,15 @@ export function learnedDetail(l: Learning, projectId?: string): LearnedDetail {
           }
         : {}),
     },
+    ...(l.closing !== undefined
+      ? {
+          closing: {
+            line: l.closing.line,
+            summary: l.closing.summary,
+            jump: { sessionId: l.loopId, lines: [l.closing.line] },
+          },
+        }
+      : {}),
     ...(l.verdict !== undefined
       ? {
           middle: {

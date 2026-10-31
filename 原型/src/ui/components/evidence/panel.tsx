@@ -74,7 +74,7 @@ function View(props: { target: PanelTarget }) {
         <LoopView
           key={t.loopId}
           loopId={t.loopId}
-          verdictLine={t.verdictLine}
+          focusLine={t.focusLine}
           editTicket={t.editTicket}
         />
       );

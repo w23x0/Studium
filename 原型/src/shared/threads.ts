@@ -23,7 +23,7 @@ export const REOPENABLE_KINDS: ReadonlySet<ConversationKind> = new Set<Conversat
 
 /** 记号 → 分组；没有记号 = 进行中。 */
 export const GROUP_OF: Record<SessionMark, ThreadGroup> = {
-  guarded: 'waiting', // 守卫整理好了，等学习者点“学完了”或再补一句
+  guarded: 'waiting', // 收尾那一句到了，等学习者点“学完了”或再补一句
   candidates: 'waiting', // 找资料交回候选，等学习者勾
   shelved: 'running', // 学习停着：没结束，点开说句话就接上
   closed: 'ended',

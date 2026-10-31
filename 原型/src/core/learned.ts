@@ -7,6 +7,7 @@ import type { NumberedRecord, Ticket } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import { chatExportToMarkdown } from './knowledge/chat-export.ts';
 import { currentTicket, ticketEdits } from './ticket.ts';
+import { closingOf } from '../shared/closing.ts';
 
 export interface LearnedDeps {
   hub: () => Hub;
@@ -224,7 +225,10 @@ export class Learned {
     };
     if (ended?.record.type === 'loop_ended') {
       if (ended.record.closed) {
-        // 中层：loop_ended 之前最后一条 closed: true 的判定
+        // 中层：loop_ended 之前最后一句收尾那一句（10-31 起）
+        const closing = closingOf(records, ended.line);
+        if (closing !== undefined) out.closing = closing;
+        // 旧数据：loop_ended 之前最后一条 closed: true 的守卫判定
         const passed = records
           .filter((r) => r.line < ended.line && r.record.type === 'guard_verdict')
           .map((r) => ({ line: r.line, v: r.record }))
@@ -334,8 +338,11 @@ export class Learned {
     const start = l.openedAt.slice(0, 10);
     const span = l.endedAt !== undefined ? `${start}–${l.endedAt.slice(0, 10)}` : start;
     const parts = [`${l.loopId}「${l.title}」${l.status}，${span}：${ticketText(l.ticket)}`];
+    if (l.closing !== undefined) {
+      parts.push(`收尾那一句 L${String(l.closing.line)}：${l.closing.summary}`);
+    }
     if (l.verdict !== undefined) {
-      parts.push(`判定 L${String(l.verdict.line)}：${l.verdict.basis}`);
+      parts.push(`旧数据·守卫判定 L${String(l.verdict.line)}：${l.verdict.basis}`);
       const u = l.verdict.understanding
         .map(
           (x) =>

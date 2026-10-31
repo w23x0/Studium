@@ -1,15 +1,60 @@
 // 学习对话两种页面（新的学习页、旧版开的学习对话的消息流）共用的件：顶上的单子、底栏（界面说明 §2.6、§3）。
 import { useState } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, EllipsisIcon } from 'lucide-react';
+import { ChevronDownIcon, ChevronRightIcon, EllipsisIcon, LoaderIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
 import { MathPreview } from '@/components/input/math-preview';
 import type { NumberedRecord, Ticket } from '../../../shared/records.ts';
 import { api } from '../../api.ts';
+import { usePanel } from '../../panel.ts';
+import type { CloseLine } from '../../screen-model.ts';
 import { loopState, type LoopSide } from '../../thread-model.ts';
 import { W } from '../../wording.ts';
 import { WP } from '../../wording-page.ts';
 import { UnclosedEndBar } from '../longterm/loop-extras.tsx';
+
+/**
+ * 学习页底下的收口那一行（两种学习页共用，界面说明 §2.6「收口时」）：在等收尾那一句时转圈“在收尾…”；
+ * 那一句到了就照原样显示它，点开看记录；旧数据（守卫的收尾记录）照旧只说整理好了。
+ */
+export function CloseLineView(props: { sessionId: string; close: CloseLine }) {
+  const panel = usePanel();
+  const close = props.close;
+  if (close === undefined) return null;
+  if (close.kind === 'closing') {
+    return (
+      <p
+        className="text-muted-foreground flex items-center gap-2 text-sm"
+        data-testid="closing-line"
+      >
+        <LoaderIcon className="size-3.5 animate-spin" />
+        {WP.closing}
+      </p>
+    );
+  }
+  return (
+    <button
+      type="button"
+      data-testid="judgement"
+      className="text-muted-foreground hover:text-foreground group flex items-start gap-2 self-start text-left text-sm"
+      onClick={() => panel.show({ kind: 'loop', loopId: props.sessionId, focusLine: close.line })}
+    >
+      <span className="bg-border mt-2.5 h-px w-4 shrink-0" />
+      {close.old === true ? (
+        <span>{WP.closed}</span>
+      ) : (
+        <span className="text-foreground">
+          {WP.closedSaid}
+          {close.summary}
+        </span>
+      )}
+      <span className="text-primary flex shrink-0 items-center text-xs opacity-80 group-hover:opacity-100">
+        {close.old === true ? WP.seeClosed : WP.seeClosedSaid}
+        <ChevronRightIcon className="size-3.5" />
+      </span>
+    </button>
+  );
+}
 
 /** 这次学习现在的单子：开场那张，改过就用最后改成的。 */
 export function currentTicket(records: NumberedRecord[]): Ticket | undefined {

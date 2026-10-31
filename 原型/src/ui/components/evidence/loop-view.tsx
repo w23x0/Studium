@@ -1,7 +1,8 @@
-// 一段学习的依据：单子（按文字逐行，可改）、改过的几行、守卫写的收尾记录（这次学到了什么：理解逐条带证据强度、
-// 理由、原话、不同看法）、老师的观察记录、用到的教法；没合上的另带结束原话与当时的路线决定。
+// 一段学习的依据：单子（按文字逐行，可改）、改过的几行、收尾那一句（学习对话写的；旧数据是守卫写的收尾记录：
+// 理解逐条带证据强度、理由、原话、不同看法）、老师的观察记录、用到的教法；没合上的另带结束原话与当时的路线决定。
 import { useEffect, useRef, useState } from 'react';
 import type {
+  ClosingView,
   GuardVerdictView,
   LoopEvidence,
   SourceView,
@@ -35,30 +36,37 @@ import {
 
 export function LoopView(props: {
   loopId: string;
-  verdictLine?: number | undefined;
+  focusLine?: number | undefined;
   editTicket?: boolean | undefined;
 }) {
-  const { loopId, verdictLine } = props;
+  const { loopId, focusLine } = props;
   const r = useLoad(`loop:${loopId}`, () => api.loopEvidence(loopId));
   const panel = usePanel();
   const loop = r.data?.loop;
-  const focused = loop?.verdicts.find((v) => v.line === verdictLine);
-  const focusLines = focused?.quotes.map((q) => q.line).join(',');
+  // 点进来的是收尾那一句：只在面板里滚到它；旧数据的守卫判定另把依据的原话在对话里标出来
+  const focusedVerdict = loop?.verdicts.find((v) => v.line === focusLine);
+  const focusedClosing = loop?.closings.find((c) => c.line === focusLine);
+  const focusLines =
+    focusedVerdict !== undefined
+      ? focusedVerdict.quotes.map((q) => q.line).join(',')
+      : focusedClosing !== undefined
+        ? ''
+        : undefined;
   const jump = panel.jump;
   const done = useRef('');
 
-  // 从对话里那句提示点进来：把这次判断依据的原话在对话里标出来，面板里滚到这次判断
+  // 从对话里那句提示点进来：面板里滚到这次收尾（旧数据另把依据的原话在对话里标出来）
   useEffect(() => {
-    if (verdictLine === undefined || focusLines === undefined) return;
+    if (focusLine === undefined || focusLines === undefined) return;
     // 每次点进来只标一次（jump 会让外层重绘，不能因此反复触发）
-    const key = `${loopId}:${String(verdictLine)}:${focusLines}`;
+    const key = `${loopId}:${String(focusLine)}:${focusLines}`;
     if (done.current === key) return;
     done.current = key;
     if (focusLines !== '') jump(loopId, focusLines.split(',').map(Number), false);
     document
-      .getElementById(`verdict-${String(verdictLine)}`)
+      .getElementById(`close-${String(focusLine)}`)
       ?.scrollIntoView({ block: 'nearest', behavior: 'smooth' });
-  }, [loopId, verdictLine, focusLines, jump]);
+  }, [loopId, focusLine, focusLines, jump]);
 
   if (!loop) return <Loading error={r.error} />;
   const tools = toolCounts(loop.teachingToolsUsed);
@@ -104,15 +112,18 @@ export function LoopView(props: {
       )}
 
       <Section title={W.judgements}>
-        {loop.verdicts.length === 0 && (
+        {loop.closings.length === 0 && loop.verdicts.length === 0 && (
           <div className="text-muted-foreground text-sm">{W.noJudgements}</div>
         )}
+        {[...loop.closings].reverse().map((c) => (
+          <ClosingCard key={c.line} loopId={loopId} closing={c} active={c.line === focusLine} />
+        ))}
         {[...loop.verdicts].reverse().map((v) => (
           <Verdict
             key={v.line}
             loop={loop}
             verdict={v}
-            active={v.line === verdictLine}
+            active={v.line === focusLine}
             onObjected={r.reload}
           />
         ))}
@@ -381,6 +392,28 @@ function SourceList(props: { sources: SourceView[] }) {
   );
 }
 
+/** 收尾那一句（10-31 起学习对话写的）：原样一句，可跳回对话里那一行；没有判定，也就没有对判定的异议。 */
+function ClosingCard(props: { loopId: string; closing: ClosingView; active: boolean }) {
+  const c = props.closing;
+  return (
+    <Card id={`close-${String(c.line)}`} active={props.active} className="flex flex-col gap-3">
+      <div className="flex items-center justify-between gap-2">
+        <Badge tone="good">{W.closingByModel}</Badge>
+        <Time at={c.at} />
+      </div>
+      {c.learnerAsked !== undefined && (
+        <div className="text-muted-foreground text-xs">{W.closingAsked}</div>
+      )}
+      <div className="text-sm whitespace-pre-wrap">{c.summary}</div>
+      {c.reason !== undefined && <Field label={W.closingWhy}>{c.reason}</Field>}
+      <span>
+        <JumpLine loopId={props.loopId} line={c.line} label={W.jumpTo} />
+      </span>
+    </Card>
+  );
+}
+
+/** 旧数据：守卫写的收尾记录（10-31 起不再产生）；对它的异议只在这里提。 */
 function Verdict(props: {
   loop: LoopEvidence;
   verdict: GuardVerdictView;
@@ -391,9 +424,12 @@ function Verdict(props: {
   // 守卫 10-23 起不把关：只分整理成了没有（10-23 前判“没合上”的旧记录也算整理成了）
   const yes = v.problem === undefined;
   return (
-    <Card id={`verdict-${String(v.line)}`} active={props.active} className="flex flex-col gap-3">
+    <Card id={`close-${String(v.line)}`} active={props.active} className="flex flex-col gap-3">
       <div className="flex items-center justify-between gap-2">
-        <Badge tone={yes ? 'good' : 'neutral'}>{yes ? W.judgedYes : W.judgedNo}</Badge>
+        <span className="flex items-center gap-1.5">
+          <Badge tone={yes ? 'good' : 'neutral'}>{yes ? W.judgedYes : W.judgedNo}</Badge>
+          <Badge tone="neutral">{W.oldRecord}</Badge>
+        </span>
         <Time at={v.at} />
       </div>
       {v.request !== undefined && (

@@ -5,10 +5,10 @@ import type { BBox } from '../shared/protocol.ts';
 /** 面板里能看的东西。 */
 export type PanelTarget =
   /**
-   * verdictLine：滚到这次判断；
+   * focusLine：滚到这一次收尾（收尾那一句所在行；旧数据是守卫判定所在行）；
    * editTicket：打开就展开改单子。
    */
-  | { kind: 'loop'; loopId: string; verdictLine?: number; editTicket?: true }
+  | { kind: 'loop'; loopId: string; focusLine?: number; editTicket?: true }
   /** 我学会的：不给 = 全部；给 loopId = 直接展开那一次学习。 */
   | { kind: 'learned'; loopId?: string }
   | { kind: 'state' }

@@ -1,4 +1,4 @@
-// Studium：按事件跑清单（`docs/设计/01-流程.md`；一次学习之外的流程见 `docs/设计/会话/` 各页，收口与守卫见 `会话/守卫.md`）。
+// Studium：按事件跑清单（`docs/设计/01-流程.md`；一次学习之外的流程见 `docs/设计/会话/` 各页，收口 10-31 起不开守卫：学习对话自己写收尾那一句，见 `requestClose`）。
 // 每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（`docs/设计/记录/读写权限.md`）。
 import { randomBytes } from 'node:crypto';
 import { join } from 'node:path';
@@ -19,15 +19,12 @@ import type {
 } from '../shared/protocol.ts';
 import { CROSS_KINDS } from '../shared/records-cross.ts';
 import {
-  DURABILITY,
-  INDEPENDENCE,
   START_SOURCES,
   type ChoiceCard,
   type ChoiceOption,
   type ConversationKind,
   type FindCandidate,
   type GoalAbility,
-  type GuardVerdict,
   type ImageInput,
   type LearnerObjection,
   type MessageQuote,
@@ -36,7 +33,6 @@ import {
   type RouteDecision,
   type SessionOpened,
   type Ticket,
-  type Understanding,
 } from '../shared/records.ts';
 import type { Crosslinks } from './crosslinks.ts';
 import { currentGoal, describeGoal, goalText } from './goal.ts';
@@ -63,7 +59,8 @@ import { PageStore } from './page/store.ts';
 import { streamTools } from './page/stream-tools.ts';
 import { LearnPageSetting } from './learn-page-setting.ts';
 import { currentTicket } from './ticket.ts';
-import { guardView, learnerLines, renderTranscript } from './transcript.ts';
+import { learnerLines, renderTranscript } from './transcript.ts';
+import { closeStatus, closingOf } from '../shared/closing.ts';
 import { Uploads, type RouteJudge } from './uploads.ts';
 import { localMinute } from '../shared/time.ts';
 
@@ -85,6 +82,9 @@ type StartSource = (typeof START_SOURCES)[number];
 const AWAY_MS = 30 * 60 * 1000;
 /** 旧版开的学习对话（W10 前，开场的提示词与工具已定死）：只看，要接着学另开一次（W10 §9 第 1 条）。 */
 const OLD_LOOP = '这次学习是旧版开的，只能看；要接着学，请回项目另开一次。';
+/** 学习者点“我觉得懂了”时交给学习对话的程序事实（10-31 起不开守卫）。 */
+const LEARNER_WANTS_CLOSE =
+  '学习者点了“我觉得懂了”。你也觉得可以收，就调 request_close 写收尾那一句（这次做了什么、停在哪）；觉得还差，就直接跟学习者说差在哪，不调。';
 /** 隔多久回来算“隔很久”，状态整理顺带跑一次（`docs/设计/会话/后台整理.md`；阈值属实现细节，先定 12 小时）。 */
 const LONG_AWAY_MS = 12 * 3600 * 1000;
 /** 状态整理开场里教学行只放开头一段（作紧邻前序事件），全文用 read_session 查。 */
@@ -349,7 +349,8 @@ export class Studium {
           // 学习对话在沙盒里跑（只读资料与记录、可写工作区），工具只剩两个命令
           return this.loopToolsFor(sessionId);
         case 'guard':
-          return [...this.readTools(sessionId), this.verdictTool(sessionId)];
+          // 旧数据：守卫 10-31 起不再开，留这一项只为种类名单完整
+          return [];
         case 'nav':
           // 导航：定下一次学什么（会话/导航.md「能读什么 · 工具」）
           return [
@@ -654,7 +655,7 @@ export class Studium {
     return this.instructions(mainId);
   }
 
-  /** 开场里的项目说明一段（主对话、畅谈、导航、找资料用；守卫、后台整理不给）。 */
+  /** 开场里的项目说明一段（主对话、畅谈、导航、找资料用；后台整理不给）。 */
   private async instructionsBlock(mainId: string): Promise<string> {
     const t = (await this.instructions(mainId)).text;
     return `项目说明（学习者明确的长期要求；与学习者当场说的冲突时以当场为准）：${t !== '' ? `\n${t}` : '还没写'}`;
@@ -1195,36 +1196,37 @@ export class Studium {
     return out;
   }
 
-  /** 申请收口：开守卫写收尾记录、核对引用行、记下。学习者申请时把记录作为事实追加回学习对话。 */
+  /**
+   * 申请收口（10-31 起不开守卫）：模型申请时带收尾那一句，记下就等学习者确认“学完了”；
+   * 学习者点“我觉得懂了”时记一条，再把这件事作为程序事实交给学习对话，由它写收尾那一句或说还差在哪。
+   */
   async requestClose(
     loopId: string,
     by: 'model' | 'learner',
     reason: string,
-  ): Promise<GuardVerdict> {
+    summary?: string,
+  ): Promise<void> {
     await this.assertActiveLoop(loopId);
     await this.hub.record(loopId, {
       type: 'close_requested',
       at: this.iso(),
       by,
       reason,
+      ...(summary !== undefined ? { summary } : {}),
     });
-    const verdict = await this.runGuard(loopId);
-    await this.hub.record(loopId, verdict);
     if (by === 'learner') {
-      await this.hub.send(loopId, { role: 'program', text: verdictFact(verdict) });
+      await this.hub.send(loopId, { role: 'program', text: LEARNER_WANTS_CLOSE });
     }
-    return verdict;
   }
 
-  /** 守卫写好收尾记录后，学习者确认结束 → 合上之后的清单。 */
+  /** 收尾那一句到了之后，学习者确认结束 → 合上之后的清单。 */
   async confirmClose(loopId: string, note: string): Promise<void> {
     await this.assertActiveLoop(loopId);
-    const recs = (await this.hub.records(loopId)).map((r) => r.record);
-    const verdict = recs.filter((r) => r.type === 'guard_verdict').at(-1);
-    if (verdict?.type !== 'guard_verdict' || !verdict.closed) {
-      // 收尾记录还没写好，不能确认结束；没学完要结束走“搁着，以后再学”
+    // 最后一次收口要有收尾那一句（旧数据：守卫写好的收尾记录也算）
+    if (closeStatus(await this.hub.records(loopId))?.kind !== 'ready') {
+      // 收尾那一句还没写，不能确认结束；没学完要结束走“搁着，以后再学”
       throw new BadRequestError(
-        '这次学到了什么还没整理：先点“我觉得懂了”；想先停下就点“…”里的“搁着，以后再学”。',
+        '这次学到了什么还没写下：先点“我觉得懂了”；想先停下就点“…”里的“搁着，以后再学”。',
       );
     }
     await this.hub.record(loopId, {
@@ -1236,7 +1238,7 @@ export class Studium {
     this.background('合上之后的清单', () => this.afterLoop(loopId, true));
   }
 
-  /** 学习者要结束、没合上：不开守卫，导航读那次完整对话出下一张卡（01-流程.md §3）。 */
+  /** 学习者要结束、没合上：导航读那次完整对话出下一张卡（01-流程.md §3）。 */
   async endUnclosed(loopId: string, note: string): Promise<void> {
     await this.assertOpenLoop(loopId);
     await this.hub.record(loopId, {
@@ -1413,10 +1415,12 @@ export class Studium {
     // 学习对话总挂在项目的主对话下；没有就是坏数据，不替它新建项目
     if (mainId === undefined) throw new Error(`学习对话 ${loopId} 没有挂在项目下`);
     try {
+      // 合上：带上学习对话写的收尾那一句（只是指针）
+      const closing = closed ? closingOf(await this.hub.records(loopId)) : undefined;
       await this.hub.send(mainId, {
         role: 'program',
         text: closed
-          ? `“${opened.title}”学完了（学习者已确认结束）。`
+          ? `“${opened.title}”学完了（学习者已确认结束）。${closing !== undefined ? `收尾那一句：${closing.summary}` : ''}`
           : `“${opened.title}”没学完就结束了，先搁着。`,
       });
     } catch (err) {
@@ -1443,122 +1447,13 @@ export class Studium {
     });
     if (recs === undefined || recs.some((r) => r.record.type === 'loop_ended')) return;
     const opened = await this.hub.opened(loopId);
+    const closing = closed ? closingOf(await this.hub.records(loopId)) : undefined;
     await this.hub.send(back, {
       role: 'program',
       text: closed
-        ? `为这次学习另开的「${opened.title}」（${loopId}）学完了（学习者已确认）；学到什么可用记录里的守卫判定看。学习者回来时，对照当初说的返回条件接着学。`
+        ? `为这次学习另开的「${opened.title}」（${loopId}）学完了（学习者已确认）${closing !== undefined ? `，收尾那一句：${closing.summary}` : ''}；学习者会什么以那次的对话原文为准（只读/学过的记录/${loopId}-对话.md）。学习者回来时，对照当初说的返回条件接着学。`
         : `为这次学习另开的「${opened.title}」（${loopId}）没学完就结束了，先搁着。学习者回来时问问他想先补完还是接着这里学。`,
     });
-  }
-
-  // ───────────── 守卫 ─────────────
-
-  private readonly verdicts = new Map<string, Omit<GuardVerdict, 'type' | 'at'>>();
-
-  private async runGuard(loopId: string): Promise<GuardVerdict> {
-    const records = await this.hub.records(loopId);
-    const guard = await this.hub.createSession('guard', {
-      title: '整理这次学到了什么',
-      parent: loopId,
-    });
-    this.guardTarget.set(guard.sessionId, records);
-    // 守卫按收口那一刻的单子写：学习者改过就用改后的（工单 W6 §9）
-    const ticket = currentTicket(records);
-    // 守卫读得到学习者看到的屏幕（记录/对话与事件记录.md）；怎么算等 #67，先给最后一屏上组件的文字（W10 §9 第 6 条）
-    const page = await this.screens.textForGuard(loopId);
-    await this.hub.send(guard.sessionId, {
-      role: 'program',
-      text: [
-        '这次学习的单子：',
-        ticket ? this.describeTicket(ticket) : '（缺单子）',
-        '',
-        '这次学习的对话（L 后是行号；只放双方对话与学习者在组件上做的；程序事实、模型一侧的沙盒动作不给）：',
-        guardView(records),
-        ...(page !== undefined ? ['', page] : []),
-      ].join('\n'),
-    });
-    await this.hub.idle(guard.sessionId);
-    const v = this.verdicts.get(guard.sessionId);
-    this.guardTarget.delete(guard.sessionId);
-    // 记守卫这一轮实际执行的模型（不是别名、不是适配器名；取不到时是它给的兜底串）
-    const model = await this.hub.executedModel(guard.sessionId);
-    return {
-      type: 'guard_verdict',
-      at: this.iso(),
-      ...(v ?? {
-        guardSessionId: guard.sessionId,
-        closed: false,
-        basis: '守卫没有交回收尾记录',
-        lines: [],
-        problem: '守卫没有交回收尾记录',
-      }),
-      model,
-    };
-  }
-
-  private readonly guardTarget = new Map<string, NumberedRecord[]>();
-
-  private verdictTool(guardId: string): ToolSpec {
-    return {
-      name: 'submit_verdict',
-      description:
-        '交回这次学习的收尾记录：学习者实际表现出的理解，每条指回他的行；证据薄的如实写薄。引用的行只能是学习者的行。',
-      input: {
-        basis: z.string().describe('一段话总述这次实际学到了什么、哪里还薄，引用写行号'),
-        evidence_lines: z.array(z.number().int()).describe('学习者的行号'),
-        understanding: z
-          .array(
-            z.object({
-              text: z.string().describe('学习者实际表现出的理解，一句到几句'),
-              lines: z.array(z.number().int()).describe('学习者的行号'),
-              independence: z.enum(INDEPENDENCE),
-              durability: z.enum(DURABILITY),
-            }),
-          )
-          .describe('学习者实际表现出的理解；对话里看不出来就交空数组并在总述里说明'),
-      },
-      run: (a) => {
-        const basis = a.basis as string;
-        const lines = a.evidence_lines as number[];
-        const raw = a.understanding as Understanding[];
-        if (this.verdicts.has(guardId)) return err('已经提交过收尾记录');
-        const target = this.guardTarget.get(guardId) ?? [];
-        const learner = learnerLines(target);
-        const bad = lines.filter((l) => !learner.has(l));
-        // 程序核对：引用的行须落在学习者的行上（00 原则 7）；不对就退回让守卫重交
-        if (bad.length > 0) {
-          return err(
-            `第 ${bad.join('、')} 行不是学习者说的话，不能当证据；只引学习者的行，重新提交`,
-          );
-        }
-        // 实际理解：行号核对同证据行；一条不过整次退回，什么都不收
-        for (const u of raw) {
-          if (u.text.trim() === '') return err('每条理解都要写清学习者实际表现出的理解');
-          if (u.lines.length === 0) return err('每条理解都要指回至少一行学习者的话');
-          const notLearner = u.lines.filter((l) => !learner.has(l));
-          if (notLearner.length > 0) {
-            return err(
-              `第 ${notLearner.join('、')} 行不是学习者说的话，理解只能指回学习者的行，重新提交`,
-            );
-          }
-          if (!INDEPENDENCE.includes(u.independence)) {
-            return err(`独立程度只能是 ${INDEPENDENCE.join(' / ')}，收到 ${u.independence}`);
-          }
-          if (!DURABILITY.includes(u.durability)) {
-            return err(`持久程度只能是 ${DURABILITY.join(' / ')}，收到 ${u.durability}`);
-          }
-        }
-        this.verdicts.set(guardId, {
-          guardSessionId: guardId,
-          // 守卫不再把关（10-23）：学到没有由学习对话与学习者定，这里只写收尾记录
-          closed: true,
-          basis,
-          lines,
-          understanding: raw,
-        });
-        return ok('收尾记录已收到');
-      },
-    };
   }
 
   // ───────────── 导航 ─────────────
@@ -1735,7 +1630,7 @@ export class Studium {
         .boolean()
         .optional()
         .describe(
-          '阶段验收：这次学习是一次阶段验收（练习都按验收算、默认不给提示），不是学新内容或日常练习时填真；守卫照常判',
+          '阶段验收：这次学习是一次阶段验收（练习都按验收算、默认不给提示），不是学新内容或日常练习时填真',
         ),
       return_to: z
         .string()
@@ -1749,12 +1644,9 @@ export class Studium {
         .object({
           kind: z.enum(REVISIT_KINDS),
           of_loop: z.string().describe('回看的是哪次学习（学习会话 id）'),
-          verdict_line: z.number().int().optional().describe('那次学习里判定所在的行号'),
         })
         .optional()
-        .describe(
-          '复习 / 复检以前学过的东西时填：kind + 回看哪次学习（会话 id，可带判定行）；学新点不填',
-        ),
+        .describe('复习 / 复检以前学过的东西时填：kind + 回看哪次学习（会话 id）；学新点不填'),
       cross_domain: z
         .object({
           kind: z.enum(CROSS_KINDS),
@@ -1813,7 +1705,7 @@ export class Studium {
           stage_check?: boolean;
           return_to?: string;
           resume_of?: string;
-          revisit?: { kind?: '复习' | '复检'; of_loop?: string; verdict_line?: number };
+          revisit?: { kind?: '复习' | '复检'; of_loop?: string };
           cross_domain?: { kind?: string; other_point?: string; problem?: string };
           title?: string;
           reason?: string;
@@ -1922,18 +1814,12 @@ export class Studium {
             if (blank(o.revisit.of_loop))
               problems.push(`${n}的 revisit 缺 of_loop（回看哪次学习）`);
             else {
-              const bad = await this.revisitProblem(
-                o.revisit.of_loop ?? '',
-                o.revisit.verdict_line,
-              );
+              const bad = await this.revisitProblem(o.revisit.of_loop ?? '');
               if (bad !== undefined) problems.push(`${n}：${bad}`);
             }
             revisit = {
               kind: o.revisit.kind ?? '复习',
               ofLoop: o.revisit.of_loop ?? '',
-              ...(o.revisit.verdict_line === undefined
-                ? {}
-                : { verdictLine: o.revisit.verdict_line }),
             };
           }
           const ticket: Ticket = {
@@ -2059,7 +1945,7 @@ export class Studium {
     return {
       name: 'read_session',
       description:
-        '读某个会话（项目主对话 / 谈方向 / 一次学习）里学习者与教学的对话原文，带行号与时间；不含沙盒动作与判定。',
+        '读某个会话（项目主对话 / 谈方向 / 一次学习）里学习者与教学的对话原文，带行号与时间；不含沙盒动作与收尾记录。',
       input: {
         session: z.string(),
         from_line: z.number().int().optional(),
@@ -2141,7 +2027,7 @@ export class Studium {
     return {
       name: 'retrieve',
       description:
-        '上层（学过的记录：单子与判定）答不了细节时派检索子代理：说清要找什么，可点名先看哪几次学习。它只交回至多 5 条、每条指回行号的结果。',
+        '上层（学过的记录：单子与收尾那一句）答不了细节时派检索子代理：说清要找什么，可点名先看哪几次学习。它只交回至多 5 条、每条指回行号的结果。',
       input: {
         question: z.string().describe('要找什么，一句话'),
         loops: z
@@ -2211,7 +2097,7 @@ export class Studium {
     const sb = await this.sandboxes.forRetrieve(sessionId, navId);
     lines.push(
       '',
-      '只为导航的一个问题找底层证据：从上面的上层（单子、判定）出发，到沙盒里读——每次学习的对话原文在 只读/学过的记录/<学习 id>-对话.md（带行号），教材在 只读/资料/<书 id>/，定位到原文行。',
+      '只为导航的一个问题找底层证据：从上面的上层（单子、收尾那一句）出发，到沙盒里读——每次学习的对话原文在 只读/学过的记录/<学习 id>-对话.md（带行号），教材在 只读/资料/<书 id>/，定位到原文行。',
       describeSandbox(sb),
       '',
       '用 submit_findings 交回至多 5 条，每条一句话 + 能定位的 ref（会话 id:行号 / 资料id/文件:行号）；没找到交空数组；只交一次。不下结论、不出路线。',
@@ -2276,7 +2162,7 @@ export class Studium {
     return {
       name: 'list_learned',
       description:
-        '列出这个项目里学过的记录：方向目标；每次学习一行（合上的带守卫写下的实际理解与证据强度，没合上的带结束原话与当时的路线决定），以及外部导入（未验证）。',
+        '列出这个项目里学过的记录：方向目标；每次学习一行（合上的带收尾那一句——只是指针，学习者会什么以那次原文为准；没合上的带结束原话与当时的路线决定），以及外部导入（未验证）。',
       input: {},
       run: async () => {
         const mainId = await this.projectOf(sessionId);
@@ -2948,11 +2834,20 @@ export class Studium {
       {
         name: 'request_close',
         description:
-          '你和学习者都觉得这次学完了时调用：程序另开一个独立会话，只按学习者实际说的、做的写下这次学到了什么；写好后请学习者确认结束。',
-        input: { reason: z.string() },
+          '你觉得这次可以收了（学习者点了“我觉得懂了”而你也觉得可以，或你和学习者都觉得学完了）时调用：写下收尾那一句，学习者在界面上确认“学完了”后这次学习结束。',
+        input: {
+          summary: z
+            .string()
+            .describe(
+              '收尾那一句：这次做了什么、停在哪（写法你定）。它会进学过的记录，下一次导航把它当指针、回原文核对。',
+            ),
+          reason: z.string().optional().describe('为什么觉得可以收了（可不写）'),
+        },
         run: async (a) => {
-          const v = await this.requestClose(loopId, 'model', a.reason as string);
-          return ok(verdictFact(v));
+          const summary = (a.summary as string).trim();
+          if (summary === '') return err('收尾那一句不能是空的');
+          await this.requestClose(loopId, 'model', (a.reason as string | undefined) ?? '', summary);
+          return ok('已记下，等学习者确认“学完了”。');
         },
       },
       {
@@ -3056,7 +2951,7 @@ export class Studium {
           .array(z.string())
           .optional()
           .describe(
-            '拿掉过、要再放上页面的旧块，每条一句极简短的描述，如“那道弹簧题”“学习者刚才的推导”；开场与守卫的收尾记录也能拿回，学习者看到的分别是单子和整理的内容',
+            '拿掉过、要再放上页面的旧块，每条一句极简短的描述，如“那道弹簧题”“学习者刚才的推导”；开场与收尾那一句也能拿回，学习者看到的分别是单子和收尾那一句',
           ),
         layout: z
           .string()
@@ -3100,8 +2995,8 @@ export class Studium {
   }
 
   /**
-   * 学习位置的依据（会话/学习对话.md §11 学习位置图）：哪些点、此刻在哪、哪些被守卫确认过。
-   * 画不画、怎么画由模型定；只有守卫确认过的才算扎实，学习对话自己的看法不算。
+   * 学习位置的依据（会话/学习对话.md §11 学习位置图）：哪些点、此刻在哪、哪些学习者确认学完了。
+   * 画不画、怎么画由模型定；收尾那一句只是指针，扎不扎实以那次原文里学习者自己说的、做的为准。
    */
   private async positionBasis(loopId: string): Promise<string> {
     const ticket = currentTicket(await this.hub.records(loopId));
@@ -3112,8 +3007,8 @@ export class Studium {
         all.map(async (l) => ((await this.projectOf(l.loopId)) === main ? [l] : [])),
       )
     ).flat();
-    const confirmed = mine.filter((l) => l.verdict !== undefined);
-    const rest = mine.filter((l) => l.verdict === undefined);
+    const confirmed = mine.filter((l) => l.status === '合上');
+    const rest = mine.filter((l) => l.status !== '合上');
     return [
       '# 学习位置的依据（框架给的；画不画、怎么画由你定）',
       '',
@@ -3124,11 +3019,11 @@ export class Studium {
         ? ticket.startPoints.map((p) => `- ${p.point}（${p.source}）`)
         : ['（没有）']),
       '',
-      '守卫确认过的（只有这些算扎实）：',
+      '学习者确认学完了的（后面是收尾那一句，只是指针；扎不扎实要回那次原文看学习者自己说的、做的）：',
       ...(confirmed.length > 0
         ? confirmed.map(
             (l) =>
-              `- 「${l.title}」${l.loopId}：${l.verdict?.understanding.map((u) => u.text).join('；') || l.ticket.newPoint}`,
+              `- 「${l.title}」${l.loopId}：${l.closing?.summary ?? (l.verdict?.understanding.map((u) => u.text).join('；') || l.ticket.newPoint)}`,
           )
         : ['（还没有）']),
       '',
@@ -3165,6 +3060,7 @@ export class Studium {
     if (r === undefined) return [];
     // 交卡时 revisitProblem 已核过这次学习存在；读不到就是真出错，照抛
     const one = await this.learned.one(r.ofLoop);
+    const closing = one.closing;
     const verdict = one.verdict;
     const strengths = (verdict?.understanding ?? [])
       .map((u) => `${u.text}（${u.independence}、${u.durability}）`)
@@ -3173,11 +3069,17 @@ export class Studium {
       `这是一次${r.kind}，不是第一次学这个点：回看的是 ${r.ofLoop}「${one.title}」那次学习${r.verdictLine !== undefined ? `（判定在第 ${String(r.verdictLine)} 行）` : ''}。`,
       `那次的状态：${one.status}${one.endNote !== undefined ? `（学习者结束时的原话：${one.endNote}）` : ''}`,
       `那次的单子：新点 ${one.ticket.newPoint}；预期理解 ${one.ticket.clause}`,
+      ...(closing !== undefined
+        ? [
+            `那次的收尾那一句（L${String(closing.line)}，只是指针；学习者会什么以那次原文为准）：${closing.summary}`,
+          ]
+        : []),
       ...(verdict !== undefined
         ? [
-            `那次通过的判定：${verdict.basis}${strengths !== '' ? `；实际表现出的理解：${strengths}` : ''}`,
+            `那次的守卫判定（旧数据）：${verdict.basis}${strengths !== '' ? `；实际表现出的理解：${strengths}` : ''}`,
           ]
-        : ['那次没有判定。']),
+        : []),
+      ...(closing === undefined && verdict === undefined ? ['那次没有收尾那一句。'] : []),
       '',
     ];
   }
@@ -3226,10 +3128,10 @@ export class Studium {
   }
 
   /**
-   * 复习 / 复检的单子指回的那次学习站不站得住（工单 §4.6）：`ofLoop` 是一次已结束的学习；
-   * 给了 `verdictLine` 时那一行要是判定。站不住就返回一句话（交卡时整张卡退回）。
+   * 复习 / 复检的单子指回的那次学习站不站得住（工单 §4.6）：`ofLoop` 是一次已结束的学习（10-31 起只认它，
+   * 不再要判定行）。站不住就返回一句话（交卡时整张卡退回）。
    */
-  async revisitProblem(ofLoop: string, verdictLine?: number): Promise<string | undefined> {
+  async revisitProblem(ofLoop: string): Promise<string | undefined> {
     const opened = await this.hub.opened(ofLoop).catch((e: unknown) => {
       if (e instanceof NotFoundError) return undefined;
       throw e;
@@ -3240,12 +3142,6 @@ export class Studium {
     const recs = await this.hub.records(ofLoop);
     if (!recs.some((r) => r.record.type === 'loop_ended')) {
       return `revisit 指的 ${ofLoop} 还没结束（复习 / 复检只看已经结束的那次）`;
-    }
-    if (verdictLine !== undefined) {
-      const at = recs.find((r) => r.line === verdictLine)?.record;
-      if (at?.type !== 'guard_verdict') {
-        return `revisit 的 verdict_line ${String(verdictLine)} 不是 ${ofLoop} 里的一份判定`;
-      }
     }
     return undefined;
   }
@@ -3334,8 +3230,8 @@ export class Studium {
   }
 
   /**
-   * 交给状态整理的事实（与守卫取不同的字段，`docs/设计/会话/后台整理.md`）——时间、间隔、停顿、中断与停下的地方、
-   * 学习者的话（含紧邻的前一句教学作前序事件）。不给模型一侧的沙盒动作、守卫判定，也不给“合上没有”。
+   * 交给状态整理的事实（`docs/设计/会话/后台整理.md`）——时间、间隔、停顿、中断与停下的地方、
+   * 学习者的话（含紧邻的前一句教学作前序事件）。不给模型一侧的沙盒动作、收尾那一句，也不给“合上没有”。
    */
   private async stateFacts(covered: Record<string, number>) {
     const sessions = this.hub
@@ -3564,18 +3460,20 @@ export class Studium {
     }
   >();
 
-  /** 一次学习结束后记“这次教法管不管用”：对话原文 + 守卫判定 + 教学工具使用记录 + 单子。 */
+  /** 一次学习结束后记“这次教法管不管用”：对话原文 + 收尾那一句（旧数据：守卫判定）+ 教学工具使用记录 + 单子。 */
   private async recordStrategy(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
     const records = await this.hub.records(loopId);
     // 学习者改过单子就按改后的记（工单 W6 §4.1：凡“现在的单子”都走 currentTicket）
     const now = currentTicket(records);
-    const verdicts = records.flatMap((r) =>
-      r.record.type === 'guard_verdict'
-        ? [
-            `L${String(r.line)} ${r.record.closed ? '合上' : '未合上'}：${r.record.problem ?? r.record.basis}（证据行 ${r.record.lines.join('、') || '无'}）`,
-          ]
-        : [],
+    const closings = records.flatMap((r) =>
+      r.record.type === 'close_requested' && r.record.summary !== undefined
+        ? [`L${String(r.line)} 学习对话写的：${r.record.summary}`]
+        : r.record.type === 'guard_verdict'
+          ? [
+              `L${String(r.line)}（旧数据·守卫）${r.record.closed ? '合上' : '未合上'}：${r.record.problem ?? r.record.basis}（证据行 ${r.record.lines.join('、') || '无'}）`,
+            ]
+          : [],
     );
     const ended = records.find((r) => r.record.type === 'loop_ended');
     // 用了哪份教学工具由程序从工具调用里读（`docs/设计/记录/教法记录与教学工具.md`），不靠模型自报
@@ -3601,7 +3499,7 @@ export class Studium {
         `单子：${now !== undefined ? this.describeTicket(now) : '（缺）'}`,
         `结束：${ended?.record.type === 'loop_ended' ? (ended.record.closed ? '合上（学习者已确认）' : '没合上就结束') : '（缺）'}`,
         '',
-        `守卫判定：\n${verdicts.join('\n') || '（没申请过收口）'}`,
+        `收尾那一句（只是指针，以对话原文为准）：\n${closings.join('\n') || '（没写过）'}`,
         '',
         `教学工具使用记录（程序从沙盒动作里记的）：${toolUses.map((u) => `L${String(u.line)} 教学工具:${u.name}`).join('、') || '这次学习没读教学工具，只能从对话原文看用了什么做法'}`,
         '',
@@ -3829,11 +3727,6 @@ function ticketText(label: string, v: unknown): string {
 function excerpt(r: NumberedRecord): string {
   const t = renderTranscript([r]);
   return t.length > TEACHING_EXCERPT ? `${t.slice(0, TEACHING_EXCERPT)}…` : t;
-}
-
-function verdictFact(v: GuardVerdict): string {
-  if (v.problem !== undefined) return `收尾记录没写成（${v.problem}）。可以再申请一次。`;
-  return `收尾记录：${v.basis}\n请学习者确认结束；学习者在界面上确认后这次学习结束。`;
 }
 
 function ok(text: string): Promise<ToolResult> {

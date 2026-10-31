@@ -1,5 +1,5 @@
 // 正本记录 → 界面上的消息列表与对话状态。纯函数，单测覆盖。
-// 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示，守卫判定、结束等只显示一句结果。
+// 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示，收尾、结束等只显示一句结果。
 // 模型用了什么工具、调工具前的短旁白、导航与阶段复盘的入口、“记下了方向 / 改了项目说明”这类小字都不显示（10-29）。
 import type {
   ChoiceCard,
@@ -8,6 +8,7 @@ import type {
   ReviewWindow,
   RevisitKind,
 } from '../shared/records.ts';
+import { closeStatus } from '../shared/closing.ts';
 import { threadEnded } from '../shared/threads.ts';
 import { judgementLine, W } from './wording.ts';
 import { WP } from './wording-page.ts';
@@ -22,8 +23,8 @@ export interface UiMessage {
   /** 同一轮多段回复合成一条时，合进来的全部行号（含 line）。 */
   lines?: number[];
   failed?: boolean;
-  /** 收尾记录那句提示：可点开看整理的内容（line 即收尾记录所在行）。 */
-  verdict?: { closed: boolean };
+  /** 收尾那一句（旧数据：守卫的收尾记录）那行：可点开看记录（line 即它所在行）。 */
+  verdict?: { closed: boolean; said?: true };
   /** 学习者对某次判断提的不同看法（原话照记）。 */
   objection?: { toLine: number; label: string };
   /** 去另一个对话的入口（谈方向、开始学的任务、回到某个对话）。 */
@@ -32,7 +33,7 @@ export interface UiMessage {
   images?: string[];
   /** 找资料对话交回的候选清单（勾了才存）。 */
   candidates?: CandidatesView;
-  /** 等待中的一行（守卫正在整理）：灰字，收尾记录交回后消失。 */
+  /** 等待中的一行（在等收尾那一句；旧数据是守卫正在整理）：灰字，那一句到了或学习对话回了话就消失。 */
   pending?: true;
 }
 
@@ -86,7 +87,7 @@ export function toUiMessages(
       picks.set(r.forLine, { picked: r.picked, materials: r.materials });
   }
   const narration = narrationLines(records);
-  /** 去掉“正在整理”那行：判断出来了、学习结束了、又申请了一次，或之后又有人说话（守卫没交回时不卡在那里）。 */
+  /** 去掉“在收尾”那行：收尾那一句到了、学习结束了、又申请了一次，或之后又有人说话（学习对话觉得还差、直接回了话）。 */
   const dropPending = () => {
     const waiting = out.findIndex((m) => m.pending === true);
     if (waiting >= 0) out.splice(waiting, 1);
@@ -96,7 +97,18 @@ export function toUiMessages(
     switch (r.type) {
       case 'close_requested':
         dropPending();
-        push({ id, role: 'system', text: WT.closing, line, pending: true });
+        if (r.summary !== undefined && r.summary.trim() !== '') {
+          // 收尾那一句到了（10-31 起学习对话写的）：照原样显示
+          push({
+            id,
+            role: 'system',
+            text: `${WP.closedSaid}${r.summary}`,
+            line,
+            verdict: { closed: true, said: true },
+          });
+        } else {
+          push({ id, role: 'system', text: WT.closing, line, pending: true });
+        }
         break;
       case 'user_message':
         dropPending();
@@ -116,6 +128,8 @@ export function toUiMessages(
       case 'assistant_message':
       case 'turn_failed': {
         if (r.type === 'assistant_message' && narration.has(line)) break;
+        // 学习对话回了话、没写收尾那一句（觉得还差）：不再显示“在收尾”
+        dropPending();
         const text =
           r.type === 'assistant_message'
             ? r.text
@@ -135,7 +149,7 @@ export function toUiMessages(
         break;
       }
       case 'guard_verdict': {
-        // 收尾记录交回了：“正在整理”那行换成整理好了（守卫 10-23 起不把关）
+        // 旧数据：收尾记录交回了，“正在整理”那行换成整理好了（守卫 10-23 起不把关）
         dropPending();
         push({
           id,
@@ -231,28 +245,23 @@ export function toUiMessages(
 
 export type LoopState =
   | { kind: 'open'; closeRequested: boolean }
-  | { kind: 'awaiting_confirm'; basis: string }
+  | { kind: 'awaiting_confirm'; summary: string; line: number; old?: true }
   | { kind: 'ended'; closed: boolean };
 
-/** 学习对话现在在哪一步：进行中 / 判定合上、等学习者确认 / 已结束。 */
+/** 学习对话现在在哪一步：进行中（在等收尾那一句时 closeRequested）/ 收尾那一句到了、等学习者确认 / 已结束。 */
 export function loopState(records: NumberedRecord[]): LoopState {
-  let state: LoopState = { kind: 'open', closeRequested: false };
-  for (const { record: r } of records) {
-    if (r.type === 'close_requested' && state.kind === 'open') {
-      state = { kind: 'open', closeRequested: true };
-    }
-    // 申请后学习者又说话了（比如整理没交回来）：按钮恢复，可以再申请
-    if (r.type === 'user_message' && state.kind === 'open') {
-      state = { kind: 'open', closeRequested: false };
-    }
-    if (r.type === 'guard_verdict') {
-      state = r.closed
-        ? { kind: 'awaiting_confirm', basis: r.basis }
-        : { kind: 'open', closeRequested: false };
-    }
-    if (r.type === 'loop_ended') state = { kind: 'ended', closed: r.closed };
+  const ended = records.findLast((r) => r.record.type === 'loop_ended')?.record;
+  if (ended?.type === 'loop_ended') return { kind: 'ended', closed: ended.closed };
+  const c = closeStatus(records);
+  if (c?.kind === 'ready') {
+    return {
+      kind: 'awaiting_confirm',
+      summary: c.summary,
+      line: c.line,
+      ...(c.old === true ? { old: true as const } : {}),
+    };
   }
-  return state;
+  return { kind: 'open', closeRequested: c?.kind === 'waiting' };
 }
 
 /** 阶段复盘的对话：回看的时间窗口（开头那行记的）；谈方向的对话没有。 */

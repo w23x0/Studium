@@ -27,12 +27,12 @@ const TEACHING_TOOLS_DIR = '教学工具';
 /** 只读条目是什么（开场里那句“是什么”）。 */
 const WHAT: Record<string, string> = {
   教学工具: '教学工具（可选的做法参考，不常驻提示词）',
-  学过的记录: '以往的学习（单子、判定、对话原文）',
+  学过的记录: '以往的学习（单子、收尾那一句、对话原文）',
   状态记录: '学习者的状态与条件',
   教法记录: '这个学习者的教法记录',
   '本次对话.md': '本次学习的对话原文，带行号（压缩后按行号读回）',
   '项目说明.md': '学习者写给这个项目的长期要求（项目说明）；与学习者当场说的冲突时以当场说的为准',
-  '学习位置.md': '画学习位置时的依据：哪些点、此刻在哪、哪些被守卫确认过',
+  '学习位置.md': '画学习位置时的依据：哪些点、此刻在哪、哪些学习者确认学完了',
   [MATERIAL_INDEX_NAME]:
     '本项目资料的目录：每份一行（id、标题、种类、版本、日期、状态、角色）；引用写 资料id/文件:行号',
 };
@@ -67,7 +67,7 @@ export interface SandboxDeps {
   dataDir: string;
   /** 所属项目的资料（资料归项目；没有 = 空）；同 studium.scopeOf。 */
   scopeOf: (sessionId: string) => Promise<string[]>;
-  /** 所属项目的项目说明（没写 = 空串）；守卫、后台整理不经这里拿（工单 W9 §4.6）。 */
+  /** 所属项目的项目说明（没写 = 空串）；后台整理不经这里拿（工单 W9 §4.6）。 */
   instructionsOf: (sessionId: string) => Promise<string>;
   /** 学习位置的依据。 */
   positionText: (loopId: string) => Promise<string>;
@@ -231,6 +231,11 @@ export class Sandboxes {
         `- 当时的路线决定（${main}:L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（理由：${l.routeDecision.reason}）`,
       );
     }
+    if (l.closing !== undefined) {
+      lines.push(
+        `- 收尾那一句（${l.loopId}:L${String(l.closing.line)}，学习对话写的，只是指针；学习者会什么以对话原文里他自己说的、做的为准）：${l.closing.summary}`,
+      );
+    }
     if (l.verdict !== undefined) {
       const u = l.verdict.understanding
         .map(
@@ -239,7 +244,7 @@ export class Sandboxes {
         )
         .join('；');
       lines.push(
-        `- 通过的守卫判定（${l.loopId}:L${String(l.verdict.line)}）：${l.verdict.basis}${l.verdict.model !== undefined ? `（判定的模型：${l.verdict.model}）` : ''}`,
+        `- 旧数据·通过的守卫判定（${l.loopId}:L${String(l.verdict.line)}）：${l.verdict.basis}${l.verdict.model !== undefined ? `（判定的模型：${l.verdict.model}）` : ''}`,
       );
       if (u !== '') lines.push(`- 学习者实际表现出的理解：${u}`);
     }

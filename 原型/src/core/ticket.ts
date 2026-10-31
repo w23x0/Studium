@@ -1,6 +1,6 @@
 // 这次学习“现在的单子”（工单 W6 §4.1）：最后一条 ticket_edited.after，没有就是 session_opened 里那张。
 // 学习者改单子只追加（记录/单子与路线.md「单子」），开学习那行与卡上那张都不改；凡把“现在的单子”
-// 拿来用的地方（守卫开场、学过的记录、依据视图、沙盒渲染）都走这里。
+// 拿来用的地方（学过的记录、依据视图、沙盒渲染）都走这里。
 import type { NumberedRecord, Ticket } from '../shared/records.ts';
 
 /** 这次学习现在的单子；正本里没有单子就 undefined。 */

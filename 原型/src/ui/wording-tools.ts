@@ -2,5 +2,5 @@
 
 export const WT = {
   thinking: '在想…',
-  closing: '正在整理这次学到了什么，大约半分钟…',
+  closing: '在收尾…',
 };

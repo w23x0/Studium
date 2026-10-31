@@ -17,8 +17,8 @@ export type ScreenBlockRef =
   /** 还在做的组件：占位，子代理交上后换成它做的组件。 */
   | { kind: 'pending'; key: string; pointer: string; task: string }
   /**
-   * 程序推来的块（§11.3「程序推来的块上屏」）：开场（line = 开场那条 program_fact）、收尾记录（line = 那条
-   * guard_verdict）。上屏只显示学习者在界面别处本来就看得到的部分，只给模型看的（沙盒路径等）不上屏。
+   * 程序推来的块（§11.3「程序推来的块上屏」）：开场（line = 开场那条 program_fact）、收尾（line = 带收尾那一句的
+   * close_requested；旧数据是那条 guard_verdict）。上屏只显示学习者在界面别处本来就看得到的部分，只给模型看的（沙盒路径等）不上屏。
    */
   | { kind: 'opening' | 'closing'; key: string; pointer: string; line: number };
 
@@ -54,8 +54,8 @@ export type ResolvedBlock =
   | { kind: 'pending'; key: string; pointer: string }
   /** 开场：显示那时的单子（同学习页顶上单子条的几项，加路线动作）。 */
   | { kind: 'opening'; key: string; pointer: string; ticket?: Ticket }
-  /** 收尾记录：显示整理的内容（同“看整理的内容”那份）；界面按 verdictLine 取。 */
-  | { kind: 'closing'; key: string; pointer: string; verdictLine: number };
+  /** 收尾：新数据直接带收尾那一句（summary）；旧数据没有 summary，界面按 line 取守卫的收尾记录。 */
+  | { kind: 'closing'; key: string; pointer: string; line: number; summary?: string };
 
 /**
  * 学习页的布局（10-29 起，取代每轮一屏）：一次学习一份、一直在的区域图（CSS grid-template-areas 写法）。
