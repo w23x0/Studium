@@ -811,6 +811,15 @@ export class Studium {
    * 项目资料的视图（记录/资料.md「浏览」）：本项目能读的全部（本项目的 + 学习者的），每份带种类 / 归属 / 版本 /
    * 日期 / 处理状态 / 模型判断的角色。
    */
+  /** 设置里的 MinerU 密钥入口（临时）。 */
+  mineruTokenSet(): Promise<boolean> {
+    return this.o.materials.mineruTokenSet();
+  }
+
+  setMineruToken(token: string): Promise<void> {
+    return this.o.materials.setMineruToken(token);
+  }
+
   async materials(mainId: string): Promise<ProjectMaterialsResponse> {
     const recs = await this.requireProject(mainId);
     const views: ProjectMaterialView[] = (await this.o.materials.ofProject(mainId)).map((src) => ({

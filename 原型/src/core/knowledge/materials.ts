@@ -813,6 +813,32 @@ export class Materials {
     }
     return written;
   }
+
+  /** 设置里的 MinerU 密钥入口（临时）：配了没有。 */
+  async mineruTokenSet(): Promise<boolean> {
+    return this.o.pdfTool !== undefined && (await hasMineruToken(this.o.pdfTool));
+  }
+
+  /**
+   * 设置里填的 MinerU 密钥写进 `书库处理/.env`（不进 git；沙盒挡着这个文件，见 sandbox.ts denyRead），替换原来那一行；
+   * 空串删掉那一行。环境变量里有 MINERU_TOKEN 时环境变量优先（mineru.py 先认环境变量）。
+   */
+  async setMineruToken(token: string): Promise<void> {
+    const tool = this.o.pdfTool;
+    if (tool === undefined) throw new MaterialError('找不到 书库处理/');
+    const clean = token.trim();
+    if (/\s/.test(clean)) throw new MaterialError('密钥里不能有空白或换行');
+    const file = join(tool, '.env');
+    let lines: string[] = [];
+    try {
+      lines = (await readFile(file, 'utf8')).split('\n');
+    } catch (err) {
+      if (!isNotFound(err)) throw err;
+    }
+    lines = lines.filter((l) => !/^\s*MINERU_TOKEN\s*=/.test(l) && l.trim() !== '');
+    if (clean !== '') lines.push(`MINERU_TOKEN=${clean}`);
+    await writeFile(file, lines.length > 0 ? `${lines.join('\n')}\n` : '', { mode: 0o600 });
+  }
 }
 
 /** 新资料的 id：可读的名字，和 taken 里的都不重名（迁移也用）。 */

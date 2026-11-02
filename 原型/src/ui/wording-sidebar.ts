@@ -51,6 +51,10 @@ export const WS = {
   accountMenu: '账号',
   language: '语言',
   chinese: '中文',
+  mineru: 'MinerU 密钥',
+  mineruSet: '已配',
+  mineruUnset: '没配',
+  mineruPrompt: '填 MinerU 密钥（PDF 导入要用）；留空点确定 = 删掉',
   theme: '外观',
   themes: { system: '跟系统', light: '浅色', dark: '深色' } as const,
 } as const;

@@ -52,6 +52,7 @@ import type {
   TicketEditResponse,
   LearnPageMode,
   LearnPageSettingBody,
+  MineruTokenBody,
 } from '../shared/protocol.ts';
 import type { MessageQuote } from '../shared/records.ts';
 import type {
@@ -188,6 +189,12 @@ export const api = {
     call<LearnPageSettingBody>('/settings/learn-page', {
       method: 'PUT',
       body: JSON.stringify({ mode } satisfies LearnPageSettingBody),
+    }),
+  mineruToken: () => call<MineruTokenBody>('/settings/mineru-token'),
+  setMineruToken: (token: string) =>
+    call<MineruTokenBody>('/settings/mineru-token', {
+      method: 'PUT',
+      body: JSON.stringify({ token }),
     }),
   // ── 输入：图片原样上传、转写 ──
   uploadImage: async (blob: Blob, name?: string, derivedFrom?: string) => {

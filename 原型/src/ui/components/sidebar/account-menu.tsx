@@ -1,10 +1,17 @@
 // 左栏底部的账号：弹出菜单——外观（跟系统 / 浅色 / 深色）、学习页（竖流 / 区域图，10-29 #74 试验）、语言（现在只有中文）。
-// 没做的（退出登录）不摆出来。
+// MinerU 密钥：临时入口，填了写进 书库处理/.env（PDF 导入要用）。没做的（退出登录）不摆出来。
 import { useEffect, useState } from 'react';
-import { ChevronsUpDownIcon, GlobeIcon, LayoutListIcon, SunMoonIcon } from 'lucide-react';
+import {
+  ChevronsUpDownIcon,
+  GlobeIcon,
+  KeyRoundIcon,
+  LayoutListIcon,
+  SunMoonIcon,
+} from 'lucide-react';
 import {
   Menu,
   MenuContent,
+  MenuItem,
   MenuRadioGroup,
   MenuRadioItem,
   MenuSubmenu,
@@ -33,6 +40,7 @@ const THEMES: Theme[] = ['system', 'light', 'dark'];
 export function AccountMenu(props: { collapsed: boolean }) {
   const [theme, setTheme] = useTheme();
   const [mode, setMode] = useState<LearnPageMode | undefined>(undefined);
+  const [mineru, setMineru] = useState<boolean | undefined>(undefined);
   useEffect(() => {
     api
       .learnPageSetting()
@@ -40,7 +48,24 @@ export function AccountMenu(props: { collapsed: boolean }) {
       .catch((e: unknown) => {
         console.error('读学习页设置失败：', e);
       });
+    api
+      .mineruToken()
+      .then((r) => setMineru(r.set))
+      .catch((e: unknown) => {
+        console.error('读 MinerU 密钥状态失败：', e);
+      });
   }, []);
+  const editMineru = () => {
+    const t = window.prompt(S.mineruPrompt);
+    if (t === null) return;
+    api
+      .setMineruToken(t)
+      .then((r) => setMineru(r.set))
+      .catch((e: unknown) => {
+        console.error('存 MinerU 密钥失败：', e);
+        window.alert(e instanceof Error ? e.message : String(e));
+      });
+  };
   return (
     <>
       <Menu>
@@ -109,6 +134,15 @@ export function AccountMenu(props: { collapsed: boolean }) {
               <div className="text-muted-foreground px-2 py-1 text-xs">{WP.modeHint}</div>
             </MenuContent>
           </MenuSubmenu>
+          <MenuItem onClick={editMineru}>
+            <KeyRoundIcon />
+            <span className="flex-1">{S.mineru}</span>
+            {mineru !== undefined && (
+              <span className="text-muted-foreground text-xs">
+                {mineru ? S.mineruSet : S.mineruUnset}
+              </span>
+            )}
+          </MenuItem>
           <MenuSubmenu>
             <MenuSubmenuTrigger>
               <GlobeIcon />

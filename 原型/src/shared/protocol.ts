@@ -989,3 +989,8 @@ export type LearnPageMode = (typeof LEARN_PAGE_MODES)[number];
 export interface LearnPageSettingBody {
   mode: LearnPageMode;
 }
+
+/** GET /settings/mineru-token 回 { set }；PUT 发 { token }（空串 = 删掉），回 { set }。临时入口。 */
+export interface MineruTokenBody {
+  set: boolean;
+}

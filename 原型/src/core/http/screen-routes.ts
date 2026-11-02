@@ -5,6 +5,7 @@ import {
   LEARN_PAGE_MODES,
   type LearnPageMode,
   type LearnPageSettingBody,
+  type MineruTokenBody,
 } from '../../shared/protocol.ts';
 import { ACTION_TARGETS, type ActionTarget, type LearnPageResponse } from '../../shared/screen.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
@@ -37,6 +38,16 @@ export async function screenRoute(
       return true;
     }
     return false;
+  }
+  // MinerU 密钥（临时入口）：只回配了没有，不回密钥本身
+  if (a === 'settings' && id === 'mineru-token' && parts.length === 3) {
+    if (method === 'PUT') {
+      const body = ((await readJson(req)) ?? {}) as Record<string, unknown>;
+      if (typeof body.token !== 'string') throw new BadRequestError('token 要是字符串');
+      await studium.setMineruToken(body.token.slice(0, 4096));
+    } else if (method !== 'GET') return false;
+    send(res, 200, { set: await studium.mineruTokenSet() } satisfies MineruTokenBody);
+    return true;
   }
   if (a !== 'sessions' || id === undefined || b !== 'screens') return false;
   const screens = studium.screens;
