@@ -65,17 +65,17 @@ export function citationPage(c: CitationView): number | undefined {
 
 /** 出处小标签上的字：资料名 · 第几页（没有原件页时退到文件）。 */
 export function citationLabel(c: CitationView): string {
-  const book = c.bookTitle ?? c.book;
+  const material = c.materialTitle ?? c.material;
   const page = citationPage(c);
-  if (page !== undefined) return W.page(book, page);
+  if (page !== undefined) return W.page(material, page);
   const where = c.section?.split(' ')[0];
-  return where !== undefined && where !== '' ? `${book} · ${where}` : book;
+  return where !== undefined && where !== '' ? `${material} · ${where}` : material;
 }
 
 /** 点开出处时在面板里看的东西（对不上的也给，带上原因）。 */
 export function citationTarget(c: CitationView): {
   kind: 'source';
-  book: string;
+  material: string;
   file: string;
   from: number;
   to: number;
@@ -85,7 +85,7 @@ export function citationTarget(c: CitationView): {
 } {
   return {
     kind: 'source',
-    book: c.book,
+    material: c.material,
     file: c.file,
     from: c.from,
     to: c.to,

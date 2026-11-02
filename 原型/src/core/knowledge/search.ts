@@ -1,11 +1,11 @@
-// 项目资料的全文检索（纯函数）：所有词（空白隔开）都出现在同一段里才算命中；按整句匹配 / 标题含词 / 词频排序。
+// 资料的全文检索（纯函数）：所有词（空白隔开）都出现在同一段里才算命中；按整句匹配 / 标题含词 / 词频排序。
 import type { SearchHit, TocEntry } from '../../shared/protocol.ts';
 
 export interface SearchOptions {
   /** 只搜这一份。 */
-  book?: string;
-  /** 只在这几份里搜；给了 book 时以 book 为准。 */
-  books?: string[];
+  material?: string;
+  /** 只在这几份里搜；给了 material 时以 material 为准。 */
+  materials?: string[];
   /** 最多返回几条（默认 20，上限 100）。 */
   limit?: number;
   /** 同一个文件最多返回几条（默认 3）。 */
@@ -27,7 +27,7 @@ export interface IndexedFile {
 
 /** 检索的一份：资料 id、标题、读进内存的正文文件。 */
 export interface SearchSet {
-  book: string;
+  material: string;
   title: string;
   files: IndexedFile[];
 }
@@ -77,8 +77,8 @@ export function searchSets(
           score,
           order: order++,
           hit: {
-            book: set.book,
-            bookTitle: set.title,
+            material: set.material,
+            materialTitle: set.title,
             file: f.entry.file ?? '',
             num: f.entry.num,
             title: f.entry.title,
@@ -98,7 +98,7 @@ export function searchSets(
   const perFile = new Map<string, number>();
   const hits: SearchHit[] = [];
   for (const s of scored) {
-    const key = `${s.hit.book}\0${s.hit.file}`;
+    const key = `${s.hit.material}\0${s.hit.file}`;
     const used = perFile.get(key) ?? 0;
     if (used >= perSection) continue;
     perFile.set(key, used + 1);

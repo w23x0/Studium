@@ -1,11 +1,27 @@
 // 上传与分流（工单 W9 §4.1 §4.2；设计 docs/设计/记录/资料.md「入口」）：学习者拖进来 / 点“添加”的文件
 // 原样存进 <数据>/projects/<主对话 id>/上传/<上传 id>/，再一份份分到资料或学过的（外部导入）。
-// 程序先按扩展名粗分；.md / .txt / .json 这类拿不准的交模型判一次（只回归哪类 + 一句理由，不分析内容）。
-// 每次判、改判在主对话正本追加 upload_routed，以最后一条为准。
-import { mkdir, readdir, readFile, stat, writeFile } from 'node:fs/promises';
+// 程序先按扩展名粗分；.md / .txt / .json 这类拿不准的交模型判一次（只回归哪类、归谁 + 一句理由，不分析内容）。
+// 每次判、改判在主对话正本追加 upload_routed，以最后一条为准。两边都建成一份资料（W11：存在一处），
+// 学过的另在外部导入里追加一条指向它的指针；主对话给的本机路径（import_local）也从这里进。
+import {
+  copyFile,
+  lstat,
+  mkdir,
+  readdir,
+  readFile,
+  realpath,
+  stat,
+  writeFile,
+} from 'node:fs/promises';
 import { basename, dirname, extname, join, normalize } from 'node:path';
-import type { AddMaterialRequest, UploadItemView } from '../shared/protocol.ts';
+import type {
+  AddMaterialRequest,
+  MaterialKind,
+  MaterialOwner,
+  UploadItemView,
+} from '../shared/protocol.ts';
 import type { LogRecord, UploadRouted } from '../shared/records.ts';
+import { UNSUPPORTED_EXT } from './knowledge/materials.ts';
 import { BadRequestError } from './studium.ts';
 
 /** 一次最多传多少个文件（参照 Claude）。 */
@@ -14,12 +30,29 @@ export const MAX_UPLOAD_FILES = 100;
 export const MAX_UPLOAD_FILE_BYTES = 100 * 1024 * 1024;
 /** 一次上传合计上限。 */
 export const MAX_UPLOAD_BYTES = 300 * 1024 * 1024;
+/** 本机路径导入（import_local）一次最多多少个文件（笔记文件夹常过百）。 */
+export const MAX_LOCAL_FILES = 3000;
 
-/** 模型判一次：归资料还是学过的（学过的再分笔记 / 对话记录）+ 一句理由。 */
-export type RouteJudge = (
-  name: string,
-  sample: string,
-) => Promise<{ to: '资料' | '学过的'; channel?: '笔记' | '对话记录'; reason: string }>;
+type Owner = '学习者' | '项目';
+type Judged = {
+  to: '资料' | '学过的';
+  channel?: '笔记' | '对话记录';
+  owner: Owner;
+  reason: string;
+};
+
+/** 模型判一次：归资料还是学过的（学过的再分笔记 / 对话记录）、归学习者还是项目 + 一句理由。 */
+export type RouteJudge = (name: string, sample: string) => Promise<Judged>;
+
+/** 没判出归属时的默认（W11 §2）：学过的 → 学习者；资料 → 项目。 */
+export function defaultOwner(to: '资料' | '学过的'): Owner {
+  return to === '学过的' ? '学习者' : '项目';
+}
+
+/** 界面与记录里的归属两个字 → source.json 里的归属。 */
+export function ownerOf(o: Owner, mainId: string): MaterialOwner {
+  return o === '学习者' ? { kind: 'learner' } : { kind: 'project', projects: [mainId] };
+}
 
 export interface UploadsDeps {
   /** <数据>/projects。 */
@@ -29,51 +62,37 @@ export interface UploadsDeps {
   /** 不给 = 没接模型，拿不准的按扩展名默认。 */
   judge?: RouteJudge;
   addMaterial: (mainId: string, req: AddMaterialRequest) => Promise<string>;
-  removeMaterial: (mainId: string, id: string) => Promise<void>;
+  /** 改判时改那份资料的“学过的”标记与归属，并重做工作层。 */
+  relabel: (
+    mainId: string,
+    id: string,
+    learned: { channel: '笔记' | '对话记录' } | undefined,
+    owner: MaterialOwner,
+  ) => Promise<void>;
+  /** 资料现在的归属（改过就是改后的）；找不到给空。 */
+  ownerNow: (id: string) => Promise<Owner | undefined>;
   importLearned: (
     mainId: string,
-    x: { path: string; channel: '笔记' | '对话记录'; title: string },
+    x: { material: string; channel: '笔记' | '对话记录'; title: string },
   ) => Promise<string>;
   removeImport: (id: string) => Promise<void>;
   record: (mainId: string, r: Omit<UploadRouted, 'type' | 'at'>) => Promise<void>;
   records: (mainId: string) => Promise<LogRecord[]>;
 }
 
-/** 一份上传的东西（单个文件，或整个笔记 / 代码文件夹）。 */
-type UnitKind = 'pdf' | 'subtitle' | 'notes' | 'chat' | 'text' | 'unsupported';
+/** 一份上传的东西（单个文件，或整个文件夹）。image / doc = 不是纯文字、交导入会话处理的（W11 §4）。 */
+type UnitKind = 'pdf' | 'subtitle' | 'notes' | 'chat' | 'text' | 'image' | 'doc' | 'unsupported';
 
 interface Unit {
   /** 上传里的相对路径（文件夹 = 文件夹名）。 */
   file: string;
   kind: UnitKind;
+  /** 给了就用它作标题（import_local 只导入一份时）；不给 = 文件名。 */
+  title?: string;
 }
 
 const NOTE_EXT = new Set(['.md', '.markdown', '.txt']);
 const IMAGE_EXT = new Set(['.png', '.jpg', '.jpeg', '.gif', '.webp', '.svg', '.bmp']);
-/** 认得、但现在还转不了的（Word、PPT、表格、压缩包、音视频……）。 */
-const BINARY_EXT = new Set([
-  '.doc',
-  '.docx',
-  '.ppt',
-  '.pptx',
-  '.xls',
-  '.xlsx',
-  '.zip',
-  '.rar',
-  '.7z',
-  '.gz',
-  '.tar',
-  '.epub',
-  '.mp3',
-  '.mp4',
-  '.m4a',
-  '.wav',
-  '.mov',
-  '.mkv',
-  '.exe',
-  '.dmg',
-]);
-
 export class Uploads {
   constructor(private readonly o: UploadsDeps) {}
 
@@ -111,14 +130,102 @@ export class Uploads {
       await writeFile(join(dir, rel), f.data);
       if (f.data.subarray(0, 8000).includes(0)) binary.add(rel);
     }
+    return this.landAll(mainId, upload, paths, binary);
+  }
+
+  /**
+   * 本机路径导入（W11 §5，主对话的 import_local）：先数清文件数与总大小（超了直接拒，不先拷），再把这个文件或
+   * 文件夹原样拷进 `上传/<上传 id>/`，之后和拖进来的走完全一样的分流与落地。路径本身能不能导入由调用方先查；
+   * 里面的符号链接：指向 `allowed` 不认的位置（被挡的、家目录外的）不跟；指向文件夹的也不跟（免得绕圈）。
+   * 回落地结果与没跟的链接。
+   */
+  async saveFromPath(
+    mainId: string,
+    abs: string,
+    allowed: (real: string) => boolean,
+    title?: string,
+  ): Promise<{ items: UploadItemView[]; skipped: string[] }> {
+    const name = basename(abs);
+    const files: { rel: string; from: string; size: number }[] = [];
+    const skipped: string[] = [];
+    const visit = async (from: string, rel: string): Promise<void> => {
+      if (files.length > MAX_LOCAL_FILES) return;
+      const st = await lstat(from);
+      if (st.isSymbolicLink()) {
+        let target: string;
+        try {
+          target = await realpath(from);
+        } catch (err) {
+          if ((err as { code?: string }).code !== 'ENOENT') throw err;
+          skipped.push(`${rel}（链接指向的东西不在了）`);
+          return;
+        }
+        const ts = await stat(target);
+        if (!allowed(target) || !ts.isFile()) {
+          skipped.push(`${rel}（链接指向${ts.isFile() ? '不让读的位置' : '文件夹'}，没跟）`);
+          return;
+        }
+        files.push({ rel, from: target, size: ts.size });
+        return;
+      }
+      if (st.isDirectory()) {
+        if (rel !== name && (basename(from) === '.git' || basename(from) === 'node_modules'))
+          return;
+        for (const e of (await readdir(from)).sort()) await visit(join(from, e), `${rel}/${e}`);
+        return;
+      }
+      if (st.isFile()) files.push({ rel, from, size: st.size });
+    };
+    await visit(abs, name);
+    if (files.length === 0) throw new BadRequestError('这里没有能导入的文件');
+    if (files.length > MAX_LOCAL_FILES) {
+      throw new BadRequestError(
+        `一次最多导入 ${String(MAX_LOCAL_FILES)} 个文件，这里更多；挑子文件夹导入`,
+      );
+    }
+    const bytes = files.reduce((n, f) => n + f.size, 0);
+    if (bytes > MAX_UPLOAD_BYTES) {
+      throw new BadRequestError(
+        `合计 ${String(Math.round(bytes / 1024 / 1024))} MB，超过 ${String(MAX_UPLOAD_BYTES / 1024 / 1024)} MB；挑子文件夹导入`,
+      );
+    }
+    const upload = this.o.newId('up');
+    const dir = this.dir(mainId, upload);
+    const paths: string[] = [];
+    const binary = new Set<string>();
+    for (const f of files) {
+      const to = join(dir, f.rel);
+      await mkdir(dirname(to), { recursive: true });
+      await copyFile(f.from, to);
+      paths.push(f.rel);
+      const data = await readFile(to);
+      if (data.subarray(0, 8000).includes(0)) binary.add(f.rel);
+    }
+    return { items: await this.landAll(mainId, upload, paths, binary, title), skipped };
+  }
+
+  private async landAll(
+    mainId: string,
+    upload: string,
+    paths: string[],
+    binary: Set<string>,
+    title?: string,
+  ): Promise<UploadItemView[]> {
     const out: UploadItemView[] = [];
-    for (const unit of units(paths, binary)) {
-      out.push(await this.land(mainId, upload, unit));
+    const all = units(paths, binary);
+    for (const unit of all) {
+      out.push(
+        await this.land(
+          mainId,
+          upload,
+          title !== undefined && all.length === 1 ? { ...unit, title } : unit,
+        ),
+      );
     }
     return out;
   }
 
-  /** 本项目所有上传的现状（每份取最后一条 upload_routed），新的在前。 */
+  /** 本项目所有上传的现状（每份取最后一条 upload_routed；归属取那份资料现在的），新的在前。 */
   async list(mainId: string): Promise<UploadItemView[]> {
     const latest = new Map<string, UploadItemView>();
     for (const r of await this.o.records(mainId)) {
@@ -127,10 +234,18 @@ export class Uploads {
       delete (view as Partial<typeof r>).type;
       latest.set(`${r.upload}\u0001${r.file}`, view);
     }
-    return [...latest.values()].reverse();
+    const out = [...latest.values()].reverse();
+    for (const v of out) {
+      const now = v.material !== undefined ? await this.o.ownerNow(v.material) : undefined;
+      if (now !== undefined) v.owner = now;
+    }
+    return out;
   }
 
-  /** 学习者改判：撤掉原来那边，落到另一边（以学习者为准）。 */
+  /**
+   * 学习者改判（以学习者为准）：资料存在一处，改的是同一份资料的“学过的”标记与归属（归属换成那边的默认，
+   * 不对再点改归属），学过的那边另加 / 删外部导入的指针；工作层重做一遍。没落下的（转不了）照旧报错。
+   */
   async reroute(
     mainId: string,
     upload: string,
@@ -144,44 +259,76 @@ export class Uploads {
     const st = await stat(abs);
     const unit: Unit = {
       file,
-      kind: st.isDirectory() ? await folderKind(abs) : fileKind(file, false),
+      kind: st.isDirectory()
+        ? await folderKind(abs)
+        : fileKind(file, (await readFile(abs)).subarray(0, 8000).includes(0)),
     };
-    if (to === '学过的' && !canBeLearned(unit.kind)) {
-      throw new BadRequestError('只有文字笔记（.md / .txt）和对话导出（.json）能当学过的');
+    if (unit.kind === 'unsupported') throw new BadRequestError('这种文件还转不了，改判也落不下');
+    const owner = defaultOwner(to);
+    const channel = to === '学过的' ? (unit.kind === 'chat' ? '对话记录' : '笔记') : undefined;
+    if (now.material === undefined) {
+      return this.put(mainId, upload, unit, {
+        to,
+        by: 'learner',
+        owner,
+        ...(channel !== undefined ? { channel } : {}),
+      });
     }
-    if (now.material !== undefined) await this.o.removeMaterial(mainId, now.material);
+    await this.o.relabel(
+      mainId,
+      now.material,
+      channel !== undefined ? { channel } : undefined,
+      ownerOf(owner, mainId),
+    );
     if (now.import !== undefined) await this.o.removeImport(now.import);
-    return this.put(mainId, upload, unit, {
-      to,
-      by: 'learner',
-      ...(to === '学过的' ? { channel: unit.kind === 'chat' ? '对话记录' : '笔记' } : {}),
-    });
+    const imp =
+      channel !== undefined
+        ? await this.o.importLearned(mainId, {
+            material: now.material,
+            channel,
+            title: titleOf(file),
+          })
+        : undefined;
+    const rec = {
+      upload,
+      file,
+      routedTo: to,
+      by: 'learner' as const,
+      owner,
+      material: now.material,
+      ...(imp !== undefined ? { import: imp } : {}),
+    };
+    await this.o.record(mainId, rec);
+    return { ...rec, at: this.o.iso() };
   }
 
   /** 判一份：扩展名定得了的直接定，拿不准的问模型；然后落地。 */
   private async land(mainId: string, upload: string, unit: Unit): Promise<UploadItemView> {
-    if (!canBeLearned(unit.kind)) {
+    if (unit.kind !== 'notes' && unit.kind !== 'chat') {
       return this.put(mainId, upload, unit, {
         to: '资料',
         by: 'model',
+        owner: defaultOwner('资料'),
         reason:
           unit.kind === 'unsupported'
-            ? '按扩展名：不是文字资料'
-            : `按扩展名：${unit.kind === 'pdf' ? 'PDF' : unit.kind === 'subtitle' ? '字幕' : '文字 / 代码'}都当资料`,
+            ? '按扩展名：音频、视频、压缩包这类收不了'
+            : `按扩展名：${KIND_WORD[unit.kind]}先当资料，不对就点改`,
       });
     }
     const judged = await this.judge(this.dir(mainId, upload), unit);
     return this.put(mainId, upload, unit, { ...judged, by: 'model' });
   }
 
-  private async judge(
-    dir: string,
-    unit: Unit,
-  ): Promise<{ to: '资料' | '学过的'; channel?: '笔记' | '对话记录'; reason: string }> {
-    const fallback =
+  private async judge(dir: string, unit: Unit): Promise<Judged> {
+    const fallback: Judged =
       unit.kind === 'chat'
-        ? ({ to: '学过的', channel: '对话记录', reason: '没接模型：.json 多是对话导出' } as const)
-        : ({ to: '资料', reason: '没接模型：按扩展名默认当资料，不对就点改' } as const);
+        ? {
+            to: '学过的',
+            channel: '对话记录',
+            owner: '学习者',
+            reason: '没接模型：.json 多是对话导出',
+          }
+        : { to: '资料', owner: '项目', reason: '没接模型：按扩展名默认当资料，不对就点改' };
     if (this.o.judge === undefined) return fallback;
     try {
       return await this.o.judge(unit.file, await sample(join(dir, unit.file)));
@@ -191,7 +338,7 @@ export class Uploads {
     }
   }
 
-  /** 落地并记一条 upload_routed。 */
+  /** 落地并记一条 upload_routed：两边都建一份资料；学过的另追加一条外部导入。 */
   private async put(
     mainId: string,
     upload: string,
@@ -199,37 +346,52 @@ export class Uploads {
     how: {
       to: '资料' | '学过的';
       by: 'model' | 'learner';
+      owner: Owner;
       reason?: string;
       channel?: '笔记' | '对话记录';
     },
   ): Promise<UploadItemView> {
     const abs = join(this.dir(mainId, upload), unit.file);
-    const title = basename(unit.file).replace(extname(unit.file), '') || unit.file;
+    const title = unit.title ?? titleOf(unit.file);
     const base = {
       upload,
       file: unit.file,
       routedTo: how.to,
       by: how.by,
+      owner: how.owner,
       ...(how.reason !== undefined ? { reason: how.reason } : {}),
     };
     let landed: { material?: string; import?: string; problem?: string };
     try {
       if (unit.kind === 'unsupported') {
         landed = {
-          problem:
-            '这种文件还转不了（能转：PDF、md、txt、网页、字幕、代码等文字）；可先导出成 PDF 再传',
+          problem: '音频、视频、可执行文件、压缩包这类收不了；解压或导出成文档、图片再传',
         };
-      } else if (how.to === '资料') {
-        const kind =
-          unit.kind === 'pdf' ? 'pdf' : unit.kind === 'subtitle' ? 'subtitle' : ('md' as const);
-        landed = { material: await this.o.addMaterial(mainId, { kind, origin: abs, title }) };
       } else {
+        const kind: MaterialKind =
+          unit.kind === 'pdf'
+            ? 'pdf'
+            : unit.kind === 'subtitle'
+              ? 'subtitle'
+              : unit.kind === 'image' || unit.kind === 'doc'
+                ? 'file'
+                : 'md';
+        const channel =
+          how.to === '学过的'
+            ? (how.channel ?? (unit.kind === 'chat' ? '对话记录' : '笔记'))
+            : undefined;
+        const material = await this.o.addMaterial(mainId, {
+          kind,
+          origin: abs,
+          title,
+          owner: ownerOf(how.owner, mainId),
+          ...(channel !== undefined ? { learned: { channel } } : {}),
+        });
         landed = {
-          import: await this.o.importLearned(mainId, {
-            path: abs,
-            channel: how.channel ?? (unit.kind === 'chat' ? '对话记录' : '笔记'),
-            title,
-          }),
+          material,
+          ...(channel !== undefined
+            ? { import: await this.o.importLearned(mainId, { material, channel, title }) }
+            : {}),
         };
       }
     } catch (err) {
@@ -252,9 +414,26 @@ function safeRelative(p: string): string {
   return n;
 }
 
+/** 按扩展名先当资料时，理由里那几个字。 */
+const KIND_WORD: Record<UnitKind, string> = {
+  pdf: 'PDF',
+  subtitle: '字幕',
+  notes: '笔记',
+  chat: '对话导出',
+  text: '文字 / 代码',
+  image: '图片',
+  doc: '文档',
+  unsupported: '收不了的文件',
+};
+
+function titleOf(file: string): string {
+  return basename(file).replace(extname(file), '') || file;
+}
+
 /**
- * 一批路径分成一份份：顶层文件各一份；文件夹里的 PDF、字幕、转不了的各一份，其余文字连同图片整个文件夹一份
- * （全是 .md / .txt = 笔记文件夹，交模型判；有代码等别的文字 = 资料）。
+ * 一批路径分成一份份（W11：笔记保留原目录结构）：顶层文件各一份；一个文件夹整个一份（里面的 PDF、图片也在，
+ * 交导入会话；音视频等收不了的原样留在原件里）。文件夹里有 .md / .txt = 可能是笔记，交模型判；
+ * 只有代码等别的文字 = 资料；没有文字（只有 PDF、图片等）= 文档。
  */
 function units(paths: string[], binary: Set<string>): Unit[] {
   const out: Unit[] = [];
@@ -265,22 +444,18 @@ function units(paths: string[], binary: Set<string>): Unit[] {
     else folders.set(top, [...(folders.get(top) ?? []), p]);
   }
   for (const [top, inside] of folders) {
-    let texts = 0;
-    let notes = true;
-    for (const p of inside) {
-      const ext = extname(p).toLowerCase();
-      if (IMAGE_EXT.has(ext)) continue;
-      const kind = fileKind(p, binary.has(p));
-      if (kind === 'pdf' || kind === 'subtitle' || kind === 'unsupported') {
-        out.push({ file: p, kind });
-        continue;
-      }
-      texts++;
-      if (!NOTE_EXT.has(ext)) notes = false;
-    }
-    if (texts > 0) out.push({ file: top, kind: notes ? 'notes' : 'text' });
+    out.push({ file: top, kind: kindOfFolder(inside.map((p) => fileKind(p, binary.has(p)))) });
   }
   return out;
+}
+
+function kindOfFolder(kinds: UnitKind[]): UnitKind {
+  // 有 .md / .txt 的交模型判（看文件清单与开头一段；笔记文件夹里常夹着代码、画布、图片）
+  if (kinds.some((k) => k === 'notes')) return 'notes';
+  if (kinds.some((k) => k === 'text' || k === 'chat')) return 'text';
+  if (kinds.some((k) => k === 'subtitle')) return 'notes';
+  if (kinds.every((k) => k === 'unsupported')) return 'unsupported';
+  return 'doc';
 }
 
 function fileKind(p: string, binary: boolean): UnitKind {
@@ -289,28 +464,26 @@ function fileKind(p: string, binary: boolean): UnitKind {
   if (ext === '.srt' || ext === '.vtt') return 'subtitle';
   if (NOTE_EXT.has(ext)) return 'notes';
   if (ext === '.json') return 'chat';
-  if (BINARY_EXT.has(ext) || IMAGE_EXT.has(ext) || binary) return 'unsupported';
+  if (UNSUPPORTED_EXT.has(ext)) return 'unsupported';
+  if (IMAGE_EXT.has(ext)) return 'image';
+  if (binary) return 'doc';
   return 'text';
 }
 
-/** 改判时从盘上重新认文件夹：全是 .md / .txt 的算笔记文件夹。 */
+/** 改判时从盘上重新认文件夹。 */
 async function folderKind(dir: string): Promise<UnitKind> {
-  const walk = async (d: string): Promise<boolean> => {
+  const kinds: UnitKind[] = [];
+  const walk = async (d: string): Promise<void> => {
     for (const e of await readdir(d, { withFileTypes: true })) {
-      if (e.isDirectory()) {
-        if (!(await walk(join(d, e.name)))) return false;
-        continue;
-      }
-      const ext = extname(e.name).toLowerCase();
-      if (!NOTE_EXT.has(ext) && !IMAGE_EXT.has(ext)) return false;
+      if (e.isDirectory()) await walk(join(d, e.name));
+      else
+        kinds.push(
+          fileKind(e.name, (await readFile(join(d, e.name))).subarray(0, 8000).includes(0)),
+        );
     }
-    return true;
   };
-  return (await walk(dir)) ? 'notes' : 'text';
-}
-
-function canBeLearned(kind: UnitKind): boolean {
-  return kind === 'notes' || kind === 'chat';
+  await walk(dir);
+  return kindOfFolder(kinds);
 }
 
 /** 给模型看的样子：文件开头一段；文件夹 = 文件清单 + 第一份的开头。只够判归哪类。 */

@@ -1,6 +1,7 @@
-// 项目资料（工单 W8；设计 docs/设计/记录/资料.md）：资料归项目，每份处理成
-// md 正文 + 指回原件的位置 + 固定版本 + 来源与日期。存在 <数据>/projects/<主对话 id>/资料/<资料 id>/：
-//   source.json · 原件/（原样保留）· 正文/（md；仓库 = 固定提交的工作树，代码原样）·
+// 资料与外部导入的存放处（工单 W8、W11；设计 docs/设计/记录/资料.md「存在一处、按归属读」「原件层与工作层」）：
+// 所有导入存一处，每份带归属（学习者 / 项目），程序按归属算每个会话能读什么。存在 <数据>/资料/<资料 id>/：
+//   source.json · 原件/（导入时原样拷入，文件夹保留目录结构，之后不写）·
+//   正文/（工作层：模型能读的文字；纯文字由程序从原件拷或转，其余由导入会话写；仓库 = 固定提交的工作树）·
 //   mineru/（PDF 的 MinerU 转换产物：每段页码一个 p<起>-<止>/，原件页面从这里找）。
 // 原文、出处、沙盒、原件页面都经它读。不存摘要、路线、标签。
 import { execFile } from 'node:child_process';
@@ -21,14 +22,17 @@ import { basename, dirname, extname, join, normalize, relative } from 'node:path
 import { promisify } from 'node:util';
 import type {
   AddMaterialRequest,
-  BookSummary,
+  MaterialSummary,
   MaterialKind,
+  MaterialOwner,
   MaterialSource,
+  MaterialStatus,
   NumberedLine,
   TocEntry,
 } from '../../shared/protocol.ts';
 import { MATERIAL_KINDS } from '../../shared/protocol.ts';
 import { isNotFound } from '../log/session-log.ts';
+import { CHAT_RECORD_HEAD, chatExportToMarkdown } from './chat-export.ts';
 import {
   searchSets,
   splitLines,
@@ -43,7 +47,7 @@ const run = promisify(execFile);
 /** 读原文的接口（原文、出处、原件页面、来源说明、产出共用）。 */
 export type SourceReader = Pick<
   Materials,
-  | 'books'
+  | 'ids'
   | 'source'
   | 'summaries'
   | 'index'
@@ -63,6 +67,8 @@ const ORIGINAL_DIR = '原件';
 const BODY_DIR = '正文';
 /** MinerU 的输出目录（和 source.json 分开，转换途中不会盖掉它）。 */
 const MINERU_DIR = 'mineru';
+/** 导入会话觉得又大又乱时写的说明（不强求）：列文件时排第一。 */
+export const GUIDE_FILE = '说明.md';
 /** 扫描缓存多久（毫秒）。 */
 const SCAN_TTL_MS = 2000;
 /** 没有目录表（index.md）的资料：按文件树列，最多列这么多个文件。 */
@@ -76,9 +82,31 @@ const COMMAND_TIMEOUT_MS = 30 * 60_000;
 /** 抓网页最多等多久。 */
 const FETCH_TIMEOUT_MS = 60_000;
 
+/**
+ * 收不了的文件（W11 §4：音频、视频、可执行文件、压缩包）：上传时标“转不了”；夹在文件夹里的原样留在原件里，
+ * 不交导入会话，在 problems 里写一句。文档类与图片交导入会话。
+ */
+export const UNSUPPORTED_EXT = new Set([
+  '.zip',
+  '.rar',
+  '.7z',
+  '.gz',
+  '.tar',
+  '.mp3',
+  '.mp4',
+  '.m4a',
+  '.wav',
+  '.mov',
+  '.mkv',
+  '.exe',
+  '.dmg',
+]);
+
+/** 本机拷进来的种类（原件层 + 工作层那套）；网页、仓库、联网查来的各走自己的流程。 */
+const LOCAL_KINDS: readonly MaterialKind[] = ['pdf', 'subtitle', 'md', 'file'];
+
 interface Entry {
   id: string;
-  main: string;
   dir: string;
   src: MaterialSource;
 }
@@ -89,8 +117,11 @@ interface Loaded {
   files?: IndexedFile[];
 }
 
+/** 原件里有不是纯文字的文件时，交给导入会话（W11 §4）；Studium 接上。 */
+export type Importer = (id: string, files: string[]) => Promise<void>;
+
 export interface MaterialsOptions {
-  /** <数据>/projects。 */
+  /** <数据>/资料。 */
   root: string;
   now?: () => Date;
   /** `书库处理/` 目录（PDF 走它的 MinerU 转换）；不给 = PDF 转不了，标失败。 */
@@ -102,33 +133,59 @@ export class Materials {
   private readonly loaded = new Map<string, Loaded>();
   private readonly pending = new Map<string, Promise<void>>();
   private readonly now: () => Date;
+  private importer: Importer | undefined;
+  /** 已报过的坏资料目录。 */
+  private readonly reported = new Set<string>();
 
   constructor(private readonly o: MaterialsOptions) {
     this.now = o.now ?? (() => new Date());
   }
 
-  // ───────────── 项目资料区 ─────────────
-
-  /** 一个项目的资料目录：<数据>/projects/<主对话 id>/资料/。 */
-  projectDir(mainId: string): string {
-    if (mainId === '' || mainId.includes('/') || mainId.includes('..')) {
-      throw new Error(`项目 id 不对：${mainId}`);
-    }
-    return join(this.o.root, mainId, '资料');
+  /** 接上导入会话（Studium 建好之后）。 */
+  setImporter(fn: Importer): void {
+    this.importer = fn;
   }
 
-  /** 这份资料的 source.json；不是项目资料返回空。 */
-  async source(id: string): Promise<(MaterialSource & { main: string }) | undefined> {
-    const e = await this.entry(id);
-    return e !== undefined ? { ...e.src, main: e.main } : undefined;
+  // ───────────── 存放与归属 ─────────────
+
+  /** 这份资料的 source.json；没有这份返回空。 */
+  async source(id: string): Promise<MaterialSource | undefined> {
+    return (await this.entry(id))?.src;
   }
 
-  /** 一个项目里建好的资料（含处理中、失败的），按 id。 */
+  /** 这个项目能不能读这份（没删、归学习者，或归属里有这个项目）。 */
+  static readableBy(src: MaterialSource, mainId: string): boolean {
+    if (src.removed !== undefined) return false;
+    return src.owner.kind === 'learner' || src.owner.projects.includes(mainId);
+  }
+
+  /**
+   * 本项目能读的资料（含处理中、失败的），按 id：归学习者的全部 + 归属里有这个项目的；删掉的不算。
+   * 沙盒只读区、读资料的工具、出处核对、定位都从这里算（记录/资料.md「存在一处、按归属读」）。
+   */
   async ofProject(mainId: string): Promise<MaterialSource[]> {
     return [...(await this.scan()).values()]
-      .filter((e) => e.main === mainId)
       .map((e) => e.src)
+      .filter((s) => Materials.readableBy(s, mainId))
       .sort((a, b) => a.id.localeCompare(b.id));
+  }
+
+  /**
+   * 启动时调用（W11 §4）：状态还是“处理中”、这个进程里又没有在处理它的（上次处理被服务重启打断，导入会话也
+   * 不在跑了），改成“失败”写明原因，学习者可以重试。
+   */
+  async recoverInterrupted(): Promise<string[]> {
+    const out: string[] = [];
+    for (const e of (await this.scan(true)).values()) {
+      if (e.src.status !== '处理中' || this.pending.has(e.id)) continue;
+      await this.write(e.dir, {
+        ...e.src,
+        status: '失败',
+        problems: [...(e.src.problems ?? []), '上次处理被服务重启打断，可重试'],
+      });
+      out.push(e.id);
+    }
+    return out;
   }
 
   /** 处理完了没有（等后台转换；测试与入口界面用）。 */
@@ -137,7 +194,7 @@ export class Materials {
   }
 
   /**
-   * 在项目里建一份资料：先写 source.json（处理中），转换在后台跑，跑完改状态。
+   * 建一份资料：先写 source.json（处理中），处理在后台跑，跑完改状态。不给归属 = 只归发起导入的项目。
    * 返回建好时的 source.json；调用方随后在主对话里记 project_material。
    */
   async add(mainId: string, req: AddMaterialRequest): Promise<MaterialSource> {
@@ -148,7 +205,7 @@ export class Materials {
     if (origin === '') throw new MaterialError('origin 不能为空：给路径、网址或仓库地址');
     const title = req.title?.trim() || guessTitle(req.kind, origin);
     const id = await this.freshId(title);
-    const dir = join(this.projectDir(mainId), id);
+    const dir = this.dirOf(id);
     await mkdir(dir, { recursive: true });
     const src: MaterialSource = {
       id,
@@ -158,10 +215,41 @@ export class Materials {
       version: '',
       fetchedAt: this.now().toISOString(),
       status: '处理中',
+      owner: req.owner ?? { kind: 'project', projects: [mainId] },
+      importedFrom: mainId,
+      ...(req.learned !== undefined ? { learned: req.learned } : {}),
     };
     await this.write(dir, src);
     this.run(dir, src, req);
     return src;
+  }
+
+  /** 改归属（学习者 / 某几个项目）；写 source.json，文件不挪。 */
+  async setOwner(id: string, owner: MaterialOwner): Promise<MaterialSource> {
+    const e = await this.require(id);
+    const src = { ...e.src, owner };
+    await this.write(e.dir, src);
+    return src;
+  }
+
+  /** 改“学过的”标记（改判资料 / 学过的时用）。 */
+  async setLearned(
+    id: string,
+    learned: MaterialSource['learned'] | undefined,
+  ): Promise<MaterialSource> {
+    const e = await this.require(id);
+    const src: MaterialSource = { ...e.src };
+    if (learned === undefined) delete src.learned;
+    else src.learned = learned;
+    await this.write(e.dir, src);
+    return src;
+  }
+
+  /** 学习者删了：只在 source.json 标上，文件留着（已有引用照旧能定位）。 */
+  async remove(id: string): Promise<void> {
+    const e = await this.require(id);
+    if (e.src.removed !== undefined) return;
+    await this.write(e.dir, { ...e.src, removed: { at: this.now().toISOString() } });
   }
 
   /** 在后台处理；失败写进 source.json（状态“失败”带原因），不伪装可用。 */
@@ -169,7 +257,7 @@ export class Materials {
     const job = this.process(dir, src, req)
       .catch(async (err: unknown) => {
         await this.write(dir, {
-          ...src,
+          ...((await this.entry(src.id))?.src ?? src),
           status: '失败',
           problems: [err instanceof Error ? err.message : String(err)],
         });
@@ -182,42 +270,22 @@ export class Materials {
   }
 
   /**
-   * 重试一份失败 / 有问题的资料（工单 W9 §4.4）：清掉上次的产物（原件、正文、按页段的转换结果），
-   * 按原来的来源再处理一遍。处理中的不重试。
+   * 重试一份失败 / 有问题的资料（工单 W9 §4.4、W11 §4）：清掉工作层（正文、按页段的转换结果），原件层留着，
+   * 按原来的来源再处理一遍；原件里有不是纯文字的，重开一个导入会话。处理中的不重试。
    */
   async retry(id: string): Promise<MaterialSource> {
-    const e = await this.entry(id);
-    if (e === undefined) throw new MaterialError(`没有这份资料：${id}`);
+    const e = await this.require(id);
     if (e.src.status === '处理中') throw new MaterialError('这份还在处理，等它跑完再说');
+    const keepOriginal = LOCAL_KINDS.includes(e.src.kind);
     for (const name of await readdir(e.dir)) {
-      if (name !== SOURCE_FILE) await rm(join(e.dir, name), { recursive: true, force: true });
+      if (name === SOURCE_FILE || (keepOriginal && name === ORIGINAL_DIR)) continue;
+      await rm(join(e.dir, name), { recursive: true, force: true });
     }
     const src: MaterialSource = { ...e.src, status: '处理中', fetchedAt: this.now().toISOString() };
     delete src.problems;
     delete src.converter;
     await this.write(e.dir, src);
     this.run(e.dir, src, { kind: src.kind, origin: src.origin, title: src.title });
-    return src;
-  }
-
-  /**
-   * 从别的项目拿一份（工单 W9 §4.1）：整份目录复制进本项目、换新 id，记 copiedFrom。处理中的不拿。
-   */
-  async copy(id: string, toMain: string): Promise<MaterialSource> {
-    const e = await this.entry(id);
-    if (e === undefined) throw new MaterialError(`没有这份资料：${id}`);
-    if (e.src.status === '处理中') throw new MaterialError('这份还在处理，等它跑完再拿');
-    const newId = await this.freshId(e.src.title);
-    const dir = join(this.projectDir(toMain), newId);
-    await mkdir(dirname(dir), { recursive: true });
-    await cp(e.dir, dir, { recursive: true });
-    const src: MaterialSource = {
-      ...e.src,
-      id: newId,
-      copiedFrom: { project: e.main, material: e.id },
-    };
-    delete src.role; // 角色是在原项目里判的，这里重新判
-    await this.write(dir, src);
     return src;
   }
 
@@ -233,17 +301,88 @@ export class Materials {
     return true;
   }
 
+  // ───────────── 导入会话（W11 §4，试验）用 ─────────────
+
+  /** 记下处理过它的导入会话。 */
+  async addProcessedBy(id: string, sessionId: string): Promise<void> {
+    const e = await this.require(id);
+    const by = [...(e.src.processedBy ?? [])];
+    if (!by.includes(sessionId)) by.push(sessionId);
+    await this.write(e.dir, { ...e.src, processedBy: by });
+  }
+
+  /** 哪份资料是这个导入会话处理的。 */
+  async ofImportSession(sessionId: string): Promise<MaterialSource | undefined> {
+    for (const fresh of [false, true]) {
+      for (const e of (await this.scan(fresh)).values()) {
+        if (e.src.processedBy?.includes(sessionId) === true) return e.src;
+      }
+    }
+    return undefined;
+  }
+
+  /** 导入会话交回（或没交回）：写状态与问题；正文目录重新扫。 */
+  async finishImport(id: string, status: MaterialStatus, problems: string[]): Promise<void> {
+    const e = await this.require(id);
+    const src: MaterialSource = { ...e.src, status };
+    const all = [...(e.src.problems ?? []), ...problems].filter((x) => x.trim() !== '');
+    if (all.length > 0) src.problems = all;
+    else delete src.problems;
+    await this.write(e.dir, src);
+    this.loaded.delete(id);
+  }
+
+  /**
+   * 导入会话调用 MinerU（W11 §4 的 `mineru` 工具）：`原件/<file>` 走现有的 PDF 转换（分页段、`书库处理/`），
+   * 产物进 `mineru/`、md 进 `正文/`。只有一个 PDF 的 pdf 资料照原来的位置放（原件页面按它找页）；
+   * 其余按原件里的相对路径分开放。返回写进正文的文件（相对正文目录），或转不了的原因。
+   */
+  async mineru(id: string, file: string): Promise<{ files: string[] } | { problem: string }> {
+    const e = await this.require(id);
+    const rel = normalize(file).replace(/^\/+/, '');
+    if (rel.startsWith('..')) return { problem: `路径越界：${file}` };
+    const pdf = join(e.dir, ORIGINAL_DIR, rel);
+    try {
+      if (!(await stat(pdf)).isFile()) return { problem: `原件里没有这个文件：${file}` };
+    } catch (err) {
+      if (isNotFound(err)) return { problem: `原件里没有这个文件：${file}` };
+      throw err;
+    }
+    if (extname(rel).toLowerCase() !== '.pdf') return { problem: 'mineru 只转 PDF' };
+    const single = e.src.kind === 'pdf' && !rel.includes('/');
+    const stem = rel.slice(0, -extname(rel).length);
+    const out = single ? join(e.dir, MINERU_DIR) : join(e.dir, MINERU_DIR, stem);
+    const bodyAt = single ? join(e.dir, BODY_DIR) : join(e.dir, BODY_DIR, stem);
+    const r = await this.convertPdf(pdf, out, bodyAt);
+    if (typeof r === 'string') return { problem: r };
+    this.loaded.delete(id);
+    const files = r.map((f) => relative(join(e.dir, BODY_DIR), f).split('\\').join('/'));
+    if (single) await this.write(e.dir, { ...e.src, converter: 'mineru' });
+    return { files };
+  }
+
+  /** 工作层被导入会话改过：下次读时重新扫正文目录（交回之后它还可能写，会话停下时再刷一次）。 */
+  refresh(id: string): void {
+    this.loaded.delete(id);
+  }
+
+  /** 原件目录（导入会话的沙盒只读区挂这个）。 */
+  async originalDir(id: string): Promise<string> {
+    return join((await this.require(id)).dir, ORIGINAL_DIR);
+  }
+
   // ───────────── 读 ─────────────
 
-  /** 能读的 id：各项目的资料。 */
-  async books(): Promise<string[]> {
+  /** 全部资料的 id（含删掉的：已有引用照旧能定位）。 */
+  async ids(): Promise<string[]> {
     return [...(await this.scan()).keys()].sort();
   }
 
-  /** 资料浏览的列表：各项目的资料都列。 */
-  async summaries(): Promise<Omit<BookSummary, 'hasOriginal'>[]> {
-    const out: Omit<BookSummary, 'hasOriginal'>[] = [];
+  /** 资料浏览的列表：全部资料都列（删掉的除外）。 */
+  async summaries(): Promise<Omit<MaterialSummary, 'hasOriginal'>[]> {
+    const out: Omit<MaterialSummary, 'hasOriginal'>[] = [];
     for (const e of (await this.scan()).values()) {
+      if (e.src.removed !== undefined) continue;
       const sections =
         e.src.status === '可用' || e.src.status === '部分可用'
           ? (await this.load(e.id)).entries.filter((x) => x.file !== undefined).length
@@ -256,10 +395,11 @@ export class Materials {
   async index(id: string): Promise<string> {
     const e = await this.require(id);
     const l = await this.load(id);
+    const owner = e.src.owner.kind === 'learner' ? '学习者的' : '项目的';
     const head = [
       `# 资料：${e.src.title}`,
       '',
-      `种类 ${e.src.kind} · 版本 ${e.src.version || '—'} · 日期 ${e.src.fetchedAt.slice(0, 10)} · 状态 ${e.src.status}${e.src.role !== undefined ? ` · ${e.src.role.value}` : ''}`,
+      `种类 ${e.src.kind} · 归属 ${owner}${e.src.learned !== undefined ? ` · 学过的（${e.src.learned.channel}）` : ''} · 版本 ${e.src.version || '—'} · 日期 ${e.src.fetchedAt.slice(0, 10)} · 状态 ${e.src.status}${e.src.role !== undefined ? ` · ${e.src.role.value}` : ''}`,
       `来源：${e.src.origin}`,
       ...(e.src.problems !== undefined ? [`有问题：${e.src.problems.join('；')}`] : []),
       '',
@@ -288,6 +428,17 @@ export class Materials {
     return { total: all.length, from: lo, to: hi, lines };
   }
 
+  /** 正文全部文件接成一份（外部导入的 md 用）：每个文件前标 `<!-- 文件：相对路径 -->`；处理中的也给已有的。 */
+  async joined(id: string): Promise<string> {
+    const e = await this.require(id);
+    const body = join(e.dir, BODY_DIR);
+    const parts: string[] = [];
+    for (const f of await textFiles(body)) {
+      parts.push(`<!-- 文件：${f} -->`, '', await readFile(join(body, f), 'utf8'), '');
+    }
+    return parts.join('\n');
+  }
+
   async title(id: string): Promise<string> {
     return (await this.require(id)).src.title;
   }
@@ -313,15 +464,17 @@ export class Materials {
     return { ...(prev ? { prev } : {}), ...(next ? { next } : {}) };
   }
 
-  /** 全文检索；不给 book / books = 搜各项目的资料。认不出的 id 跳过。 */
+  /** 全文检索；不给 material / materials = 搜全部资料。认不出的 id 跳过。 */
   async search(query: string, opt: SearchOptions = {}): Promise<SearchResult> {
     const ids =
-      opt.book !== undefined ? [opt.book] : (opt.books ?? [...(await this.scan()).keys()]);
+      opt.material !== undefined
+        ? [opt.material]
+        : (opt.materials ?? [...(await this.scan()).keys()]);
     const sets: SearchSet[] = [];
     for (const id of ids) {
       if ((await this.entry(id)) === undefined) continue;
       const l = await this.load(id);
-      sets.push({ book: id, title: l.title, files: await this.files(id) });
+      sets.push({ material: id, title: l.title, files: await this.files(id) });
     }
     return searchSets(sets, query, opt);
   }
@@ -331,12 +484,18 @@ export class Materials {
     return join((await this.require(id)).dir, MINERU_DIR);
   }
 
-  /** 正文目录（沙盒只读区挂这个）。 */
+  /** 正文目录（沙盒只读区挂这个；导入会话的工作区）。 */
   async bodyDir(id: string): Promise<string> {
     return join((await this.require(id)).dir, BODY_DIR);
   }
 
   // ───────────── 内部：扫描与读 ─────────────
+
+  /** 一份资料的目录：<数据>/资料/<资料 id>/。 */
+  private dirOf(id: string): string {
+    if (id === '' || id.includes('/') || id.includes('..')) throw new Error(`资料 id 不对：${id}`);
+    return join(this.o.root, id);
+  }
 
   private invalidate(id?: string): void {
     this.scanned = undefined;
@@ -360,29 +519,43 @@ export class Materials {
     const now = Date.now();
     if (!fresh && this.scanned && now - this.scanned.at < SCAN_TTL_MS) return this.scanned.map;
     const map = new Map<string, Entry>();
-    for (const main of await dirs(this.o.root)) {
-      const pdir = join(this.o.root, main, '资料');
-      for (const id of await dirs(pdir)) {
-        const dir = join(pdir, id);
-        let src: MaterialSource;
-        try {
-          src = JSON.parse(await readFile(join(dir, SOURCE_FILE), 'utf8')) as MaterialSource;
-        } catch (err) {
-          if (isNotFound(err)) continue;
-          throw err;
-        }
-        if (!map.has(src.id)) map.set(src.id, { id: src.id, main, dir, src });
+    for (const id of await dirs(this.o.root)) {
+      const dir = join(this.o.root, id);
+      let src: MaterialSource;
+      try {
+        src = JSON.parse(await readFile(join(dir, SOURCE_FILE), 'utf8')) as MaterialSource;
+      } catch (err) {
+        if (isNotFound(err)) continue;
+        if (!(err instanceof SyntaxError)) throw err;
+        this.broken(dir, `source.json 不是合法的 JSON（${err.message}）`);
+        continue;
       }
+      // 没有归属只会是数据迁移出错：报清楚是哪一份、跳过它，别让全站读资料都失败
+      const owner: unknown = (src as { owner?: unknown }).owner;
+      if (typeof owner !== 'object' || owner === null) {
+        this.broken(dir, 'source.json 没有 owner（归属），多半是数据迁移出错');
+        continue;
+      }
+      if (!map.has(src.id)) map.set(src.id, { id: src.id, dir, src });
     }
     this.scanned = { at: now, map };
     return map;
+  }
+
+  /** 坏掉的一份：每份只报一次（扫描两秒一次，不刷屏），跳过不读。 */
+  private broken(dir: string, why: string): void {
+    if (this.reported.has(dir)) return;
+    this.reported.add(dir);
+    console.error(`资料 ${dir} 读不了，跳过：${why}`);
   }
 
   private async load(id: string): Promise<Loaded> {
     const hit = this.loaded.get(id);
     if (hit) return hit;
     const e = await this.require(id);
-    const files = e.src.status === '处理中' ? [] : await textFiles(join(e.dir, BODY_DIR));
+    const all = await textFiles(join(e.dir, BODY_DIR));
+    // 导入会话写的说明排第一（W11 §3）
+    const files = [...all.filter((f) => f === GUIDE_FILE), ...all.filter((f) => f !== GUIDE_FILE)];
     const l: Loaded = {
       title: e.src.title,
       entries: files.map((f, i) => {
@@ -438,19 +611,7 @@ export class Materials {
 
   /** 新资料的 id：可读的名字，和已有的资料都不重名。 */
   private async freshId(base: string): Promise<string> {
-    const clean =
-      base
-        .replace(/[/\\|｜】:]/g, '·')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 60) || '资料';
-    const taken = new Set((await this.scan(true)).keys());
-    const free = (x: string): boolean => !taken.has(x);
-    if (free(clean)) return clean;
-    for (let n = 2; ; n++) {
-      const x = `${clean}（${String(n)}）`;
-      if (free(x)) return x;
-    }
+    return freshMaterialId(base, new Set((await this.scan(true)).keys()));
   }
 
   // ───────────── 内部：按种类处理 ─────────────
@@ -461,17 +622,11 @@ export class Materials {
     const done = (rest: Partial<MaterialSource>): Promise<void> =>
       this.write(dir, { ...src, status: '可用', ...rest });
     switch (src.kind) {
-      case 'pdf': {
-        await mkdir(original, { recursive: true });
-        const pdf = join(original, basename(src.origin));
-        await cp(src.origin, pdf);
-        const version = await hashFile(pdf);
-        const problem = await this.convertPdf(pdf, dir, body);
-        if (problem !== undefined) {
-          return this.write(dir, { ...src, version, status: '失败', problems: [problem] });
-        }
-        return done({ version, converter: 'mineru' });
-      }
+      case 'pdf':
+      case 'subtitle':
+      case 'md':
+      case 'file':
+        return this.importLocal(dir, src);
       case 'repo': {
         await run('git', ['clone', '--quiet', src.origin, body], { timeout: COMMAND_TIMEOUT_MS });
         if (req.commit !== undefined && req.commit.trim() !== '') {
@@ -500,9 +655,9 @@ export class Materials {
           const pdf = join(original, name.toLowerCase().endsWith('.pdf') ? name : `${name}.pdf`);
           await writeFile(pdf, Buffer.from(await res.arrayBuffer()));
           const version = await hashFile(pdf);
-          const problem = await this.convertPdf(pdf, dir, body);
-          if (problem !== undefined) {
-            return this.write(dir, { ...src, version, status: '失败', problems: [problem] });
+          const r = await this.convertPdf(pdf, join(dir, MINERU_DIR), body);
+          if (typeof r === 'string') {
+            return this.write(dir, { ...src, version, status: '失败', problems: [r] });
           }
           return done({ version, fetchedAt: this.now().toISOString(), converter: 'mineru' });
         }
@@ -526,36 +681,100 @@ export class Materials {
           ...(md.trim() === '' ? { status: '部分可用', problems: ['网页转出来没有正文'] } : {}),
         });
       }
-      case 'subtitle': {
-        await mkdir(original, { recursive: true });
-        const file = join(original, basename(src.origin));
-        await cp(src.origin, file);
-        const text = await readFile(file, 'utf8');
-        await mkdir(body, { recursive: true });
-        await writeFile(join(body, '字幕.md'), subtitleToMarkdown(text), 'utf8');
-        return done({ version: hash(text), converter: 'srt' });
-      }
-      case 'md': {
-        const st = await stat(src.origin);
-        await mkdir(body, { recursive: true });
-        if (st.isDirectory()) {
-          await cp(src.origin, body, {
-            recursive: true,
-            filter: (p) => !p.split(/[/\\]/).some((seg) => seg === '.git'),
-          });
-        } else {
-          await cp(src.origin, join(body, basename(src.origin)));
-        }
-        const files = await textFiles(body);
-        const h = createHash('sha256');
-        for (const f of files) h.update(f).update(await readFile(join(body, f)));
-        return done({ version: h.digest('hex').slice(0, 12), converter: 'none' });
-      }
     }
   }
 
-  /** PDF：走 `书库处理/` 的 MinerU 转换；转不了返回原因（不伪装成可用）。 */
-  private async convertPdf(pdf: string, dir: string, body: string): Promise<string | undefined> {
+  /**
+   * 本机拷进来的一份（W11 §3）：原件层原样拷入（文件夹的内容直接放进 `原件/`，单个文件放 `原件/<文件名>`；
+   * 已有原件 = 重试，不再拷）；纯文字由程序拷进 `正文/`（同一相对路径；字幕转 md，判为对话记录的对话导出
+   * 转逐条 md 并加开头那句）。原件里还有不是纯文字的（PDF、图片、Word……）：状态保持“处理中”，交导入会话。
+   */
+  private async importLocal(dir: string, src: MaterialSource): Promise<void> {
+    const original = join(dir, ORIGINAL_DIR);
+    const body = join(dir, BODY_DIR);
+    if (!(await exists(original))) {
+      const st = await stat(src.origin);
+      await mkdir(original, { recursive: true });
+      await cp(src.origin, st.isDirectory() ? original : join(original, basename(src.origin)), {
+        recursive: true,
+        filter: (p) => !p.split(/[/\\]/).some((seg) => seg === '.git'),
+      });
+    }
+    const all = await allFiles(original);
+    const version = await hashTree(original, all);
+    const chat = src.learned?.channel === '对话记录';
+    const skipped: string[] = [];
+    const others: string[] = [];
+    let converter = 'none';
+    await mkdir(body, { recursive: true });
+    for (const f of all) {
+      const ext = extname(f).toLowerCase();
+      const from = join(original, f);
+      if (UNSUPPORTED_EXT.has(ext)) {
+        skipped.push(f);
+        continue;
+      }
+      if (!(await isPlainText(from))) {
+        others.push(f);
+        continue;
+      }
+      const raw = await readFile(from, 'utf8');
+      let name = f;
+      let text = raw;
+      if (ext === '.srt' || ext === '.vtt') {
+        name = `${f.slice(0, -ext.length)}.md`;
+        text = subtitleToMarkdown(raw);
+        converter = 'srt';
+      } else if (ext === '.json' && chat) {
+        name = `${f.slice(0, -ext.length)}.md`;
+        text = chatExportToMarkdown(raw, src.title);
+        converter = 'chat-export';
+      }
+      if (chat && /\.(md|markdown|txt)$/i.test(name)) text = `${CHAT_RECORD_HEAD}\n\n${text}`;
+      await mkdir(dirname(join(body, name)), { recursive: true });
+      await writeFile(join(body, name), text, 'utf8');
+    }
+    const problems = skipped.length > 0 ? [`转不了，原件里留着：${skipped.join('、')}`] : [];
+    if (others.length === 0) {
+      if (all.length === skipped.length) {
+        return this.write(dir, {
+          ...src,
+          version,
+          status: '失败',
+          problems: ['没有能读的内容', ...problems],
+        });
+      }
+      return this.write(dir, {
+        ...src,
+        version,
+        converter,
+        status: '可用',
+        ...(problems.length > 0 ? { problems } : {}),
+      });
+    }
+    // 交导入会话：状态保持“处理中”，会话交回后改（W11 §4）
+    await this.write(dir, {
+      ...src,
+      version,
+      converter: 'import-session',
+      ...(problems.length > 0 ? { problems } : {}),
+    });
+    if (this.importer === undefined) {
+      const cur = (await this.entry(src.id))?.src ?? src;
+      return this.write(dir, {
+        ...cur,
+        status: '失败',
+        problems: [...problems, '原件里有不是纯文字的文件，要交导入会话处理，但没接上模型'],
+      });
+    }
+    await this.importer(src.id, others);
+  }
+
+  /**
+   * PDF：走 `书库处理/` 的 MinerU 转换，产物进 out、每段页码一份 md 进 body；转不了返回原因（不伪装成可用）。
+   * 返回写进 body 的文件（绝对路径）。
+   */
+  private async convertPdf(pdf: string, out: string, body: string): Promise<string[] | string> {
     const tool = this.o.pdfTool;
     if (tool === undefined) return 'PDF 的转换没接上（找不到 书库处理/）';
     if (!(await hasMineruToken(tool))) {
@@ -569,7 +788,6 @@ export class Materials {
       return '本机没有 pdfinfo，数不出页数，转不了；装 poppler-utils 后重试';
     }
     if (!Number.isInteger(pages) || pages < 1) return '读不出 PDF 页数';
-    const out = join(dir, MINERU_DIR);
     const ranges: string[] = [];
     for (let a = 1; a <= pages; a += 200)
       ranges.push(`${String(a)}-${String(Math.min(a + 199, pages))}`);
@@ -583,16 +801,79 @@ export class Materials {
       },
     );
     await mkdir(body, { recursive: true });
+    const written: string[] = [];
     for (const r of ranges) {
       try {
         await cp(join(out, `p${r}`, 'full.md'), join(body, `p${r}.md`));
+        written.push(join(body, `p${r}.md`));
       } catch (err) {
         if (isNotFound(err)) return `第 ${r} 页没转出来`;
         throw err;
       }
     }
-    return undefined;
+    return written;
   }
+}
+
+/** 新资料的 id：可读的名字，和 taken 里的都不重名（迁移也用）。 */
+export function freshMaterialId(base: string, taken: Set<string>): string {
+  const clean =
+    base
+      .replace(/[/\\|｜】:]/g, '·')
+      .replace(/\s+/g, ' ')
+      .trim()
+      .slice(0, 60) || '资料';
+  if (!taken.has(clean)) return clean;
+  for (let n = 2; ; n++) {
+    const x = `${clean}（${String(n)}）`;
+    if (!taken.has(x)) return x;
+  }
+}
+
+async function exists(p: string): Promise<boolean> {
+  try {
+    await stat(p);
+    return true;
+  } catch (err) {
+    if (isNotFound(err)) return false;
+    throw err;
+  }
+}
+
+/** 目录里全部文件（相对路径，排好序；不进 .git）。 */
+async function allFiles(root: string): Promise<string[]> {
+  const out: string[] = [];
+  const walk = async (d: string): Promise<void> => {
+    const entries = await readdir(d, { withFileTypes: true });
+    entries.sort((a, b) => a.name.localeCompare(b.name));
+    for (const e of entries) {
+      const p = join(d, e.name);
+      if (e.isDirectory()) {
+        if (e.name !== '.git') await walk(p);
+      } else if (e.isFile()) out.push(relative(root, p).split('\\').join('/'));
+    }
+  };
+  await walk(root);
+  return out;
+}
+
+/** 一个原件目录整份的指纹（数据迁移也用）。 */
+export async function originalFingerprint(root: string): Promise<string> {
+  return hashTree(root, await allFiles(root));
+}
+
+/** 原件整份的指纹（路径 + 内容）。 */
+async function hashTree(root: string, files: string[]): Promise<string> {
+  const h = createHash('sha256');
+  for (const f of files) h.update(f).update(await readFile(join(root, f)));
+  return h.digest('hex').slice(0, 12);
+}
+
+/** 纯文字：开头没有 NUL 字节，也不是 PDF（大文件照样算，读的时候另有上限）。 */
+async function isPlainText(p: string): Promise<boolean> {
+  if (extname(p).toLowerCase() === '.pdf') return false;
+  const fh = await readFile(p);
+  return !fh.subarray(0, 8000).includes(0);
 }
 
 export class MaterialError extends Error {}

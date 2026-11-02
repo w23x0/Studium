@@ -24,7 +24,7 @@ export type Profiles = Partial<Record<ProfileKey, Profile>>;
 /**
  * 默认：主对话低强度；找资料中等；畅谈、学习对话、导航、检索子代理、状态整理高强度；教法记录整理没规定，不设；
  * 学习对话的子代理用 Sonnet、中等强度（会话/页面子代理.md：主对话用 Opus 时子代理用 Opus 或 Sonnet，可选更快的）；
- * 框架小模型用 Haiku 5.5（实现选型「框架小模型」），强度不设（用 SDK 默认）。
+ * 导入会话用 Sonnet、中等强度（W11 §4）；框架小模型用 Haiku 5.5（实现选型「框架小模型」），强度不设（用 SDK 默认）。
  * `editor` 一行留给旧数据（10-26 的页面编辑员会话，不再开）；`guard` 一行同理（守卫 10-31 起不再开，
  * STUDIUM_PROFILES 里配了也不报错、不起作用）。
  */
@@ -39,6 +39,8 @@ export const DEFAULT_PROFILES: Profiles = {
   state: { effort: 'high' },
   find: { effort: 'medium' },
   editor: { model: 'sonnet', effort: 'medium' },
+  // 导入会话（W11 §4，试验）：把原件里不是纯文字的东西处理成别的会话能读的文字
+  import: { model: 'sonnet', effort: 'medium' },
   subagent: { model: 'sonnet', effort: 'medium' },
   framework: { model: 'claude-haiku-5-5' },
 };

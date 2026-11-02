@@ -39,7 +39,7 @@ export function refLink(s: SourceView): RefLink | undefined {
   if (!s.resolved) return undefined;
   if (s.kind === 'book_line') {
     if (
-      s.book === undefined ||
+      s.material === undefined ||
       s.file === undefined ||
       s.from === undefined ||
       s.to === undefined
@@ -48,7 +48,7 @@ export function refLink(s: SourceView): RefLink | undefined {
     }
     return {
       kind: 'panel',
-      target: { kind: 'source', book: s.book, file: s.file, from: s.from, to: s.to },
+      target: { kind: 'source', material: s.material, file: s.file, from: s.from, to: s.to },
     };
   }
   if (s.kind === 'loop_line') {

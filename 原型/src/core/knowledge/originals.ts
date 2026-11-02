@@ -70,26 +70,29 @@ export class Originals {
     return this.tool;
   }
 
-  async hasOriginal(book: string): Promise<boolean> {
-    return (await this.segments(book)).length > 0;
+  async hasOriginal(material: string): Promise<boolean> {
+    return (await this.segments(material)).length > 0;
   }
 
   /** 这一页在哪个文件的第几页；找不到返回空。 */
-  async locatePdf(book: string, page: number): Promise<{ pdf: string; index: number } | undefined> {
+  async locatePdf(
+    material: string,
+    page: number,
+  ): Promise<{ pdf: string; index: number } | undefined> {
     if (!Number.isInteger(page) || page < 1) return undefined;
-    const seg = (await this.segments(book)).find((s) => page >= s.first && page <= s.last);
+    const seg = (await this.segments(material)).find((s) => page >= s.first && page <= s.last);
     return seg ? { pdf: seg.pdf, index: page - seg.first + 1 } : undefined;
   }
 
   /** 原件页面（PNG）。bbox 给了就只取这一块（千分比）。 */
-  async render(book: string, page: number, bbox?: BBox): Promise<Buffer> {
-    const where = await this.locatePdf(book, page);
-    if (!where) throw new NoOriginalError(`${book} 第 ${String(page)} 页没有 PDF 原件`);
+  async render(material: string, page: number, bbox?: BBox): Promise<Buffer> {
+    const where = await this.locatePdf(material, page);
+    if (!where) throw new NoOriginalError(`${material} 第 ${String(page)} 页没有 PDF 原件`);
     if (!(await this.canRender())) {
       throw new NoRendererError('本机没有 pdftoppm（poppler-utils），渲染不了原件页面');
     }
     const key = createHash('sha1')
-      .update(`${book}\0${String(page)}`)
+      .update(`${material}\0${String(page)}`)
       .digest('hex')
       .slice(0, 16);
     const full = await this.cached(`${key}-r${String(DPI)}`, (out) =>
@@ -118,8 +121,8 @@ export class Originals {
   }
 
   /** 这一页上的内容块（有 content_list 才有）。 */
-  async blocks(book: string, page: number): Promise<PageBlock[]> {
-    const seg = (await this.segments(book)).find((s) => page >= s.first && page <= s.last);
+  async blocks(material: string, page: number): Promise<PageBlock[]> {
+    const seg = (await this.segments(material)).find((s) => page >= s.first && page <= s.last);
     if (!seg) return [];
     return (await this.segmentBlocks(seg))
       .filter((b) => b.page === page)
@@ -131,12 +134,12 @@ export class Originals {
    * pages 给了就只在这个范围（前后各宽一页）里找；对不上的行不返回。
    */
   async locate(
-    book: string,
+    material: string,
     lines: { n: number; text: string }[],
     pages?: { from: number; to: number },
   ): Promise<LineLocation[]> {
     const all: Block[] = [];
-    for (const seg of await this.segments(book)) {
+    for (const seg of await this.segments(material)) {
       if (pages && (seg.last < pages.from - 1 || seg.first > pages.to + 1)) continue;
       all.push(...(await this.segmentBlocks(seg)));
     }
@@ -192,17 +195,17 @@ export class Originals {
     ]);
   }
 
-  private segments(book: string): Promise<Segment[]> {
-    let p = this.segs.get(book);
+  private segments(material: string): Promise<Segment[]> {
+    let p = this.segs.get(material);
     if (!p) {
-      p = this.findSegments(book);
-      this.segs.set(book, p);
+      p = this.findSegments(material);
+      this.segs.set(material, p);
     }
     return p;
   }
 
-  private async findSegments(book: string): Promise<Segment[]> {
-    const dir = await this.lib.pagesDir(book);
+  private async findSegments(material: string): Promise<Segment[]> {
+    const dir = await this.lib.pagesDir(material);
     const out: Segment[] = [];
     const parts: { name: string; first: number; last: number }[] = [];
     let entries;

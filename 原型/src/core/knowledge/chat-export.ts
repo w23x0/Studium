@@ -2,6 +2,10 @@
 // 认得的：ChatGPT 导出（mapping 树）、Claude 导出（chat_messages）、通用的 [{ role, content }] 或 { messages }。
 // 认不出的原样放进代码块，不猜内容。
 
+/** 对话记录的 md 开头那句（工单 W9 §4.3）：只有学习者说的、做的算证据。 */
+export const CHAT_RECORD_HEAD =
+  '> 这是学习者在别处跟 AI 学的对话；只有学习者说的、做的算证据，AI 讲的不算学习者会。';
+
 interface Turn {
   who: '学习者' | 'AI';
   text: string;

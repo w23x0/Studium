@@ -142,8 +142,8 @@ export interface SourceView {
   sessionId?: string;
   line?: number;
   file?: string;
-  /** book_line 查到原文时：书、行段、那几行（带行号）、小节标题；在资料浏览里打开用同一组值。 */
-  book?: string;
+  /** book_line 查到原文时：资料、行段、那几行（带行号）、小节标题；在资料浏览里打开用同一组值。 */
+  material?: string;
   from?: number;
   to?: number;
   lines?: NumberedLine[];
@@ -340,7 +340,7 @@ export interface ProjectOverview {
   /** 期限（YYYY-MM-DD）与备注；没记就没有。 */
   deadline?: string;
   deadlineNote?: string;
-  /** 项目有几份资料（0 = 还没有，缺资料依据；资料归项目，不查别处）。 */
+  /** 本项目能读几份资料（按归属：本项目的 + 学习者的；0 = 缺资料依据）。 */
   materialCount?: number;
   /** 今天该做的：到期的提醒、期限临近、该做阶段复盘了（批 6）。 */
   today?: TodayView;
@@ -540,6 +540,7 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   output: '写产出',
   find: '找资料',
   editor: '页面编辑员（旧数据）',
+  import: '导入处理',
 };
 
 /** 不是会话、也单独配模型的两样（`src/core/model/profiles.ts` 的 EXTRA_PROFILE_KEYS）。 */
@@ -572,13 +573,13 @@ export interface PageSpan {
 export type BBox = [number, number, number, number];
 
 export interface NumberedLine {
-  /** 行号：小节文件里的行，从 1 数；与 read_source 印的行号一致。 */
+  /** 行号：小节文件里的行，从 1 数；与 read_material 印的行号一致。 */
   n: number;
   text: string;
 }
 
 /** 一份项目资料（资料浏览的列表）。hasOriginal = 找得到 PDF 原件（页面能调出来）。 */
-export interface BookSummary {
+export interface MaterialSummary {
   id: string;
   title: string;
   /** 正文文件数。 */
@@ -591,8 +592,8 @@ export interface BookSummary {
   selected?: boolean;
 }
 
-export interface BooksResponse {
-  books: BookSummary[];
+export interface MaterialListResponse {
+  materials: MaterialSummary[];
 }
 
 /** 资料文件清单里的一条（按路径排）。 */
@@ -609,14 +610,14 @@ export interface TocEntry {
 }
 
 export interface TocResponse {
-  book: string;
+  material: string;
   title: string;
   entries: TocEntry[];
 }
 
 export interface SectionResponse {
-  book: string;
-  bookTitle: string;
+  material: string;
+  materialTitle: string;
   file: string;
   /** 目录里的这一条；文件不在目录里时为空。 */
   entry?: TocEntry;
@@ -632,8 +633,8 @@ export interface SectionResponse {
 }
 
 export interface SearchHit {
-  book: string;
-  bookTitle: string;
+  material: string;
+  materialTitle: string;
   file: string;
   num: string;
   title: string;
@@ -659,7 +660,7 @@ export interface PageBlock {
 }
 
 export interface PageResponse {
-  book: string;
+  material: string;
   page: number;
   /** 找得到这一页的 PDF 原件。 */
   available: boolean;
@@ -680,7 +681,7 @@ export interface LineLocation {
 }
 
 export interface LocateResponse {
-  book: string;
+  material: string;
   file: string;
   locations: LineLocation[];
 }
@@ -691,14 +692,14 @@ export interface CitationView {
   /** 在被解析文本里的起止位置。 */
   start: number;
   end: number;
-  book: string;
+  material: string;
   file: string;
   from: number;
   to: number;
   resolved: boolean;
   /** 对不上的原因。 */
   problem?: string;
-  bookTitle?: string;
+  materialTitle?: string;
   /** 小节编号与标题，如 “3.1 Spaces of Vectors”。 */
   section?: string;
   pdfPages?: PageSpan;
@@ -717,7 +718,7 @@ export interface ResolveCitationsResponse {
 }
 
 export interface SourceReportRequest {
-  book: string;
+  material: string;
   file: string;
   from: number;
   to?: number;
@@ -820,8 +821,11 @@ export interface InputDisclosure {
 
 // ───────────── 项目资料（工单 W8；设计 docs/设计/记录/资料.md） ─────────────
 
-/** 资料的种类：pdf · 网页 · 字幕 · 代码仓库 · 联网查来的 · md / 纯文字。 */
-export const MATERIAL_KINDS = ['pdf', 'web', 'subtitle', 'repo', 'search', 'md'] as const;
+/**
+ * 资料的种类：pdf · 网页 · 字幕 · 代码仓库 · 联网查来的 · md / 纯文字 · 其他文件（图片、Word、PPT 等，W11：
+ * 交导入会话处理）。
+ */
+export const MATERIAL_KINDS = ['pdf', 'web', 'subtitle', 'repo', 'search', 'md', 'file'] as const;
 export type MaterialKind = (typeof MATERIAL_KINDS)[number];
 export type MaterialStatus = '处理中' | '可用' | '部分可用' | '失败';
 
@@ -841,8 +845,25 @@ export interface MaterialSource {
   problems?: string[];
   /** 模型检索时判断的角色；界面可见。 */
   role?: { value: '主资料' | '参考资料'; by: 'model'; at: string; sessionId: string };
-  /** 从别的项目拿来的（工单 W9 §4.1）：来源项目与那边的资料 id；origin 照抄原来的（重试要用）。 */
-  copiedFrom?: { project: string; material: string };
+  /** 归属（W11）：学习者 = 所有项目都能读；项目 = 只给这几个项目读。程序按它算每个会话能读什么。 */
+  owner: MaterialOwner;
+  /** 分流判为“学过的”（学习者的笔记 / 别处的学习记录）：标渠道；外部导入的指针指向这份资料。 */
+  learned?: { channel: '笔记' | '对话记录' };
+  /** 从哪个项目导入的（只记，不等于归属）。 */
+  importedFrom?: string;
+  /** 处理过它的导入会话 id（W11 §4，工作层的改动在这些会话的正本里）。 */
+  processedBy?: string[];
+  /** 学习者删了（只标，不删文件：已有引用照旧能定位，标“资料已删”）。 */
+  removed?: { at: string };
+}
+
+/** 资料的归属（记录/资料.md「存在一处、按归属读」）。 */
+export type MaterialOwner = { kind: 'learner' } | { kind: 'project'; projects: string[] };
+
+/** 改一份资料的归属：learner = 学习者级；project = 只给 projects 里的项目（不给 = 只给当前项目）。 */
+export interface SetMaterialOwnerRequest {
+  owner: 'learner' | 'project';
+  projects?: string[];
 }
 
 export interface AddMaterialRequest {
@@ -851,11 +872,15 @@ export interface AddMaterialRequest {
   title?: string;
   /** 仓库：固定到哪次提交；不给 = 当时的 HEAD。 */
   commit?: string;
+  /** 不给 = 只归发起导入的项目。 */
+  owner?: MaterialOwner;
+  /** 判为学过的：渠道。 */
+  learned?: { channel: '笔记' | '对话记录' };
 }
 
 export interface ProjectMaterialView {
-  /** 资料 id（引用写 `资料id/文件:行号`）；字段名沿用 book。 */
-  book: string;
+  /** 资料 id（引用写 `资料id/文件:行号`）。 */
+  material: string;
   title: string;
   /** missing 时没有。 */
   kind?: MaterialKind;
@@ -868,13 +893,14 @@ export interface ProjectMaterialView {
   status?: MaterialStatus;
   problems?: string[];
   role?: MaterialSource['role'];
-  copiedFrom?: MaterialSource['copiedFrom'];
+  owner?: MaterialOwner;
+  learned?: MaterialSource['learned'];
 }
 
 export interface ProjectMaterialsResponse {
   mainSessionId: string;
   materials: ProjectMaterialView[];
-  /** 恒为 true：资料归项目，学习 / 导航 / 检索只在本项目资料里查（没有资料就是缺资料依据，不查全库）。 */
+  /** 恒为 true：学习 / 导航 / 检索只在本项目能读的资料里查（按归属；别的项目的读不到）。 */
   restricted: boolean;
   deadline?: string;
   deadlineNote?: string;
@@ -910,6 +936,8 @@ export interface UploadItemView {
   routedTo: '资料' | '学过的';
   by: 'model' | 'learner';
   reason?: string;
+  /** 归属（W11）：分流时判的，或之后改的（取那份资料现在的归属）。 */
+  owner?: '学习者' | '项目';
   /** 进了资料：资料 id。 */
   material?: string;
   /** 进了学过的：外部导入 id。 */
@@ -927,12 +955,6 @@ export interface RerouteRequest {
   upload: string;
   file: string;
   to: '资料' | '学过的';
-}
-
-/** 从别的项目拿一份资料。 */
-export interface CopyMaterialRequest {
-  fromProject: string;
-  material: string;
 }
 
 /** 项目说明：当前值 + 全部历史（只追加）。 */

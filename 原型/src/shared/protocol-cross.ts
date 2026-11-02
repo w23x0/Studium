@@ -18,6 +18,7 @@ export interface NoteItem {
 export interface SourceNoteAddition {
   id: string;
   at: string;
+  /** 资料 id（存放处里的行格式，沿用旧名）。 */
   book: string;
   field: SourceNoteField;
   text: string;
@@ -28,7 +29,7 @@ export interface SourceNoteAddition {
 }
 
 export interface SourceNoteView {
-  book: string;
+  material: string;
   title: string;
   kind: MaterialKind;
   /** 教材 / 讲义 / 论文 / 网页 …；学习者或模型补。 */
@@ -63,7 +64,7 @@ export interface SourceNoteResponse {
 }
 
 export interface AddSourceNoteRequest {
-  book: string;
+  material: string;
   field: SourceNoteField;
   text: string;
 }

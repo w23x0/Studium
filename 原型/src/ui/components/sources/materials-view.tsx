@@ -15,17 +15,17 @@ import { Badge, Loading, Section } from '../evidence/parts.tsx';
 import { OriginalPage } from './original-page.tsx';
 import { SourceNoteCard } from './source-note.tsx';
 
-export function MaterialsView(props: { book?: string | undefined }) {
+export function MaterialsView(props: { material?: string | undefined }) {
   return (
     <div className="flex flex-col gap-5" data-testid="materials-view">
-      <SearchBox book={props.book} />
-      {props.book === undefined ? <Books /> : <Toc book={props.book} />}
+      <SearchBox material={props.material} />
+      {props.material === undefined ? <Books /> : <Toc material={props.material} />}
     </div>
   );
 }
 
 function SearchBox(props: {
-  book?: string | undefined;
+  material?: string | undefined;
   q?: string;
   all?: boolean | undefined;
   replace?: boolean;
@@ -33,20 +33,20 @@ function SearchBox(props: {
   const panel = usePanel();
   const scope = useProjectScope();
   const [q, setQ] = useState(props.q ?? '');
-  const [inBook, setInBook] = useState(props.book !== undefined);
+  const [inBook, setInBook] = useState(props.material !== undefined);
   const [all, setAll] = useState(props.all === true);
   const go = (wantAll: boolean) => {
     if (q.trim() === '') return;
     const t = {
       kind: 'search' as const,
       q: q.trim(),
-      ...(inBook && props.book !== undefined ? { book: props.book } : {}),
+      ...(inBook && props.material !== undefined ? { material: props.material } : {}),
       ...(wantAll && scope !== undefined ? { all: true } : {}),
     };
     if (props.replace === true) panel.replace(t);
     else panel.show(t);
   };
-  const oneBook = inBook && props.book !== undefined;
+  const oneBook = inBook && props.material !== undefined;
   return (
     <form
       className="flex flex-col gap-1.5"
@@ -68,7 +68,7 @@ function SearchBox(props: {
           {W.searchGo}
         </Button>
       </div>
-      {props.book !== undefined && (
+      {props.material !== undefined && (
         <label className="text-muted-foreground flex items-center gap-1.5 self-start text-xs">
           <input type="checkbox" checked={inBook} onChange={(e) => setInBook(e.target.checked)} />
           {W.searchInBook}
@@ -102,26 +102,26 @@ function SearchBox(props: {
 function Books() {
   const panel = usePanel();
   const project = useProject();
-  const r = useLoad(`sources:books:${project ?? ''}`, () => api.books(project), false);
+  const r = useLoad(`sources:list:${project ?? ''}`, () => api.materialList(project), false);
   if (!r.data) return <Loading error={r.error} />;
-  const { books } = r.data;
-  if (books.length === 0) {
+  const { materials } = r.data;
+  if (materials.length === 0) {
     return (
-      <Section title={W.books}>
+      <Section title={W.materialList}>
         <div className="text-muted-foreground text-sm">{W.materialsEmpty}</div>
       </Section>
     );
   }
   return (
-    <Section title={W.books}>
-      {[...books]
+    <Section title={W.materialList}>
+      {[...materials]
         .sort((x, y) => x.title.localeCompare(y.title, 'zh-CN', { numeric: true }))
         .map((b) => (
           <button
             key={b.id}
             type="button"
             className="bg-card hover:bg-accent/40 flex items-center gap-3 rounded-xl border px-3 py-2.5 text-left text-sm shadow-xs"
-            onClick={() => panel.show({ kind: 'materials', book: b.id })}
+            onClick={() => panel.show({ kind: 'materials', material: b.id })}
           >
             <BookIcon className="text-muted-foreground size-4 shrink-0" />
             <span className="flex min-w-0 flex-1 flex-col">
@@ -136,15 +136,15 @@ function Books() {
   );
 }
 
-function Toc(props: { book: string }) {
+function Toc(props: { material: string }) {
   const panel = usePanel();
-  const r = useLoad(`sources:toc:${props.book}`, () => api.toc(props.book), false);
+  const r = useLoad(`sources:toc:${props.material}`, () => api.toc(props.material), false);
   if (!r.data) return <Loading error={r.error} />;
-  const { title, entries, book } = r.data;
+  const { title, entries, material } = r.data;
   return (
     <div className="flex flex-col gap-3">
       <h2 className="font-serif text-lg">{title}</h2>
-      <SourceNoteCard book={book} />
+      <SourceNoteCard material={material} />
       <Section title={W.toc}>
         <ul className="flex flex-col">
           {entries.map((e, i) => (
@@ -153,7 +153,7 @@ function Toc(props: { book: string }) {
                 entry={e}
                 onOpen={
                   e.file !== undefined && e.file !== ''
-                    ? () => e.file && panel.show({ kind: 'source', book, file: e.file })
+                    ? () => e.file && panel.show({ kind: 'source', material, file: e.file })
                     : undefined
                 }
               />
@@ -190,19 +190,19 @@ function TocRow(props: { entry: TocEntry; onOpen: (() => void) | undefined }) {
 
 export function SearchView(props: {
   q: string;
-  book?: string | undefined;
+  material?: string | undefined;
   all?: boolean | undefined;
 }) {
   const panel = usePanel();
   const project = useProject();
   const r = useLoad(
-    `sources:search:${props.book ?? ''}:${props.q}:${project ?? ''}:${String(props.all)}`,
-    () => api.search(props.q, props.book, 50, project, props.all),
+    `sources:search:${props.material ?? ''}:${props.q}:${project ?? ''}:${String(props.all)}`,
+    () => api.search(props.q, props.material, 50, project, props.all),
     false,
   );
   return (
     <div className="flex flex-col gap-4" data-testid="search-view">
-      <SearchBox book={props.book} q={props.q} all={props.all} replace />
+      <SearchBox material={props.material} q={props.q} all={props.all} replace />
       {!r.data ? (
         <Loading error={r.error} />
       ) : r.data.hits.length === 0 ? (
@@ -222,7 +222,7 @@ export function SearchView(props: {
                   onClick={() =>
                     panel.show({
                       kind: 'source',
-                      book: h.book,
+                      material: h.material,
                       file: h.file,
                       from: h.line,
                       to: h.line,
@@ -231,7 +231,7 @@ export function SearchView(props: {
                 >
                   <span className="text-muted-foreground flex flex-wrap items-center gap-x-2 text-xs">
                     <FileTextIcon className="size-3.5" />
-                    <span>{h.bookTitle}</span>
+                    <span>{h.materialTitle}</span>
                     <span className="text-foreground font-medium">
                       {`${h.num} ${h.title}`.trim()}
                     </span>
@@ -263,7 +263,7 @@ export function SearchView(props: {
 
 /** 原件的一页（从出处点过来）：书里的原句 + 页面图上的位置框。 */
 export function PageView(props: {
-  book: string;
+  material: string;
   page: number;
   bbox?: BBox | undefined;
   quote?: string | undefined;
@@ -271,17 +271,17 @@ export function PageView(props: {
   line?: number | undefined;
 }) {
   const panel = usePanel();
-  const { book, file, line } = props;
+  const { material, file, line } = props;
   // 标题用资料名；列表还没取到（或已经没有这份）时先用 id
-  const books = useLoad('sources:books', () => api.books(), false);
-  const title = books.data?.books.find((b) => b.id === book)?.title ?? book;
+  const materials = useLoad('sources:materials', () => api.materialList(), false);
+  const title = materials.data?.materials.find((b) => b.id === material)?.title ?? material;
   return (
     <div className="flex flex-col gap-4" data-testid="page-view">
       <div className="flex flex-col gap-1">
         <button
           type="button"
           className="text-muted-foreground hover:text-foreground self-start text-xs"
-          onClick={() => panel.show({ kind: 'materials', book })}
+          onClick={() => panel.show({ kind: 'materials', material })}
         >
           {title} · {W.toc}
         </button>
@@ -302,7 +302,7 @@ export function PageView(props: {
           onClick={() =>
             panel.show({
               kind: 'source',
-              book,
+              material,
               file,
               ...(line !== undefined ? { from: line, to: line } : {}),
             })
@@ -314,7 +314,7 @@ export function PageView(props: {
       )}
       <OriginalPage
         key={`${String(props.page)}:${props.bbox?.join(',') ?? ''}`}
-        book={book}
+        material={material}
         page={props.page}
         {...(props.bbox !== undefined ? { boxes: [props.bbox] } : {})}
       />

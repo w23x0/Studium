@@ -10,7 +10,7 @@ import { W } from '../../wording.ts';
 import { Loading, Section } from '../evidence/parts.tsx';
 
 export function OriginalPage(props: {
-  book: string;
+  material: string;
   page: number;
   /** 要标出来的位置（只标在起始那一页上）。 */
   boxes?: BBox[];
@@ -23,7 +23,11 @@ export function OriginalPage(props: {
     setPage(p);
     props.onPage?.(p);
   };
-  const r = useLoad(`page:${props.book}:${String(page)}`, () => api.page(props.book, page), false);
+  const r = useLoad(
+    `page:${props.material}:${String(page)}`,
+    () => api.page(props.material, page),
+    false,
+  );
   const data = r.data;
   const focus = unionBox(boxes);
   return (

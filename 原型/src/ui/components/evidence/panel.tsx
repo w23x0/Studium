@@ -87,21 +87,21 @@ function View(props: { target: PanelTarget }) {
     case 'disclosure':
       return <DisclosureView />;
     case 'materials':
-      return <MaterialsView key={t.book ?? ''} book={t.book} />;
+      return <MaterialsView key={t.material ?? ''} material={t.material} />;
     case 'search':
       return (
         <SearchView
-          key={`${t.book ?? ''}:${t.q}:${String(t.all)}`}
+          key={`${t.material ?? ''}:${t.q}:${String(t.all)}`}
           q={t.q}
-          book={t.book}
+          material={t.material}
           all={t.all}
         />
       );
     case 'source':
       return (
         <SourceView
-          key={`${t.book}:${t.file}:${String(t.from)}-${String(t.to)}:${t.problem ?? ''}`}
-          book={t.book}
+          key={`${t.material}:${t.file}:${String(t.from)}-${String(t.to)}:${t.problem ?? ''}`}
+          material={t.material}
           file={t.file}
           from={t.from}
           to={t.to}
@@ -115,8 +115,8 @@ function View(props: { target: PanelTarget }) {
     case 'page':
       return (
         <PageView
-          key={`${t.book}:${String(t.page)}:${t.bbox?.join(',') ?? ''}`}
-          book={t.book}
+          key={`${t.material}:${String(t.page)}:${t.bbox?.join(',') ?? ''}`}
+          material={t.material}
           page={t.page}
           bbox={t.bbox}
           quote={t.quote}

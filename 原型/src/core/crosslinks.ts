@@ -37,23 +37,23 @@ export class Crosslinks {
 
   // ───────────── 来源可靠性与适用性说明 ─────────────
 
-  private async bookId(name: string): Promise<string> {
-    const books = await this.d.materials.books();
-    const id = books.includes(name) ? name : books.find((b) => b.trim() === name.trim());
+  private async materialId(name: string): Promise<string> {
+    const ids = await this.d.materials.ids();
+    const id = ids.includes(name) ? name : ids.find((b) => b.trim() === name.trim());
     if (id === undefined) throw new NotFoundError(`没有这份资料：${name}`);
     return id;
   }
 
   async sourceNotes(): Promise<SourceNoteView[]> {
     const out: SourceNoteView[] = [];
-    for (const id of await this.d.materials.books()) out.push(await this.sourceNote(id));
+    for (const id of await this.d.materials.ids()) out.push(await this.sourceNote(id));
     return out;
   }
 
-  async sourceNote(book: string): Promise<SourceNoteView> {
-    const id = await this.bookId(book);
+  async sourceNote(material: string): Promise<SourceNoteView> {
+    const id = await this.materialId(material);
     const src = await this.d.materials.source(id);
-    if (src === undefined) throw new NotFoundError(`没有这份资料：${book}`);
+    if (src === undefined) throw new NotFoundError(`没有这份资料：${material}`);
     const adds = this.d.notes.forBook(id);
     const latest = (f: SourceNoteField): NoteItem | undefined => {
       const a = adds.filter((x) => x.field === f).at(-1);
@@ -81,7 +81,7 @@ export class Crosslinks {
       `转写：${reports > 0 ? `报错 ${String(reports)} 处` : '无报错'}${hasOriginal ? '' : '，无原件'}`,
     ].filter((x): x is string => x !== undefined);
     return {
-      book: id,
+      material: id,
       title: src.title,
       kind: src.kind,
       ...(type !== undefined ? { type } : {}),
@@ -99,14 +99,14 @@ export class Crosslinks {
 
   /** 补一句来源说明（只追加）：学习者在资料页补，模型经工具补（须说明依据）。 */
   async addNote(req: {
-    book: string;
+    material: string;
     field: string;
     text: string;
     by: '学习者' | '模型';
     sessionId?: string;
     basis?: string;
   }): Promise<SourceNoteAddition> {
-    const id = await this.bookId(req.book);
+    const id = await this.materialId(req.material);
     if (!(SOURCE_NOTE_FIELDS as readonly string[]).includes(req.field)) {
       throw new BadRequestError(`field 要是 ${SOURCE_NOTE_FIELDS.join(' / ')} 之一`);
     }
@@ -129,9 +129,9 @@ export class Crosslinks {
   }
 
   /** 给模型工具结果末尾附的来源说明（每份资料一行）；认不出的 id 跳过。 */
-  async noteLines(books: string[]): Promise<string> {
+  async noteLines(materials: string[]): Promise<string> {
     const lines: string[] = [];
-    for (const b of [...new Set(books)]) {
+    for (const b of [...new Set(materials)]) {
       try {
         lines.push(`- ${(await this.sourceNote(b)).summary}`);
       } catch (err) {
@@ -149,7 +149,7 @@ export class Crosslinks {
       description:
         '给一份资料补一句来源说明：type 类型（教材 / 讲义 / 论文 / 网页 / 代码仓库）· level 层次 · author 作者 · scope 适用范围 · remark 已知限制。只在你读到依据时写（basis 写你读了什么），拿不准不写；只追加，学习者看得到，也能自己改。',
       input: {
-        book: z.string(),
+        material: z.string().describe('资料 id'),
         field: z.enum(SOURCE_NOTE_FIELDS),
         text: z.string().describe('一句话'),
         basis: z.string().min(1).describe('依据：读了哪个目录 / 哪段原文'),
@@ -157,7 +157,7 @@ export class Crosslinks {
       run: async (a) => {
         try {
           await this.addNote({
-            book: a.book as string,
+            material: a.material as string,
             field: a.field as string,
             text: a.text as string,
             by: '模型',

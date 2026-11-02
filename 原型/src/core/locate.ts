@@ -9,7 +9,7 @@ import type { Sources } from './sources.ts';
 export interface LocateDeps {
   hub: Hub;
   sources: Sources;
-  /** 给了：资料里的一行还须属于这些资料（当前项目的；资料归项目，工单 W8 §4.4）。 */
+  /** 给了：资料里的一行还须属于这些资料（本项目能读的，按归属，W11）。 */
   scope?: () => Promise<string[]>;
   /** 给了：能认外部导入里的一行（导入的正文；没有这条导入给 undefined）。 */
   importText?: (id: string) => Promise<string | undefined>;
@@ -19,7 +19,7 @@ export interface LocateResult {
   raw: string;
   /** 定位到了没有。 */
   ok: boolean;
-  kind: 'book' | 'session' | 'import' | 'unknown';
+  kind: 'material' | 'session' | 'import' | 'unknown';
   /** kind = book 时书里的那一段（含查得到的原文）。 */
   citation?: CitationView;
   sessionId?: string;
@@ -51,11 +51,11 @@ export async function locate(raw: string, d: LocateDeps): Promise<LocateResult> 
   }
   if (head.includes('/')) {
     const citation = await d.sources.materialLine(text);
-    if (citation === undefined) return { raw, ok: false, kind: 'book' };
-    if (d.scope !== undefined && !(await d.scope()).includes(citation.book)) {
-      return { raw, ok: false, kind: 'book', citation: { ...citation, resolved: false } };
+    if (citation === undefined) return { raw, ok: false, kind: 'material' };
+    if (d.scope !== undefined && !(await d.scope()).includes(citation.material)) {
+      return { raw, ok: false, kind: 'material', citation: { ...citation, resolved: false } };
     }
-    return { raw, ok: citation.resolved, kind: 'book', citation };
+    return { raw, ok: citation.resolved, kind: 'material', citation };
   }
   if (!Number.isInteger(tail) || tail <= 0) return { raw, ok: false, kind: 'session' };
   const sessionId = head;

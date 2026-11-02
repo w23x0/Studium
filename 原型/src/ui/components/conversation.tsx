@@ -30,6 +30,7 @@ import { currentTicket, EndedBar, OldLoopBar, TicketStrip } from './learn/loop-p
 import { OutputTaskBar } from './outputs/outputs-section.tsx';
 import type { PickedFile } from '../files.ts';
 import { TopBar } from './top-bar.tsx';
+import { UploadResult } from './input/upload-result.tsx';
 
 export function Conversation(props: {
   sessionId: string;
@@ -228,7 +229,7 @@ export function Conversation(props: {
         ? {
             onFiles: async (files: PickedFile[]) => {
               const r = await api.upload(props.projectId, files);
-              return W.filesSent(r.items.length);
+              return <UploadResult projectId={props.projectId} items={r.items} />;
             },
           }
         : {})}

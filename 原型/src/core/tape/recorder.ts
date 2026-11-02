@@ -31,12 +31,12 @@ export const ACTIONS = [
   // 批 3a：项目资料、期限
   'changeMaterials',
   'setDeadline',
-  // W8 / W9：加资料、删、重试、从别的项目拿、上传改判、删导入、项目说明、存找到的候选
+  // W8 / W9 / W11：加资料、删、重试、改归属、上传改判、删导入、项目说明、存找到的候选
   // （上传本身带文件内容，不进录带）
   'addMaterial',
   'removeMaterial',
   'retryMaterial',
-  'copyMaterial',
+  'setMaterialOwner',
   'reroute',
   'removeImport',
   'setInstructions',

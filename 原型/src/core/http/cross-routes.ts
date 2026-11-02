@@ -33,9 +33,9 @@ export async function crossRoute(
 
   if (a === 'sources' && method === 'GET') {
     if (b === 'source-notes' && n === 3) {
-      const book = q.get('book');
-      if (book !== null && book !== '') {
-        send(res, 200, { note: await svc.links.sourceNote(book) } satisfies SourceNoteResponse);
+      const material = q.get('material');
+      if (material !== null && material !== '') {
+        send(res, 200, { note: await svc.links.sourceNote(material) } satisfies SourceNoteResponse);
       } else {
         send(res, 200, { notes: await svc.links.sourceNotes() } satisfies SourceNotesResponse);
       }
@@ -45,13 +45,13 @@ export async function crossRoute(
   if (a === 'sources' && b === 'source-notes' && n === 3 && method === 'POST') {
     const body = (await readJson(req)) as Partial<AddSourceNoteRequest>;
     if (
-      typeof body.book !== 'string' ||
+      typeof body.material !== 'string' ||
       typeof body.field !== 'string' ||
       typeof body.text !== 'string'
     ) {
-      throw new BadRequestError('book、field、text 要是字符串');
+      throw new BadRequestError('material、field、text 要是字符串');
     }
-    const note = await studium.addSourceNote(body.book, body.field, body.text);
+    const note = await studium.addSourceNote(body.material, body.field, body.text);
     send(res, 201, { note } satisfies SourceNoteResponse);
     return true;
   }

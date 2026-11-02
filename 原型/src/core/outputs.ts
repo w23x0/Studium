@@ -38,6 +38,8 @@ export interface OutputsDeps {
   store: OutputStore;
   sources: Sources;
   materials: SourceReader;
+  /** 本项目能读的资料 id（按归属，W11）：相关文献与引用核对只认这些。 */
+  readable: (mainId: string) => Promise<string[]>;
   now?: () => Date;
 }
 
@@ -225,9 +227,14 @@ export class Outputs {
 
   // ───────────── 引用 ─────────────
 
-  /** 解析并核对一段文字里的教材出处；对不上的标出，不编。 */
-  async references(text: string): Promise<ReferencesView> {
-    const sources = await this.d.sources.citations(text);
+  /** 解析并核对一段文字里的资料出处；对不上的、本项目读不到的标出，不编。 */
+  async references(text: string, output: string): Promise<ReferencesView> {
+    const readable = await this.d.readable(this.require(output).project);
+    const sources = (await this.d.sources.citations(text)).map((c) =>
+      c.resolved && !readable.includes(c.material)
+        ? { ...c, resolved: false, problem: `本项目读不到这份资料：${c.material}` }
+        : c,
+    );
     return { sources, unresolved: sources.filter((s) => !s.resolved).length };
   }
 
@@ -238,7 +245,7 @@ export class Outputs {
       output: v.output,
       text: v.text,
       ...(v.comparison !== undefined ? { comparison: v.comparison } : {}),
-      references: await this.references(v.text),
+      references: await this.references(v.text, v.output),
     };
   }
 
@@ -282,10 +289,11 @@ export class Outputs {
       ...(req.relationKind !== undefined ? { relationKind: req.relationKind } : {}),
     };
     let entry: LiteratureEntry;
-    if (typeof req.book === 'string' && req.book.trim() !== '') {
-      const books = await this.d.materials.books();
-      const book = books.find((b) => b === req.book || b.trim() === req.book?.trim());
-      if (book === undefined) throw new BadRequestError(`没有这份资料：${req.book}`);
+    if (typeof req.material === 'string' && req.material.trim() !== '') {
+      const ids = await this.d.readable(this.require(output).project);
+      const material = ids.find((b) => b === req.material || b.trim() === req.material?.trim());
+      if (material === undefined)
+        throw new BadRequestError(`本项目读不到这份资料：${req.material}`);
       if (req.file === undefined && (req.from !== undefined || req.to !== undefined)) {
         throw new BadRequestError('给了行号就要同时给 file（哪个文件）');
       }
@@ -293,7 +301,7 @@ export class Outputs {
         const from = req.from ?? 1;
         const to = req.to ?? from;
         const c = (
-          await this.d.sources.citations(formatCitation({ book, file: req.file, from, to }))
+          await this.d.sources.citations(formatCitation({ material, file: req.file, from, to }))
         )[0];
         if (c === undefined || !c.resolved) {
           throw new BadRequestError(c?.problem ?? '这个文件对不上');
@@ -301,19 +309,25 @@ export class Outputs {
         entry = {
           ...common,
           source: 'library',
-          title: await this.d.materials.title(book),
-          book,
+          title: await this.d.materials.title(material),
+          // 存放处的行格式沿用旧名 book
+          book: material,
           file: req.file,
           from,
           to,
         };
       } else {
-        entry = { ...common, source: 'library', title: await this.d.materials.title(book), book };
+        entry = {
+          ...common,
+          source: 'library',
+          title: await this.d.materials.title(material),
+          book: material,
+        };
       }
     } else {
       const title = typeof req.title === 'string' ? req.title.trim() : '';
       if (title === '')
-        throw new BadRequestError('外部条目要有 title（标题）；项目资料给 book（资料 id）');
+        throw new BadRequestError('外部条目要有 title（标题）；本项目的资料给 material（资料 id）');
       if (
         req.authors !== undefined &&
         !(Array.isArray(req.authors) && req.authors.every((a) => typeof a === 'string'))
@@ -344,13 +358,19 @@ export class Outputs {
 
   private async literatureView(e: LiteratureEntry): Promise<LiteratureView> {
     if (e.source !== 'library' || e.book === undefined) return e;
-    if (e.file === undefined) {
-      const has = (await this.d.materials.books()).includes(e.book);
-      return has ? e : { ...e, problem: `现在没有这份资料：${e.book}` };
+    const readable = await this.d.readable(this.require(e.output).project);
+    if (!readable.includes(e.book)) {
+      return { ...e, problem: `本项目现在读不到这份资料：${e.book}` };
     }
+    if (e.file === undefined) return e;
     const c = (
       await this.d.sources.citations(
-        formatCitation({ book: e.book, file: e.file, from: e.from ?? 1, to: e.to ?? e.from ?? 1 }),
+        formatCitation({
+          material: e.book,
+          file: e.file,
+          from: e.from ?? 1,
+          to: e.to ?? e.from ?? 1,
+        }),
       )
     )[0];
     return c === undefined
@@ -475,7 +495,7 @@ export class Outputs {
           const n = (a.version as number | undefined) ?? last.n;
           const v = this.d.store.version(output, n);
           if (v === undefined) return err(`没有第 ${String(n)} 版（现有 1–${String(last.n)}）`);
-          const refs = await this.references(v.text);
+          const refs = await this.references(v.text, output);
           const body = v.text
             .split('\n')
             .map((t, i) => `${String(i + 1)}\t${t}`)
@@ -488,7 +508,7 @@ export class Outputs {
       {
         name: 'save_output_version',
         description:
-          '把你和学习者写好的内容存成产出物的新版本（每次保存都是新的一版，旧版本不动）。text 是整篇完整正文，不是只写改的部分。要引资料原文就在句后附出处标记（【资料|资料id|文件|L起-止】，照 read_source 给的）。note 写这一版改了什么。方法比较类用 comparison，不用 text。',
+          '把你和学习者写好的内容存成产出物的新版本（每次保存都是新的一版，旧版本不动）。text 是整篇完整正文，不是只写改的部分。要引资料原文就在句后附出处标记（【资料|资料id|文件|L起-止】，照 read_material 给的）。note 写这一版改了什么。方法比较类用 comparison，不用 text。',
         input: {
           text: z.string().optional(),
           note: z.string().describe('这一版改了什么，一句话'),
@@ -530,9 +550,9 @@ export class Outputs {
       {
         name: 'add_literature',
         description:
-          '给本产出物登记一条相关文献：项目资料（给 book = 资料 id，可加 file 与行号），或外部条目（给 title，可加 authors、url）。relation 用一句话说它和这个产出物是什么关系。只追加。',
+          '给本产出物登记一条相关文献：本项目能读的资料（给 material = 资料 id，可加 file 与行号），或外部条目（给 title，可加 authors、url）。relation 用一句话说它和这个产出物是什么关系。只追加。',
         input: {
-          book: z.string().optional(),
+          material: z.string().optional(),
           file: z.string().optional(),
           from_line: z.number().int().optional(),
           to_line: z.number().int().optional(),
@@ -549,7 +569,7 @@ export class Outputs {
             const e = await this.addLiterature(
               output,
               {
-                ...(a.book !== undefined ? { book: a.book as string } : {}),
+                ...(a.material !== undefined ? { material: a.material as string } : {}),
                 ...(a.file !== undefined ? { file: a.file as string } : {}),
                 ...(a.from_line !== undefined ? { from: a.from_line as number } : {}),
                 ...(a.to_line !== undefined ? { to: a.to_line as number } : {}),

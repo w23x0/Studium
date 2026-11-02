@@ -54,6 +54,14 @@ function toPosix(p: string): string {
   return p.split('\\').join('/');
 }
 
+/**
+ * 相对路径与缺省路径的起点：SDK 进程的工作目录（主对话是数据目录，W11 §5），不给就是工作区。
+ * 按这里解析的路径才和框架实际读写的是同一处，再按读写范围判（主对话的相对路径会落进被挡的数据目录）。
+ */
+export function baseDir(sb: SandboxSpec): string {
+  return sb.cwd ?? sb.workdir;
+}
+
 /** 虚拟 / 相对 / 绝对路径 → 绝对路径（`..` 规范化）。 */
 export function resolveSandboxPath(sb: SandboxSpec, p: string): string {
   if (isAbsolute(p)) return resolve(p);
@@ -66,7 +74,7 @@ export function resolveSandboxPath(sb: SandboxSpec, p: string): string {
       return tail === '' ? resolve(hit.path) : resolve(join(hit.path, tail));
     }
   }
-  return resolve(join(sb.workdir, norm));
+  return resolve(join(baseDir(sb), norm));
 }
 
 /** 绝对路径 → 虚拟路径（在工作区或某个只读区里）；都不是就原样返回绝对路径。 */
@@ -93,10 +101,27 @@ export function canWrite(sb: SandboxSpec, abs: string): boolean {
   return inWorkdir(sb, real(abs));
 }
 
-/** 能不能读：工作区之内，或某个只读目录 / 那个只读文件之内。 */
+/**
+ * 往下走的操作（Glob / Grep 的 path、导入本机路径）能不能做（W11 §5）：能读，而且不是任何被挡位置的祖先
+ * （`~` 包着 `~/.ssh`，搜它会搜进被挡的地方）。工作区里照旧都行。
+ */
+export function canDescend(sb: SandboxSpec, abs: string): boolean {
+  const p = real(abs);
+  if (inWorkdir(sb, p)) return true;
+  return canRead(sb, abs) && !(sb.denyRead ?? []).some((d) => within(p, real(d)));
+}
+
+/** 能不能读：工作区之内，或某个只读目录 / 那个只读文件之内、又不在挡掉的位置（W11 §5）。 */
 export function canRead(sb: SandboxSpec, abs: string): boolean {
   const p = real(abs);
-  return inWorkdir(sb, p) || sb.readOnly.some((e) => within(real(e.path), p));
+  if (inWorkdir(sb, p)) return true;
+  // 挡掉的位置在这个只读条目里面（如家目录下的 ~/.ssh、数据目录）才挡；只读条目本身在挡掉的位置里面
+  // （学习对话的资料正文在数据目录里）照旧能读
+  const deny = (sb.denyRead ?? []).map(real);
+  return sb.readOnly.some((e) => {
+    const root = real(e.path);
+    return within(root, p) && !deny.some((d) => within(d, p) && within(root, d));
+  });
 }
 
 /** rest（虚拟路径里 `只读/` 之后的部分）落在哪个只读条目上；按 name 最长前缀匹配。 */

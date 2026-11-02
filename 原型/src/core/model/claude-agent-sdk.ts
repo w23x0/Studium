@@ -30,7 +30,14 @@ import {
   type TurnInput,
 } from './port.ts';
 import type { Effort, Profiles } from './profiles.ts';
-import { canRead, canWrite, resolveSandboxPath, virtualPath } from './sandbox-paths.ts';
+import {
+  baseDir,
+  canDescend,
+  canRead,
+  canWrite,
+  resolveSandboxPath,
+  virtualPath,
+} from './sandbox-paths.ts';
 
 const SERVER = 'studium';
 
@@ -82,7 +89,10 @@ export function sdkOptionsFor(
   const model = profile?.model ?? o.model;
   const effort = profile?.effort ?? o.effort;
   const sb = spec.sandbox;
-  const cwd = sb !== undefined ? sb.workdir : o.cwd;
+  // 主对话带沙盒时 cwd 仍是数据目录（续接按它找会话文件，W11 §5）；其余有沙盒的落到工作区
+  const cwd = sb !== undefined ? (sb.cwd ?? sb.workdir) : o.cwd;
+  const denyRead =
+    sb !== undefined ? [...(o.cwd !== undefined ? [o.cwd] : []), ...(sb.denyRead ?? [])] : [];
   const builtins =
     sb === undefined
       ? []
@@ -126,23 +136,28 @@ export function sdkOptionsFor(
     strictMcpConfig: true,
     includePartialMessages: true,
     ...(spec.resumeToken !== undefined ? { resume: spec.resumeToken } : {}),
+    ...(spec.fork === true && spec.resumeToken !== undefined ? { forkSession: true } : {}),
     ...(spec.ephemeral === true ? { persistSession: false } : {}),
     ...(model !== undefined ? { model } : {}),
     ...(effort !== undefined ? { effort } : {}),
     ...(cwd !== undefined ? { cwd } : {}),
     ...(sb !== undefined
       ? {
-          additionalDirectories: readOnlyDirs(sb),
+          additionalDirectories: [
+            ...readOnlyDirs(sb),
+            ...(sb.cwd !== undefined && sb.cwd !== sb.workdir ? [sb.workdir] : []),
+          ],
           permissionMode: 'default' as const,
           canUseTool: sandboxPermission(sb, subs, taskOfCall),
-          // 派子代理不经 canUseTool（框架自己放行），同一套判断挂在调用前的钩子上
-          ...(subs.length > 0
-            ? {
-                hooks: {
-                  PreToolUse: [{ matcher: 'Agent|Task', hooks: [agentGate(sb, subs)] }],
-                },
-              }
-            : {}),
+          hooks: {
+            PreToolUse: [
+              // 工作目录与 additionalDirectories 里的读，框架可能不问 canUseTool 就放行；挡掉的位置（存密钥处、
+              // 数据目录）在调用前的钩子上再按同一套判断卡一道（W11 §5）
+              { matcher: 'Read|Glob|Grep', hooks: [readGate(sb, subs)] },
+              // 派子代理不经 canUseTool（框架自己放行），同一套判断挂在调用前的钩子上
+              ...(subs.length > 0 ? [{ matcher: 'Agent|Task', hooks: [agentGate(sb, subs)] }] : []),
+            ],
+          },
           sandbox: {
             enabled: true,
             autoAllowBashIfSandboxed: true,
@@ -151,8 +166,15 @@ export function sdkOptionsFor(
               allowWrite: [sb.workdir],
               // 子代理的目录主模型的命令也写不了（子代理不给命令，它写靠文件工具，不经沙盒）
               denyWrite: [...sb.readOnly.map((e) => e.path), ...subs.map((a) => a.writable)],
-              denyRead: o.cwd !== undefined ? [o.cwd] : [],
-              allowRead: [sb.workdir, ...sb.readOnly.map((e) => e.path)],
+              denyRead,
+              // 只在挡掉的范围里重新放开的才写进来（allowRead 压过 denyRead：把家目录写进来会把挡掉的又放开）；
+              // 不在挡掉范围里的本来就读得到
+              allowRead: [
+                sb.workdir,
+                ...sb.readOnly
+                  .map((e) => e.path)
+                  .filter((p) => denyRead.some((d) => within(resolve(p), d))),
+              ],
             },
             // network: false = 不给联网（只放空名单并收紧）
             ...(sb.network ? {} : { network: { allowedDomains: [], strictAllowlist: true } }),
@@ -199,6 +221,31 @@ export function sandboxPermission(
         opts.agentID === undefined ? undefined : (taskOfCall?.(opts.toolUseID) ?? opts.agentID),
       ),
     );
+}
+
+/** 读之前的钩子（主模型自己的读；子代理的读照旧经 canUseTool）：和 canUseTool 同一套判断。 */
+function readGate(sb: SandboxSpec, subs: SubagentSpec[]): HookCallback {
+  return (input) => {
+    if (input.hook_event_name !== 'PreToolUse' || input.agent_id !== undefined) {
+      return Promise.resolve({});
+    }
+    const toolInput =
+      typeof input.tool_input === 'object' && input.tool_input !== null
+        ? (input.tool_input as Record<string, unknown>)
+        : {};
+    const r = decide(sb, subs, input.tool_name, toolInput);
+    return Promise.resolve(
+      r.behavior === 'deny'
+        ? {
+            hookSpecificOutput: {
+              hookEventName: 'PreToolUse' as const,
+              permissionDecision: 'deny' as const,
+              permissionDecisionReason: r.message,
+            },
+          }
+        : {},
+    );
+  };
 }
 
 /** 派子代理前的钩子：和 canUseTool 同一套判断，拦下时把原因交回给模型。 */
@@ -248,18 +295,28 @@ function decide(
     case 'Read': {
       const abs = pathOf(sb, input.file_path);
       if (abs === undefined || !canRead(sb, abs) || (bySubagent && !subCanRead(abs))) {
-        return deny(`${shown(sb, abs, input)} 读不到`);
+        return deny(
+          `${shown(sb, abs, input)} 读不到${sb.cwd !== undefined ? '（要写完整路径，在家目录下、不在隐藏目录与数据目录里）' : ''}`,
+        );
       }
       return allow(input);
     }
     case 'Glob':
     case 'Grep': {
+      // 不给 path = SDK 的工作目录（主对话是数据目录，会被挡）
       const abs =
         input.path === undefined
-          ? resolve(bySubagent ? (subs[0]?.writable ?? sb.workdir) : sb.workdir)
+          ? resolve(bySubagent ? (subs[0]?.writable ?? baseDir(sb)) : baseDir(sb))
           : pathOf(sb, input.path);
       if (abs === undefined || !canRead(sb, abs) || (bySubagent && !subCanRead(abs))) {
-        return deny(`${shown(sb, abs, input)} 读不到`);
+        return deny(
+          `${shown(sb, abs, input)} 读不到${sb.cwd !== undefined ? '（path 要写完整路径，在家目录下、不在隐藏目录与数据目录里）' : ''}`,
+        );
+      }
+      if (!canDescend(sb, abs)) {
+        return deny(
+          `${shown(sb, abs, input)} 里面包着不让读的位置（存密钥的隐藏目录、Studium 的数据目录），不能整个搜；给更具体的子目录`,
+        );
       }
       // 文件匹配式（Glob 的 pattern、Grep 的 glob）自己带绝对路径或 `..` 也会跑到范围外
       const k = toolName === 'Glob' ? 'pattern' : 'glob';
@@ -341,7 +398,9 @@ export function sandboxActionOf(
       ? undefined
       : pathOf(
           sb,
-          use.name === 'Glob' || use.name === 'Grep' ? (input.path ?? sb.workdir) : input.file_path,
+          use.name === 'Glob' || use.name === 'Grep'
+            ? (input.path ?? baseDir(sb))
+            : input.file_path,
         );
   const shownPath = path === undefined ? undefined : virtualPath(sb, path);
   const withPath = shownPath !== undefined ? { path: shownPath } : {};
@@ -396,6 +455,8 @@ function blocks(content: unknown): ContentBlock[] {
 
 /** 从外层 Claude Code 继承来的会话变量会让 SDK 接到外层会话上，去掉。 */
 const INHERITED_SESSION_VARS = ['CLAUDECODE', 'CLAUDE_CODE_SESSION_ID', 'CLAUDE_CODE_ENTRYPOINT'];
+/** 我们自己的密钥不进模型那边的环境（沙盒里的命令会继承它；W11 §4 MinerU 密钥留在程序里）。 */
+const OUR_SECRETS = /^(MINERU_TOKEN|STUDIUM_TOKEN|DEEPSEEK_API_KEY|OPENAI_API_KEY)$/;
 
 export class ClaudeAgentSdkModel implements ModelAdapter {
   readonly name = 'claude-agent-sdk';
@@ -932,7 +993,7 @@ function failReason(msg: { subtype: string; errors?: string[] }): string {
 function cleanEnv(): Record<string, string> {
   const env: Record<string, string> = {};
   for (const [k, v] of Object.entries(process.env)) {
-    if (v !== undefined && !INHERITED_SESSION_VARS.includes(k)) env[k] = v;
+    if (v !== undefined && !INHERITED_SESSION_VARS.includes(k) && !OUR_SECRETS.test(k)) env[k] = v;
   }
   return env;
 }

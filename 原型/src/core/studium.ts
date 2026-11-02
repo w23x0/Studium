@@ -1,13 +1,16 @@
 // Studium：按事件跑清单（`docs/设计/01-流程.md`；一次学习之外的流程见 `docs/设计/会话/` 各页，收口 10-31 起不开守卫：学习对话自己写收尾那一句，见 `requestClose`）。
 // 每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（`docs/设计/记录/读写权限.md`）。
 import { randomBytes } from 'node:crypto';
-import { join } from 'node:path';
+import { realpath } from 'node:fs/promises';
+import { homedir } from 'node:os';
+import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
 import { CONVERSATION_KIND_LABELS } from '../shared/protocol.ts';
 import { REOPENABLE_KINDS, THREAD_KINDS, threadEnded, threadGroup } from '../shared/threads.ts';
 import type {
   AddMaterialRequest,
+  MaterialOwner,
   MaterialSource,
   ProjectDeadlineResponse,
   ProjectInstructionsResponse,
@@ -43,13 +46,14 @@ import { routeDeviations } from './route-deviations.ts';
 import { REVISIT_KINDS } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { foldLoop } from './loop-state.ts';
-import { MaterialError, type Materials } from './knowledge/materials.ts';
+import { MaterialError, Materials } from './knowledge/materials.ts';
 import type { Sources } from './sources.ts';
 import type { PedagogyStore } from './knowledge/pedagogy.ts';
 import type { Objections } from './knowledge/objections.ts';
 import { STAGES, type StateStore, type StateConfirmation } from './knowledge/state.ts';
 import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { locate, type LocateDeps } from './locate.ts';
+import { canDescend, canRead } from './model/sandbox-paths.ts';
 import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import type { Outputs } from './outputs.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
@@ -93,6 +97,8 @@ const TEACHING_EXCERPT = 160;
 export const INSTRUCTIONS_LIMIT = 16000;
 /** 找资料一次最多交回几份候选（`docs/设计/会话/找资料.md`）。 */
 const MAX_CANDIDATES = 10;
+/** 导入会话多久没交回算超时（W11 §4；实现细节，先定 60 分钟：几百页的 PDF 交 MinerU 要几分钟到十几分钟）。 */
+const IMPORT_TIMEOUT_MS = 60 * 60 * 1000;
 
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
@@ -131,6 +137,8 @@ export class Studium {
   private readonly tasks = new Set<Promise<unknown>>();
   /** 状态整理一次只跑一个，后到的排在后面。 */
   private stateChain: Promise<void> = Promise.resolve();
+  /** 超时被停掉的导入会话（W11 §4）：之后它的工具一律不算数。 */
+  private readonly stoppedImports = new Set<string>();
   /** 每个主对话一条：路线决定与卡排队写。 */
   private readonly routeChains = new Map<string, Promise<unknown>>();
 
@@ -164,6 +172,7 @@ export class Studium {
     this.learned = new Learned({
       hub: () => this.hub,
       dir: o.dataDir,
+      materials: o.materials,
       newId: (prefix) => this.newId(prefix),
       iso: () => this.iso(),
     });
@@ -183,6 +192,7 @@ export class Studium {
         return main === undefined ? '' : (await this.instructions(main)).text;
       },
       positionText: (id) => this.positionBasis(id),
+      projectOf: (id) => this.projectOf(id),
     });
     // 屏幕与组件按块按指纹存在 `<数据>/screens/`（旧活页面的 `pages/` 原样留着，不再写）
     const screenStore = new PageStore(join(o.dataDir, 'screens'));
@@ -218,9 +228,32 @@ export class Studium {
       iso: () => this.iso(),
       ...(o.judge !== undefined ? { judge: o.judge } : {}),
       addMaterial: async (mainId, req) => (await this.newMaterial(mainId, req)).id,
-      removeMaterial: (mainId, id) => this.removeMaterial(mainId, id),
+      relabel: async (mainId, id, learned, owner) => {
+        if ((await this.o.materials.source(id))?.status === '处理中') {
+          throw new BadRequestError('这份还在处理，等它跑完再改判');
+        }
+        await this.o.materials.setLearned(id, learned);
+        await this.setMaterialOwner(
+          mainId,
+          id,
+          owner.kind,
+          owner.kind === 'project' ? owner.projects : undefined,
+          'learner',
+        );
+        // 对话记录要转逐条 md、加开头那句：工作层按新的标记重做一遍
+        try {
+          await this.o.materials.retry(id);
+        } catch (err) {
+          if (err instanceof MaterialError) throw new BadRequestError(err.message);
+          throw err;
+        }
+      },
+      ownerNow: async (id) => {
+        const src = await this.o.materials.source(id);
+        return src === undefined ? undefined : src.owner.kind === 'learner' ? '学习者' : '项目';
+      },
       importLearned: async (mainId, x) =>
-        (await this.learned.importFile({ ...x, project: mainId })).id,
+        (await this.learned.importMaterial({ ...x, project: mainId })).id,
       removeImport: (id) => this.learned.removeImport(id),
       record: async (mainId, r) => {
         await this.hub.record(mainId, { type: 'upload_routed', at: this.iso(), ...r });
@@ -237,6 +270,8 @@ export class Studium {
       projectOf: (id) => this.projectOf(id),
       stateQueryTool: () => this.stateQueryTool(),
     });
+    // 原件里有不是纯文字的：交导入会话（W11 §4）
+    o.materials.setImporter((id, files) => this.startImport(id, files));
     // 产出物那边生成的编号也经这里报给录带
     o.outputs.onNewId((prefix, id) => {
       for (const fn of this.idListeners) fn(prefix, id);
@@ -331,23 +366,36 @@ export class Studium {
     ...(kind === 'retrieve'
       ? { sandbox: (sessionId: string) => this.retrieveSandbox(sessionId) }
       : {}),
-    tools: (sessionId) => {
+    // 主对话只读本机（W11 §5）：家目录只读、挡掉存密钥的位置，命令行在只读沙盒里，不联网
+    ...(kind === 'main'
+      ? { sandbox: (sessionId: string) => this.sandboxes.forMain(sessionId) }
+      : {}),
+    // 导入会话（W11 §4，试验）：只读原件，工作区就是那份资料的正文
+    ...(kind === 'import' ? { sandbox: (sessionId: string) => this.importSandbox(sessionId) } : {}),
+    tools: async (sessionId) => {
       switch (kind) {
         case 'main':
-          return this.mainTools(sessionId);
+          return [
+            ...this.mainTools(sessionId),
+            ...this.readTools(sessionId),
+            this.importLocalTool(sessionId),
+            this.setOwnerTool(sessionId),
+            await this.askProjectTool(sessionId),
+          ];
         case 'talk':
           // 同一类会话两种活：谈方向；阶段复盘（finish_review 只在复盘会话里可用）
           return [
             ...this.readTools(sessionId),
             this.listLearnedTool(sessionId, true),
-            this.readImportTool(),
+            this.readImportTool(sessionId),
             this.settleGoalTool(sessionId),
             ...this.longterm.reviewTools(sessionId),
             this.threadTitleTool(sessionId),
+            await this.askProjectTool(sessionId),
           ];
         case 'loop':
-          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），工具只剩两个命令
-          return this.loopToolsFor(sessionId);
+          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），工具只剩几个命令
+          return [...(await this.loopToolsFor(sessionId)), await this.askProjectTool(sessionId)];
         case 'guard':
           // 旧数据：守卫 10-31 起不再开，留这一项只为种类名单完整
           return [];
@@ -363,6 +411,7 @@ export class Studium {
             this.materialGapTool(sessionId),
             ...this.longterm.reminderTools(sessionId),
             this.o.cross.addNoteTool(sessionId),
+            await this.askProjectTool(sessionId),
           ];
         case 'retrieve':
           // 检索子代理：在只读沙盒里自己读，只挂交回结果这一个工具（工单 README §2.7）
@@ -384,9 +433,309 @@ export class Studium {
         case 'editor':
           // 旧数据里的页面编辑员会话（10-26 起改成学习对话派的子代理），不再开
           return [];
+        case 'import':
+          return this.importTools(sessionId);
       }
     },
   });
+
+  // ───────────── 导入会话（W11 §4，试验；记录/资料.md「怎么处理」） ─────────────
+
+  /** 导入会话处理的是哪份资料。 */
+  private async importMaterialOf(sessionId: string): Promise<MaterialSource> {
+    const src = await this.o.materials.ofImportSession(sessionId);
+    if (src === undefined) throw new Error(`导入会话 ${sessionId} 找不到它处理的资料`);
+    return src;
+  }
+
+  private async importSandbox(sessionId: string): Promise<SandboxSpec> {
+    return this.sandboxes.forImport((await this.importMaterialOf(sessionId)).id);
+  }
+
+  /**
+   * 原件里有不是纯文字的文件：在后台开一个导入会话（parent = 发起导入的主对话；界面不显示），交给它处理；
+   * 会话交回（finish_import）时改状态。会话失败、超时或没交回就停了 → “失败”写原因，不伪装可用。
+   */
+  private async startImport(id: string, files: string[]): Promise<void> {
+    const src = await this.o.materials.source(id);
+    if (src === undefined) return;
+    const parent = src.importedFrom;
+    const s = await this.hub.createSession('import', {
+      title: `导入：${src.title}`,
+      ...(parent !== undefined ? { parent } : {}),
+    });
+    await this.o.materials.addProcessedBy(id, s.sessionId);
+    const body = await this.o.materials.bodyDir(id);
+    const original = await this.o.materials.originalDir(id);
+    this.background('导入会话', async () => {
+      const { done } = await this.hub.send(s.sessionId, {
+        role: 'program',
+        text: [
+          `这份资料：《${src.title}》（资料 id ${id}，${src.learned !== undefined ? `学习者的${src.learned.channel}` : '资料'}）。`,
+          `原件（只读）：${original}`,
+          `当前目录（就是这份资料给别的会话读的文字版）：${body}`,
+          '纯文字的文件程序已经按原件里的相对路径放进当前目录了。原件里不是纯文字、要你处理的：',
+          ...files.map((f) => `- ${f}`),
+        ].join('\n'),
+      });
+      let timer: NodeJS.Timeout | undefined;
+      const timedOut = await Promise.race([
+        done.then(() => false),
+        new Promise<boolean>((r) => (timer = setTimeout(() => r(true), IMPORT_TIMEOUT_MS))),
+      ]);
+      clearTimeout(timer);
+      if (timedOut) {
+        // 真停掉：之后它不能再调 finish_import 把状态改回去
+        this.stoppedImports.add(s.sessionId);
+        await this.hub.stop(s.sessionId);
+      }
+      this.o.materials.refresh(id);
+      const now = await this.o.materials.source(id);
+      if (now?.status !== '处理中') return;
+      const failed = (await this.hub.records(s.sessionId))
+        .map((r) => r.record)
+        .filter((r) => r.type === 'turn_failed')
+        .at(-1);
+      await this.o.materials.finishImport(id, '失败', [
+        timedOut
+          ? `导入会话 ${formatDuration(IMPORT_TIMEOUT_MS)} 没交回（${s.sessionId}）`
+          : failed?.type === 'turn_failed'
+            ? `导入会话没跑成（${s.sessionId}）：${failed.notice ?? failed.reason}`
+            : `导入会话没交回就停了（${s.sessionId}）`,
+      ]);
+    });
+  }
+
+  /**
+   * 这个导入会话还算数吗：没被超时停掉、它处理的那份还在“处理中”、它是最近一个处理这份的（重试会重开一个）。
+   * 不算数回一句原因。
+   */
+  private async liveImport(
+    sessionId: string,
+  ): Promise<{ src: MaterialSource } | { problem: string }> {
+    const src = await this.importMaterialOf(sessionId);
+    if (
+      this.stoppedImports.has(sessionId) ||
+      src.status !== '处理中' ||
+      src.processedBy?.at(-1) !== sessionId
+    ) {
+      return { problem: '这次导入已经结束（超时、服务重启或已重开），不能再改它；停下即可' };
+    }
+    return { src };
+  }
+
+  /** 导入会话自己的两个工具：mineru（PDF 交 MinerU 转）、finish_import（交回）。 */
+  private importTools(sessionId: string): ToolSpec[] {
+    return [
+      {
+        name: 'mineru',
+        description:
+          '把原件里的一个 PDF 交 MinerU 转成文字（含公式、表格；按页段各一份 md，放进当前目录）。一份几百页的要几分钟。转出来的 md 你可以再看、再改。',
+        input: { file: z.string().describe('原件里的相对路径，如 讲义.pdf 或 第一章/习题.pdf') },
+        run: async (a) => {
+          const now = await this.liveImport(sessionId);
+          if ('problem' in now) return err(now.problem);
+          const r = await this.o.materials.mineru(now.src.id, a.file as string);
+          if ('problem' in r) return err(r.problem);
+          return ok(`转好了，写进当前目录：${r.files.join('、')}`);
+        },
+      },
+      {
+        name: 'finish_import',
+        description:
+          '都写好了再调用（一次，最后一步）：status 写 可用（都处理好了）/ 部分可用（有些没处理好）/ 失败（没法用）；note 写哪些没处理好、为什么（都好就写一句做了什么）。',
+        input: {
+          status: z.enum(['可用', '部分可用', '失败']),
+          note: z.string(),
+        },
+        run: async (a) => {
+          const now = await this.liveImport(sessionId);
+          if ('problem' in now) return err(now.problem);
+          const src = now.src;
+          const status = a.status as '可用' | '部分可用' | '失败';
+          const note = (a.note as string).trim();
+          await this.o.materials.finishImport(
+            src.id,
+            status,
+            status === '可用' || note === '' ? [] : [note],
+          );
+          return ok('已交回，这次导入结束。不用再写文件，也不用再说什么。');
+        },
+      },
+    ];
+  }
+
+  // ───────────── 主对话读本机、改归属（W11 §2 §5） ─────────────
+
+  /** 学习者给的本机路径拷一份进来，和拖进来的一样分流（主对话的 import_local）。 */
+  private importLocalTool(mainId: string): ToolSpec {
+    return {
+      name: 'import_local',
+      description:
+        '学习者给的本机路径（文件或文件夹），你读过、要当以后的依据（学习者以前学过什么、要配着学的资料）时调用：程序拷一份进来，和学习者拖进来的一样分流（资料 / 学过的、归学习者还是本项目），学习者可改。本机的文件不改。',
+      input: {
+        path: z.string().describe('本机的绝对路径（家目录下；~ 开头也行）'),
+        title: z.string().optional().describe('只导入一份时的标题；不填用文件名'),
+      },
+      run: async (a) => {
+        const raw = (a.path as string).trim();
+        const home = homedir();
+        const given = resolve(
+          raw === '~' ? home : raw.startsWith('~/') ? join(home, raw.slice(2)) : raw,
+        );
+        let abs: string;
+        try {
+          abs = await realpath(given);
+        } catch (e) {
+          if ((e as { code?: string }).code === 'ENOENT') return err(`本机没有这个路径：${given}`);
+          throw e;
+        }
+        // 和主对话的 Glob / Grep 同一条规则：在家目录内、不在被挡的位置里、也不包着被挡的位置
+        const sb = await this.sandboxes.forMain(mainId);
+        if (!canDescend(sb, abs)) {
+          const home = homedir();
+          return err(
+            abs !== home && !abs.startsWith(`${home}/`)
+              ? '只能导入家目录下的文件'
+              : canRead(sb, abs)
+                ? `${abs} 里面包着不让读的位置（存密钥的隐藏目录、Studium 的数据目录），不能整个导入；给更具体的子目录`
+                : `${abs} 在不让读的位置里（隐藏目录、Studium 的数据目录）`,
+          );
+        }
+        let items;
+        let skipped: string[];
+        try {
+          ({ items, skipped } = await this.uploads.saveFromPath(
+            mainId,
+            abs,
+            (real) => canRead(sb, real),
+            typeof a.title === 'string' && a.title.trim() !== '' ? a.title.trim() : undefined,
+          ));
+        } catch (e) {
+          if (e instanceof BadRequestError) return err(e.message);
+          throw e;
+        }
+        return ok(
+          `已拷进来（${String(items.length)} 份）：\n${items
+            .map(
+              (x) =>
+                `- ${x.file} → ${x.routedTo}${x.owner !== undefined ? `，归${x.owner}` : ''}${x.material !== undefined ? `，资料 id ${x.material}` : ''}${x.problem !== undefined ? `，没落下：${x.problem}` : ''}${x.reason !== undefined ? `（${x.reason}）` : ''}`,
+            )
+            .join(
+              '\n',
+            )}${skipped.length > 0 ? `\n没拷的链接：${skipped.join('、')}` : ''}\n处理在后台跑（PDF、图片等要几分钟）；跟学习者说一句放到了哪、归谁，不对他可以改。`,
+        );
+      },
+    };
+  }
+
+  /** 改一份资料归谁（学习者在对话里说“这本数学笔记物理项目也要用”时）。 */
+  private setOwnerTool(mainId: string): ToolSpec {
+    return {
+      name: 'set_material_owner',
+      description:
+        '学习者要改一份资料归谁时调用（如“这本数学笔记物理项目也要用”）：learner = 跟着学习者，所有项目都能读；project = 只给几个项目读（projects 填主对话 id，不填 = 只给本项目）。改的是一个字段，文件不挪。',
+      input: {
+        material: z.string().describe('资料 id（materials_index 里有）'),
+        owner: z.enum(['learner', 'project']),
+        projects: z.array(z.string()).optional(),
+      },
+      run: async (a) => {
+        try {
+          const src = await this.setMaterialOwner(
+            mainId,
+            a.material as string,
+            a.owner as 'learner' | 'project',
+            a.projects as string[] | undefined,
+            'model',
+          );
+          return await ok(
+            `已改：《${src.title}》现在${src.owner.kind === 'learner' ? '归学习者，所有项目都能读' : `只给这几个项目读：${src.owner.projects.join('、')}`}。`,
+          );
+        } catch (e) {
+          if (e instanceof BadRequestError) return await err(e.message);
+          throw e;
+        }
+      },
+    };
+  }
+
+  // ───────────── 问别的项目的主对话（W11 §6，试验） ─────────────
+
+  /** 学习对话、导航、畅谈、主对话用：读不到别的项目的资料时，直接问那个项目的主对话。 */
+  private async askProjectTool(sessionId: string): Promise<ToolSpec> {
+    const own = await this.projectOf(sessionId);
+    const others = (await this.listProjects()).filter((p) => p.mainSessionId !== own);
+    return {
+      name: 'ask_project',
+      description: `本项目读不到、要用别的项目里的资料或学过的东西时调用：直接问那个项目的主对话一个问题，它按它那边能读的答、带出处。学习者看不到这一问。别的项目（主对话 id「名字」）：${others.map((p) => `${p.mainSessionId}「${p.title}」`).join('；') || '（没有别的项目）'}`,
+      input: {
+        project: z.string().describe('那个项目的主对话 id'),
+        question: z.string().describe('要问的事：要什么、为什么要，写清楚'),
+      },
+      run: async (a) => {
+        const target = (a.project as string).trim();
+        const question = (a.question as string).trim();
+        if (target === own) return err('这就是本项目，直接读本项目的资料');
+        const opened = await this.hub.opened(target).catch((e: unknown) => {
+          if (e instanceof NotFoundError) return undefined;
+          throw e;
+        });
+        if (opened?.kind !== 'main') return err(`没有这个项目：${target}`);
+        if (question === '') return err('问题是空的');
+        const answer = await this.askProject(sessionId, target, question);
+        const title = (await this.listProjects()).find((p) => p.mainSessionId === target)?.title;
+        return ok(`项目「${title ?? target}」的主对话答：\n${answer}`);
+      },
+    };
+  }
+
+  /**
+   * 问一个项目的主对话（W11 §6）：从它最近的续接凭据分叉（不写回它那条线、界面不显示），用主对话的系统提示与
+   * 读工具答一次；还没跑过的开一个临时会话，附上它的当前事实。被问的一方正本里记 project_asked，不进它的上下文。
+   */
+  private async askProject(from: string, target: string, question: string): Promise<string> {
+    const adapter = this.hub.modelName;
+    const token = (await this.hub.records(target))
+      .map((r) => r.record)
+      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
+      .at(-1);
+    const resume = token?.type === 'model_session' ? token.token : undefined;
+    const conv = this.hub.adapter.open({
+      systemPrompt: this.o.prompts.main,
+      tools: [
+        ...this.readTools(target),
+        this.listLearnedTool(target, true),
+        this.readImportTool(target),
+      ],
+      session: { id: target, kind: 'main' },
+      ephemeral: true,
+      ...(resume !== undefined ? { resumeToken: resume, fork: true } : {}),
+    });
+    const ask = `这是别的会话（${from}）来问的，不是学习者在说话：只答问题，给出处（资料id/文件:行号 或 会话 id:行号）；你那边没有就直说没有；不对学习者说话，不调改东西的工具。\n问题：${question}`;
+    const texts: string[] = [];
+    try {
+      for await (const e of conv.send({
+        role: 'program',
+        text: ask,
+        ...(resume === undefined ? { preface: await this.mainPreface(target, 0, false) } : {}),
+      })) {
+        if (e.kind === 'assistant_text') texts.push(e.text);
+        if (e.kind === 'turn_error') throw new Error(e.notice ?? e.reason);
+      }
+    } finally {
+      await conv.close();
+    }
+    const answer = texts.join('\n').trim() || '（没答出来）';
+    await this.hub.record(target, {
+      type: 'project_asked',
+      at: this.iso(),
+      from,
+      question,
+      answer,
+    });
+    return answer;
+  }
 
   /** 会联网搜索的会话种类；外发披露只从这里取，不另写一份名单（工单 W5 §4.6）。 */
   webSearchKinds(): ConversationKind[] {
@@ -458,36 +807,26 @@ export class Studium {
     return (await this.hub.records(mainId)).map((r) => r.record);
   }
 
-  /** 项目当前的资料 id（按加入顺序）：把 project_material 记录从头折叠。 */
-  async selectedBooks(mainId: string): Promise<{ book: string; addedAt: string }[]> {
-    return foldMaterials(await this.requireProject(mainId));
-  }
-
-  /** 项目资料的视图：每份带种类 / 版本 / 日期 / 处理状态 / 模型判断的角色；资料目录里找不到的标 missing。 */
+  /**
+   * 项目资料的视图（记录/资料.md「浏览」）：本项目能读的全部（本项目的 + 学习者的），每份带种类 / 归属 / 版本 /
+   * 日期 / 处理状态 / 模型判断的角色。
+   */
   async materials(mainId: string): Promise<ProjectMaterialsResponse> {
     const recs = await this.requireProject(mainId);
-    const chosen = foldMaterials(recs);
-    const views: ProjectMaterialView[] = [];
-    for (const c of chosen) {
-      const src = await this.o.materials.source(c.book);
-      if (src !== undefined) {
-        views.push({
-          book: c.book,
-          title: src.title,
-          kind: src.kind,
-          addedAt: c.addedAt,
-          origin: src.origin,
-          ...(src.version !== '' ? { version: src.version } : {}),
-          fetchedAt: src.fetchedAt,
-          status: src.status,
-          ...(src.problems !== undefined ? { problems: src.problems } : {}),
-          ...(src.role !== undefined ? { role: src.role } : {}),
-          ...(src.copiedFrom !== undefined ? { copiedFrom: src.copiedFrom } : {}),
-        });
-        continue;
-      }
-      views.push({ book: c.book, title: c.book, addedAt: c.addedAt, missing: true });
-    }
+    const views: ProjectMaterialView[] = (await this.o.materials.ofProject(mainId)).map((src) => ({
+      material: src.id,
+      title: src.title,
+      kind: src.kind,
+      addedAt: src.fetchedAt,
+      origin: src.origin,
+      ...(src.version !== '' ? { version: src.version } : {}),
+      fetchedAt: src.fetchedAt,
+      status: src.status,
+      owner: src.owner,
+      ...(src.learned !== undefined ? { learned: src.learned } : {}),
+      ...(src.problems !== undefined ? { problems: src.problems } : {}),
+      ...(src.role !== undefined ? { role: src.role } : {}),
+    }));
     const d = foldDeadline(recs);
     return {
       mainSessionId: mainId,
@@ -499,8 +838,7 @@ export class Studium {
   }
 
   /**
-   * 加一份资料（工单 W8 §4.2；入口归 W9）：在项目资料区里建好、记 project_material，转换在后台跑，
-   * 状态随处理更新。
+   * 加一份资料（工单 W8 §4.2；入口归 W9）：建好、记 project_material，处理在后台跑，状态随处理更新。
    */
   async addMaterial(
     mainId: string,
@@ -518,7 +856,7 @@ export class Studium {
     return this.materials(mainId);
   }
 
-  /** 在项目资料区建一份、记 project_material；返回建好时的 source.json。 */
+  /** 建一份资料（不给归属 = 只归本项目）、在主对话里记 project_material；返回建好时的 source.json。 */
   private async newMaterial(mainId: string, req: AddMaterialRequest): Promise<MaterialSource> {
     await this.requireProject(mainId);
     let src: MaterialSource;
@@ -537,10 +875,23 @@ export class Studium {
     return src;
   }
 
-  /** 删掉本项目的一份资料（工单 W9 §4.4）：只追加 remove；已有引用照旧能定位，依据面板标“资料已删”。 */
+  /** 本项目读不读得到这份（按归属）；读不到报错。 */
+  private async requireReadable(mainId: string, id: string): Promise<MaterialSource> {
+    await this.requireProject(mainId);
+    const src = await this.o.materials.source(id);
+    if (src === undefined || !Materials.readableBy(src, mainId)) {
+      throw new BadRequestError(`本项目读不到这份资料：${id}`);
+    }
+    return src;
+  }
+
+  /**
+   * 删掉一份资料（工单 W9 §4.4）：资料存在一处，删了各项目都读不到；只在 source.json 标上、主对话追加
+   * remove，文件留着，已有引用照旧能定位，依据面板标“资料已删”。
+   */
   async removeMaterial(mainId: string, id: string): Promise<void> {
-    const have = foldMaterials(await this.requireProject(mainId)).map((m) => m.book);
-    if (!have.includes(id)) throw new BadRequestError(`本项目没有这份资料：${id}`);
+    await this.requireReadable(mainId, id);
+    await this.o.materials.remove(id);
     await this.hub.record(mainId, {
       type: 'project_material',
       at: this.iso(),
@@ -549,10 +900,9 @@ export class Studium {
     });
   }
 
-  /** 重试一份失败 / 有问题的资料。 */
+  /** 重试一份失败 / 有问题的资料（原件里有不是纯文字的，重开导入会话）。 */
   async retryMaterial(mainId: string, id: string): Promise<ProjectMaterialsResponse> {
-    const have = foldMaterials(await this.requireProject(mainId)).map((m) => m.book);
-    if (!have.includes(id)) throw new BadRequestError(`本项目没有这份资料：${id}`);
+    await this.requireReadable(mainId, id);
     try {
       await this.o.materials.retry(id);
     } catch (err) {
@@ -562,30 +912,42 @@ export class Studium {
     return this.materials(mainId);
   }
 
-  /** 从别的项目拿一份（工单 W9 §4.1）：复制进本项目，各算一份。 */
-  async copyMaterial(
+  /**
+   * 改一份资料的归属（W11 §2；记录/资料.md「跨项目要用」）：学习者 = 所有项目都能读；项目 = 只给这几个项目
+   * （不给 = 只给本项目）。改的是一个字段，文件不挪；在本项目主对话追加 material_owner。
+   */
+  async setMaterialOwner(
     mainId: string,
-    fromProject: string,
-    material: string,
-  ): Promise<ProjectMaterialsResponse> {
-    await this.requireProject(mainId);
-    if (fromProject === mainId) throw new BadRequestError('这份已经在本项目里了');
-    const there = foldMaterials(await this.requireProject(fromProject)).map((m) => m.book);
-    if (!there.includes(material)) throw new BadRequestError(`那个项目里没有这份资料：${material}`);
-    let src: MaterialSource;
-    try {
-      src = await this.o.materials.copy(material, mainId);
-    } catch (err) {
-      if (err instanceof MaterialError) throw new BadRequestError(err.message);
-      throw err;
+    id: string,
+    to: 'learner' | 'project',
+    projects: string[] | undefined,
+    by: 'model' | 'learner',
+  ): Promise<MaterialSource> {
+    await this.requireReadable(mainId, id);
+    let owner: MaterialOwner;
+    if (to === 'learner') owner = { kind: 'learner' };
+    else {
+      const list = [
+        ...new Set(projects !== undefined && projects.length > 0 ? projects : [mainId]),
+      ];
+      for (const p of list) {
+        const opened = await this.hub.opened(p).catch((e: unknown) => {
+          if (e instanceof NotFoundError) return undefined;
+          throw e;
+        });
+        if (opened?.kind !== 'main') throw new BadRequestError(`没有这个项目：${p}`);
+      }
+      owner = { kind: 'project', projects: list };
     }
+    const src = await this.o.materials.setOwner(id, owner);
     await this.hub.record(mainId, {
-      type: 'project_material',
+      type: 'material_owner',
       at: this.iso(),
-      op: 'add',
-      material: src.id,
+      material: id,
+      owner,
+      by,
     });
-    return this.materials(mainId);
+    return src;
   }
 
   // ───────────── 上传与分流（工单 W9 §4.1 §4.2） ─────────────
@@ -608,12 +970,13 @@ export class Studium {
     return this.uploads.reroute(mainId, upload, file, to);
   }
 
-  /** 删一条外部导入（项目页“我导入的学过的”）：只能删本项目导入的。 */
+  /** 删一条外部导入（项目页“我导入的学过的”）：只能删本项目导入的；指向的资料一并标删。 */
   async removeImport(mainId: string, id: string): Promise<void> {
     await this.requireProject(mainId);
     const one = (await this.learned.imports()).find((x) => x.id === id);
     if (one?.project !== mainId) throw new BadRequestError(`本项目没有导入过这一份：${id}`);
     await this.learned.removeImport(id);
+    if ('material' in one.ref) await this.o.materials.remove(one.ref.material);
   }
 
   // ───────────── 项目说明（`docs/设计/记录/项目说明.md`；工单 W9 §4.6） ─────────────
@@ -667,11 +1030,8 @@ export class Studium {
   private async findOpening(mainId: string, request: string, line: number): Promise<string> {
     const records = await this.hub.records(mainId);
     const goal = currentGoal(records);
-    const have = foldMaterials(records.map((r) => r.record));
     const rows: string[] = [];
-    for (const m of have) {
-      const src = await this.o.materials.source(m.book);
-      if (src === undefined) continue;
+    for (const src of await this.o.materials.ofProject(mainId)) {
       rows.push(
         `- ${src.id}｜${src.title}｜${src.kind}｜${src.origin.startsWith('/') ? '本机文件' : src.origin}`,
       );
@@ -683,7 +1043,7 @@ export class Studium {
       '',
       await this.instructionsBlock(mainId),
       '',
-      `本项目已有的资料（id｜标题｜种类｜来源）：\n${rows.join('\n') || '（还没有）'}`,
+      `本项目能读的资料（id｜标题｜种类｜来源）：\n${rows.join('\n') || '（还没有）'}`,
     ].join('\n');
   }
 
@@ -712,9 +1072,8 @@ export class Studium {
           return err(`至多 ${String(MAX_CANDIDATES)} 份，这次交了 ${String(given.length)} 份`);
         }
         const origins = new Map<string, string>();
-        for (const m of foldMaterials(await this.requireProject(mainId))) {
-          const src = await this.o.materials.source(m.book);
-          if (src !== undefined) origins.set(normalUrl(src.origin), src.id);
+        for (const src of await this.o.materials.ofProject(mainId)) {
+          origins.set(normalUrl(src.origin), src.id);
         }
         const out: FindCandidate[] = [];
         const dropped: string[] = [];
@@ -808,42 +1167,29 @@ export class Studium {
     });
   }
 
-  /** 去掉资料：只追加记录；本项目没有的名字跳过。 */
+  /** 去掉资料（一次几份）：本项目读不到的名字跳过。 */
   async changeMaterials(
     mainId: string,
     change: { remove?: string[] },
   ): Promise<ProjectMaterialsResponse> {
-    const recs = await this.requireProject(mainId);
-    const have = foldMaterials(recs).map((m) => m.book);
-    const removes: string[] = [];
+    const have = (await this.o.materials.ofProject(mainId)).map((m) => m.id);
     for (const name of change.remove ?? []) {
       const id = have.find((b) => b === name || b.trim() === name.trim());
-      if (id !== undefined && !removes.includes(id)) removes.push(id);
-    }
-    for (const id of removes) {
-      await this.hub.record(mainId, {
-        type: 'project_material',
-        at: this.iso(),
-        op: 'remove',
-        material: id,
-      });
+      if (id !== undefined) await this.removeMaterial(mainId, id);
     }
     return this.materials(mainId);
   }
 
   /**
-   * 这个会话能读的资料：它所属项目的资料（处理好了的）。资料归项目：没有就是空（缺资料依据），
-   * 不查全库，也不跨项目读（工单 W8 §4.2）。
+   * 这个会话能读的资料（处理好了的）：按归属算，所属项目的 + 学习者级的（记录/资料.md「存在一处、按归属读」）；
+   * 不属于项目的会话没有。别的项目的不在范围里。
    */
   async scopeOf(sessionId: string): Promise<string[]> {
     const main = await this.projectOf(sessionId);
     if (main === undefined) return [];
-    const out: string[] = [];
-    for (const c of await this.selectedBooks(main)) {
-      const src = await this.o.materials.source(c.book);
-      if (src?.status === '可用' || src?.status === '部分可用') out.push(c.book);
-    }
-    return out;
+    return (await this.o.materials.ofProject(main))
+      .filter((s) => s.status === '可用' || s.status === '部分可用')
+      .map((s) => s.id);
   }
 
   /** 学习者给项目改名（左栏“重命名”）：主对话里追加一条 project_title，开头那行不改。 */
@@ -1134,7 +1480,7 @@ export class Studium {
       given += 1;
     }
     if (body.startPoints !== undefined) {
-      after.startPoints = await this.checkedStartPoints(body.startPoints);
+      after.startPoints = await this.checkedStartPoints(body.startPoints, loopId);
       given += 1;
     }
     if (given === 0)
@@ -1160,8 +1506,11 @@ export class Studium {
     return { line, ticket: after };
   }
 
-  /** 出发点数组的核对：至少一项；每项写清是什么、从哪来；给了依据要能定位（同选择卡的规则）。 */
-  private async checkedStartPoints(v: unknown): Promise<Ticket['startPoints']> {
+  /**
+   * 出发点数组的核对：至少一项；每项写清是什么、从哪来；给了依据要能定位（同选择卡的规则；资料行须是
+   * 这次学习所属项目能读的）。
+   */
+  private async checkedStartPoints(v: unknown, loopId: string): Promise<Ticket['startPoints']> {
     if (!Array.isArray(v) || v.length === 0) {
       throw new BadRequestError('从哪些已有的出发要给一项以上，每项写清是什么、从哪来。');
     }
@@ -1184,7 +1533,7 @@ export class Studium {
         throw new BadRequestError(`${where}的依据要写成文字。`);
       }
       if (typeof x.ref === 'string') {
-        const at = await locate(x.ref, this.locateDeps());
+        const at = await locate(x.ref, this.locateDeps(loopId));
         if (!at.ok) throw new BadRequestError(`${where}的依据「${x.ref}」查不到，改一下或去掉。`);
       }
       out.push({
@@ -1767,7 +2116,7 @@ export class Studium {
             if (blank(c.claim)) problems.push(`${n}的对资料核的结果缺 claim（核过的那条说法）`);
             if (c.at !== undefined && c.at.trim() !== '') {
               const at = await locate(c.at, this.locateDeps(sessionId));
-              if (at.kind !== 'book')
+              if (at.kind !== 'material')
                 problems.push(`${n}的出处 ${c.at} 不是资料里的一行（要写 资料id/文件:行号）`);
               else if (!at.ok) problems.push(`${n}的出处 ${c.at} 定位不了`);
             }
@@ -1912,20 +2261,24 @@ export class Studium {
       hub: this.hub,
       sources: this.o.sources,
       ...(sessionId !== undefined ? { scope: () => this.scopeOf(sessionId) } : {}),
-      importText: (id) => this.importText(id),
+      importText: (id) => this.importText(id, sessionId),
     };
   }
 
-  /** 一条外部导入的正文（依据定位用）；没有这条导入或它没有正文给 undefined。 */
-  private async importText(id: string): Promise<string | undefined> {
-    const one = (await this.learned.imports()).find((x) => x.id === id);
+  /**
+   * 一条外部导入的正文（依据定位用）；没有这条导入、它没有正文，或给了会话而它所属项目读不到（按指向的资料
+   * 的归属）给 undefined。
+   */
+  private async importText(id: string, sessionId?: string): Promise<string | undefined> {
+    const project = sessionId !== undefined ? await this.projectOf(sessionId) : undefined;
+    const one = (await this.learned.imports(project)).find((x) => x.id === id);
     return one !== undefined ? this.learned.importText(one) : undefined;
   }
 
   /** 学习者给一本书 / 笔记补一句来源说明（只追加）。 */
-  async addSourceNote(book: string, field: string, text: string): Promise<SourceNoteView> {
-    await this.o.cross.addNote({ book, field, text, by: '学习者' });
-    return this.o.cross.sourceNote(book);
+  async addSourceNote(material: string, field: string, text: string): Promise<SourceNoteView> {
+    await this.o.cross.addNote({ material, field, text, by: '学习者' });
+    return this.o.cross.sourceNote(material);
   }
 
   /** 学习者给一条状态记录补“我的解释”：只追加，不改原记录；下次整理时当自述读到。 */
@@ -1976,7 +2329,7 @@ export class Studium {
    * 读一条外部导入（笔记 / 别处 AI 对话记录）的正文，带行号；畅谈没有沙盒，看学习者已储备什么要靠它
    * （会话/畅谈.md「能读什么」）。给 query 只列含它的行。
    */
-  private readImportTool(): ToolSpec {
+  private readImportTool(sessionId: string): ToolSpec {
     const page = 400;
     return {
       name: 'read_import',
@@ -1987,8 +2340,10 @@ export class Studium {
         query: z.string().optional(),
       },
       run: async (a) => {
-        const one = (await this.learned.imports()).find((x) => x.id === a.id);
-        if (one === undefined) return err(`没有这条导入：${a.id as string}`);
+        const project = await this.projectOf(sessionId);
+        // 按归属：指向的那份资料本项目读不到就当没有（W11）
+        const one = (await this.learned.imports(project ?? '')).find((x) => x.id === a.id);
+        if (one === undefined) return err(`本项目读不到这条导入：${a.id as string}`);
         const text = await this.learned.importText(one);
         if (text === undefined)
           return err('这条导入没有正文（畅谈里说的，用 read_session 读那一行）');
@@ -2172,7 +2527,7 @@ export class Studium {
         const rows = body.learnings.map((l) => `- ${this.learned.line(l)}`);
         const imports = body.imports.map(
           (x) =>
-            `- ${this.learned.importLine(x)}（未验证，不算学会${importText && 'file' in x.ref ? '；正文用 read_import 读' : ''}）`,
+            `- ${this.learned.importLine(x)}（未验证，不算学会${importText && 'material' in x.ref ? '；正文用 read_import 读' : ''}）`,
         );
         return ok(
           [
@@ -3602,66 +3957,74 @@ export class Studium {
 
   /** 资料范围的说明，接在工具结果后面。 */
   private scopeHint(scope: string[]): string {
-    return `\n（只在本项目的 ${String(scope.length)} 份资料里查）`;
+    return `\n（只在本项目能读的 ${String(scope.length)} 份资料里查）`;
   }
 
-  /** 资料清单：每份一行（id、标题、种类、版本、日期、状态、角色），给工具与沙盒目录共用。 */
+  /** 资料清单：每份一行（id、标题、种类、归属、版本、日期、状态、角色），给工具与沙盒目录共用。 */
   async materialLines(ids: string[]): Promise<string[]> {
     const out: string[] = [];
     for (const id of ids) {
       const s = await this.o.materials.source(id);
       if (s === undefined) continue;
+      const owner = s.owner.kind === 'learner' ? '学习者' : '项目';
       out.push(
-        `- ${id}｜${s.title}｜${s.kind}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}`,
+        `- ${id}｜${s.title}｜${s.kind}｜${owner}${s.learned !== undefined ? `·学过的（${s.learned.channel}）` : ''}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}`,
       );
     }
     return out;
   }
 
-  /** 只读查询工具：本项目资料的原文与出处（按记录/读写权限.md）；资料归项目，不查别处。 */
+  /**
+   * 只读查询工具：本项目能读的资料（按归属：本项目的 + 学习者的笔记等）的原文与出处（记录/读写权限.md
+   * 「读资料的范围」）；别的项目的读不到，由程序挡。
+   */
   private readTools(sessionId: string): ToolSpec[] {
-    const inScope = async (book: string): Promise<string | undefined> => {
+    const inScope = async (material: string): Promise<string | undefined> => {
       const scope = await this.scopeOf(sessionId);
-      return scope.includes(book)
+      return scope.includes(material)
         ? undefined
-        : `本项目没有这份资料：${book}（资料归项目，不读别处）`;
+        : `本项目读不到这份资料：${material}（只读本项目的与学习者的；别的项目的要用，请学习者把归属改成学习者或加上本项目）`;
     };
     const tools: ToolSpec[] = [];
     tools.push(
       {
-        name: 'textbook_index',
+        name: 'materials_index',
         description:
-          '不给资料 id：列出本项目的资料（PDF、网页、代码仓库、字幕、文字等，每份一行：id、标题、种类、版本、日期、状态、角色）；给资料 id：读这份资料的文件清单。',
-        input: { book: z.string().optional().describe('资料 id') },
+          '不给资料 id：列出本项目能读的资料（本项目导入的 PDF、网页、代码仓库、文档等，加上学习者的笔记、别处的学习记录；每份一行：id、标题、种类、归属、版本、日期、状态、角色）；给资料 id：读这份资料的文件清单（有 说明.md 的排第一）。',
+        input: { material: z.string().optional().describe('资料 id') },
         run: async (a) => {
-          const book = a.book as string | undefined;
-          if (book === undefined || book === '') {
+          const material = a.material as string | undefined;
+          if (material === undefined || material === '') {
             const scope = await this.scopeOf(sessionId);
             if (scope.length === 0) return ok('本项目还没有能用的资料（缺资料依据）');
             return ok((await this.materialLines(scope)).join('\n'));
           }
-          const bad = await inScope(book);
+          const bad = await inScope(material);
           if (bad !== undefined) return err(bad);
-          return ok((await this.o.materials.index(book)) + (await this.o.cross.noteLines([book])));
+          return ok(
+            (await this.o.materials.index(material)) + (await this.o.cross.noteLines([material])),
+          );
         },
       },
       {
-        name: 'read_source',
+        name: 'read_material',
         description:
           '读资料里一个文件的原文，每行前印行号；可只读一段。末尾给出引用这段时要附的出处标记。',
         input: {
-          book: z.string().describe('资料 id'),
-          file: z.string().describe('文件清单里的路径，如 p1-200.md 或 src/main.py'),
+          material: z.string().describe('资料 id'),
+          file: z
+            .string()
+            .describe('文件清单里的路径，如 p1-200.md、笔记/第一章.md 或 src/main.py'),
           from_line: z.number().int().optional(),
           to_line: z.number().int().optional(),
         },
         run: async (a) => {
-          const book = a.book as string;
+          const material = a.material as string;
           const file = a.file as string;
-          const bad = await inScope(book);
+          const bad = await inScope(material);
           if (bad !== undefined) return err(bad);
           const r = await this.o.materials.lines(
-            book,
+            material,
             file,
             (a.from_line as number | undefined) ?? 1,
             (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER,
@@ -3670,31 +4033,31 @@ export class Studium {
           return ok(
             (r.lines.length === 0
               ? `（这个文件共 ${String(r.total)} 行，没有第 ${String((a.from_line as number | undefined) ?? 1)} 行起的内容）`
-              : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ book, file, from: r.from, to: r.to })}；依据串写 ${book}/${file}:${String(r.from)}，行段按你实际引用的缩小）`) +
-              (await this.o.cross.noteLines([book])),
+              : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ material, file, from: r.from, to: r.to })}；依据串写 ${material}/${file}:${String(r.from)}，行段按你实际引用的缩小）`) +
+              (await this.o.cross.noteLines([material])),
           );
         },
       },
       {
-        name: 'search_textbook',
+        name: 'search_materials',
         description:
-          '在本项目资料的原文里全文检索（词用空白隔开，要同时出现在同一段里）。返回资料、文件、行号、片段和可直接用的出处标记。想引用原文、核对资料怎么说时用；搜不到就是资料里没有。',
+          '在本项目能读的资料（含学习者的笔记）的原文里全文检索（词用空白隔开，要同时出现在同一段里）。返回资料、文件、行号、片段和可直接用的出处标记。想引用原文、核对资料怎么说时用；搜不到就是资料里没有。',
         input: {
           query: z.string(),
-          book: z.string().optional().describe('只搜这一份（资料 id）'),
+          material: z.string().optional().describe('只搜这一份（资料 id）'),
           limit: z.number().int().optional().describe('最多几条，默认 10'),
         },
         run: async (a) => {
-          const book = (a.book as string | undefined) || undefined;
-          if (book !== undefined) {
-            const bad = await inScope(book);
+          const material = (a.material as string | undefined) || undefined;
+          if (material !== undefined) {
+            const bad = await inScope(material);
             if (bad !== undefined) return err(bad);
           }
           const scope = await this.scopeOf(sessionId);
           if (scope.length === 0) return ok('本项目还没有能用的资料（缺资料依据）');
           const r = await this.o.sources.search(
             a.query as string,
-            book,
+            material,
             (a.limit as number | undefined) ?? 10,
             scope,
           );
@@ -3703,10 +4066,10 @@ export class Studium {
           }
           const rows = r.hits.map(
             (h) =>
-              `《${h.bookTitle || h.book}》${h.num} ${h.title}｜${h.file} 第 ${String(h.line)} 行\n  ${h.snippet}\n  出处标记：${formatCitation({ book: h.book, file: h.file, from: h.line })}`,
+              `《${h.materialTitle || h.material}》${h.num} ${h.title}｜${h.file} 第 ${String(h.line)} 行\n  ${h.snippet}\n  出处标记：${formatCitation({ material: h.material, file: h.file, from: h.line })}`,
           );
           return ok(
-            `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}${await this.o.cross.noteLines(r.hits.map((h) => h.book))}`,
+            `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}${await this.o.cross.noteLines(r.hits.map((h) => h.material))}`,
           );
         },
       },
@@ -3742,22 +4105,6 @@ function formatDuration(ms: number): string {
   if (h < 1) return `${String(Math.round(ms / 60_000))} 分钟`;
   if (h < 48) return `${String(Math.round(h))} 小时`;
   return `${String(Math.round(h / 24))} 天`;
-}
-
-/** 把 project_material 记录折叠成项目当前的资料（按加入顺序）。 */
-export function foldMaterials(recs: LogRecord[]): { book: string; addedAt: string }[] {
-  const out = new Map<string, string>();
-  for (const r of recs) {
-    if (r.type !== 'project_material') continue;
-    const id = r.material;
-    if (id === undefined) continue;
-    if (r.op === 'add') {
-      if (!out.has(id)) out.set(id, r.at);
-    } else {
-      out.delete(id);
-    }
-  }
-  return [...out.entries()].map(([book, addedAt]) => ({ book, addedAt }));
 }
 
 /** 取最新一条 project_deadline；null = 已清掉。 */

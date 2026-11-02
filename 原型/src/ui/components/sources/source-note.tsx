@@ -11,8 +11,8 @@ import { shortTime } from '../../evidence-model.ts';
 import { W } from '../../wording.ts';
 import { Badge, Card, Loading, Section } from '../evidence/parts.tsx';
 
-export function SourceNoteCard(props: { book: string }) {
-  const r = useLoad(`source-note:${props.book}`, () => api.sourceNote(props.book), false);
+export function SourceNoteCard(props: { material: string }) {
+  const r = useLoad(`source-note:${props.material}`, () => api.sourceNote(props.material), false);
   if (!r.data) return <Loading error={r.error} />;
   const n = r.data.note;
   return (
@@ -54,7 +54,7 @@ export function SourceNoteCard(props: { book: string }) {
           </details>
         )}
         <AddNote
-          book={props.book}
+          material={props.material}
           onDone={() => {
             invalidateSourceNotes();
             r.reload();
@@ -65,7 +65,7 @@ export function SourceNoteCard(props: { book: string }) {
   );
 }
 
-function AddNote(props: { book: string; onDone: () => void }) {
+function AddNote(props: { material: string; onDone: () => void }) {
   const [open, setOpen] = useState(false);
   const [field, setField] = useState<SourceNoteField>('type');
   const [text, setText] = useState('');
@@ -86,7 +86,7 @@ function AddNote(props: { book: string; onDone: () => void }) {
         setBusy(true);
         setError(undefined);
         api
-          .addSourceNote(props.book, field, text.trim())
+          .addSourceNote(props.material, field, text.trim())
           .then(() => {
             setText('');
             setOpen(false);

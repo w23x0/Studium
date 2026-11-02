@@ -13,7 +13,7 @@ import type {
   ProjectResponse,
   RecordsResponse,
   ServerEvent,
-  BooksResponse,
+  MaterialListResponse,
   TocResponse,
   SectionResponse,
   SourceSearchResponse,
@@ -214,11 +214,12 @@ export const api = {
   state: () => call<StateResponse>('/state/records'),
   // ── 批 10b：来源说明、状态回看 ──
   sourceNotes: () => call<SourceNotesResponse>('/sources/source-notes'),
-  sourceNote: (book: string) => call<SourceNoteResponse>(`/sources/source-notes?${qs({ book })}`),
-  addSourceNote: (book: string, field: SourceNoteField, text: string) =>
+  sourceNote: (material: string) =>
+    call<SourceNoteResponse>(`/sources/source-notes?${qs({ material })}`),
+  addSourceNote: (material: string, field: SourceNoteField, text: string) =>
     call<SourceNoteResponse>('/sources/source-notes', {
       method: 'POST',
-      body: JSON.stringify({ book, field, text }),
+      body: JSON.stringify({ material, field, text }),
     }),
   stateTimeline: () => call<StateTimelineResponse>('/state/timeline'),
   addExplanation: (recordId: string, text: string) =>
@@ -247,25 +248,27 @@ export const api = {
     }),
   // ── 原文与出处 ──
   /** 各项目的资料；给了项目就标出哪些是这个项目的。 */
-  books: (project?: string) => call<BooksResponse>(`/sources/books?${qs({ project })}`),
-  toc: (book: string) => call<TocResponse>(`/sources/toc?${qs({ book })}`),
-  section: (book: string, file: string) =>
-    call<SectionResponse>(`/sources/section?${qs({ book, file })}`),
+  materialList: (project?: string) =>
+    call<MaterialListResponse>(`/sources/materials?${qs({ project })}`),
+  toc: (material: string) => call<TocResponse>(`/sources/toc?${qs({ material })}`),
+  section: (material: string, file: string) =>
+    call<SectionResponse>(`/sources/section?${qs({ material, file })}`),
   /** 给了项目：默认只搜本项目资料；all = 查全部项目的。 */
-  search: (q: string, book?: string, limit?: number, project?: string, all?: boolean) =>
+  search: (q: string, material?: string, limit?: number, project?: string, all?: boolean) =>
     call<SourceSearchResponse>(
-      `/sources/search?${qs({ q, book, limit, project, all: all === true ? 1 : undefined })}`,
+      `/sources/search?${qs({ q, material, limit, project, all: all === true ? 1 : undefined })}`,
     ),
-  page: (book: string, page: number) => call<PageResponse>(`/sources/page?${qs({ book, page })}`),
-  locate: (book: string, file: string, from: number, to: number) =>
-    call<LocateResponse>(`/sources/locate?${qs({ book, file, from, to })}`),
+  page: (material: string, page: number) =>
+    call<PageResponse>(`/sources/page?${qs({ material, page })}`),
+  locate: (material: string, file: string, from: number, to: number) =>
+    call<LocateResponse>(`/sources/locate?${qs({ material, file, from, to })}`),
   citations: (text: string) =>
     call<ResolveCitationsResponse>('/sources/citations', {
       method: 'POST',
       body: JSON.stringify({ text }),
     }),
-  reports: (book: string, file: string) =>
-    call<SourceReportsResponse>(`/sources/reports?${qs({ book, file })}`),
+  reports: (material: string, file: string) =>
+    call<SourceReportsResponse>(`/sources/reports?${qs({ material, file })}`),
   report: (req: SourceReportRequest) =>
     call<SourceReportResponse>('/sources/reports', { method: 'POST', body: JSON.stringify(req) }),
   // ── 资料范围：项目资料、期限 ──
@@ -282,7 +285,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(note !== undefined ? { deadline, note } : { deadline }),
     }),
-  // ── 导入入口（工单 W9）：上传、改判、从别的项目拿、重试、删、外部导入、项目说明 ──
+  // ── 导入入口（工单 W9、W11）：上传、改判、改归属、重试、删、外部导入、项目说明 ──
   /** 上传一批文件（文件夹按相对路径传）；核心收下后分流，回这次每份分到了哪。 */
   upload: async (projectId: string, files: { file: File; path: string }[]) => {
     const form = new FormData();
@@ -311,11 +314,12 @@ export const api = {
       method: 'POST',
       body: JSON.stringify(req),
     }),
-  copyMaterial: (projectId: string, fromProject: string, material: string) =>
-    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials/copy`, {
-      method: 'POST',
-      body: JSON.stringify({ fromProject, material }),
-    }),
+  /** 改一份资料归谁（W11 §2）：回本项目上传的现状。 */
+  setMaterialOwner: (projectId: string, material: string, owner: 'learner' | 'project') =>
+    call<UploadsResponse>(
+      `/projects/${projectId}/materials/${encodeURIComponent(material)}/owner`,
+      { method: 'POST', body: JSON.stringify({ owner }) },
+    ),
   retryMaterial: (projectId: string, material: string) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials/retry`, {
       method: 'POST',

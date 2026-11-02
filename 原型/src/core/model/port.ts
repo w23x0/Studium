@@ -33,6 +33,13 @@ export interface SandboxSpec {
   network: boolean;
   /** 默认 true：给跑命令（Bash）。 */
   commands?: boolean;
+  /**
+   * SDK 子进程的工作目录（续接按它找会话文件）；不给 = workdir。主对话要保持数据目录，旧的主对话才接得上
+   * （W11 §5）；这时命令行的可写范围仍只有 workdir。
+   */
+  cwd?: string;
+  /** 挡掉不让读的（绝对路径；在只读区里也挡）：存密钥的位置、数据目录等（W11 §5）。工作区除外。 */
+  denyRead?: string[];
 }
 
 /**
@@ -72,6 +79,8 @@ export interface ConversationSpec {
   subagents?: SubagentSpec[];
   /** 上次的续接凭据（正本里最近一条 model_session），没有就是新开。 */
   resumeToken?: string;
+  /** 为真时从 resumeToken 分叉：分出来的不写回原来那条线（W11 §6 问别的项目的主对话）。 */
+  fork?: boolean;
   /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
   session?: { id: string; kind: ConversationKind };
   /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */

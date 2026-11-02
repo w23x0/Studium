@@ -8,7 +8,7 @@ const listeners = new Set<() => void>();
 function load(): Promise<Map<string, string>> {
   cache ??= api
     .sourceNotes()
-    .then((r) => new Map(r.notes.map((n) => [n.book, n.summary])))
+    .then((r) => new Map(r.notes.map((n) => [n.material, n.summary])))
     .catch((e: unknown) => {
       // 读不到时不留缓存，下次再试；悬停里就不显示说明（说明本身不是必需的）
       cache = undefined;

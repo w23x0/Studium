@@ -11,7 +11,7 @@ import {
   SquareIcon,
   XIcon,
 } from 'lucide-react';
-import { lazy, Suspense, useCallback, useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
 import { api } from '@/api';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { useSpeech } from '@/hooks/use-speech';
@@ -53,11 +53,12 @@ export function InputComposer(props: {
   placeholder: string;
   onSend: SendInput;
   /** 拖进 / 选了非图片文件时（只有主对话给）：不进输入，交给项目的上传；回一句给学习者看的话。 */
-  onOtherFiles?: (files: PickedFile[]) => Promise<string>;
+  /** 回给学习者看的：一句话，或上传结果那一条（可点改，W11 §2）。 */
+  onOtherFiles?: (files: PickedFile[]) => Promise<ReactNode>;
 }) {
   const [text, setText] = useState('');
   const [images, setImages] = useState<PendingImage[]>([]);
-  const [notice, setNotice] = useState<string | undefined>(undefined);
+  const [notice, setNotice] = useState<ReactNode>(undefined);
   const [dragging, setDragging] = useState(false);
   const [formula, setFormula] = useState(false);
   const [viewing, setViewing] = useState<PendingImage | undefined>(undefined);
@@ -280,8 +281,12 @@ export function InputComposer(props: {
             <span className="mt-0.5 block">{W.voiceNotice}</span>
           </p>
         )}
-        {(notice ?? speech.error) !== undefined && (
-          <p className="text-destructive px-1.5 text-xs">{notice ?? speech.error}</p>
+        {notice !== undefined && typeof notice !== 'string' ? (
+          <div className="px-1.5 text-xs">{notice}</div>
+        ) : (
+          (notice ?? speech.error) !== undefined && (
+            <p className="text-destructive px-1.5 text-xs">{notice ?? speech.error}</p>
+          )
         )}
         <div className="flex items-center gap-1">
           <TooltipIconButton

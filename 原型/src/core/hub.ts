@@ -283,6 +283,18 @@ export class Hub {
     return this.append(sessionId, record);
   }
 
+  /**
+   * 停掉一个会话（导入会话超时，W11 §4）：排着的轮丢掉，正在跑的模型对话关掉（这一轮记成没跑成）；
+   * 正本照旧，之后不再自己跑，有新输入才按续接凭据重开。
+   */
+  async stop(sessionId: string): Promise<void> {
+    const live = this.live.get(sessionId);
+    if (live === undefined) return;
+    for (const item of live.queue.splice(0)) item.resolve();
+    await live.conversation?.close();
+    live.conversation = undefined;
+  }
+
   /** 等这个会话的队列跑空。 */
   async idle(sessionId: string): Promise<void> {
     const live = await this.ensureLive(sessionId);

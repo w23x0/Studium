@@ -30,6 +30,7 @@ export const CONVERSATION_KINDS = [
   'output',
   'find',
   'editor',
+  'import',
 ] as const;
 export type ConversationKind = (typeof CONVERSATION_KINDS)[number];
 
@@ -460,8 +461,8 @@ export interface ConversationPointer {
 }
 
 /**
- * 项目加 / 去掉一份资料。只追加：当前有哪些 = 按顺序折叠这些记录。资料归项目：没有资料就是缺资料依据，
- * 不查别处（工单 W8）。`add` 时资料已建在项目资料区里。
+ * 项目加 / 去掉一份资料（只作记录）。W11 起本项目能读什么按资料的归属算（`<数据>/资料/<id>/source.json`），
+ * 不再折叠这些记录；删 = 资料标删，各项目都读不到。
  */
 export interface ProjectMaterial {
   type: 'project_material';
@@ -507,6 +508,8 @@ export interface UploadRouted {
   routedTo: '资料' | '学过的';
   by: 'model' | 'learner';
   reason?: string;
+  /** 归属（W11）：分流时模型顺带判的；改归属另记 material_owner。旧行没有。 */
+  owner?: '学习者' | '项目';
   /** 落到了哪：资料 id / 外部导入 id；落不下写原因。 */
   material?: string;
   import?: string;
@@ -607,7 +610,31 @@ export type LogRecord =
   | ComponentError
   | ScreenNote
   | LayoutChanged
-  | ContextUsed;
+  | ContextUsed
+  | MaterialOwnerChanged
+  | ProjectAsked;
+
+/** 一份资料的归属改了（W11，记录/资料.md「存在一处、按归属读」）：记在发起改动的主对话里，同时写 source.json。 */
+export interface MaterialOwnerChanged {
+  type: 'material_owner';
+  at: string;
+  material: string;
+  owner: { kind: 'learner' } | { kind: 'project'; projects: string[] };
+  by: 'model' | 'learner';
+}
+
+/**
+ * 别的会话来问这个项目的主对话（W11 §6，试验）：从主对话分叉答一次，分叉不接回主对话的线；
+ * 记在被问的主对话里，只作记录，不进它的上下文。
+ */
+export interface ProjectAsked {
+  type: 'project_asked';
+  at: string;
+  /** 来问的会话 id。 */
+  from: string;
+  question: string;
+  answer: string;
+}
 
 /** 一轮跑完时主模型上下文有多大（10-29 起，所有会话；只记、不显示）：最后一次回话的 input + 缓存读 + 缓存写。 */
 export interface ContextUsed {

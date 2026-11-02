@@ -87,12 +87,17 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const pedagogy = await PedagogyStore.load(join(dataDir.root, 'knowledge', 'pedagogy'));
   const state = await StateStore.load(join(dataDir.root, 'knowledge', 'state'));
   const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
-  // 项目资料（工单 W8）：读原文都经它
+  // 资料与外部导入存一处（工单 W8、W11）：读原文都经它
   const materials = new Materials({
-    root: join(dataDir.root, 'projects'),
+    root: join(dataDir.root, '资料'),
     pdfTool: join(here, '../../../书库处理'),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
+  // 上次处理被服务重启打断的（还标着“处理中”、导入会话也不在跑了）改成“失败”，可重试（W11 §4）
+  const interrupted = await materials.recoverInterrupted();
+  if (interrupted.length > 0) {
+    console.log(`上次处理被重启打断、已标失败（可重试）的资料：${interrupted.join('、')}`);
+  }
   const originals = new Originals(materials, join(dataDir.root, 'cache', 'pages'));
   const reports = await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports'));
   const sources = new Sources({
@@ -112,6 +117,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     store: await OutputStore.load(join(dataDir.root, 'knowledge', 'output')),
     sources,
     materials,
+    readable: async (mainId) => (await materials.ofProject(mainId)).map((m) => m.id),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
@@ -173,6 +179,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     sources,
     inputs,
     teaching,
+    materialCount: async (mainId) => (await materials.ofProject(mainId)).length,
     webSearchKinds: () => studium.webSearchKinds(),
   });
   const server = await startServer({
@@ -250,7 +257,12 @@ async function judgeUpload(
   instructions: string,
   name: string,
   sample: string,
-): Promise<{ to: '资料' | '学过的'; channel?: '笔记' | '对话记录'; reason: string }> {
+): Promise<{
+  to: '资料' | '学过的';
+  channel?: '笔记' | '对话记录';
+  owner: '学习者' | '项目';
+  reason: string;
+}> {
   const conv = model.open({
     systemPrompt: instructions,
     tools: [],
@@ -268,11 +280,27 @@ async function judgeUpload(
   } finally {
     await conv.close();
   }
-  const [first = '', ...rest] = text.trim().split('\n');
-  const reason = rest.join(' ').trim().slice(0, 80) || '模型判的';
+  const [first = '', second = '', ...rest] = text
+    .trim()
+    .split('\n')
+    .filter((l) => l.trim() !== '');
+  // 第二行没写清归谁：按两边的默认（学过的 → 学习者，资料 → 项目；W11 §2）
+  const ownerSaid = second.includes('学习者')
+    ? '学习者'
+    : second.includes('项目')
+      ? '项目'
+      : undefined;
+  const reason =
+    (ownerSaid !== undefined ? rest : [second, ...rest]).join(' ').trim().slice(0, 80) ||
+    '模型判的';
   if (first.includes('学过的')) {
-    return { to: '学过的', channel: first.includes('对话') ? '对话记录' : '笔记', reason };
+    return {
+      to: '学过的',
+      channel: first.includes('对话') ? '对话记录' : '笔记',
+      owner: ownerSaid ?? '学习者',
+      reason,
+    };
   }
-  if (first.includes('资料')) return { to: '资料', reason };
+  if (first.includes('资料')) return { to: '资料', owner: ownerSaid ?? '项目', reason };
   throw new Error(`分流回答看不懂：${text.slice(0, 80)}`);
 }

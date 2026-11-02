@@ -35,7 +35,7 @@ import type {
   RecordsResponse,
   SearchResponse,
   BBox,
-  BooksResponse,
+  MaterialListResponse,
   SourceSearchResponse,
   LocateResponse,
   PageResponse,
@@ -45,7 +45,7 @@ import type {
   SourceReportResponse,
   SourceReportsResponse,
   TocResponse,
-  CopyMaterialRequest,
+  SetMaterialOwnerRequest,
   ImportTextResponse,
   PickCandidatesRequest,
   ProjectInstructionsRequest,
@@ -248,18 +248,40 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 201, { confirmation: c } satisfies ConfirmationResponse);
       return;
     }
+    if (
+      parts[1] === 'projects' &&
+      parts.length === 6 &&
+      parts[2] !== undefined &&
+      parts[3] === 'materials' &&
+      parts[4] !== undefined &&
+      parts[5] === 'owner' &&
+      method === 'POST'
+    ) {
+      // 改一份资料归谁（W11 §2）：{ owner: 'learner' | 'project', projects? }
+      const b = (await readJson(req)) as Partial<SetMaterialOwnerRequest>;
+      if (b.owner !== 'learner' && b.owner !== 'project') {
+        throw new BadRequest('owner 要是 learner 或 project');
+      }
+      if (
+        b.projects !== undefined &&
+        !(Array.isArray(b.projects) && b.projects.every((x) => typeof x === 'string'))
+      ) {
+        throw new BadRequest('projects 要是字符串数组');
+      }
+      await studium.setMaterialOwner(
+        parts[2],
+        decodeURIComponent(parts[4]),
+        b.owner,
+        b.projects,
+        'learner',
+      );
+      send(res, 200, { items: await studium.uploadsOf(parts[2]) } satisfies UploadsResponse);
+      return;
+    }
     if (parts[1] === 'projects' && parts.length === 5 && parts[2] !== undefined) {
-      // 工单 W9：从别的项目拿、重试、改判、删导入
+      // 工单 W9：重试、改判、删导入
       const mainId = parts[2];
       const what = `${parts[3] ?? ''}/${parts[4] ?? ''}`;
-      if (method === 'POST' && what === 'materials/copy') {
-        const b = (await readJson(req)) as Partial<CopyMaterialRequest>;
-        if (typeof b.fromProject !== 'string' || typeof b.material !== 'string') {
-          throw new BadRequest('fromProject 与 material 要是字符串');
-        }
-        send(res, 200, await studium.copyMaterial(mainId, b.fromProject, b.material));
-        return;
-      }
       if (method === 'POST' && what === 'materials/retry') {
         const b = (await readJson(req)) as { material?: unknown };
         if (typeof b.material !== 'string') throw new BadRequest('material 要是字符串');
@@ -541,25 +563,26 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     };
     if (method === 'GET') {
       switch (what) {
-        case 'books': {
-          const books = await src.books();
+        case 'materials': {
+          const list = await src.materials();
           const project = q.get('project');
           if (project !== null && project !== '') {
-            const chosen = new Set((await studium.selectedBooks(project)).map((m) => m.book));
-            books.books = books.books.map((b) => ({ ...b, selected: chosen.has(b.id) }));
+            // 本项目能读的（按归属）标出来
+            const chosen = new Set(await studium.scopeOf(project));
+            list.materials = list.materials.map((b) => ({ ...b, selected: chosen.has(b.id) }));
           }
-          send(res, 200, books satisfies BooksResponse);
+          send(res, 200, list satisfies MaterialListResponse);
           return true;
         }
         case 'toc':
-          send(res, 200, (await src.toc(str('book'))) satisfies TocResponse);
+          send(res, 200, (await src.toc(str('material'))) satisfies TocResponse);
           return true;
         case 'section':
           send(
             res,
             200,
             (await src.section(
-              str('book'),
+              str('material'),
               str('file'),
               int('from'),
               int('to'),
@@ -567,28 +590,33 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           );
           return true;
         case 'search': {
-          // project 给了：只搜本项目的资料；all=1 或明确给 book 时不限项目（学习者自己浏览用）
+          // project 给了：只搜本项目能读的资料；all=1 或明确给 material 时不限项目（学习者自己浏览用）
           const project = q.get('project');
-          const book = q.get('book') ?? undefined;
+          const material = q.get('material') ?? undefined;
           const scope =
             project !== null &&
             project !== '' &&
-            (book === undefined || book === '') &&
+            (material === undefined || material === '') &&
             q.get('all') !== '1'
               ? await studium.scopeOf(project)
               : undefined;
           send(
             res,
             200,
-            (await src.search(str('q'), book, int('limit'), scope)) satisfies SourceSearchResponse,
+            (await src.search(
+              str('q'),
+              material,
+              int('limit'),
+              scope,
+            )) satisfies SourceSearchResponse,
           );
           return true;
         }
         case 'page':
-          send(res, 200, (await src.page(str('book'), need('page'))) satisfies PageResponse);
+          send(res, 200, (await src.page(str('material'), need('page'))) satisfies PageResponse);
           return true;
         case 'page/image': {
-          const png = await src.image(str('book'), need('page'), parseBBox(q.get('bbox')));
+          const png = await src.image(str('material'), need('page'), parseBBox(q.get('bbox')));
           res.writeHead(200, {
             'content-type': 'image/png',
             'cache-control': 'private, max-age=3600',
@@ -602,7 +630,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             res,
             200,
             (await src.locate(
-              str('book'),
+              str('material'),
               str('file'),
               from,
               int('to') ?? from,
@@ -612,7 +640,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         }
         case 'reports': {
           const reports = src.reports({
-            ...(q.get('book') ? { book: str('book') } : {}),
+            ...(q.get('material') ? { book: str('material') } : {}),
             ...(q.get('file') ? { file: str('file') } : {}),
           });
           send(res, 200, { reports } satisfies SourceReportsResponse);

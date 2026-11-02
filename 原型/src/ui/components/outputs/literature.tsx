@@ -61,7 +61,7 @@ function LiteratureRow(props: { entry: LiteratureView }) {
     (e.file !== undefined ? e.file : e.source === 'library' ? W.litWholeBookLine : undefined);
   const openSource = () => {
     if (e.citation !== undefined) panel.show(citationTarget(e.citation));
-    else if (e.book !== undefined) panel.show({ kind: 'materials', book: e.book });
+    else if (e.book !== undefined) panel.show({ kind: 'materials', material: e.book });
   };
   return (
     <li className="bg-card flex flex-col gap-1.5 rounded-xl border px-3 py-2.5 text-sm shadow-xs">
@@ -123,7 +123,7 @@ function LiteratureRow(props: { entry: LiteratureView }) {
 function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded: () => void }) {
   const project = useProject();
   const [mode, setMode] = useState<'library' | 'external'>('library');
-  const [book, setBook] = useState('');
+  const [material, setMaterial] = useState('');
   const [file, setFile] = useState('');
   const [from, setFrom] = useState('');
   const [to, setTo] = useState('');
@@ -134,10 +134,14 @@ function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded
   const [kind, setKind] = useState<RelationKind | ''>('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | undefined>();
-  const books = useLoad(`sources:books:${project ?? ''}`, () => api.books(project), false);
+  const materials = useLoad(
+    `sources:list:${project ?? ''}`,
+    () => api.materialList(project),
+    false,
+  );
   const toc = useLoad(
-    `sources:toc:${book}`,
-    () => (book !== '' ? api.toc(book) : Promise.resolve(undefined)),
+    `sources:toc:${material}`,
+    () => (material !== '' ? api.toc(material) : Promise.resolve(undefined)),
     false,
   );
 
@@ -145,7 +149,7 @@ function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded
     const problem =
       relation.trim() === ''
         ? W.litNeedRelation
-        : mode === 'library' && book === ''
+        : mode === 'library' && material === ''
           ? W.litNeedBook
           : mode === 'external' && title.trim() === ''
             ? W.litNeedTitle
@@ -161,7 +165,7 @@ function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded
       ...(kind !== '' ? { relationKind: kind } : {}),
       ...(mode === 'library'
         ? {
-            book,
+            material,
             ...(file !== '' ? { file } : {}),
             ...(file !== '' && f !== undefined ? { from: f } : {}),
             ...(file !== '' && t !== undefined ? { to: t } : {}),
@@ -203,19 +207,19 @@ function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded
       {mode === 'library' ? (
         <>
           <Labeled label={W.litBook}>
-            {!books.data ? (
-              <Loading error={books.error} />
+            {!materials.data ? (
+              <Loading error={materials.error} />
             ) : (
               <select
                 className={INPUT}
-                value={book}
+                value={material}
                 onChange={(e) => {
-                  setBook(e.target.value);
+                  setMaterial(e.target.value);
                   setFile('');
                 }}
               >
                 <option value="">{W.litPickBook}</option>
-                {books.data.books.map((b) => (
+                {materials.data.materials.map((b) => (
                   <option key={b.id} value={b.id}>
                     {b.title}
                     {b.selected === true ? `（${W.inProject}）` : ''}
@@ -224,7 +228,7 @@ function LiteratureForm(props: { outputId: string; onCancel: () => void; onAdded
               </select>
             )}
           </Labeled>
-          {book !== '' && (
+          {material !== '' && (
             <Labeled label={W.litSection}>
               <select className={INPUT} value={file} onChange={(e) => setFile(e.target.value)}>
                 <option value="">{W.litWholeBook}</option>

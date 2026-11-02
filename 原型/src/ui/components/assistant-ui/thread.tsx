@@ -57,8 +57,8 @@ export const Thread: FC<{
   placeholder?: string;
   /** 发一条消息（文字 + 附图）。 */
   onSend: SendInput;
-  /** 拖进非图片文件时（只有主对话给）：走项目的上传，回一句给学习者看的话。 */
-  onFiles?: (files: PickedFile[]) => Promise<string>;
+  /** 拖进非图片文件时（只有主对话给）：走项目的上传，回给学习者看的（上传结果那一条，可点改）。 */
+  onFiles?: (files: PickedFile[]) => Promise<ReactNode>;
 }> = ({
   welcome = '今天想学点什么？',
   header,

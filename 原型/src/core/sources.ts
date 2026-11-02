@@ -1,7 +1,7 @@
-// 原文与出处（批 2a）：把项目资料的文件清单、正文、全文检索、原件页面、出处标记、资料报错整理成界面和模型能直接用的视图。
+// 原文与出处（批 2a）：把资料的文件清单、正文、全文检索、原件页面、出处标记、资料报错整理成界面和模型能直接用的视图。
 // 只读资料；唯一会写的是资料报错存放处（只追加）。
 import { randomBytes } from 'node:crypto';
-import { parseBookLineRef, parseCitations, type CitationRef } from '../shared/citation.ts';
+import { parseMaterialLineRef, parseCitations, type CitationRef } from '../shared/citation.ts';
 import {
   SOURCE_REPORT_KINDS,
   type SourceReport,
@@ -9,7 +9,7 @@ import {
 } from '../shared/records.ts';
 import type {
   BBox,
-  BooksResponse,
+  MaterialListResponse,
   CitationView,
   SourceSearchResponse,
   LocateResponse,
@@ -46,25 +46,30 @@ export class Sources {
 
   // ───────────── 浏览 ─────────────
 
-  async books(): Promise<BooksResponse> {
-    const books = [];
+  async materials(): Promise<MaterialListResponse> {
+    const list = [];
     for (const b of await this.d.materials.summaries()) {
-      books.push({ ...b, hasOriginal: await this.d.originals.hasOriginal(b.id) });
+      list.push({ ...b, hasOriginal: await this.d.originals.hasOriginal(b.id) });
     }
-    return { books };
+    return { materials: list };
   }
 
-  async toc(book: string): Promise<TocResponse> {
-    const id = await this.book(book);
+  async toc(material: string): Promise<TocResponse> {
+    const id = await this.require(material);
     return {
-      book: id,
+      material: id,
       title: await this.d.materials.title(id),
       entries: await this.d.materials.toc(id),
     };
   }
 
-  async section(book: string, file: string, from?: number, to?: number): Promise<SectionResponse> {
-    const id = await this.book(book);
+  async section(
+    material: string,
+    file: string,
+    from?: number,
+    to?: number,
+  ): Promise<SectionResponse> {
+    const id = await this.require(material);
     const lo = from ?? 1;
     const hi = to ?? lo + MAX_SECTION_LINES - 1;
     if (!Number.isInteger(lo) || !Number.isInteger(hi) || lo < 1 || hi < lo) {
@@ -74,8 +79,8 @@ export class Sources {
     const entry = await this.d.materials.entryOf(id, file);
     const near = await this.d.materials.neighbors(id, file);
     return {
-      book: id,
-      bookTitle: await this.d.materials.title(id),
+      material: id,
+      materialTitle: await this.d.materials.title(id),
       file,
       ...(entry ? { entry } : {}),
       totalLines: r.total,
@@ -86,17 +91,17 @@ export class Sources {
     };
   }
 
-  /** books = 只在这几本里搜（项目资料）；给了 book 时以 book 为准。 */
+  /** materials = 只在这几份里搜（本项目能读的）；给了 material 时以 material 为准。 */
   async search(
     q: string,
-    book?: string,
+    material?: string,
     limit?: number,
-    books?: string[],
+    materials?: string[],
   ): Promise<SourceSearchResponse> {
     if (q.trim() === '') throw new BadRequestError('q 不能为空');
-    const id = book !== undefined && book !== '' ? await this.book(book) : undefined;
+    const id = material !== undefined && material !== '' ? await this.require(material) : undefined;
     const r = await this.d.materials.search(q, {
-      ...(id !== undefined ? { book: id } : books !== undefined ? { books } : {}),
+      ...(id !== undefined ? { material: id } : materials !== undefined ? { materials } : {}),
       ...(limit !== undefined ? { limit } : {}),
     });
     return { query: q, hits: r.hits, total: r.total };
@@ -104,19 +109,19 @@ export class Sources {
 
   // ───────────── 原件 ─────────────
 
-  async page(book: string, page: number): Promise<PageResponse> {
-    const id = await this.book(book);
+  async page(material: string, page: number): Promise<PageResponse> {
+    const id = await this.require(material);
     this.checkPage(page);
     const canRender = await this.d.originals.canRender();
     const where = await this.d.originals.locatePdf(id, page);
     return {
-      book: id,
+      material: id,
       page,
       available: where !== undefined,
       canRender,
       ...(where !== undefined && canRender
         ? {
-            imageUrl: `/api/sources/page/image?book=${encodeURIComponent(id)}&page=${String(page)}`,
+            imageUrl: `/api/sources/page/image?material=${encodeURIComponent(id)}&page=${String(page)}`,
           }
         : {}),
       blocks: where !== undefined ? await this.d.originals.blocks(id, page) : [],
@@ -129,21 +134,21 @@ export class Sources {
   }
 
   /** 原件页面的 PNG；bbox 给了只取那一块。 */
-  async image(book: string, page: number, bbox?: BBox): Promise<Buffer> {
-    const id = await this.book(book);
+  async image(material: string, page: number, bbox?: BBox): Promise<Buffer> {
+    const id = await this.require(material);
     this.checkPage(page);
     return this.d.originals.render(id, page, bbox);
   }
 
-  async locate(book: string, file: string, from: number, to: number): Promise<LocateResponse> {
-    const id = await this.book(book);
+  async locate(material: string, file: string, from: number, to: number): Promise<LocateResponse> {
+    const id = await this.require(material);
     if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from) {
       throw new BadRequestError('from / to 要是正整数，且 to 不小于 from');
     }
     const r = await this.readLines(id, file, from, Math.min(to, from + MAX_CITED_LINES - 1));
     const entry = await this.d.materials.entryOf(id, file);
     return {
-      book: id,
+      material: id,
       file,
       locations: await this.d.originals.locate(id, r.lines, entry?.pdfPages),
     };
@@ -162,15 +167,15 @@ export class Sources {
 
   /** 依据串里的“资料id/文件:行号”回查成原文；认不出（没有资料 id、没有这份资料）返回空。 */
   async materialLine(raw: string): Promise<CitationView | undefined> {
-    const ref = parseBookLineRef(raw, await this.d.materials.books());
+    const ref = parseMaterialLineRef(raw, await this.d.materials.ids());
     return ref ? { ...(await this.cite(ref)), raw, start: 0, end: raw.length } : undefined;
   }
 
   private async cite(ref: CitationRef): Promise<CitationView> {
-    const base = { book: ref.book, file: ref.file, from: ref.from, to: ref.to };
-    const id = await this.findBook(ref.book);
+    const base = { material: ref.material, file: ref.file, from: ref.from, to: ref.to };
+    const id = await this.find(ref.material);
     if (id === undefined) {
-      return view(base, { problem: `没有这份资料：${ref.book}` });
+      return view(base, { problem: `没有这份资料：${ref.material}` });
     }
     let total: number;
     let lines;
@@ -185,10 +190,10 @@ export class Sources {
       lines = r.lines;
     } catch (err) {
       if (err instanceof NotFoundError)
-        return view({ ...base, book: id }, { problem: `这份资料里没有这个文件：${ref.file}` });
+        return view({ ...base, material: id }, { problem: `这份资料里没有这个文件：${ref.file}` });
       throw err;
     }
-    const b = { ...base, book: id };
+    const b = { ...base, material: id };
     if (ref.from < 1) return view(b, { problem: '行号从 1 数' });
     if (ref.from > total) return view(b, { problem: `行号超出文件末尾（共 ${String(total)} 行）` });
     const entry = await this.d.materials.entryOf(id, ref.file);
@@ -197,7 +202,7 @@ export class Sources {
       : undefined;
     return view(b, {
       resolved: true,
-      bookTitle: await this.d.materials.title(id),
+      materialTitle: await this.d.materials.title(id),
       ...(entry ? { section: `${entry.num} ${entry.title}`.trim() } : {}),
       ...(entry?.pdfPages !== undefined ? { pdfPages: entry.pdfPages } : {}),
       lines,
@@ -208,8 +213,8 @@ export class Sources {
   // ───────────── 资料报错 ─────────────
 
   async report(req: Partial<SourceReportRequest>): Promise<SourceReport> {
-    if (typeof req.book !== 'string' || typeof req.file !== 'string') {
-      throw new BadRequestError('book 与 file 要是字符串');
+    if (typeof req.material !== 'string' || typeof req.file !== 'string') {
+      throw new BadRequestError('material 与 file 要是字符串');
     }
     if (typeof req.from !== 'number' || !Number.isInteger(req.from) || req.from < 1) {
       throw new BadRequestError('from 要是正整数');
@@ -225,7 +230,7 @@ export class Sources {
     if (!SOURCE_REPORT_KINDS.includes(kind)) {
       throw new BadRequestError(`kind 要是 ${SOURCE_REPORT_KINDS.join(' / ')} 之一`);
     }
-    const id = await this.book(req.book);
+    const id = await this.require(req.material);
     const r = await this.readLines(
       id,
       req.file,
@@ -261,20 +266,20 @@ export class Sources {
   // ───────────── 内部 ─────────────
 
   /** 资料 id；先精确匹配，再忽略首尾空白。 */
-  private async findBook(name: string): Promise<string | undefined> {
-    const books = await this.d.materials.books();
-    return books.includes(name) ? name : books.find((b) => b.trim() === name.trim());
+  private async find(name: string): Promise<string | undefined> {
+    const ids = await this.d.materials.ids();
+    return ids.includes(name) ? name : ids.find((b) => b.trim() === name.trim());
   }
 
-  private async book(name: string): Promise<string> {
-    const id = await this.findBook(name);
+  private async require(name: string): Promise<string> {
+    const id = await this.find(name);
     if (id === undefined) throw new NotFoundError(`没有这份资料：${name}`);
     return id;
   }
 
-  private async readLines(book: string, file: string, from: number, to: number) {
+  private async readLines(material: string, file: string, from: number, to: number) {
     try {
-      return await this.d.materials.lines(book, file, from, to);
+      return await this.d.materials.lines(material, file, from, to);
     } catch (err) {
       if (isNotFound(err)) throw new NotFoundError(`这份资料里没有这个文件：${file}`);
       if (err instanceof Error && err.message.startsWith('路径越界')) {
@@ -291,7 +296,7 @@ export class Sources {
 }
 
 function view(
-  base: { book: string; file: string; from: number; to: number },
+  base: { material: string; file: string; from: number; to: number },
   rest: Partial<CitationView> & { problem?: string },
 ): CitationView {
   return { raw: '', start: 0, end: 0, ...base, resolved: false, ...rest };

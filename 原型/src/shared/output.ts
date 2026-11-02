@@ -70,7 +70,7 @@ export interface LiteratureEntry {
   title: string;
   authors?: string[];
   url?: string;
-  /** 资料条目：资料 id、文件、行段。 */
+  /** 资料条目：资料 id（存放处里的行格式，沿用旧名 book）、文件、行段。 */
   book?: string;
   file?: string;
   from?: number;
@@ -206,8 +206,8 @@ export interface CompareResponse {
 }
 
 export interface AddLiteratureRequest {
-  /** 资料 id；与 title 二选一：给 book 是资料条目，否则是外部条目。 */
-  book?: string;
+  /** 资料 id；与 title 二选一：给 material 是资料条目，否则是外部条目。 */
+  material?: string;
   file?: string;
   from?: number;
   to?: number;

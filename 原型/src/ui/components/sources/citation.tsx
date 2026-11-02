@@ -79,7 +79,7 @@ export function CitationChip(props: { index: number }) {
   const view = views?.[props.index];
   if (mark === undefined) return null;
   const bad = view !== undefined && !view.resolved;
-  const label = view !== undefined && view.resolved ? citationLabel(view) : mark.book;
+  const label = view !== undefined && view.resolved ? citationLabel(view) : mark.material;
   const tip: ReactNode =
     view === undefined ? (
       error !== undefined ? (
@@ -98,9 +98,9 @@ export function CitationChip(props: { index: number }) {
         {view.lines !== undefined && view.lines.length > 0 && (
           <span className="line-clamp-4 opacity-90">{view.lines.map((l) => l.text).join(' ')}</span>
         )}
-        {notes.get(view.book) !== undefined && (
+        {notes.get(view.material) !== undefined && (
           <span className="text-[0.7rem] opacity-70" data-testid="citation-note">
-            {notes.get(view.book)}
+            {notes.get(view.material)}
           </span>
         )}
       </span>
@@ -129,7 +129,7 @@ export function CitationChip(props: { index: number }) {
                 } else {
                   panel.show({
                     kind: 'source',
-                    book: mark.book,
+                    material: mark.material,
                     file: mark.file,
                     from: mark.from,
                     to: mark.to,

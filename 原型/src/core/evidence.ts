@@ -54,7 +54,7 @@ import type { Objections } from './knowledge/objections.ts';
 import type { Inputs } from './inputs.ts';
 import type { Sources } from './sources.ts';
 import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
-import { BadRequestError, foldDeadline, foldMaterials } from './studium.ts';
+import { BadRequestError, foldDeadline } from './studium.ts';
 
 export interface EvidenceDeps {
   hub: Hub;
@@ -63,8 +63,10 @@ export interface EvidenceDeps {
   pedagogy: PedagogyStore;
   state: StateStore;
   objections: Objections;
-  /** 回查书里的出处（批 2a）。 */
+  /** 回查资料里的出处（批 2a）。 */
   sources: Sources;
+  /** 本项目能读的资料几份（按归属，W11）。 */
+  materialCount: (mainId: string) => Promise<number>;
   /** 图片转写、语音送往哪里（批 4）；不给就不列。 */
   inputs?: Inputs;
   /** 教学工具（批 7）。 */
@@ -398,7 +400,7 @@ export class Evidence {
         ...(at.importLine !== undefined ? { detail: at.importLine } : {}),
       };
     }
-    if (at.kind === 'book') {
+    if (at.kind === 'material') {
       const cited = await this.bookSource(raw);
       if (cited !== undefined) return cited;
       // 只写了文件名、没写书名：认不出是哪一本，照给位置、标查不到
@@ -444,10 +446,10 @@ export class Evidence {
         raw,
         kind: 'book_line',
         resolved: false,
-        label: `书里 ${cited.book}/${cited.file} 第 ${lineSpan(cited.from, cited.to)} 行${cited.problem !== undefined ? `（${cited.problem}）` : ''}`,
+        label: `资料里 ${cited.material}/${cited.file} 第 ${lineSpan(cited.from, cited.to)} 行${cited.problem !== undefined ? `（${cited.problem}）` : ''}`,
         file: cited.file,
         line: cited.from,
-        book: cited.book,
+        material: cited.material,
         from: cited.from,
         to: cited.to,
       };
@@ -457,11 +459,11 @@ export class Evidence {
       raw,
       kind: 'book_line',
       resolved: true,
-      label: `书里《${cited.bookTitle ?? cited.book}》${where !== '' ? ` ${where}` : ''} 第 ${lineSpan(cited.from, cited.to)} 行`,
+      label: `资料里《${cited.materialTitle ?? cited.material}》${where !== '' ? ` ${where}` : ''} 第 ${lineSpan(cited.from, cited.to)} 行`,
       detail: cited.lines.map((l) => l.text).join('\n'),
       file: cited.file,
       line: cited.from,
-      book: cited.book,
+      material: cited.material,
       from: cited.from,
       to: cited.to,
       lines: cited.lines,
@@ -513,7 +515,7 @@ export class Evidence {
       ...(goal !== undefined ? { goal: goal.goal.text, goalView: goalViewOf(goal) } : {}),
       ...(dl.deadline !== undefined ? { deadline: dl.deadline } : {}),
       ...(dl.note !== undefined ? { deadlineNote: dl.note } : {}),
-      materialCount: foldMaterials(mainLog).length,
+      materialCount: await this.d.materialCount(mainId),
       groups,
       load,
     };

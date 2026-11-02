@@ -35,8 +35,8 @@ export interface Import {
   id: string;
   at: string;
   channel: '畅谈' | '笔记' | '对话记录';
-  /** 畅谈 = 学习者原话的行；笔记 / 对话记录 = 转好的 md（相对 `<数据>/learned/` 的路径，工单 W9 §4.3）。 */
-  ref: { session: string; lines: number[] } | { file: string };
+  /** 畅谈 = 学习者原话的行；笔记 / 对话记录 = 一份资料（W11：和资料存在一处，`<数据>/资料/<资料 id>/`）。 */
+  ref: { session: string; lines: number[] } | { material: string };
   unverified: true;
   /** 笔记 / 对话记录：标题（多是原文件名）。 */
   title?: string;

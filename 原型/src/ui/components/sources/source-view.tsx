@@ -31,7 +31,7 @@ import { OriginalPage } from './original-page.tsx';
 type Span = { from: number; to: number };
 
 export function SourceView(props: {
-  book: string;
+  material: string;
   file: string;
   from?: number | undefined;
   to?: number | undefined;
@@ -39,10 +39,10 @@ export function SourceView(props: {
   bbox?: BBox | undefined;
   problem?: string | undefined;
 }) {
-  const { book, file } = props;
+  const { material, file } = props;
   const panel = usePanel();
-  const r = useLoad(`section:${book}:${file}`, () => api.section(book, file), false);
-  const reports = useLoad(`reports:${book}:${file}`, () => api.reports(book, file), false);
+  const r = useLoad(`section:${material}:${file}`, () => api.section(material, file), false);
+  const reports = useLoad(`reports:${material}:${file}`, () => api.reports(material, file), false);
   const cited: Span | undefined =
     props.from !== undefined ? { from: props.from, to: props.to ?? props.from } : undefined;
   /** 学习者点中的一段（看原件、报错都对它）；没点过就是引到的那几行。 */
@@ -64,7 +64,7 @@ export function SourceView(props: {
         <div className="text-muted-foreground text-xs">{W.citationBadHint}</div>
         <div>{props.problem}</div>
         <div className="text-muted-foreground text-xs">
-          {W.citationWritten}：{book} · {file}
+          {W.citationWritten}：{material} · {file}
           {cited !== undefined && ` · ${W.lineSpan(cited.from, cited.to)}`}
         </div>
       </Card>
@@ -96,7 +96,7 @@ export function SourceView(props: {
         <>
           {known !== undefined && (
             <SpotPreview
-              book={s.book}
+              material={s.material}
               page={known.page}
               bbox={known.bbox}
               onOpen={() => setTab('original')}
@@ -123,7 +123,8 @@ export function SourceView(props: {
         prev={s.prev}
         next={s.next}
         go={(e) =>
-          e.file !== undefined && panel.replace({ kind: 'source', book: s.book, file: e.file })
+          e.file !== undefined &&
+          panel.replace({ kind: 'source', material: s.material, file: e.file })
         }
       />
     </div>
@@ -139,10 +140,10 @@ function Head(props: { section: SectionResponse; cited: Span | undefined }) {
       <button
         type="button"
         className="text-muted-foreground hover:text-foreground flex items-center gap-1 self-start text-xs"
-        onClick={() => panel.show({ kind: 'materials', book: s.book })}
+        onClick={() => panel.show({ kind: 'materials', material: s.material })}
       >
         <ListTreeIcon className="size-3.5" />
-        {s.bookTitle} · {W.toc}
+        {s.materialTitle} · {W.toc}
       </button>
       <h2 className="font-serif text-lg">
         {e !== undefined ? `${e.num} ${e.title}`.trim() : s.file}
@@ -179,10 +180,10 @@ function TabButton(props: { active: boolean; onClick: () => void; children: stri
 }
 
 /** 引到的那一处在原件上的局部截图；点了看整页。渲染不了时不显示。 */
-function SpotPreview(props: { book: string; page: number; bbox: BBox; onOpen: () => void }) {
+function SpotPreview(props: { material: string; page: number; bbox: BBox; onOpen: () => void }) {
   const r = useLoad(
-    `page:${props.book}:${String(props.page)}`,
-    () => api.page(props.book, props.page),
+    `page:${props.material}:${String(props.page)}`,
+    () => api.page(props.material, props.page),
     false,
   );
   const [failed, setFailed] = useState(false);
@@ -287,7 +288,7 @@ function TextBody(props: {
             {mine.length > 0 && <ReportNotes reports={mine} />}
             {reporting === p && (
               <ReportForm
-                book={section.book}
+                material={section.material}
                 file={section.file}
                 span={p}
                 page={lit ? props.page : undefined}
@@ -324,7 +325,7 @@ function ReportNotes(props: { reports: SourceReport[] }) {
 }
 
 function ReportForm(props: {
-  book: string;
+  material: string;
   file: string;
   span: Span;
   page: number | undefined;
@@ -382,7 +383,7 @@ function ReportForm(props: {
             setError(undefined);
             api
               .report({
-                book: props.book,
+                material: props.material,
                 file: props.file,
                 from: props.span.from,
                 to: props.span.to,
@@ -414,21 +415,21 @@ function OriginalSpot(props: {
   const { section, focus, known } = props;
   const key =
     known === undefined && focus !== undefined
-      ? `locate:${section.book}:${section.file}:${String(focus.from)}-${String(focus.to)}`
+      ? `locate:${section.material}:${section.file}:${String(focus.from)}-${String(focus.to)}`
       : 'locate:none';
   const loc = useLoad(
     key,
     () =>
       known === undefined && focus !== undefined
-        ? api.locate(section.book, section.file, focus.from, focus.to)
-        : Promise.resolve({ book: section.book, file: section.file, locations: [] }),
+        ? api.locate(section.material, section.file, focus.from, focus.to)
+        : Promise.resolve({ material: section.material, file: section.file, locations: [] }),
     false,
   );
   if (known !== undefined) {
     return (
       <OriginalPage
         key={`${String(known.page)}:${known.bbox.join(',')}`}
-        book={section.book}
+        material={section.material}
         page={known.page}
         boxes={[known.bbox]}
       />
@@ -441,7 +442,7 @@ function OriginalSpot(props: {
     return (
       <OriginalPage
         key={`${String(first.page)}:${boxes.map((b) => b.join(',')).join(';')}`}
-        book={section.book}
+        material={section.material}
         page={first.page}
         boxes={boxes}
       />
@@ -458,7 +459,7 @@ function OriginalSpot(props: {
   return (
     <div className="flex flex-col gap-2">
       {focus !== undefined && <div className="text-muted-foreground text-xs">{W.notLocated}</div>}
-      <OriginalPage key={`start:${String(start)}`} book={section.book} page={start} />
+      <OriginalPage key={`start:${String(start)}`} material={section.material} page={start} />
     </div>
   );
 }

@@ -14,17 +14,17 @@ export type PanelTarget =
   | { kind: 'state' }
   | { kind: 'teaching' }
   | { kind: 'disclosure' }
-  /** 资料浏览：不给 book = 资料列表；给 book（资料 id）= 这份资料的文件清单。 */
-  | { kind: 'materials'; book?: string }
+  /** 资料浏览：不给 material = 资料列表；给 material（资料 id）= 这份资料的文件清单。 */
+  | { kind: 'materials'; material?: string }
   /** all = 不限项目资料、查全部。 */
-  | { kind: 'search'; q: string; book?: string; all?: boolean }
+  | { kind: 'search'; q: string; material?: string; all?: boolean }
   /**
    * 一个小节的原文；from–to 是要高亮的行。page / bbox 是已知的原件位置（回复里出处核对时比出来的）；
    * problem 是出处对不上的原因（对不上也照样打开，写明原因）。
    */
   | {
       kind: 'source';
-      book: string;
+      material: string;
       file: string;
       from?: number;
       to?: number;
@@ -47,7 +47,7 @@ export type PanelTarget =
   /** 原件的一页；bbox 标出位置，quote 是书里的原句，file / line 能回到转录的原文。 */
   | {
       kind: 'page';
-      book: string;
+      material: string;
       page: number;
       bbox?: BBox;
       quote?: string;
