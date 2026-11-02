@@ -178,10 +178,14 @@ export class Materials {
     const out: string[] = [];
     for (const e of (await this.scan(true)).values()) {
       if (e.src.status !== '处理中' || this.pending.has(e.id)) continue;
+      const summaryOnly = e.src.converter === 'summary';
       await this.write(e.dir, {
         ...e.src,
-        status: '失败',
-        problems: [...(e.src.problems ?? []), '上次处理被服务重启打断，可重试'],
+        status: summaryOnly ? '可用' : '失败',
+        problems: [
+          ...(e.src.problems ?? []),
+          summaryOnly ? '总结没写成（服务重启打断），可重试' : '上次处理被服务重启打断，可重试',
+        ],
       });
       out.push(e.id);
     }
@@ -511,6 +515,16 @@ export class Materials {
     return walk(await this.bodyDir(id));
   }
 
+  /** 导入会话写的 说明.md（学过的那段总结；没有 = undefined），清单里带它的开头。 */
+  async guide(id: string): Promise<string | undefined> {
+    try {
+      return await readFile(join(await this.bodyDir(id), GUIDE_FILE), 'utf8');
+    } catch (err) {
+      if (isNotFound(err)) return undefined;
+      throw err;
+    }
+  }
+
   // ───────────── 内部：扫描与读 ─────────────
 
   /** 一份资料的目录：<数据>/资料/<资料 id>/。 */
@@ -757,15 +771,16 @@ export class Materials {
       await writeFile(join(body, name), text, 'utf8');
     }
     const problems = skipped.length > 0 ? [`转不了，原件里留着：${skipped.join('、')}`] : [];
-    if (others.length === 0) {
-      if (all.length === skipped.length) {
-        return this.write(dir, {
-          ...src,
-          version,
-          status: '失败',
-          problems: ['没有能读的内容', ...problems],
-        });
-      }
+    if (all.length === skipped.length) {
+      return this.write(dir, {
+        ...src,
+        version,
+        status: '失败',
+        problems: ['没有能读的内容', ...problems],
+      });
+    }
+    // 学过的（笔记、别处的对话记录）都交导入会话写一段总结（说明.md），清单里带着，别的会话据此决定读不读原文（11-02）
+    if (others.length === 0 && src.learned === undefined) {
       return this.write(dir, {
         ...src,
         version,
@@ -778,7 +793,8 @@ export class Materials {
     await this.write(dir, {
       ...src,
       version,
-      converter: 'import-session',
+      // 只为写总结的记 summary：被打断时文字照样能读，不算失败
+      converter: others.length === 0 ? 'summary' : 'import-session',
       ...(problems.length > 0 ? { problems } : {}),
     });
     if (this.importer === undefined) {
@@ -786,7 +802,10 @@ export class Materials {
       return this.write(dir, {
         ...cur,
         status: '失败',
-        problems: [...problems, '原件里有不是纯文字的文件，要交导入会话处理，但没接上模型'],
+        problems: [
+          ...problems,
+          '要交导入会话处理（不是纯文字的文件 / 学过的要写总结），但没接上模型',
+        ],
       });
     }
     await this.importer(src.id, others);

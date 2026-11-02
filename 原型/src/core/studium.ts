@@ -475,7 +475,12 @@ export class Studium {
           `原件（只读）：${original}`,
           `当前目录（就是这份资料给别的会话读的文字版）：${body}`,
           '纯文字的文件程序已经按原件里的相对路径放进当前目录了。原件里不是纯文字、要你处理的：',
-          ...files.map((f) => `- ${f}`),
+          ...(files.length > 0 ? files.map((f) => `- ${f}`) : ['（没有）']),
+          ...(src.learned !== undefined
+            ? [
+                `这份是学习者的${src.learned.channel}：处理完在当前目录写 说明.md（总结，见提示词）。`,
+              ]
+            : []),
         ].join('\n'),
       });
       let timer: NodeJS.Timeout | undefined;
@@ -496,7 +501,9 @@ export class Studium {
         .map((r) => r.record)
         .filter((r) => r.type === 'turn_failed')
         .at(-1);
-      await this.o.materials.finishImport(id, '失败', [
+      // 只为写总结开的（文字程序已放好）：没跑成也照样能读，只记没写成总结
+      await this.o.materials.finishImport(id, files.length === 0 ? '可用' : '失败', [
+        ...(files.length === 0 ? ['没写成总结（说明.md）'] : []),
         timedOut
           ? `导入会话 ${formatDuration(IMPORT_TIMEOUT_MS)} 没交回（${s.sessionId}）`
           : failed?.type === 'turn_failed'
@@ -3982,8 +3989,9 @@ export class Studium {
       if (s === undefined) continue;
       const owner = s.owner.kind === 'learner' ? '学习者' : '项目';
       const kb = Math.max(1, Math.round((await this.o.materials.bodyBytes(id)) / 1024));
+      const guide = (await this.o.materials.guide(id))?.replace(/\s+/g, ' ').trim();
       out.push(
-        `- ${id}｜${s.title}｜${s.kind}｜${owner}${s.learned !== undefined ? `·学过的（${s.learned.channel}）` : ''}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}｜${String(kb)} KB`,
+        `- ${id}｜${s.title}｜${s.kind}｜${owner}${s.learned !== undefined ? `·学过的（${s.learned.channel}）` : ''}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}｜${String(kb)} KB${guide !== undefined && guide !== '' ? `｜说明：${guide.length > 300 ? `${guide.slice(0, 300)}…` : guide}` : ''}`,
       );
     }
     return out;
