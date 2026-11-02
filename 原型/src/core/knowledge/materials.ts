@@ -489,6 +489,28 @@ export class Materials {
     return join((await this.require(id)).dir, BODY_DIR);
   }
 
+  /** 正文有多大（字节，含子目录；仓库不算 .git）：清单里给模型看大小，好决定整份读还是搜。 */
+  async bodyBytes(id: string): Promise<number> {
+    const walk = async (dir: string): Promise<number> => {
+      let entries;
+      try {
+        entries = await readdir(dir, { withFileTypes: true });
+      } catch (err) {
+        if (isNotFound(err)) return 0;
+        throw err;
+      }
+      let n = 0;
+      for (const e of entries) {
+        if (e.name === '.git') continue;
+        const p = join(dir, e.name);
+        if (e.isDirectory()) n += await walk(p);
+        else if (e.isFile()) n += (await stat(p)).size;
+      }
+      return n;
+    };
+    return walk(await this.bodyDir(id));
+  }
+
   // ───────────── 内部：扫描与读 ─────────────
 
   /** 一份资料的目录：<数据>/资料/<资料 id>/。 */

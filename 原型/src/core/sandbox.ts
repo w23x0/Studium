@@ -136,8 +136,8 @@ export class Sandboxes {
   }
 
   /**
-   * 主对话的沙盒（W11 §5）：只读本机家目录（挡掉 denyRead 的位置），命令行在只读沙盒里、不联网；
-   * 可写只有它自己的工作区。SDK 的工作目录仍是数据目录（旧的主对话按它续接）。
+   * 主对话的沙盒（W11 §5）：只读本机家目录（挡掉 denyRead 的位置），不给命令行（11-02 定：照 Claude 桌面版读本机，
+   * 只给读文件、搜索、列目录，路径由适配器每次调用前查）；可写只有它自己的工作区。SDK 的工作目录仍是数据目录（旧的主对话按它续接）。
    */
   async forMain(mainId: string): Promise<SandboxSpec> {
     const workdir = join(this.root(mainId), '工作区');
@@ -146,7 +146,7 @@ export class Sandboxes {
       workdir,
       readOnly: [{ name: '本机', path: homedir() }],
       network: false,
-      commands: true,
+      commands: false,
       cwd: this.o.dataDir,
       denyRead: this.denyRead(),
     };

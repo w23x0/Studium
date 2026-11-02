@@ -1896,7 +1896,7 @@ export class Studium {
       await this.instructionsBlock(mainId),
       '',
       scope.length > 0
-        ? `本项目的资料（资料定范围：这个人要学会什么；每份 id｜标题｜种类｜版本｜日期｜状态｜角色）：\n${(await this.materialLines(scope)).join('\n')}`
+        ? `本项目的资料（资料定范围：这个人要学会什么；每份 id｜标题｜种类｜归属｜版本｜日期｜状态｜角色｜正文大小；跟眼下相关的整份读）：\n${(await this.materialLines(scope)).join('\n')}`
         : '本项目还没有能用的资料（缺资料依据）：按方向说明与学过的记录推，候选里资料核不了的标“模型补的”。',
       '',
       '── 各次学习现在的样子 ──',
@@ -2461,7 +2461,8 @@ export class Studium {
     const sb = await this.sandboxes.forRetrieve(sessionId, navId);
     lines.push(
       '',
-      '只为导航的一个问题找底层证据：从上面的上层（单子、收尾那一句）出发，到沙盒里读——每次学习的对话原文在 只读/学过的记录/<学习 id>-对话.md（带行号），教材在 只读/资料/<书 id>/，定位到原文行。',
+      '只为导航的一个问题找底层证据：从上面的上层（单子、收尾那一句）出发，到沙盒里读——每次学习的对话原文在 只读/学过的记录/<学习 id>-对话.md（带行号），资料正文在 只读/资料/<资料 id>/，定位到原文行。',
+      await this.materialsBlock(sessionId),
       describeSandbox(sb),
       '',
       '用 submit_findings 交回至多 5 条，每条一句话 + 能定位的 ref（会话 id:行号 / 资料id/文件:行号）；没找到交空数组；只交一次。不下结论、不出路线。',
@@ -2566,6 +2567,7 @@ export class Studium {
       goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
       `期限：${deadline.deadline !== undefined ? this.deadlineText(deadline) : '没有记'}`,
       await this.instructionsBlock(mainId),
+      await this.materialsBlock(mainId),
       '── 各次学习现在的样子 ──',
       ...(await this.learningsNow(mainId)),
       '── 讨论串（本项目开出去的对话，最近的在前）──',
@@ -2683,6 +2685,7 @@ export class Studium {
             text: [
               `学习者在主对话里说（主对话第 ${String(asked.line)} 行）：${asked.record.text}`,
               await this.instructionsBlock(mainId),
+              await this.materialsBlock(mainId),
               ...(goal !== undefined
                 ? [
                     `已有方向（主对话 L${String(goal.line)}，${goal.goal.at.slice(0, 10)}）：`,
@@ -3351,6 +3354,8 @@ export class Studium {
             .join('\n')
         : '（没核过）',
       '',
+      await this.materialsBlock(loopId),
+      '',
       ...(t.stageCheck === true
         ? ['这是一次阶段验收：看独立表现，默认不给提示，措辞照常平和。', '']
         : []),
@@ -3976,11 +3981,25 @@ export class Studium {
       const s = await this.o.materials.source(id);
       if (s === undefined) continue;
       const owner = s.owner.kind === 'learner' ? '学习者' : '项目';
+      const kb = Math.max(1, Math.round((await this.o.materials.bodyBytes(id)) / 1024));
       out.push(
-        `- ${id}｜${s.title}｜${s.kind}｜${owner}${s.learned !== undefined ? `·学过的（${s.learned.channel}）` : ''}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}`,
+        `- ${id}｜${s.title}｜${s.kind}｜${owner}${s.learned !== undefined ? `·学过的（${s.learned.channel}）` : ''}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}｜${String(kb)} KB`,
       );
     }
     return out;
+  }
+
+  /**
+   * 开场 / 每轮事实里的资料清单（记录/资料.md「怎么找」11-02）：本会话能读的每份一行带大小；相关的模型整份读，
+   * 大的或只找一句才搜。程序只列清单，不替模型挑。
+   */
+  private async materialsBlock(sessionId: string): Promise<string> {
+    const scope = await this.scopeOf(sessionId);
+    if (scope.length === 0) return '本项目能读的资料：还没有';
+    return [
+      '本项目能读的资料（每份 id｜标题｜种类｜归属｜版本｜日期｜状态｜角色｜正文大小；跟眼下相关的整份读，大的或只找某一句时再搜）：',
+      ...(await this.materialLines(scope)),
+    ].join('\n');
   }
 
   /**
