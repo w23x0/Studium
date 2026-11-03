@@ -14,6 +14,7 @@ import {
   type ConversationKind,
   type ImageInput,
   type MessageQuote,
+  type ContextOpened,
   type LogRecord,
   type NumberedRecord,
   type ResumeOrigin,
@@ -513,6 +514,25 @@ export class Hub {
     const subagents = sandbox !== undefined ? await cfg.subagents?.(sessionId) : undefined;
     const systemPrompt = (await cfg.systemPromptFor?.(sessionId)) ?? cfg.systemPrompt;
     const tools = await cfg.tools(sessionId);
+    await this.recordContext(sessionId, {
+      type: 'context_opened',
+      at: this.iso(),
+      systemPrompt,
+      tools: tools.map((t) => ({ name: t.name, description: t.description })),
+      // 内置工具的实际名单由适配器按这几项定（claude-agent-sdk.ts `sdkOptionsFor`），这里只记给了哪几类
+      builtins: [
+        ...(sandbox !== undefined
+          ? [sandbox.commands === false ? '沙盒：读写搜索（无命令行）' : '沙盒：读写搜索 + 命令行']
+          : []),
+        ...(cfg.webSearch === true ? ['联网搜索 + 网页抓取'] : []),
+        ...(subagents !== undefined && subagents.length > 0 ? ['派子代理'] : []),
+      ],
+      subagents: (subagents ?? []).map((a) => ({
+        name: a.name,
+        description: a.description,
+        prompt: a.prompt,
+      })),
+    });
     const conv = this.opts.model.open({
       systemPrompt,
       tools: tools.map((t) => this.logged(sessionId, t)),
@@ -539,6 +559,17 @@ export class Hub {
       },
     });
     return conv;
+  }
+
+  /** 记下这次给模型的系统提示词与工具（导出上下文用）；和上一条一模一样就不再记。 */
+  private async recordContext(sessionId: string, rec: ContextOpened): Promise<void> {
+    const last = (await this.records(sessionId))
+      .map((r) => r.record)
+      .filter((r): r is ContextOpened => r.type === 'context_opened')
+      .at(-1);
+    const same = (r: ContextOpened) => JSON.stringify({ ...r, at: '' });
+    if (last !== undefined && same(last) === same(rec)) return;
+    await this.append(sessionId, rec);
   }
 
   /** 从哪接上：最近一条续接凭据（旧数据里截回过的记录不再理会：10-26 起上下文只追加）。 */

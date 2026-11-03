@@ -189,6 +189,19 @@ export interface ModelSession {
   token: string;
 }
 
+/**
+ * 打开模型侧会话时实际给的系统提示词与我们的工具（11-03：导出上下文时要看到当时的版本，提示词文件会改）；
+ * 和上一条一样就不再记。内置工具（读写、命令、联网）的定义在 SDK 里，只记名字。
+ */
+export interface ContextOpened {
+  type: 'context_opened';
+  at: string;
+  systemPrompt: string;
+  tools: { name: string; description: string }[];
+  builtins: string[];
+  subagents: { name: string; description: string; prompt: string }[];
+}
+
 /** 模型侧报告的实际执行模型名（不是别名、不是适配器名）；名字变了才追加一条。 */
 export interface ModelUsed {
   type: 'model_used';
@@ -563,6 +576,7 @@ export type LogRecord =
   | ModelRaw
   | ModelSession
   | ModelUsed
+  | ContextOpened
   | SandboxAction
   | TurnFailed
   | CloseRequested
