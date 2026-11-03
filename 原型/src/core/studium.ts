@@ -1612,7 +1612,7 @@ export class Studium {
             reply: true,
           });
           return ok(
-            `已开：${s.sessionId}「${title}」，入口卡片在主对话里。跟学习者说一句就好；那边做完或有事会自己说，要看进展用 read_thread。`,
+            `已开：${s.sessionId}「${title}」，入口卡片在主对话里。${kind === 'find' ? '它自己定存哪些、直接存进项目资料，学习者说不要再删。' : ''}跟学习者说一句就好；那边做完或有事会自己说，要看进展用 read_thread。`,
           );
         },
       },

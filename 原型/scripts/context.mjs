@@ -178,7 +178,8 @@ for (const { line, r } of records) {
     case 'user_message': {
       const program = r.type === 'program_fact';
       const preface = prefaceFor.get(line);
-      const text = `[第 ${line} 行 · ${localMinute(r.at)}] ${quotePrefix(r.quote)}${r.text}`;
+      // W12 起每条前还写谁说的、距学习者上次说话多久（导出这里只重写行号、时间、谁）
+      const text = `[第 ${line} 行 · ${localMinute(r.at)} · ${program ? '程序' : '学习者'}] ${quotePrefix(r.quote)}${r.text}`;
       const delivered = `${preface !== undefined ? `${wrapFact(preface)}\n\n` : ''}${program ? wrapFact(text) : text}`;
       block(
         program ? 'input program' : 'input learner',
@@ -189,6 +190,44 @@ for (const { line, r } of records) {
       );
       break;
     }
+    case 'thread_message': {
+      // W12 §3.1：别的会话发来的话（学习者看不到），附的学习者原话照 Claude 的 <cited>
+      const preface = prefaceFor.get(line);
+      const cited = (r.cited ?? []).map(
+        (c) =>
+          `<cited author="learner" session="${c.session}" line="${c.line}" at="${localMinute(c.at)}">\n${c.text}\n</cited>`,
+      );
+      const text = [
+        `[第 ${line} 行 · ${localMinute(r.at)} · ${r.from} ${r.reply ? '回话' : '发来'}]`,
+        r.text,
+        ...cited,
+      ].join('\n');
+      block(
+        'input program',
+        r.reply ? '输入 · 别的会话回话' : '输入 · 别的会话发来',
+        r.at,
+        line,
+        body(`${preface !== undefined ? `${preface}\n\n` : ''}${text}`, '这条输入'),
+      );
+      break;
+    }
+    case 'turn_stopped':
+      event(r.at, line, '学习者点了停止（下一条输入前面接“学习者停止了生成”）');
+      break;
+    case 'message_edited':
+      if (r.by === 'learner') {
+        block(
+          'input learner',
+          '输入 · 学习者改了刚发的那句',
+          r.at,
+          line,
+          body(`学习者把上一句（第 ${r.line} 行）改成：${r.text}`, '这条输入'),
+        );
+      } else event(r.at, line, `主对话改了自己第 ${r.line} 行的话：${r.text}`);
+      break;
+    case 'thread_deleted':
+      event(r.at, line, `学习者删了「${r.title}」（${r.session}；下一条输入前面接一句）`);
+      break;
     case 'model_raw': {
       const p = r.payload ?? {};
       const content =
