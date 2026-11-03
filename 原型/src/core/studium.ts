@@ -1626,7 +1626,7 @@ export class Studium {
           learner_lines: z.array(z.number().int()).optional(),
         },
         run: async (a) => {
-          const t = await this.threadOf(mainId, a.thread as string);
+          const t = await this.threadOf(mainId, a.thread as string, true);
           if (typeof t === 'string') return err(t);
           const cited = await this.citeMain(
             mainId,
@@ -1676,7 +1676,7 @@ export class Studium {
           reason: z.string().describe('学习者怎么说的（主对话行号 + 一句）'),
         },
         run: async (a) => {
-          const t = await this.threadOf(mainId, a.thread as string);
+          const t = await this.threadOf(mainId, a.thread as string, true);
           if (typeof t === 'string') return err(t);
           if (!(await this.reopenIfEnded(t, 'main', a.reason as string))) return err('它还开着。');
           return ok('已重新打开。');
@@ -1813,7 +1813,7 @@ export class Studium {
         run: async (a) => {
           const mainId = await this.projectOf(sessionId);
           if (mainId === undefined) return err('找不到这个对话所属的项目');
-          const t = await this.threadOf(mainId, a.thread as string);
+          const t = await this.threadOf(mainId, a.thread as string, true);
           if (typeof t === 'string') return err(t);
           if (t.sessionId === sessionId) return err('这就是你自己');
           const cited = await this.citeLearner(
@@ -1918,8 +1918,12 @@ export class Studium {
     return renderTranscript(recs, (id) => this.hub.labelOf(id)) || '（这一段没有对话）';
   }
 
-  /** 本项目里的一个讨论串；不是就回一句原因。 */
-  private async threadOf(mainId: string, id: string): Promise<SessionOpened | string> {
+  /** 本项目里的一个讨论串；不是就回一句原因。live = 要给它发话、重开它（旧版开的学习对话只能读、改名、结束）。 */
+  private async threadOf(
+    mainId: string,
+    id: string,
+    live = false,
+  ): Promise<SessionOpened | string> {
     const opened = await this.hub.opened(id.trim()).catch((e: unknown) => {
       if (e instanceof NotFoundError) return undefined;
       throw e;
@@ -1927,7 +1931,7 @@ export class Studium {
     if (opened?.parent !== mainId || !THREAD_KINDS.has(opened.kind) || this.hub.isDeleted(id)) {
       return `本项目里没有这个讨论串：${id}`;
     }
-    if (opened.kind === 'loop' && opened.page !== 'stream') return OLD_LOOP;
+    if (live && opened.kind === 'loop' && opened.page !== 'stream') return OLD_LOOP;
     return opened;
   }
 
