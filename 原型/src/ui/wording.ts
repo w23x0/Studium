@@ -117,7 +117,6 @@ export const W = {
 
   // ── 异议 ──
   objectJudgement: '我觉得记得不对',
-  objectRecord: '我觉得记得不对',
   objectPlaceholder: '说说哪里不对、你是怎么想的…',
   objectSubmit: '提交',
   objectCancel: '算了',
@@ -131,12 +130,9 @@ export const W = {
   // ── 记录 ──
   learned: '我学会的',
   myState: '我的状态', // 状态记录
-  myStateEmpty: '还没整理过。',
   timeRange: '时间范围',
   teaching: '对我用过的教法', // 教法记录（与下面的“教学方法库”分开叫）
-  teachingEmpty: '还没有对你用过的教法记录。',
   conditions: '当时的情况',
-  strategies: '用了什么教法',
   followedBy: '之后怎样',
   toolsUsed: '用到的教学工具',
 
@@ -223,10 +219,7 @@ export const W = {
   dropHere: '松开，把图片加进来',
   notImage: '只能加图片（PNG、JPEG、GIF、WebP）。',
   uploading: '正在上传…',
-  transcribing: '正在转写…',
   transcript: '图里的内容（自动转写，发送前可以改）',
-  transcriptPlaceholder: '转写出的文字会出现在这里…',
-  ownText: '没能自动转写。可以自己写下图里的内容：',
   retry: '再试一次',
   removeImage: '移除这张图',
   viewImage: '看大图',
@@ -295,23 +288,7 @@ export const W = {
   noteSave: '记下',
   noteEarlier: '以前补过的',
   noteAdded: '只会追加，旧的留着。',
-  stateTimeline: '按时间回看',
-  stateList: '列表',
-  stateTimelineHint: '每次整理出的记录按时间排开；颜色可以按所处阶段或按来源看。',
-  stateTimelineEmpty: '还没有可以回看的记录。',
-  colorBy: '颜色',
-  colorStage: '按阶段',
-  colorSource: '按来源',
-  stageNone: '没标阶段',
   stageSteps: '阶段怎么变的',
-  stageStart: (to: string) => `起始：${to}`,
-  stageChange: (from: string, to: string) => `${from} → ${to}`,
-  myExplain: '我的解释',
-  explainAdd: '补一句我的解释',
-  explainPlaceholder: '觉得这条不对、不全，或另有原因，写一句你的看法…',
-  explainSave: '记下',
-  explainHint: '只会追加，不改原来的记录；下次整理状态时会当作你自己说的来读。',
-  explainSelf: '你自己说的',
 
   // ── 资料检索的范围 ──
   searchScopeProject: (n: number) => `在项目资料里搜（${String(n)} 份）`,
@@ -329,13 +306,6 @@ export const W = {
   ticketEdits: '改过的',
   ticketEditSee: '看那一行',
   ticketEditedFields: (fields: string) => `改了：${fields || '（没变）'}`,
-  ticketEdit: '改一改',
-  ticketEditTitle: '改这次要学的',
-  ticketEditHint: '改过之后，这次就按改后的来；原来记下的不改。',
-  ticketEditSave: '保存改动',
-  ticketEditCancel: '算了',
-  ticketEditAddStart: '再加一个',
-  ticketEditRemoveStart: '去掉',
 
   // ── 判定里的实际理解与证据强度（W6） ──
   understanding: '学到的样子',
@@ -413,9 +383,6 @@ export const W = {
   // 阶段验收（练习整块删了以后只留说明）
   stageCheck: '阶段验收',
   stageCheckHint: '看你自己能做到哪；默认不给提示',
-  stageCheckBanner: '这次是阶段验收，默认不给提示。做完不等于学完，学没学会照常看你讲得怎么样。',
-  selfCheck: '老师先查了自己的教法',
-  selfCheckStates: (n: number) => `对照了你的 ${String(n)} 条状态`,
   // 我的状态：来源与确认
   sourceLevel: {
     自述: '你自己说的',
@@ -423,15 +390,6 @@ export const W = {
     推断: '推测的',
     已确认: '你确认过的',
   },
-  sourceWas: (s: string) => `原本是“${s}”`,
-  stateConfirm: '对，是这样',
-  stateDeny: '不对',
-  stateDenyPlaceholder: '哪里不对（可不填）',
-  stateDenySend: '提交',
-  stateChange: '改一下',
-  stateConfirmed: '你说过：对，是这样',
-  stateDenied: '你说过：不对',
-  stateDeniedSent: '记下了。下次整理你的状态时会把你的话带上。',
   afterTeachingGo: '看那一轮',
 
   // ── 我的产出：自己写的笔记整理、推导、小论文、方法比较（批 8b） ──
@@ -439,20 +397,6 @@ export const W = {
   refsBad: (n: number) => `${String(n)} 处对不上`,
   refsBadHint: '对不上的引用显示成灰色；点开或悬停能看到原因。',
   // 方法比较
-  cmpMethod: '方法',
-  cmpBoundary: '适用边界',
-  cmpEvidence: '证据与出处',
-  cmpTentative: '还没定论的想法',
-  cmpHint: '每行一个方法，每列一个比较的方面；正文由这张表自动生成。',
-  cmpAddMethod: '加一个方法',
-  cmpAddDim: '加一个方面',
-  cmpRemoveMethod: '去掉这个方法',
-  cmpRemoveDim: '去掉这一列',
-  cmpDimPlaceholder: '比较的方面，如：假设',
-  cmpMethodPlaceholder: '方法名',
-  cmpBoundaryPlaceholder: '什么条件下能用、什么条件下不能用',
-  cmpEvidencePlaceholder: '一行一条',
-  cmpTentativePlaceholder: '还在想、没定论的论证（可不填）',
   cmpProblems: {
     dims: '至少要有一个比较的方面；每一列都要写名字，不能重名。',
     methods: '至少要两个方法才能比。',
@@ -477,29 +421,7 @@ export const W = {
   latestBadge: '最新',
   writtenInChat: '在哪段对话里写的',
   // 相关文献
-  litHint: '和这份产出有关的书或文章；每条写一句它和这份产出是什么关系。',
-  litEmpty: '还没登记。',
-  litAdd: '登记一条',
-  litFromMaterials: '项目资料里的',
-  litExternal: '外面的',
-  litBook: '哪本书',
-  litPickBook: '选一本',
-  litSection: '哪一节（可不选）',
-  litWholeBook: '整本',
-  litLines: '哪几行（可不填）',
-  litTitle: '标题',
-  litAuthors: '作者（多个用逗号隔开，可不填）',
-  litUrl: '链接（可不填）',
-  litRelation: '它和这份产出是什么关系',
-  litRelationPlaceholder: '一句话，比如：书里这一节给了另一种推法',
   litRelationKind: '关系类型（可不选）',
-  litRelationNone: '不选',
-  litNeedRelation: '要写一句它和这份产出是什么关系。',
-  litNeedTitle: '外面的文献要写标题。',
-  litNeedBook: '要选一本书。',
-  litSave: '登记',
-  litProblem: '资料里对不上了：',
-  litWholeBookLine: '整本书',
   // 写产出的对话
 
   // ── 跨段学习的长期功能：今天该做的、提醒、复习 / 复检、接着学、阶段复盘、我学会的现状（批 6） ──
@@ -513,7 +435,6 @@ export const W = {
   overdue: (n: number) => (n > 0 ? `过了 ${String(n)} 天` : '今天到期'),
   deadlineNear: (n: number) =>
     n > 0 ? `离期限还有 ${String(n)} 天` : n === 0 ? '期限就是今天' : `期限已过 ${String(-n)} 天`,
-  reviewDue: (n: number) => `上次回头看之后又学完了 ${String(n)} 段，可以复盘一下`,
   // 提醒
   reminders: '提醒',
   reminderKind: {
@@ -565,29 +486,14 @@ export const W = {
     复检: '这次是复检：看看以前学会的还在不在。不是从头学，答不上来也没关系，正好知道哪里要补。',
   } as const,
   // 接着没学完的学
-  resumeOfBefore: '接着',
-  resumeOfAfter: '学（原来那段没学完）',
-  resumeOfLine: (title: string) => `接着《${title}》学的`,
   resumedByLine: (title: string) => `已接着在《${title}》学`,
   resumedByBefore: '已接着在',
   resumedByAfter: '学',
   // 阶段复盘
   review: '阶段复盘',
-  reviewStart: '复盘一下',
-  reviewPickSince: '选从哪天起',
-  reviewSince: '从哪天起（不选就从上次复盘起）',
-  reviewOpening: '正在开…',
-  reviewsPast: '历次复盘',
-  reviewRange: (since: string, until: string) => `${since} 到 ${until}`,
-  reviewOngoing: '还在谈',
-  reviewBadge: '复盘',
   reviewBanner: (since: string, until: string) => `复盘：回头看 ${since} 到 ${until} 学的`,
   reviewWelcome: '我们回头看看这段时间学得怎么样。',
-  reviewEnded: '复盘好了，交回项目了。还想聊就接着说。',
   // 路线偏差（现算的三类，只说事实）
-  deviations: '没按推荐走的时候',
-  deviationsHint: '只记下事实，给你自己回头看；不代表学得好不好。',
-  deviationsNone: '还没有。',
   seeThatLearning: '看那段学习',
 
   // ── 项目页三页签与导入入口（工单 W9） ──
@@ -663,17 +569,10 @@ export const W = {
   openDetail: '看详细',
   memoryMore: '还能看：',
   // 找资料
-  findTask: '找资料',
   findWelcome: '正在找资料…',
   candidatesTitle: '找到的候选',
-  candidatesHint: '勾上要的，点“存所选”才存进本项目资料；没勾的不存。',
-  candidatesAll: '全选',
-  candidatesSave: '存所选',
-  candidatesSaving: '正在存…',
-  candidatesAlready: '已在本项目',
   candidatesSaved: '已存',
   candidatesNotSaved: '没存',
-  candidatesDone: (n: number) => `存了 ${String(n)} 份进本项目资料`,
 
   // ── 通用 ──
   loading: '正在读…',
