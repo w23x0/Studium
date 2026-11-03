@@ -1,23 +1,18 @@
 // 输入（批 4，`docs/设计/记录/对话与事件记录.md`）：学习者附的图片（拍照 / 手写）。
-// 原图只追加地存进输入存放处（<数据>/inputs/），写入后不改、不删；经模型接口转写成文字（公式用 LaTeX），
-// 转写结果单独记一行；发消息时转写文字（学习者可改）带来源标注并进消息文字——教学只读文字，图片不给对话模型。
+// 原图只追加地存进输入存放处（<数据>/inputs/），写入后不改、不删。W12 §5.6 起图片原样随消息送给模型（不再转写）；
+// 太大的由界面缩小一份副本送去（原图照存）。旧数据的转写记录（transcriptions.jsonl）留在磁盘，不再读。
 import { createHash, randomBytes } from 'node:crypto';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 import {
   IMAGE_MIME_TYPES,
-  MODEL_FALLBACK_MARK,
-  TRANSCRIBE_MAX_BYTES,
-  modelInfoOf,
-  type AttachmentInfoResponse,
   type AttachmentView,
   type ImageMime,
   type InputDisclosure,
-  type TranscriptionView,
 } from '../shared/protocol.ts';
 import type { ImageInput } from '../shared/records.ts';
 import { appendJsonl, readJsonl } from './knowledge/jsonl.ts';
-import type { ModelAdapter, ModelDisclosure } from './model/port.ts';
+import type { ImageData, ModelDisclosure } from './model/port.ts';
 
 /** 带 HTTP 状态的输入错误：说给学习者听的话。 */
 export class InputError extends Error {
@@ -49,21 +44,9 @@ interface StoredImage {
   derivedFrom?: string;
 }
 
-interface StoredTranscription {
-  id: string;
-  at: string;
-  attachmentId: string;
-  text: string;
-  /** 实际执行的模型；取不到时是适配器名 + 兜底标记（同 model_used 的约定）。 */
-  model: string;
-}
-
 export interface InputsOptions {
   /** 存放处目录（<数据>/inputs）。 */
   dir: string;
-  model: ModelAdapter;
-  /** 转写的系统提示（prompts/transcribe.md）。 */
-  instructions: string;
   now?: () => Date;
 }
 
@@ -71,13 +54,26 @@ export class Inputs {
   private constructor(
     private readonly o: InputsOptions,
     private readonly images: Map<string, StoredImage>,
-    private readonly transcriptions: StoredTranscription[],
   ) {}
 
   static async load(o: InputsOptions): Promise<Inputs> {
     const images = await readJsonl<StoredImage>(join(o.dir, 'images.jsonl'));
-    const trs = await readJsonl<StoredTranscription>(join(o.dir, 'transcriptions.jsonl'));
-    return new Inputs(o, new Map(images.map((i) => [i.id, i])), trs);
+    return new Inputs(o, new Map(images.map((i) => [i.id, i])));
+  }
+
+  /** 原图所在的目录（学习对话的沙盒把它挂成只读的 `附图/`）。 */
+  get imagesDir(): string {
+    return this.dir('images');
+  }
+
+  /** 送给模型的那张（有副本就用副本）：字节、类型、文件名。 */
+  async forModel(r: ImageInput): Promise<ImageData & { file: string }> {
+    const row = this.stored(r.sentAs ?? r.attachmentId);
+    return {
+      mime: row.mime,
+      data: await readFile(this.file(row)),
+      file: `${row.id}.${EXT[row.mime]}`,
+    };
   }
 
   // ───────────── 原图 ─────────────
@@ -123,82 +119,21 @@ export class Inputs {
     return { mime: row.mime, data: await readFile(this.file(row)) };
   }
 
-  info(id: string): AttachmentInfoResponse {
-    const row = this.stored(id);
-    const family = new Set([
-      id,
-      ...[...this.images.values()].filter((i) => i.derivedFrom === id).map((i) => i.id),
-    ]);
-    return {
-      attachment: view(row),
-      transcriptions: this.transcriptions
-        .filter((t) => family.has(t.attachmentId))
-        .map(transcriptionView),
-    };
-  }
-
-  // ───────────── 转写 ─────────────
-
-  async transcribe(id: string): Promise<TranscriptionView> {
-    const row = this.stored(id);
-    const t = this.o.model.transcriber;
-    if (t === undefined) {
-      throw new InputError(
-        501,
-        `现在用的模型接口（${this.o.model.name}）不支持图片转写。图片已经存好，可以把图里的内容自己打出来再发。`,
-      );
-    }
-    if (row.size > TRANSCRIBE_MAX_BYTES) {
-      throw new InputError(
-        413,
-        `图片太大，转写一次最多 ${(TRANSCRIBE_MAX_BYTES / 1024 / 1024).toFixed(1)} MB。原图已经存好；缩小或裁一下再试。`,
-      );
-    }
-    let r: Awaited<ReturnType<typeof t.transcribe>>;
-    try {
-      r = await t.transcribe(
-        { mime: row.mime, data: await readFile(this.file(row)) },
-        this.o.instructions,
-      );
-    } catch (err) {
-      console.error(`图片 ${id} 转写失败：`, err);
-      const why = err instanceof Error ? err.message : String(err);
-      throw new InputError(502, `转写没成功（${why}）。图片已经存好，可以再试一次或自己打出来。`);
-    }
-    const tr: StoredTranscription = {
-      id: `tr-${randomBytes(6).toString('hex')}`,
-      at: this.iso(),
-      attachmentId: id,
-      text: r.text,
-      model:
-        r.model !== undefined && r.model !== ''
-          ? r.model
-          : `${this.o.model.name}（适配器名；${MODEL_FALLBACK_MARK}）`,
-    };
-    await appendJsonl(join(this.o.dir, 'transcriptions.jsonl'), tr);
-    this.transcriptions.push(tr);
-    return transcriptionView(tr);
-  }
-
   // ───────────── 并进消息 ─────────────
 
   /**
-   * 把学习者打的字和附的图合成一条消息：每张图的文字（改过的转写 / 照转写 / 学习者自己写的说明）
-   * 带一行来源标注接在后面（转写文本标来源）。引用对不上就报错，什么都不记。
+   * 学习者打的字和附的图（W12 §5.6）：文字原样，图片记原图 id 与送去的副本 id。引用对不上就报错，什么都不记。
+   * 只附图、不打字也行。
    */
   compose(text: unknown, images: unknown): { text: string; images: ImageInput[] } {
-    const typed = typeof text === 'string' ? text.trim() : '';
+    const typed = typeof text === 'string' ? text : '';
     if (images === undefined || (Array.isArray(images) && images.length === 0)) {
-      if (typed === '' || typeof text !== 'string') throw new InputError(400, 'text 不能为空');
-      return { text, images: [] };
+      if (typed.trim() === '') throw new InputError(400, 'text 不能为空');
+      return { text: typed, images: [] };
     }
     if (!Array.isArray(images)) throw new InputError(400, 'images 要是数组');
     const refs = images.map((x: unknown, i) => this.ref(x, i + 1));
-    const parts = typed === '' ? [] : [typed];
-    refs.forEach((r, i) => {
-      parts.push(`${imageLabel(i + 1, r)}\n${r.sent}`.trimEnd());
-    });
-    return { text: parts.join('\n\n'), images: refs };
+    return { text: typed.trim(), images: refs };
   }
 
   private ref(x: unknown, n: number): ImageInput {
@@ -207,43 +142,26 @@ export class Inputs {
     if (typeof id !== 'string' || !this.images.has(id)) {
       throw new InputError(400, `第 ${String(n)} 张图找不到（可能还没传完），重新加一下`);
     }
-    const own = typeof o.text === 'string' ? o.text.trim() : undefined;
-    if (o.transcriptionId === undefined) {
-      return { attachmentId: id, sent: own ?? '' };
+    const copy = o.sentAs;
+    if (
+      copy !== undefined &&
+      (typeof copy !== 'string' || this.images.get(copy)?.derivedFrom !== id)
+    ) {
+      throw new InputError(400, `第 ${String(n)} 张图的缩小副本对不上这张图`);
     }
-    const tr = this.transcriptions.find((t) => t.id === o.transcriptionId);
-    const of = tr ? this.images.get(tr.attachmentId) : undefined;
-    if (tr === undefined || (tr.attachmentId !== id && of?.derivedFrom !== id)) {
-      throw new InputError(400, `第 ${String(n)} 张图的转写对不上这张图`);
-    }
-    return {
-      attachmentId: id,
-      transcriptionId: tr.id,
-      ...(tr.attachmentId !== id ? { transcribedFrom: tr.attachmentId } : {}),
-      transcript: tr.text,
-      sent: own ?? tr.text,
-      model: tr.model,
-    };
+    return { attachmentId: id, sent: '', ...(typeof copy === 'string' ? { sentAs: copy } : {}) };
   }
 
   // ───────────── 外发披露 ─────────────
 
   disclosure(d: ModelDisclosure | undefined): InputDisclosure[] {
-    const t = this.o.model.transcriber;
     return [
-      t
-        ? {
-            what: '图片（拍照 / 手写）的转写',
-            service: d?.service ?? '未声明（这个模型接口没有说明内容送往哪里）',
-            model: t.model ?? null,
-            note: `你加的图片会原样送去转写${d ? `（${d.route}）` : ''}，转写出的文字经你核对后才进对话；对话里只送文字，不送图片。原图只存在本机数据目录。`,
-          }
-        : {
-            what: '图片（拍照 / 手写）的转写',
-            service: `不支持（现在用的模型接口 ${this.o.model.name} 做不了图片转写）`,
-            model: null,
-            note: '图片只存在本机数据目录，不送往任何服务；图里的内容需要你自己打出来。',
-          },
+      {
+        what: '图片（拍照 / 手写）',
+        service: d?.service ?? '未声明（这个模型接口没有说明内容送往哪里）',
+        model: null,
+        note: `你附的图片随消息原样送给对话的模型${d ? `（${d.route}）` : ''}；太大的先在浏览器里缩小一份再送。原图只存在本机数据目录。`,
+      },
       {
         what: '语音输入',
         service: '浏览器自带的语音识别服务（由浏览器决定，如 Chrome 送往 Google 的服务器）',
@@ -280,25 +198,4 @@ function isImageMime(t: string): t is ImageMime {
 
 function view(r: StoredImage): AttachmentView {
   return { ...r, url: `/api/attachments/${r.id}` };
-}
-
-function transcriptionView(t: StoredTranscription): TranscriptionView {
-  return {
-    id: t.id,
-    at: t.at,
-    attachmentId: t.attachmentId,
-    text: t.text,
-    model: modelInfoOf(t.model),
-  };
-}
-
-/** 图片文字前的来源标注（学习者和模型都看得到）。 */
-function imageLabel(n: number, r: ImageInput): string {
-  const k = `图片 ${String(n)}`;
-  if (r.transcript === undefined) {
-    return r.sent === '' ? `［${k} · 没有转写］` : `［${k} · 学习者写的说明］`;
-  }
-  return r.sent === r.transcript
-    ? `［${k} · 自动转写，可能有误］`
-    : `［${k} · 自动转写，发送前改过］`;
 }

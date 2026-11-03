@@ -1,6 +1,7 @@
 // 由 assistant-ui 模板 0.0.121（MIT）的 thread.aui.tsx 删减而来：
-// 去掉编辑、分支、重新生成、建议；文字改中文；版式往 Claude 桌面版靠。
-// 输入框换成自己的（components/input/composer.tsx）：图片 / 拍照经转写、语音、公式（批 4）。
+// 去掉分支、建议；文字改中文；版式往 Claude 桌面版靠。
+// 输入框换成自己的（components/input/composer.tsx）：图片原样送、语音、公式（批 4）；生成中途能停（W12 §4.4）。
+// 鼠标移到消息上左下角显示时间（W12 §4.2）；停下后能改自己刚发的那句（W12 §4.4）；讨论串一张卡片带状态（§4.1）。
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,13 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
-import { ArrowDownIcon, ArrowRightIcon, ChevronRightIcon, LoaderIcon } from 'lucide-react';
+import {
+  ArrowDownIcon,
+  ArrowRightIcon,
+  ChevronRightIcon,
+  LoaderIcon,
+  PencilIcon,
+} from 'lucide-react';
 import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
@@ -23,6 +30,8 @@ import { useOpenSession } from '@/open-session';
 import { useCurrentSession, useHighlight, usePanel } from '@/panel';
 import { W } from '@/wording';
 import { WT } from '@/wording-tools';
+import type { ThreadGroup } from '../../../shared/threads.ts';
+import { localMinute } from '../../../shared/time.ts';
 import { useEffect, useRef, useState, type FC, type ReactNode } from 'react';
 
 /** 消息带的附加信息（由 App 的 convertMessage 放进 metadata.custom）。 */
@@ -35,7 +44,33 @@ interface MessageMeta {
   images?: string[];
   candidates?: CandidatesView;
   pending?: true;
+  at?: string;
+  edited?: true;
+  reaction?: string;
+  editable?: true;
+  card?: { sessionId: string; title: string; group?: ThreadGroup };
+  /** 正在写的那条：模型这会儿在做什么（W12 §4.5）。 */
+  activity?: string;
 }
+
+/** 消息左下角的时间：鼠标移上去才显示（W12 §4.2）；改过的标“改过”。 */
+const Stamp: FC<{ at?: string; edited?: true; align?: 'start' | 'end' }> = ({
+  at,
+  edited,
+  align,
+}) =>
+  at === undefined ? null : (
+    <span
+      data-testid="message-time"
+      className={cn(
+        'text-muted-foreground pointer-events-none text-[0.7rem] opacity-0 transition-opacity group-hover/message:opacity-100',
+        align === 'end' && 'self-start',
+      )}
+    >
+      {localMinute(at)}
+      {edited === true ? ` · ${WT.edited}` : ''}
+    </span>
+  );
 
 function useMeta(): MessageMeta {
   return useAuiState((s) => s.message.metadata.custom as MessageMeta);
@@ -55,6 +90,11 @@ export const Thread: FC<{
   footer?: ReactNode;
   disabled?: boolean;
   placeholder?: string;
+  /** 模型在生成：输入框换成停止键（W12 §4.4）。 */
+  running?: boolean;
+  onStop?: () => Promise<void>;
+  /** 停下后改自己刚发的那句、重新生成。 */
+  onEditLast?: (text: string) => Promise<void>;
   /** 发一条消息（文字 + 附图）。 */
   onSend: SendInput;
   /** 拖进非图片文件时（只有主对话给）：走项目的上传，回给学习者看的（上传结果那一条，可点改）。 */
@@ -65,6 +105,9 @@ export const Thread: FC<{
   footer,
   disabled = false,
   placeholder = '回复…',
+  running = false,
+  onStop,
+  onEditLast,
   onSend,
   onFiles,
 }) => {
@@ -100,7 +143,7 @@ export const Thread: FC<{
             <ThreadPrimitive.Messages>
               {({ message }) =>
                 message.role === 'user' ? (
-                  <UserMessage />
+                  <UserMessage onEditLast={onEditLast} />
                 ) : message.role === 'system' ? (
                   <SystemMessage />
                 ) : (
@@ -129,6 +172,8 @@ export const Thread: FC<{
               <InputComposer
                 placeholder={placeholder}
                 onSend={onSend}
+                running={running}
+                {...(onStop !== undefined ? { onStop } : {})}
                 {...(onFiles !== undefined ? { onOtherFiles: onFiles } : {})}
               />
             )}
@@ -141,6 +186,7 @@ export const Thread: FC<{
 
 const AssistantMessage: FC = () => {
   const { attr, lit } = useLines();
+  const meta = useMeta();
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
@@ -150,7 +196,7 @@ const AssistantMessage: FC = () => {
       data-role="assistant"
       data-lines={attr}
       className={cn(
-        'fade-in animate-in relative scroll-mt-16 duration-150',
+        'group/message fade-in animate-in relative flex scroll-mt-16 flex-col gap-1 duration-150',
         lit && 'bg-primary/5 ring-primary/40 -mx-2 rounded-xl px-2 py-1 ring-2',
       )}
     >
@@ -159,13 +205,13 @@ const AssistantMessage: FC = () => {
         className="font-serif text-foreground px-1 text-[1.05rem] leading-relaxed wrap-break-word"
       >
         {text.trim() === '' && !done ? (
-          // 还没出字：只放一行“在想…”（不再叠 Markdown 自带的跳动点）
+          // 还没出字：一行“正在做什么”（程序从工具调用得出，W12 §4.5），没调工具时写“在写…”
           <span
             data-testid="thinking"
             className="text-muted-foreground flex items-center gap-1.5 font-sans text-sm"
           >
             <LoaderIcon className="size-3.5 animate-spin" />
-            {WT.thinking}
+            {meta.activity ?? WT.writing}
           </span>
         ) : (
           <CitationsProvider text={text} done={done}>
@@ -180,32 +226,105 @@ const AssistantMessage: FC = () => {
           </ErrorPrimitive.Root>
         </MessagePrimitive.Error>
       </div>
+      <Stamp
+        {...(meta.at !== undefined ? { at: meta.at } : {})}
+        {...(meta.edited ? { edited: meta.edited } : {})}
+      />
     </MessagePrimitive.Root>
   );
 };
 
-const UserMessage: FC = () => {
+const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefined }> = ({
+  onEditLast,
+}) => {
   const { attr, lit } = useLines();
   const meta = useMeta();
+  const text = useAuiState((s) =>
+    s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
+  );
+  const [editing, setEditing] = useState<string | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
   return (
     <MessagePrimitive.Root
       data-role="user"
       data-lines={attr}
-      className="fade-in animate-in flex scroll-mt-16 flex-col items-end gap-1 px-1 duration-150"
+      className="group/message fade-in animate-in flex scroll-mt-16 flex-col items-end gap-1 px-1 duration-150"
     >
       {meta.objection !== undefined && (
         <span className="text-muted-foreground text-xs">{meta.objection.label}</span>
       )}
       {meta.images !== undefined && <SentImages ids={meta.images} />}
-      <div
-        data-testid="user-message"
-        className={cn(
-          'bg-muted text-foreground max-w-[85%] rounded-(--composer-radius) px-4 py-2.5 whitespace-pre-wrap wrap-break-word transition-shadow',
-          meta.objection !== undefined && 'border-primary/40 border',
-          lit && 'bg-primary/10 ring-primary/50 ring-2',
+      {editing !== undefined ? (
+        <div className="flex w-full max-w-[85%] flex-col gap-1.5" data-testid="edit-last">
+          <textarea
+            value={editing}
+            rows={Math.min(8, Math.max(2, editing.split('\n').length))}
+            className="bg-card focus:border-foreground/30 w-full rounded-xl border px-3 py-2 outline-none"
+            onChange={(e) => setEditing(e.target.value)}
+          />
+          <div className="flex justify-end gap-2 text-xs">
+            <button
+              type="button"
+              className="text-muted-foreground hover:text-foreground"
+              onClick={() => setEditing(undefined)}
+            >
+              {WT.editCancel}
+            </button>
+            <button
+              type="button"
+              disabled={busy || editing.trim() === ''}
+              className="text-primary disabled:opacity-50"
+              onClick={() => {
+                if (onEditLast === undefined) return;
+                setBusy(true);
+                onEditLast(editing)
+                  .then(() => setEditing(undefined))
+                  .catch((e: unknown) => {
+                    console.error('改那句失败：', e);
+                  })
+                  .finally(() => setBusy(false));
+              }}
+            >
+              {WT.editSave}
+            </button>
+          </div>
+        </div>
+      ) : (
+        <div
+          data-testid="user-message"
+          className={cn(
+            'bg-muted text-foreground relative max-w-[85%] rounded-(--composer-radius) px-4 py-2.5 whitespace-pre-wrap wrap-break-word transition-shadow',
+            meta.objection !== undefined && 'border-primary/40 border',
+            lit && 'bg-primary/10 ring-primary/50 ring-2',
+          )}
+        >
+          <MessagePrimitive.Parts />
+          {meta.reaction !== undefined && (
+            <span
+              data-testid="reaction"
+              className="bg-card absolute -bottom-3 left-2 rounded-full border px-1.5 text-sm shadow-xs"
+            >
+              {meta.reaction}
+            </span>
+          )}
+        </div>
+      )}
+      <div className="flex w-full max-w-[85%] items-center gap-2">
+        <Stamp
+          {...(meta.at !== undefined ? { at: meta.at } : {})}
+          {...(meta.edited ? { edited: meta.edited } : {})}
+        />
+        {meta.editable === true && onEditLast !== undefined && editing === undefined && (
+          <button
+            type="button"
+            data-testid="edit-last-open"
+            className="text-muted-foreground hover:text-foreground ms-auto flex items-center gap-1 text-xs"
+            onClick={() => setEditing(text)}
+          >
+            <PencilIcon className="size-3" />
+            {WT.edit}
+          </button>
         )}
-      >
-        <MessagePrimitive.Parts />
       </div>
     </MessagePrimitive.Root>
   );
@@ -244,7 +363,7 @@ const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, verdict, line, candidates, pending } = useMeta();
+  const { link, verdict, line, candidates, pending, card } = useMeta();
   const open = useOpenSession();
   const panel = usePanel();
   const sessionId = useCurrentSession();
@@ -258,8 +377,31 @@ const SystemMessage: FC = () => {
           <LoaderIcon className="size-3.5 animate-spin" />
           {text}
         </div>
-      ) : candidates !== undefined && sessionId !== undefined ? (
-        <CandidateList view={candidates} sessionId={sessionId} />
+      ) : candidates !== undefined ? (
+        <CandidateList view={candidates} />
+      ) : card !== undefined ? (
+        <button
+          type="button"
+          data-testid="thread-card"
+          className="bg-card hover:bg-accent/60 text-foreground inline-flex max-w-full items-center gap-2 rounded-xl border px-3 py-1.5 text-sm shadow-xs transition-colors"
+          onClick={() => open(card.sessionId)}
+        >
+          <span className="min-w-0 truncate">{card.title}</span>
+          {card.group !== undefined && (
+            <span
+              data-testid="thread-card-status"
+              className={cn(
+                'shrink-0 rounded-full px-1.5 text-[0.7rem]',
+                card.group === 'waiting'
+                  ? 'bg-primary/10 text-primary'
+                  : 'bg-muted text-muted-foreground',
+              )}
+            >
+              {W.threads[card.group]}
+            </span>
+          )}
+          <ArrowRightIcon className="text-muted-foreground size-3.5 shrink-0" />
+        </button>
       ) : verdict !== undefined && sessionId !== undefined && line !== undefined ? (
         <button
           type="button"

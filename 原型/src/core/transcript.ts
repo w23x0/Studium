@@ -6,10 +6,14 @@ import type { LogRecord, NumberedRecord } from '../shared/records.ts';
 import { quotePrefix } from '../shared/stream-page.ts';
 import { localMinute } from '../shared/time.ts';
 
-export function renderTranscript(records: NumberedRecord[]): string {
+/** labelOf：别的会话发来的话写谁发的（不给就写会话 id）。中途碎话（W12 §4.6）不放。 */
+export function renderTranscript(
+  records: NumberedRecord[],
+  labelOf: (sessionId: string) => string = (id) => id,
+): string {
   const out: string[] = [];
   for (const { line, record: r } of records) {
-    const one = speech(r);
+    const one = speech(r, labelOf);
     if (one === undefined) continue;
     const body = one.text.replace(/\n/g, '\n      ');
     out.push(`L${String(line)} ${one.who}（${localMinute(r.at)}）：${body}`);
@@ -18,7 +22,10 @@ export function renderTranscript(records: NumberedRecord[]): string {
 }
 
 /** 一条记录在对话原文里谁说了什么；学习者在组件上的操作与子代理交回也算（会话/学习对话.md §3）。 */
-function speech(r: LogRecord): { who: string; text: string } | undefined {
+function speech(
+  r: LogRecord,
+  labelOf: (sessionId: string) => string,
+): { who: string; text: string } | undefined {
   switch (r.type) {
     case 'user_message':
       return {
@@ -31,9 +38,23 @@ function speech(r: LogRecord): { who: string; text: string } | undefined {
               : r.text,
       };
     case 'assistant_message':
-      return { who: '教学', text: r.text };
+      return r.interim === true ? undefined : { who: '教学', text: r.text };
     case 'program_fact':
       return { who: '程序', text: r.text };
+    case 'thread_message':
+      return {
+        who: `${labelOf(r.from)}${r.reply === true ? '回话' : '发来'}`,
+        text: [
+          r.text,
+          ...(r.cited ?? []).map(
+            (c) => `（附学习者原话 ${labelOf(c.session)} L${String(c.line)}）${c.text}`,
+          ),
+        ].join('\n'),
+      };
+    case 'message_edited':
+      return r.by === 'learner'
+        ? { who: '学习者', text: `（把第 ${String(r.line)} 行改成）${r.text}` }
+        : { who: '教学', text: `（把第 ${String(r.line)} 行改成）${r.text}` };
     case 'component_action':
       return { who: '学习者', text: `（在组件上）${r.text}` };
     case 'component_report':

@@ -19,7 +19,7 @@ import { useSidebarView } from './hooks/use-sidebar.ts';
 import { LayoutContext, useNarrow } from './layout.ts';
 import { useSetting } from './settings.ts';
 import { buildSidebar, withTitles } from './sidebar-model.ts';
-import { useReviewIds } from './components/longterm/reviews.tsx';
+import { threadStatus } from './threads-model.ts';
 import { OpenSessionContext } from './open-session.ts';
 import {
   isWideTarget,
@@ -46,9 +46,7 @@ const REFRESH_ON = new Set<string>([
   'thread_closed',
   'thread_reopened',
   'thread_title',
-  'find_candidates',
-  'candidates_picked',
-  'choice_card',
+  'thread_deleted',
 ]);
 
 /** 右侧面板：开着时显示栈顶，面板里点开的东西压栈、可返回。 */
@@ -168,13 +166,13 @@ export function App() {
   }, [loaded, route, projects, rawSessions, go]);
 
   const project = projects.find((p) => p.mainSessionId === projectId);
-  const reviewIds = useReviewIds(projectId);
-  const isReview = useCallback((id: string) => reviewIds.has(id), [reviewIds]);
   const currentSession = sessions.find((s) => s.sessionId === current);
   const titleOf = useCallback(
     (id: string) => sessions.find((s) => s.sessionId === id)?.title,
     [sessions],
   );
+  // 主对话里讨论串卡片的标题与状态：与右栏同一来源（W12 §4.1）
+  const statusOf = useCallback((id: string) => threadStatus(sessions, id), [sessions]);
   const openMain = (id: string) => go({ page: 'chat', projectId: id, current: id });
   const showSession = useCallback(
     (id: string, list: SessionSummary[]) => {
@@ -345,7 +343,7 @@ export function App() {
                           projectId={projectId}
                           projectTitle={project.title}
                           titleOf={titleOf}
-                          isReview={isReview}
+                          statusOf={statusOf}
                           focus={focus?.sessionId === current ? focus : undefined}
                           headerExtra={threadsButton}
                           onError={fail}
@@ -364,7 +362,7 @@ export function App() {
                       projectId={projectId}
                       projectTitle={project.title}
                       titleOf={titleOf}
-                      isReview={isReview}
+                      statusOf={statusOf}
                       focus={focus?.sessionId === current ? focus : undefined}
                       headerExtra={threadsButton}
                       onError={fail}
@@ -383,13 +381,17 @@ export function App() {
                   <ThreadsPanel
                     projectId={projectId}
                     sessions={sessions}
-                    isReview={isReview}
                     current={current}
                     onOpen={(id) => {
                       setThreadsNarrow(false);
                       open(id);
                     }}
                     onClose={() => setThreadsOpen(false)}
+                    onDeleted={(id) => {
+                      refresh().catch(fail);
+                      if (id === current) openMain(projectId);
+                    }}
+                    onError={fail}
                   />
                 </aside>
               )}
@@ -401,12 +403,8 @@ export function App() {
                       ? 'fixed inset-0 z-50'
                       : cn(
                           'border-s',
-                          // 看书（原文、原件页面）时面板放宽，看与改产出物时更宽，像 Claude 的 artifact 面板
-                          top.kind === 'output'
-                            ? 'w-[min(56rem,56vw)]'
-                            : isWideTarget(top)
-                              ? 'w-[min(44rem,50vw)]'
-                              : 'w-[min(28rem,40vw)]',
+                          // 看书（原文、原件页面）时面板放宽
+                          isWideTarget(top) ? 'w-[min(44rem,50vw)]' : 'w-[min(28rem,40vw)]',
                         ),
                   )}
                 >

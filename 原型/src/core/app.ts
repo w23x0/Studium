@@ -8,18 +8,13 @@ import { Crosslinks } from './crosslinks.ts';
 import { Evidence } from './evidence.ts';
 import { Hub } from './hub.ts';
 import { Inputs } from './inputs.ts';
-import { Lookback } from './lookback.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { Materials } from './knowledge/materials.ts';
 import { Originals } from './knowledge/originals.ts';
 import { SourceReports } from './knowledge/source-reports.ts';
-import { PedagogyStore } from './knowledge/pedagogy.ts';
-import { OutputStore } from './knowledge/output.ts';
-import { StateStore } from './knowledge/state.ts';
 import { Objections } from './knowledge/objections.ts';
 import { SourceNotes } from './knowledge/source-notes.ts';
-import { Outputs } from './outputs.ts';
 import { DataDir, upgradeDataDir } from './log/data-dir.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
@@ -47,8 +42,6 @@ export interface AppOptions {
 export interface App {
   server: RunningServer;
   hub: Hub;
-  /** 知识产出物（回放重做学习者在这里的动作用）。 */
-  outputs: Outputs;
   studium: Studium;
   dataDir: DataDir;
   close(): Promise<void>;
@@ -57,8 +50,19 @@ export interface App {
 /** 全部会话种类（提示词一个种类一份，按这个名单装载）。 */
 const KINDS: readonly ConversationKind[] = CONVERSATION_KINDS;
 
-/** 不再开的会话种类：没有自己的提示词文件（守卫 10-31 起不再开，guard.md 与接在它后面的 evidence.md 已删）。 */
-const RETIRED_PROMPT_KINDS: readonly ConversationKind[] = ['guard'];
+/**
+ * 不再开的会话种类：没有自己的提示词文件（守卫 10-31 起；导航、检索子代理、状态整理、教法记录整理、写产出、
+ * 页面编辑员 W12 起）。旧会话照旧能打开看。
+ */
+const RETIRED_PROMPT_KINDS: readonly ConversationKind[] = [
+  'guard',
+  'nav',
+  'retrieve',
+  'state',
+  'pedagogy',
+  'output',
+  'editor',
+];
 
 export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
   const entries = await Promise.all(
@@ -71,11 +75,6 @@ export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
 }
 
 export async function createApp(opts: AppOptions): Promise<App> {
-  const wired: { model?: ModelAdapter } = {};
-  const modelRef = (): ModelAdapter => {
-    if (wired.model === undefined) throw new Error('模型接口还没接上');
-    return wired.model;
-  };
   const dataDir = await DataDir.acquire(opts.dataRoot);
   try {
     await upgradeDataDir(dataDir.root);
@@ -84,8 +83,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     throw err;
   }
   const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
-  const pedagogy = await PedagogyStore.load(join(dataDir.root, 'knowledge', 'pedagogy'));
-  const state = await StateStore.load(join(dataDir.root, 'knowledge', 'state'));
   const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
   // 资料与外部导入存一处（工单 W8、W11）：读原文都经它
   const materials = new Materials({
@@ -113,35 +110,22 @@ export async function createApp(opts: AppOptions): Promise<App> {
     notes: await SourceNotes.load(join(dataDir.root, 'knowledge', 'source-notes')),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
-  const outputs = new Outputs({
-    store: await OutputStore.load(join(dataDir.root, 'knowledge', 'output')),
-    sources,
-    materials,
-    readable: async (mainId) => (await materials.ofProject(mainId)).map((m) => m.id),
+  // 附图原样存（W12 §5.6 起原样随消息送给模型，不再转写）
+  const inputs = await Inputs.load({
+    dir: join(dataDir.root, 'inputs'),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
-  const routePrompt = await readFile(join(here, 'prompts/route.md'), 'utf8');
-  const arrangePrompt = await readFile(join(here, 'prompts/arrange.md'), 'utf8');
   const studium = new Studium({
     prompts: await loadPrompts(),
-    // 学习对话提示词里“页面”那一段按学习页的种类接（10-29 #74：区域图 / 竖流）
-    loopPages: {
-      grid: await readFile(join(here, 'prompts/loop-grid.md'), 'utf8'),
-      stream: await readFile(join(here, 'prompts/loop-stream.md'), 'utf8'),
-    },
-    // 上传分流：拿不准的交模型判一次（工单 W9 §4.2）；model 在下面才组装好，这里取用时再拿
-    judge: (name, sample) => judgeUpload(modelRef(), routePrompt, name, sample),
-    // 学习页的框架小模型（W10）：每轮一次，对块、摆屏
-    arrange: (input) => frameworkCall(modelRef(), arrangePrompt, input),
+    // 学习对话提示词里“页面”那一段（W12 起竖流是唯一的学习页）
+    loopPage: await readFile(join(here, 'prompts/loop-stream.md'), 'utf8'),
     materials,
     sources,
     dataDir: dataDir.root,
-    pedagogy,
-    state,
     objections,
     teaching,
-    outputs,
+    inputs,
     cross,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
@@ -151,13 +135,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
       ? new Recorder(opts.tape, { now: opts.now ?? (() => new Date()) })
       : undefined;
   const model = recorder ? recorder.wrapModel(inner) : inner;
-  wired.model = model;
-  const inputs = await Inputs.load({
-    dir: join(dataDir.root, 'inputs'),
-    model,
-    instructions: await readFile(join(here, 'prompts/transcribe.md'), 'utf8'),
-    ...(opts.now !== undefined ? { now: opts.now } : {}),
-  });
   const hub = new Hub({
     dataDir,
     index,
@@ -166,15 +143,12 @@ export async function createApp(opts: AppOptions): Promise<App> {
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   studium.attach(hub);
-  outputs.attach(hub);
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
   // 第一次打开不自动建“项目 1”：没有项目时界面显示全部项目页的空状态，新建时先问想学什么（界面说明 §3）
   const evidence = new Evidence({
     hub,
     learned: studium.learned,
-    pedagogy,
-    state,
     objections,
     sources,
     inputs,
@@ -187,16 +161,8 @@ export async function createApp(opts: AppOptions): Promise<App> {
     sidebar: await SidebarStore.load(join(dataDir.root, 'ui', 'sidebar.jsonl'), opts.now),
     sources,
     evidence,
-    cross: {
-      links: cross,
-      lookback: new Lookback({
-        evidence,
-        state,
-        ...(opts.now !== undefined ? { now: opts.now } : {}),
-      }),
-    },
+    cross: { links: cross },
     inputs,
-    outputs: recorder ? recorder.wrap(outputs, 'outputs.') : outputs,
     studium: recorder ? recorder.wrapStudium(studium) : studium,
     token: opts.token,
     port: opts.port,
@@ -205,102 +171,15 @@ export async function createApp(opts: AppOptions): Promise<App> {
   return {
     server,
     hub,
-    outputs,
     studium,
     dataDir,
     close: async () => {
       await server.close();
-      // 后台清单（合上之后、状态整理、教法记录整理）跑完再关，免得写到一半
+      // 后台清单（合上之后、导入会话）跑完再关，免得写到一半
       await studium.settled();
       await hub.close();
       index.close();
       await dataDir.release();
     },
   };
-}
-
-/**
- * 框架小模型的一次调用（W10，实现选型「框架小模型」）：不给工具、不留会话文件，模型按 profiles 的 framework 一项配。
- */
-async function frameworkCall(
-  model: ModelAdapter,
-  instructions: string,
-  input: string,
-): Promise<{ text: string; model?: string }> {
-  const conv = model.open({
-    systemPrompt: instructions,
-    tools: [],
-    session: { id: 'framework', kind: 'loop' },
-    profile: 'framework',
-    ephemeral: true,
-  });
-  let text = '';
-  let used: string | undefined;
-  try {
-    for await (const e of conv.send({ role: 'program', plain: true, text: input })) {
-      if (e.kind === 'assistant_text') text += e.text;
-      if (e.kind === 'model') used = e.name;
-      if (e.kind === 'turn_error') throw new Error(e.reason);
-    }
-  } finally {
-    await conv.close();
-  }
-  return { text, ...(used !== undefined ? { model: used } : {}) };
-}
-
-/**
- * 上传分流的一次判断（工单 W9 §4.2）：一问一答、不给工具，只回“资料 / 学过的：笔记 / 学过的：对话记录”
- * 加一句理由；回得不像样就报错，由调用方按扩展名兜底。
- */
-async function judgeUpload(
-  model: ModelAdapter,
-  instructions: string,
-  name: string,
-  sample: string,
-): Promise<{
-  to: '资料' | '学过的';
-  channel?: '笔记' | '对话记录';
-  owner: '学习者' | '项目';
-  reason: string;
-}> {
-  const conv = model.open({
-    systemPrompt: instructions,
-    tools: [],
-    session: { id: `route-${name}`, kind: 'main' },
-  });
-  let text = '';
-  try {
-    for await (const e of conv.send({
-      role: 'program',
-      text: `文件名：${name}\n\n开头一段：\n${sample}`,
-    })) {
-      if (e.kind === 'assistant_text') text += e.text;
-      if (e.kind === 'turn_error') throw new Error(e.reason);
-    }
-  } finally {
-    await conv.close();
-  }
-  const [first = '', second = '', ...rest] = text
-    .trim()
-    .split('\n')
-    .filter((l) => l.trim() !== '');
-  // 第二行没写清归谁：按两边的默认（学过的 → 学习者，资料 → 项目；W11 §2）
-  const ownerSaid = second.includes('学习者')
-    ? '学习者'
-    : second.includes('项目')
-      ? '项目'
-      : undefined;
-  const reason =
-    (ownerSaid !== undefined ? rest : [second, ...rest]).join(' ').trim().slice(0, 80) ||
-    '模型判的';
-  if (first.includes('学过的')) {
-    return {
-      to: '学过的',
-      channel: first.includes('对话') ? '对话记录' : '笔记',
-      owner: ownerSaid ?? '学习者',
-      reason,
-    };
-  }
-  if (first.includes('资料')) return { to: '资料', owner: ownerSaid ?? '项目', reason };
-  throw new Error(`分流回答看不懂：${text.slice(0, 80)}`);
 }

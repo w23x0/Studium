@@ -8,7 +8,7 @@ import { sessionFrom } from '../hub.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 7;
+const SCHEMA_VERSION = 9;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -65,16 +65,18 @@ export class DerivedIndex {
           record.at,
           record.at,
         );
+      // 旧数据：写产出、阶段复盘 W12 起撤掉，只读看，在讨论串里算已结束
+      if (record.kind === 'output' || record.review !== undefined) {
+        this.db.prepare("UPDATE sessions SET mark = 'ended' WHERE session_id = ?").run(sessionId);
+      }
     } else if (record.type === 'session_withdrawn') {
       // 收掉的会话：正本留着，列表里不再出现
       this.db
         .prepare('UPDATE sessions SET withdrawn = 1, last_at = ? WHERE session_id = ?')
         .run(record.at, sessionId);
-    } else if (record.type === 'choice_card') {
-      // 导航定了单子：单子记在主对话里，导航那条对话算结束（另记一张表，重建时不怕导航那行还没建）
-      this.db
-        .prepare('INSERT OR REPLACE INTO nav_done (session_id) VALUES (?)')
-        .run(record.navSessionId);
+    } else if (record.type === 'thread_deleted') {
+      // 学习者删了一个讨论串（W12 §4.3）：记在主对话里；另记一张表，重建时不怕被删的那条还没建
+      this.db.prepare('INSERT OR REPLACE INTO deleted (session_id) VALUES (?)').run(record.session);
       this.touch(sessionId, record.at);
     } else if (record.type === 'project_title' || record.type === 'thread_title') {
       // 项目名随方向变、讨论串自己起的标题：正本开头那行不改，派生层取最新一条
@@ -105,10 +107,10 @@ export class DerivedIndex {
   listSessions(): SessionSummary[] {
     const rows = this.db
       .prepare(
-        `SELECT s.session_id, s.kind, s.title, s.parent, s.from_kind, s.from_loop, s.opened_at, s.last_at,
-           CASE WHEN n.session_id IS NOT NULL THEN 'ended' ELSE s.mark END AS mark
-         FROM sessions s LEFT JOIN nav_done n ON n.session_id = s.session_id
-         WHERE s.withdrawn = 0 ORDER BY s.opened_at DESC`,
+        `SELECT s.session_id, s.kind, s.title, s.parent, s.from_kind, s.from_loop, s.opened_at, s.last_at, s.mark
+         FROM sessions s
+         WHERE s.withdrawn = 0 AND s.session_id NOT IN (SELECT session_id FROM deleted)
+         ORDER BY s.opened_at DESC`,
       )
       .all() as {
       session_id: string;
@@ -135,11 +137,30 @@ export class DerivedIndex {
     }));
   }
 
-  /** 第一版检索：子串匹配（04「中文检索」先 grep）。 */
+  /** 学习者删掉的讨论串（W12 §4.3）。 */
+  isDeleted(sessionId: string): boolean {
+    return (
+      this.db.prepare('SELECT 1 AS x FROM deleted WHERE session_id = ?').get(sessionId) !==
+      undefined
+    );
+  }
+
+  /** 这几个会话里，before 之前学习者最后一次说话的时间（W12 §3.1 来历标注里的“距学习者上次说话多久”）。 */
+  lastLearnerAt(sessionIds: string[], before: string): string | undefined {
+    if (sessionIds.length === 0) return undefined;
+    const row = this.db
+      .prepare(
+        `SELECT MAX(at) AS at FROM records WHERE type = 'user_message' AND at < ? AND session_id IN (${sessionIds.map(() => '?').join(',')})`,
+      )
+      .get(before, ...sessionIds) as { at: string | null } | undefined;
+    return row?.at ?? undefined;
+  }
+
+  /** 第一版检索：子串匹配（04「中文检索」先 grep）；删掉的讨论串不搜。 */
   search(text: string, limit = 50): { sessionId: string; line: number; text: string }[] {
     const rows = this.db
       .prepare(
-        "SELECT session_id, line, text FROM records WHERE text LIKE ? ESCAPE '\\' ORDER BY at DESC LIMIT ?",
+        "SELECT session_id, line, text FROM records WHERE text LIKE ? ESCAPE '\\' AND session_id NOT IN (SELECT session_id FROM deleted) ORDER BY at DESC LIMIT ?",
       )
       .all(`%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`, limit) as {
       session_id: string;
@@ -186,7 +207,7 @@ function createSchema(db: DatabaseSync): void {
       withdrawn INTEGER NOT NULL DEFAULT 0,
       mark TEXT
     );
-    CREATE TABLE nav_done (
+    CREATE TABLE deleted (
       session_id TEXT PRIMARY KEY
     );
     CREATE TABLE records (
@@ -244,6 +265,8 @@ function searchableText(r: LogRecord): string {
     case 'assistant_message':
     case 'program_fact':
     case 'project_goal':
+    case 'thread_message':
+    case 'message_edited':
       return r.text;
     // 沙盒动作只在写文件时有内容（读 / 跑命令没有）
     case 'sandbox_action':

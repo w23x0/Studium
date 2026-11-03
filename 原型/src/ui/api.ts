@@ -4,10 +4,7 @@ import type {
   LoopEvidenceResponse,
   ObjectionResponse,
   ProjectOverviewResponse,
-  RecordObjectionRequest,
   SessionModelResponse,
-  StateResponse,
-  StrategiesResponse,
   ListProjectsResponse,
   ListSessionsResponse,
   ProjectResponse,
@@ -24,7 +21,6 @@ import type {
   SourceReportResponse,
   SourceReportsResponse,
   MessageImageInput,
-  TranscribeResponse,
   UploadAttachmentResponse,
   ProjectMaterialsResponse,
   ProjectMaterialsRequest,
@@ -33,45 +29,24 @@ import type {
   ProjectInstructionsResponse,
   ImportTextResponse,
   LoopRelationsResponse,
-  ConfirmationResponse,
   AddReminderRequest,
-  RouteDeviationsResponse,
   LearnedResponse,
   LearningResponse,
   ReminderView,
   RemindersResponse,
-  ReviewResponse,
-  ReviewsResponse,
   TodayView,
-  AddExplanationResponse,
   SourceNoteField,
   SourceNoteResponse,
   SourceNotesResponse,
-  StateTimelineResponse,
-  TicketEditRequest,
-  TicketEditResponse,
-  LearnPageMode,
-  LearnPageSettingBody,
   MineruTokenBody,
 } from '../shared/protocol.ts';
 import type { MessageQuote } from '../shared/records.ts';
-import type {
-  AddLiteratureRequest,
-  CompareResponse,
-  CreateOutputRequest,
-  ListOutputsResponse,
-  LiteratureResponse,
-  OpenOutputTaskResponse,
-  OutputResponse,
-  SaveVersionRequest,
-  VersionResponse,
-} from '../shared/output.ts';
 import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
 import type { PageTrialResult } from '../shared/page.ts';
 import type {
   ComponentActionRequest,
   ComponentErrorRequest,
-  LearnPageResponse,
+  OldComponentsResponse,
 } from '../shared/screen.ts';
 
 function token(): string {
@@ -151,8 +126,17 @@ export const api = {
   loopRelations: (mainId: string) =>
     call<LoopRelationsResponse>(`/projects/${mainId}/loop-relations`),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
+  /** 旧的区域图学习只读看：每个组件最后一版。 */
+  oldComponents: (loopId: string) => call<OldComponentsResponse>(`/sessions/${loopId}/screens`),
+  /** 生成中途停止（W12 §4.4）。 */
+  stop: (id: string) => call<object>(`/sessions/${id}/stop`, { method: 'POST', body: '{}' }),
+  /** 停下后改自己刚发的那句、重新生成（W12 §4.4）。 */
+  editLast: (id: string, text: string) =>
+    call<object>(`/sessions/${id}/edit`, { method: 'POST', body: JSON.stringify({ text }) }),
+  /** 删一个讨论串（W12 §4.3）。 */
+  deleteThread: (id: string) =>
+    call<object>(`/sessions/${id}/delete`, { method: 'POST', body: '{}' }),
   // ── 学习页：屏幕与组件（会话/学习对话.md §11） ──
-  learnPage: (loopId: string) => call<LearnPageResponse>(`/sessions/${loopId}/screens`),
   screenAction: (loopId: string, body: ComponentActionRequest) =>
     call<object>(`/sessions/${loopId}/screens/action`, {
       method: 'POST',
@@ -165,12 +149,6 @@ export const api = {
     }),
   screenTrial: (loopId: string, trialId: string, body: PageTrialResult | { received: true }) =>
     call<object>(`/sessions/${loopId}/screens/trial/${trialId}`, {
-      method: 'POST',
-      body: JSON.stringify(body),
-    }),
-  /** 改这次学习的单子（记录/单子与路线.md「单子」：可见可改）。 */
-  editTicket: (id: string, body: TicketEditRequest) =>
-    call<TicketEditResponse>(`/sessions/${id}/ticket-edit`, {
       method: 'POST',
       body: JSON.stringify(body),
     }),
@@ -193,12 +171,6 @@ export const api = {
       }),
     }),
   // ── 设置：新开的学习用哪种学习页（10-29 #74）──
-  learnPageSetting: () => call<LearnPageSettingBody>('/settings/learn-page'),
-  setLearnPageSetting: (mode: LearnPageMode) =>
-    call<LearnPageSettingBody>('/settings/learn-page', {
-      method: 'PUT',
-      body: JSON.stringify({ mode } satisfies LearnPageSettingBody),
-    }),
   mineruToken: () => call<MineruTokenBody>('/settings/mineru-token'),
   setMineruToken: (token: string) =>
     call<MineruTokenBody>('/settings/mineru-token', {
@@ -216,18 +188,11 @@ export const api = {
     if (!res.ok) throw new Error(body.error ?? `上传失败：${String(res.status)}`);
     return body.attachment;
   },
-  transcribe: (attachmentId: string) =>
-    call<TranscribeResponse>(`/attachments/${attachmentId}/transcribe`, {
-      method: 'POST',
-      body: '{}',
-    }),
   /** 原图地址（给 <img src>）。 */
   imageUrl: (attachmentId: string) => withToken(`/api/attachments/${attachmentId}`),
   // ── 依据可见 ──
   overview: (mainId: string) => call<ProjectOverviewResponse>(`/projects/${mainId}/overview`),
   loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),
-  strategies: () => call<StrategiesResponse>('/pedagogy/records'),
-  state: () => call<StateResponse>('/state/records'),
   // ── 批 10b：来源说明、状态回看 ──
   sourceNotes: () => call<SourceNotesResponse>('/sources/source-notes'),
   sourceNote: (material: string) =>
@@ -237,12 +202,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ material, field, text }),
     }),
-  stateTimeline: () => call<StateTimelineResponse>('/state/timeline'),
-  addExplanation: (recordId: string, text: string) =>
-    call<AddExplanationResponse>(`/state/records/${encodeURIComponent(recordId)}/explanations`, {
-      method: 'POST',
-      body: JSON.stringify({ text }),
-    }),
   disclosure: () => call<DisclosureResponse>('/disclosure'),
   sessionModel: (id: string) => call<SessionModelResponse>(`/sessions/${id}/model`),
   objectToVerdict: (loopId: string, line: number, text: string) =>
@@ -250,18 +209,7 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ line, text }),
     }),
-  objectToRecord: (req: RecordObjectionRequest) =>
-    call<ObjectionResponse>('/objections', { method: 'POST', body: JSON.stringify(req) }),
   // ── 教法（批 7）：教学工具、对状态的确认 / 否认 ──
-  confirmState: (recordId: string, verdict: 'confirm' | 'deny', note?: string) =>
-    call<ConfirmationResponse>('/state/confirmations', {
-      method: 'POST',
-      body: JSON.stringify(
-        note !== undefined && note.trim() !== ''
-          ? { recordId, verdict, note: note.trim() }
-          : { recordId, verdict },
-      ),
-    }),
   // ── 原文与出处 ──
   /** 各项目的资料；给了项目就标出哪些是这个项目的。 */
   materialList: (project?: string) =>
@@ -355,41 +303,6 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ text }),
     }),
-  /** 找资料对话里存所选的候选。 */
-  pickCandidates: (sessionId: string, forLine: number, picked: number[]) =>
-    call<object>(`/sessions/${sessionId}/candidates`, {
-      method: 'POST',
-      body: JSON.stringify({ forLine, picked }),
-    }),
-  // ── 我的产出（批 8b） ──
-  outputs: (projectId: string) => call<ListOutputsResponse>(`/projects/${projectId}/outputs`),
-  output: (id: string) => call<OutputResponse>(`/outputs/${encodeURIComponent(id)}`),
-  createOutput: (projectId: string, req: CreateOutputRequest) =>
-    call<OutputResponse>(`/projects/${projectId}/outputs`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  saveVersion: (id: string, req: SaveVersionRequest) =>
-    call<VersionResponse>(`/outputs/${encodeURIComponent(id)}/versions`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  version: (id: string, n: number) =>
-    call<VersionResponse>(`/outputs/${encodeURIComponent(id)}/versions/${String(n)}`),
-  compareVersions: (id: string, from: number, to: number) =>
-    call<CompareResponse>(`/outputs/${encodeURIComponent(id)}/compare?${qs({ from, to })}`),
-  addLiterature: (id: string, req: AddLiteratureRequest) =>
-    call<LiteratureResponse>(`/outputs/${encodeURIComponent(id)}/literature`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  openOutputTask: (id: string, brief?: string) =>
-    call<OpenOutputTaskResponse>(`/outputs/${encodeURIComponent(id)}/tasks`, {
-      method: 'POST',
-      body: JSON.stringify(
-        brief !== undefined && brief.trim() !== '' ? { brief: brief.trim() } : {},
-      ),
-    }),
   // ── 长期功能（批 6） ──
   /** 学过的记录：按层读每次学习（上层单子 / 中层判定）与外部导入。 */
   learned: (project?: string) => call<LearnedResponse>(`/learned?${qs({ project })}`),
@@ -409,16 +322,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ outcome }),
     }),
-  /** 路线偏差：从已有记录现算（没选推荐项、没合上就结束、中途改线）。 */
-  deviations: (projectId: string) =>
-    call<RouteDeviationsResponse>(`/projects/${projectId}/deviations`),
-  /** 开一段阶段复盘；since（YYYY-MM-DD）不给 = 从上次复盘起。 */
-  startReview: (projectId: string, since?: string) =>
-    call<ReviewResponse>(`/projects/${projectId}/review`, {
-      method: 'POST',
-      body: JSON.stringify(since !== undefined && since !== '' ? { since } : {}),
-    }),
-  reviews: (projectId: string) => call<ReviewsResponse>(`/projects/${projectId}/reviews`),
   /** 订阅事件：整页共用一条事件连接（浏览器对同一地址的长连接数有限），最后一个退订时关掉。 */
   events(onEvent: (e: ServerEvent) => void): () => void {
     listeners.add(onEvent);

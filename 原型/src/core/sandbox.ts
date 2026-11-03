@@ -1,6 +1,6 @@
 // 会话的沙盒（工单 W4 §5.4、W11）：程序准备只读的资料与记录、可写的工作区，模型在里面用通用读写与命令自己取。
-// 学习对话与检索子代理：工作区建一次、从不清空；只读的渲染每轮前整份重写。主对话：只读本机家目录（挡掉存密钥的
-// 位置）。导入会话：只读原件、工作区就是那份资料的正文。
+// 学习对话：工作区建一次、从不清空；只读的渲染每轮前整份重写。导入会话：只读原件、工作区就是那份资料的正文。
+// W12 §3.2 起主对话不再读本机（没有沙盒）。
 // 设计：会话/学习对话.md §2；记录/读写权限.md「执行方式」「权限表」。
 import { readdirSync, realpathSync } from 'node:fs';
 import { mkdir, rm, writeFile } from 'node:fs/promises';
@@ -13,9 +13,6 @@ import type { Hub } from './hub.ts';
 import { NotFoundError } from './hub.ts';
 import type { Learned } from './learned.ts';
 import type { Materials } from './knowledge/materials.ts';
-import type { PedagogyStore } from './knowledge/pedagogy.ts';
-import type { StateStore } from './knowledge/state.ts';
-import type { Objections } from './knowledge/objections.ts';
 import type { TeachingTools } from './teaching-tools.ts';
 import type { SandboxSpec } from './model/port.ts';
 import { renderTranscript } from './transcript.ts';
@@ -50,14 +47,14 @@ const TEACHING_TOOLS_DIR = '教学工具';
 /** 只读条目是什么（开场里那句“是什么”）。 */
 const WHAT: Record<string, string> = {
   教学工具: '教学工具（可选的做法参考，不常驻提示词）',
-  学过的记录: '以往的学习（单子、收尾那一句、对话原文）',
-  状态记录: '学习者的状态与条件',
-  教法记录: '这个学习者的教法记录',
+  学过的记录:
+    '以往的学习（每次一份对话原文 <学习 id>-对话.md，带日期；收尾那一句；索引.md 列全部）与学习者在别处学过的（外部导入：笔记、对话记录）',
   '本次对话.md': '本次学习的对话原文，带行号（压缩后按行号读回）',
   '项目说明.md': '学习者写给这个项目的长期要求（项目说明）；与学习者当场说的冲突时以当场说的为准',
-  '学习位置.md': '画学习位置时的依据：哪些点、此刻在哪、哪些学习者确认学完了',
+  '方向.md': '这个项目谈定的方向（学成后能做什么、每块为什么学），带日期',
+  附图: '学习者附过的图片原件（消息里写了是哪张）',
   [MATERIAL_INDEX_NAME]:
-    '本项目能读的资料的目录（本项目的 + 学习者的笔记等）：每份一行（id、标题、种类、归属、版本、日期、状态、角色）；引用写 资料id/文件:行号',
+    '本项目能读的资料的目录（本项目的 + 学习者的笔记等）：每份一行（id、标题、种类、归属、版本、日期、状态、说明）；引用写 资料id/文件:行号',
 };
 
 /** 开场里的沙盒说明：只列只读区有什么（虚拟路径 + 是什么）；资料一份份的看 资料/目录.md。 */
@@ -82,9 +79,6 @@ export interface SandboxDeps {
   materials: Materials;
   /** 资料清单的行（同 studium.materialLines）。 */
   materialLines: (ids: string[]) => Promise<string[]>;
-  pedagogy: PedagogyStore;
-  state: StateStore;
-  objections: Objections;
   teaching: TeachingTools;
   /** 数据目录；沙盒在 <数据>/sandbox/<会话 id>/。 */
   dataDir: string;
@@ -92,10 +86,14 @@ export interface SandboxDeps {
   scopeOf: (sessionId: string) => Promise<string[]>;
   /** 所属项目的项目说明（没写 = 空串）；后台整理不经这里拿（工单 W9 §4.6）。 */
   instructionsOf: (sessionId: string) => Promise<string>;
-  /** 学习位置的依据。 */
-  positionText: (loopId: string) => Promise<string>;
+  /** 方向（项目谈定的方向目标，没有 = 空串）。 */
+  goalText: (sessionId: string) => Promise<string>;
+  /** 附图原件所在的目录（W12 §5.6）。 */
+  imagesDir: string;
   /** 会话所属的项目（主对话 id）；外部导入按它过滤（指向的资料本项目读得到才给，W11）。 */
   projectOf: (sessionId: string) => Promise<string | undefined>;
+  /** 学习者删掉的讨论串（W12 §4.3）：学过的记录里不再包含。 */
+  deleted: (sessionId: string) => boolean;
 }
 
 export class Sandboxes {
@@ -136,18 +134,14 @@ export class Sandboxes {
   }
 
   /**
-   * 主对话的沙盒（W11 §5）：只读本机家目录（挡掉 denyRead 的位置），不给命令行（11-02 定：照 Claude 桌面版读本机，
-   * 只给读文件、搜索、列目录，路径由适配器每次调用前查）；可写只有它自己的工作区。SDK 的工作目录仍是数据目录（旧的主对话按它续接）。
+   * 本机能拷进来的范围（主对话的 import_local；W12 起主对话不读本机，这只用来判路径）：家目录，挡掉 denyRead 的位置。
    */
-  async forMain(mainId: string): Promise<SandboxSpec> {
-    const workdir = join(this.root(mainId), '工作区');
-    await mkdir(workdir, { recursive: true });
+  localScope(): SandboxSpec {
     return {
-      workdir,
+      workdir: join(this.o.dataDir, 'sandbox', '.本机'),
       readOnly: [{ name: '本机', path: homedir() }],
       network: false,
       commands: false,
-      cwd: this.o.dataDir,
       denyRead: this.denyRead(),
     };
   }
@@ -174,17 +168,18 @@ export class Sandboxes {
       workdir,
       readOnly: [
         ...(await this.bookEntries(loopId)),
-        ...this.dirEntries(loopId, [TEACHING_TOOLS_DIR, '学过的记录', '状态记录', '教法记录']),
+        ...this.dirEntries(loopId, [TEACHING_TOOLS_DIR, '学过的记录']),
         { name: '本次对话.md', path: join(this.root(loopId), '只读', '本次对话.md') },
         { name: '项目说明.md', path: join(this.root(loopId), '只读', '项目说明.md') },
-        { name: '学习位置.md', path: join(this.root(loopId), '只读', '学习位置.md') },
+        { name: '方向.md', path: join(this.root(loopId), '只读', '方向.md') },
+        { name: '附图', path: this.o.imagesDir },
       ],
       network: false,
       denyRead: this.denyRead(false),
     };
   }
 
-  /** 每轮发给模型之前刷新只读的渲染（本次对话、学过的记录、状态记录、教法记录、教学工具）。 */
+  /** 每轮发给模型之前刷新只读的渲染（本次对话、学过的记录、方向、项目说明、教学工具）。 */
   async refreshLoop(loopId: string): Promise<void> {
     const readOnly = join(this.root(loopId), '只读');
     await writeDir(
@@ -196,14 +191,12 @@ export class Sandboxes {
       join(readOnly, '学过的记录'),
       await this.learnedFiles(loopId, await this.o.projectOf(loopId)),
     );
-    await mkdir(join(readOnly, '状态记录'), { recursive: true });
-    await writeFile(join(readOnly, '状态记录', '状态.md'), this.stateText(), 'utf8');
-    await mkdir(join(readOnly, '教法记录'), { recursive: true });
-    await writeFile(join(readOnly, '教法记录', '教法记录.md'), this.strategyText(), 'utf8');
+    await mkdir(this.o.imagesDir, { recursive: true });
     await writeFile(join(readOnly, '本次对话.md'), renderTranscript(records), 'utf8');
+    const goal = await this.o.goalText(loopId);
     await writeFile(
-      join(readOnly, '学习位置.md'),
-      `${await this.o.positionText(loopId)}\n`,
+      join(readOnly, '方向.md'),
+      `# 方向\n\n${goal !== '' ? goal : '（还没谈定）'}\n`,
       'utf8',
     );
     const instructions = await this.o.instructionsOf(loopId);
@@ -212,26 +205,6 @@ export class Sandboxes {
       `# 项目说明（学习者明确的长期要求；与当场说的冲突以当场为准）\n\n${instructions !== '' ? instructions : '（学习者还没写）'}\n`,
       'utf8',
     );
-  }
-
-  /** 检索子代理的沙盒：只读的学过的记录与导航所属项目范围内的资料；不写。 */
-  async forRetrieve(sessionId: string, navId: string): Promise<SandboxSpec> {
-    const root = this.root(sessionId);
-    const workdir = join(root, '工作区');
-    await mkdir(workdir, { recursive: true });
-    await writeDir(
-      join(root, '只读', '学过的记录'),
-      await this.learnedFiles(undefined, await this.o.projectOf(navId)),
-    );
-    return {
-      workdir,
-      readOnly: [
-        ...(await this.bookEntries(navId)),
-        { name: '学过的记录', path: join(root, '只读', '学过的记录') },
-      ],
-      network: false,
-      denyRead: this.denyRead(false),
-    };
   }
 
   // ───────────── 只读区的内容 ─────────────
@@ -247,7 +220,7 @@ export class Sandboxes {
     await writeFile(
       index,
       ids.length > 0
-        ? `# 本项目能读的资料\n\n每份：id｜标题｜种类｜归属｜版本｜日期｜状态｜角色。正文在 只读/资料/<id>/（按原目录；有 说明.md 的先看它）；引用写 资料id/文件:行号。归“学习者”的是跟着学习者走的（笔记、别处的学习记录等），标“学过的”的是学习者自己写的 / 学过的痕迹，不是讲知识的原文。代码仓库在这里只读，要跑就把需要的部分拷进工作区再跑。\n\n${(await this.o.materialLines(ids)).join('\n')}\n`
+        ? `# 本项目能读的资料\n\n每份：id｜标题｜种类｜归属｜版本｜日期｜状态｜大小｜说明。正文在 只读/资料/<id>/（按原目录；有 说明.md 的先看它）；引用写 资料id/文件:行号。归“学习者”的是跟着学习者走的（笔记、别处的学习记录等），标“学过的”的是学习者自己写的 / 学过的痕迹，不是讲知识的原文。代码仓库在这里只读，要跑就把需要的部分拷进工作区再跑。\n\n${(await this.o.materialLines(ids)).join('\n')}\n`
         : '# 本项目能读的资料\n\n还没有能用的资料（缺资料依据）。\n',
       'utf8',
     );
@@ -278,7 +251,9 @@ export class Sandboxes {
     exclude: string | undefined,
     project: string | undefined,
   ): Promise<{ name: string; text: string }[]> {
-    const all = (await this.o.learned.all()).filter((l) => l.loopId !== exclude);
+    const all = (await this.o.learned.all()).filter(
+      (l) => l.loopId !== exclude && !this.o.deleted(l.loopId),
+    );
     const files: { name: string; text: string }[] = [];
     for (const l of all) {
       files.push({ name: `${l.loopId}.md`, text: await this.learningText(l) });
@@ -311,13 +286,19 @@ export class Sandboxes {
       `# 一次学习 ${l.loopId}「${l.title}」`,
       '',
       `- 状态：${l.status}；开始 ${localMinute(l.openedAt)}${l.endedAt !== undefined ? `；结束 ${localMinute(l.endedAt)}` : ''}`,
-      `- 单子：新点 ${l.ticket.newPoint}；预期理解 ${l.ticket.clause}；出发点 ${
-        l.ticket.startPoints
-          .map(
-            (s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`,
-          )
-          .join('；') || '（无）'
-      }；路线动作：${l.ticket.routeAction}`,
+      // 旧数据才有单子（W12 起新开的学习没有）
+      ...(l.ticket.newPoint !== ''
+        ? [
+            `- 单子（旧数据）：新点 ${l.ticket.newPoint}；预期理解 ${l.ticket.clause}；出发点 ${
+              l.ticket.startPoints
+                .map(
+                  (s) =>
+                    `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`,
+                )
+                .join('；') || '（无）'
+            }；路线动作：${l.ticket.routeAction}`,
+          ]
+        : []),
     ];
     if (l.endNote !== undefined) {
       const endLine = await this.lineOf(l.loopId, 'loop_ended');
@@ -395,42 +376,6 @@ export class Sandboxes {
     return `- ${at}：${session} 第 ${lines.join('、')} 行${said !== '' ? `（原话：${said}）` : ''}（未验证）`;
   }
 
-  /** 只读/状态记录/状态.md：当前状态页 + 全部状态记录 + 异议。 */
-  private stateText(): string {
-    const state = this.o.state;
-    const rows = state.allRecords();
-    return [
-      '# 学习者的非知识状态与条件',
-      '',
-      state.describeCurrent(),
-      '',
-      '## 状态记录（底层，只追加）',
-      rows.length > 0
-        ? rows.map((r) => state.describeRecord(r) + this.objectionNotes('state', r.id)).join('\n')
-        : '（暂无）',
-      '',
-      '解释候选须你和知识证据一起掂量后才能当依据；承载读数可直接用。',
-    ].join('\n');
-  }
-
-  /** 只读/教法记录/教法记录.md：这个学习者的教法记录（后台整理写的）。 */
-  private strategyText(): string {
-    const rows = this.o.pedagogy.all();
-    if (rows.length === 0) return '# 教法记录\n\n（还没有）';
-    return [
-      '# 教法记录（这个学习者在什么条件下用过什么教法、之后怎样；单条不证明因果）',
-      '',
-      ...rows.map((r) => this.o.pedagogy.describe(r) + this.objectionNotes('pedagogy', r.id)),
-    ].join('\n');
-  }
-
-  private objectionNotes(kind: 'pedagogy' | 'state', recordId: string): string {
-    return this.o.objections
-      .forRecord(kind, recordId)
-      .map((o) => `\n  学习者异议（自述，原记录没改）：${o.text}`)
-      .join('');
-  }
-
   private async lineOf(sessionId: string, type: 'loop_ended'): Promise<number | undefined> {
     return (await this.o.hub().records(sessionId)).find((r) => r.record.type === type)?.line;
   }
@@ -441,7 +386,8 @@ function lowerLine(r: NumberedRecord): string | undefined {
   if (
     r.record.type === 'user_message' ||
     r.record.type === 'assistant_message' ||
-    r.record.type === 'program_fact'
+    r.record.type === 'program_fact' ||
+    r.record.type === 'thread_message'
   ) {
     const one = renderTranscript([r]);
     return one === '' ? undefined : one;

@@ -1,13 +1,7 @@
-// 左栏底部的账号：弹出菜单——外观（跟系统 / 浅色 / 深色）、学习页（竖流 / 区域图，10-29 #74 试验）、语言（现在只有中文）。
+// 左栏底部的账号：弹出菜单——外观（跟系统 / 浅色 / 深色）、语言（现在只有中文）。
 // MinerU 密钥：临时入口，填了写进 书库处理/.env（PDF 导入要用）。没做的（退出登录）不摆出来。
 import { useEffect, useState } from 'react';
-import {
-  ChevronsUpDownIcon,
-  GlobeIcon,
-  KeyRoundIcon,
-  LayoutListIcon,
-  SunMoonIcon,
-} from 'lucide-react';
+import { ChevronsUpDownIcon, GlobeIcon, KeyRoundIcon, SunMoonIcon } from 'lucide-react';
 import {
   Menu,
   MenuContent,
@@ -19,11 +13,9 @@ import {
   MenuTrigger,
 } from '@/components/ui/menu';
 import { cn } from '@/lib/utils';
-import { LEARN_PAGE_MODES, type LearnPageMode } from '../../../shared/protocol.ts';
 import { api } from '../../api.ts';
 import { useTheme, type Theme } from '../../theme.ts';
 import { W } from '../../wording.ts';
-import { WP } from '../../wording-page.ts';
 
 const S = W.sidebar;
 
@@ -39,15 +31,8 @@ const THEMES: Theme[] = ['system', 'light', 'dark'];
 
 export function AccountMenu(props: { collapsed: boolean }) {
   const [theme, setTheme] = useTheme();
-  const [mode, setMode] = useState<LearnPageMode | undefined>(undefined);
   const [mineru, setMineru] = useState<boolean | undefined>(undefined);
   useEffect(() => {
-    api
-      .learnPageSetting()
-      .then((r) => setMode(r.mode))
-      .catch((e: unknown) => {
-        console.error('读学习页设置失败：', e);
-      });
     api
       .mineruToken()
       .then((r) => setMineru(r.set))
@@ -100,38 +85,6 @@ export function AccountMenu(props: { collapsed: boolean }) {
                   </MenuRadioItem>
                 ))}
               </MenuRadioGroup>
-            </MenuContent>
-          </MenuSubmenu>
-          <MenuSubmenu>
-            <MenuSubmenuTrigger data-testid="learn-page-mode">
-              <LayoutListIcon />
-              <span className="flex-1">{WP.modeTitle}</span>
-              {mode !== undefined && (
-                <span className="text-muted-foreground text-xs">
-                  {WP.modes[mode].replace(/（.*）/, '')}
-                </span>
-              )}
-            </MenuSubmenuTrigger>
-            <MenuContent side="right" align="start">
-              <MenuRadioGroup
-                value={mode ?? ''}
-                onValueChange={(v) => {
-                  const m = v as LearnPageMode;
-                  api
-                    .setLearnPageSetting(m)
-                    .then((r) => setMode(r.mode))
-                    .catch((e: unknown) => {
-                      console.error('改学习页设置失败：', e);
-                    });
-                }}
-              >
-                {LEARN_PAGE_MODES.map((m) => (
-                  <MenuRadioItem key={m} value={m}>
-                    {WP.modes[m]}
-                  </MenuRadioItem>
-                ))}
-              </MenuRadioGroup>
-              <div className="text-muted-foreground px-2 py-1 text-xs">{WP.modeHint}</div>
             </MenuContent>
           </MenuSubmenu>
           <MenuItem onClick={editMineru}>

@@ -94,7 +94,10 @@ export interface UserMessage {
   text: string;
   /** 有这一项 = 这句话是学习者对本次学习里第 toLine 行守卫判定提出的异议（原话照记，带标记）。 */
   objection?: { toLine: number };
-  /** 随这句话附的图片（拍照 / 手写，批 4）：转写文字已并进 text（教学只读文字，不读原图），这里记原图与转写的来历。 */
+  /**
+   * 随这句话附的图片（拍照 / 手写，批 4）。W12 起图片原样随消息送给模型（`sentAs` = 送去的缩小副本）；
+   * 旧数据：转写文字已并进 text，这里记原图与转写的来历。
+   */
   images?: ImageInput[];
   /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3 学习者回话）：key 只在程序里用，pointer 是那块的一句话。 */
   replyTo?: { key: string; pointer: string };
@@ -109,17 +112,19 @@ export interface MessageQuote {
   component?: string;
 }
 
-/** 学习者消息里的一张图片：原图在输入存放处（只追加），转写由模型接口做、学习者发送前可改。 */
+/** 学习者消息里的一张图片：原图在输入存放处（只追加）。旧数据带转写（W12 起不再转写，图片原样送给模型）。 */
 export interface ImageInput {
   /** 原图（学习者选的 / 拍的那张，原样保存）。 */
   attachmentId: string;
+  /** W12：原图太大时界面缩小的副本，送给模型的是它。 */
+  sentAs?: string;
   /** 用的哪次转写；学习者没转写、自己写说明时没有。 */
   transcriptionId?: string;
   /** 转写用的是界面为转写缩小的副本时，副本的 id（副本记着它出自原图）。 */
   transcribedFrom?: string;
   /** 模型转写出的原文（学习者改之前）。 */
   transcript?: string;
-  /** 并进消息里的文字（学习者改过的话与 transcript 不同）。 */
+  /** 旧数据：并进消息里的文字（学习者改过的话与 transcript 不同）；W12 起是空串。 */
   sent: string;
   /** 转写用的实际执行模型；取不到时同 model_used 的兜底写法（含“未取到实际执行模型”）。 */
   model?: string;
@@ -129,6 +134,11 @@ export interface AssistantMessage {
   type: 'assistant_message';
   at: string;
   text: string;
+  /**
+   * W12 §4.6：一轮里工具调用之间说的话（不是这一轮最后写给学习者的那段）。只作“正在做什么”的依据，
+   * 不上学习页、不进主对话的消息流、不转给别的会话。旧行没有这一项。
+   */
+  interim?: true;
 }
 
 /** 程序追加给模型的事实（开场交付、守卫结论、离开多久等）；不是学习者说的话。 */
@@ -424,13 +434,14 @@ export interface TalkEnded {
 
 /**
  * 讨论串结束 / 重开（10-28，照 Claude 项目的讨论串：结束只是收起，再说话就重开）。
- * 谈方向交回、找资料勾完照旧算结束；这两条是另外的：主对话按学习者的话结束，学习者或主对话重开。
- * 一次学习不走这里（合上 / 没合上就结束有自己的记录，不能重开）。
+ * 谈方向交回、找资料勾完（旧数据）照旧算结束；这两条是另外的：主对话或讨论串自己结束，学习者或主对话重开。
+ * 一次学习结束有自己的记录（loop_ended）；W12 §2 起结束后也能重开（thread_reopened 接在后面）。
  */
 export interface ThreadClosed {
   type: 'thread_closed';
   at: string;
-  by: 'main';
+  /** main = 主对话结束的；self = 讨论串自己结束的（W12 §3.3）。 */
+  by: 'main' | 'self';
   reason: string;
 }
 
@@ -626,7 +637,67 @@ export type LogRecord =
   | LayoutChanged
   | ContextUsed
   | MaterialOwnerChanged
-  | ProjectAsked;
+  | ProjectAsked
+  | ThreadMessage
+  | ThreadDeleted
+  | TurnStopped
+  | MessageEdited
+  | MessageReaction;
+
+// ───────────── W12：一个对话一个模型（发话、删除、停止与编辑、表情） ─────────────
+
+/**
+ * 别的会话发来的一句话（W12 §3.1，照 Claude 讨论串的 wake）：记在收话的会话里，交给它的模型时写明谁发的、什么时候。
+ * cited = 附上的学习者原话（程序照抄，标成学习者的原话）；reply = 这是对方回它先前发去的话（再回就不转回去）。
+ */
+export interface ThreadMessage {
+  type: 'thread_message';
+  at: string;
+  /** 发话的会话 id。 */
+  from: string;
+  text: string;
+  cited?: { session: string; line: number; at: string; text: string }[];
+  reply?: true;
+}
+
+/**
+ * 学习者删了一个讨论串（W12 §4.3）：记在主对话里，只追加；之后界面不显示、别的会话读不到、学过的记录与沙盒里
+ * 不再包含。被删的会话正本留着。找资料存下的资料、谈方向定下的方向不跟着删。
+ */
+export interface ThreadDeleted {
+  type: 'thread_deleted';
+  at: string;
+  session: string;
+  /** 删时的标题（主对话上下文里那一句用）。 */
+  title: string;
+}
+
+/** 学习者在生成中途点了停止（W12 §4.4）：这一轮断开；下一轮交给模型时前面接一句。 */
+export interface TurnStopped {
+  type: 'turn_stopped';
+  at: string;
+}
+
+/**
+ * 改了一条话（W12 §4.4）：learner = 学习者停下后改自己刚发的那句（界面只显示改后的，改前那句之后的回答不再显示）；
+ * model = 主对话改自己上一条说的话（照 Claude 的 edit_message）。原来那行不动。
+ */
+export interface MessageEdited {
+  type: 'message_edited';
+  at: string;
+  /** 改的是哪一行。 */
+  line: number;
+  text: string;
+  by: 'learner' | 'model';
+}
+
+/** 主对话对学习者一句话回了一个表情、没有说话（W12 §3.2，照 Claude 的 react）。 */
+export interface MessageReaction {
+  type: 'message_reaction';
+  at: string;
+  line: number;
+  emoji: string;
+}
 
 /** 一份资料的归属改了（W11，记录/资料.md「存在一处、按归属读」）：记在发起改动的主对话里，同时写 source.json。 */
 export interface MaterialOwnerChanged {

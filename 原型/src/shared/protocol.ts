@@ -1,5 +1,4 @@
 // 核心与界面之间的 HTTP / SSE 协议。界面只认这里的类型，不碰核心实现。
-import { START_SOURCES } from './records.ts';
 import type {
   ConversationKind,
   LearnerObjection,
@@ -53,20 +52,6 @@ export interface ProjectSummary {
 
 export interface ListProjectsResponse {
   projects: ProjectSummary[];
-}
-
-/** 学习者改这次学习的单子（记录/单子与路线.md「单子」规矩“可见可改”）：至少给一项。 */
-export interface TicketEditRequest {
-  newPoint?: string;
-  clause?: string;
-  startPoints?: { point: string; source: (typeof START_SOURCES)[number]; ref?: string }[];
-}
-
-export interface TicketEditResponse {
-  /** 新记录 `ticket_edited` 在学习正本里的行号。 */
-  line: number;
-  /** 改后的整张单子。 */
-  ticket: Ticket;
 }
 
 export interface ListSessionsResponse {
@@ -377,92 +362,6 @@ export interface ShelveRequest {
   note?: string;
 }
 
-export interface StrategyView {
-  id: string;
-  at: string;
-  loopSessionId: string;
-  conditions: string;
-  strategies: string;
-  followedBy: string;
-  evidenceLines: number[];
-  quotes: QuoteView[];
-  toolsUsed: string[];
-  /** 每次取用：哪份、在那份正本的哪一行；旧记录没有。 */
-  toolUses?: TeachingToolUseView[];
-  /** 记录时有“出现在 X 之后”标注的状态时，教法记录整理对自己教法是否为成因的自查。 */
-  selfCheck?: { stateIds: string[]; note: string };
-  model: ModelInfo;
-  objections: ObjectionView[];
-}
-
-export interface ConfirmationView {
-  id: string;
-  at: string;
-  recordId: string;
-  verdict: '确认' | '否认';
-  note?: string;
-}
-
-/** 学习者对一条状态记录确认（confirm）/ 否认（deny）；只追加。 */
-export interface RecordConfirmationRequest {
-  recordId: string;
-  verdict: 'confirm' | 'deny';
-  note?: string;
-}
-
-export interface ConfirmationResponse {
-  confirmation: ConfirmationView;
-}
-
-/** 状态出现在某段学习里某句教学之后的标注（会话与行号由程序核对）。 */
-export interface AfterTeachingView {
-  loopSessionId: string;
-  line: number;
-  /** 模型写下的说明：这条状态出现在什么之后。 */
-  text: string;
-}
-
-export interface StateRecordView {
-  id: string;
-  at: string;
-  text: string;
-  /** 模型写下时的来源。 */
-  source: '自述' | '观察' | '推断';
-  /** 来源档：学习者最近一次表态是确认 = 已确认，否则同 source。 */
-  sourceLevel: '自述' | '观察' | '推断' | '已确认';
-  output: '承载读数' | '解释候选';
-  timeRange: string;
-  refs: { sessionId: string; lines: number[]; quotes: QuoteView[] }[];
-  /** 出现在某次教法强度明显变化之后；没有就没有。 */
-  afterTeaching?: AfterTeachingView;
-  /** 学习者的确认 / 否认记录（按时间，最后一条算数）。 */
-  confirmations: ConfirmationView[];
-  /** 学习者最近一次表态；没表过态为空。 */
-  learnerVerdict?: '确认' | '否认';
-  stateSessionId: string;
-  model: ModelInfo;
-  objections: ObjectionView[];
-}
-
-export interface CurrentStateView {
-  at: string;
-  text: string;
-  stage: string;
-  basisSpan: string;
-  stateSessionId: string;
-  model: ModelInfo;
-}
-
-export interface StrategiesResponse {
-  records: StrategyView[];
-}
-
-export interface StateResponse {
-  /** 没整理过时为空。 */
-  current?: CurrentStateView;
-  records: StateRecordView[];
-}
-
 export interface LoopEvidenceResponse {
   loop: LoopEvidence;
 }
@@ -474,13 +373,6 @@ export interface ProjectOverviewResponse {
 /** 对守卫判定提异议：line = 判定在那次学习正本里的行号。 */
 export interface VerdictObjectionRequest {
   line: number;
-  text: string;
-}
-
-/** 对一条教法记录 / 状态记录提异议。 */
-export interface RecordObjectionRequest {
-  kind: 'pedagogy' | 'state';
-  recordId: string;
   text: string;
 }
 
@@ -543,15 +435,8 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   import: '导入处理',
 };
 
-/** 不是会话、也单独配模型的两样（`src/core/model/profiles.ts` 的 EXTRA_PROFILE_KEYS）。 */
-export const EXTRA_PROFILE_KEYS = ['subagent', 'framework'] as const;
-export type DisclosureRowKind = ConversationKind | (typeof EXTRA_PROFILE_KEYS)[number];
-export const EXTRA_PROFILE_LABELS: Record<(typeof EXTRA_PROFILE_KEYS)[number], string> = {
-  subagent: '学习对话派的子代理',
-  framework: '学习页摆屏幕的小模型',
-};
-
-export * from './output.ts';
+/** 外发披露里一行是哪种会话（W12 起不再有会话之外单独配模型的：子代理、框架小模型随区域图学习页撤掉）。 */
+export type DisclosureRowKind = ConversationKind;
 
 export type { ObjectionTarget };
 
@@ -744,6 +629,8 @@ export type ServerEvent =
   | { type: 'record'; sessionId: string; line: number; record: NumberedRecord['record'] }
   | { type: 'delta'; sessionId: string; text: string }
   | { type: 'running'; sessionId: string; running: boolean }
+  /** 正在做什么（W12 §4.5）：程序从当前的工具调用得出的一行，不显示内容。 */
+  | { type: 'activity'; sessionId: string; text: string }
   /** 组件的新一版先在学习者浏览器的隐藏小窗里试跑（会话/页面子代理.md「怎么改」）；sessionId = 学习对话。 */
   | {
       type: 'page_trial';
@@ -760,8 +647,8 @@ export const API_PREFIX = '/api';
 export const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const;
 export type ImageMime = (typeof IMAGE_MIME_TYPES)[number];
 
-/** 送去转写的图最大多少字节（模型接口单张图片有上限；超过的界面先缩小一份副本再转写，原图照存）。 */
-export const TRANSCRIBE_MAX_BYTES = 3.5 * 1024 * 1024;
+/** 送给模型的图最大多少字节（模型接口单张图片有上限；超过的界面先缩小一份副本送去，原图照存）。 */
+export const MODEL_IMAGE_MAX_BYTES = 3.5 * 1024 * 1024;
 
 /** 输入存放处里的一张图片（只追加；原图原样保存，不改）。 */
 export interface AttachmentView {
@@ -772,7 +659,7 @@ export interface AttachmentView {
   sha256: string;
   /** 学习者那边的文件名（有就记）。 */
   name?: string;
-  /** 这是界面为转写缩小的副本：出自哪张原图。 */
+  /** 这是界面为送给模型缩小的副本：出自哪张原图。 */
   derivedFrom?: string;
   /** 取图地址（带 ?token= 可直接做 <img src>）。 */
   url: string;
@@ -782,32 +669,10 @@ export interface UploadAttachmentResponse {
   attachment: AttachmentView;
 }
 
-/** 一次转写：图片经模型接口转成的文字（公式用 LaTeX）。 */
-export interface TranscriptionView {
-  id: string;
-  at: string;
-  /** 转写的是哪张图（可能是缩小副本）。 */
-  attachmentId: string;
-  text: string;
-  /** 转写用的实际执行模型；取不到时 known 为假并写明兜底。 */
-  model: ModelInfo;
-}
-
-export interface TranscribeResponse {
-  transcription: TranscriptionView;
-}
-
-export interface AttachmentInfoResponse {
-  attachment: AttachmentView;
-  /** 这张图（及它的缩小副本）的全部转写，早的在前。 */
-  transcriptions: TranscriptionView[];
-}
-
-/** 发消息时带的一张图：原图 id + 用的哪次转写 + 学习者改过的文字（不给就照转写原文）。 */
+/** 发消息时带的一张图：原图 id + 送给模型的缩小副本（原图太大时）。 */
 export interface MessageImageInput {
   attachmentId: string;
-  transcriptionId?: string;
-  text?: string;
+  sentAs?: string;
 }
 
 /** 一种输入送往哪里（外发披露）。 */
@@ -843,8 +708,6 @@ export interface MaterialSource {
   status: MaterialStatus;
   /** 失败或有问题的地方，不伪装成可用。 */
   problems?: string[];
-  /** 模型检索时判断的角色；界面可见。 */
-  role?: { value: '主资料' | '参考资料'; by: 'model'; at: string; sessionId: string };
   /** 归属（W11）：学习者 = 所有项目都能读；项目 = 只给这几个项目读。程序按它算每个会话能读什么。 */
   owner: MaterialOwner;
   /** 分流判为“学过的”（学习者的笔记 / 别处的学习记录）：标渠道；外部导入的指针指向这份资料。 */
@@ -855,6 +718,11 @@ export interface MaterialSource {
   processedBy?: string[];
   /** 学习者删了（只标，不删文件：已有引用照旧能定位，标“资料已删”）。 */
   removed?: { at: string };
+  /**
+   * 上传时归哪边（资料 / 学过的）、归谁拿不准，先按扩展名放了，交导入会话判（W12 §1.6）；判完去掉。
+   * upload / file = 那份上传（判完在主对话里记 upload_routed）。
+   */
+  classify?: { upload: string; file: string };
 }
 
 /** 资料的归属（记录/资料.md「存在一处、按归属读」）。 */
@@ -876,6 +744,8 @@ export interface AddMaterialRequest {
   owner?: MaterialOwner;
   /** 判为学过的：渠道。 */
   learned?: { channel: '笔记' | '对话记录' };
+  /** 先按扩展名放、交导入会话判（W12 §1.6）。 */
+  classify?: { upload: string; file: string };
 }
 
 export interface ProjectMaterialView {
@@ -892,7 +762,6 @@ export interface ProjectMaterialView {
   fetchedAt?: string;
   status?: MaterialStatus;
   problems?: string[];
-  role?: MaterialSource['role'];
   owner?: MaterialOwner;
   learned?: MaterialSource['learned'];
 }
@@ -969,25 +838,10 @@ export interface ProjectInstructionsRequest {
   text: string;
 }
 
-/** 找资料对话里学习者勾了哪些候选（`forLine` = 那份候选清单所在行）。 */
-export interface PickCandidatesRequest {
-  forLine: number;
-  picked: number[];
-}
-
 /** 一条外部导入（笔记 / 对话记录）的 md 全文。 */
 export interface ImportTextResponse {
   import: Import;
   text: string;
-}
-
-/** 新开的学习用哪种学习页（10-29 #74 试验）：stream = 竖流（主模型一个人管），grid = 区域图（三方）。 */
-export const LEARN_PAGE_MODES = ['stream', 'grid'] as const;
-export type LearnPageMode = (typeof LEARN_PAGE_MODES)[number];
-
-/** GET / PUT /settings/learn-page。 */
-export interface LearnPageSettingBody {
-  mode: LearnPageMode;
 }
 
 /** GET /settings/mineru-token 回 { set }；PUT 发 { token }（空串 = 删掉），回 { set }。临时入口。 */

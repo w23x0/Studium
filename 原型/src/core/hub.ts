@@ -1,8 +1,11 @@
-// 会话管理：每个会话一个正本（只追加）+ 一个模型侧对话；一个会话一次只跑一轮，后到的输入排队。
+// 会话管理：每个会话一个正本（只追加）+ 一个模型侧对话；一个会话一次只跑一轮，后到的输入排队（W12 §3.1 起学习者
+// 中途说的话、别的会话发来的话都排到这一轮之后，不再中途插话）。会话之间发话走 message：发出去马上返回，对方这一轮
+// 跑完它回的话再按同样方式送回发话方。
 // 不认识具体会话的职责：系统提示与工具由 kinds 按会话种类给出（studium.ts 组装）。
-// 事件（新记录、流式增量、进行中状态）推给订阅者（SSE）。
+// 事件（新记录、流式增量、进行中状态、正在做什么）推给订阅者（SSE）。
 import { randomBytes } from 'node:crypto';
 import {
+  CONVERSATION_KIND_LABELS,
   MODEL_FALLBACK_MARK,
   modelInfoOf,
   type ModelInfo,
@@ -28,47 +31,40 @@ import type { DerivedIndex } from './index/derived-index.ts';
 import { isSessionId, type DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
 import type {
+  ImageData,
   ModelAdapter,
   ModelConversation,
   ModelDisclosure,
   ModelEvent,
   SandboxActionEvent,
   SandboxSpec,
-  SubagentSpec,
   ToolSpec,
   TurnInput,
 } from './model/port.ts';
 
 export interface KindConfig {
   systemPrompt: string;
-  /** 按会话算系统提示（学习对话按学习页的种类接不同的一段）；没有就用 systemPrompt。开模型对话时算一次。 */
+  /** 按会话算系统提示；没有就用 systemPrompt。开模型对话时算一次。 */
   systemPromptFor?(sessionId: string): Promise<string>;
   /** 本会话的工具；sessionId 让工具知道自己属于哪个会话。 */
   tools(sessionId: string): ToolSpec[] | Promise<ToolSpec[]>;
   /** 这个会话在沙盒里跑时给它的沙盒（没有 = 不给通用执行）；开模型对话时算一次。 */
   sandbox?(sessionId: string): Promise<SandboxSpec | undefined>;
-  /** 每轮发给模型之前调用（插话不调）：刷新沙盒里那些每轮重渲染的只读文件。 */
+  /** 每轮发给模型之前调用：刷新沙盒里那些每轮重渲染的只读文件。 */
   beforeTurn?(sessionId: string): Promise<void>;
   /**
-   * 每轮附在输入前的当前事实（主对话用）：先记一条 turn_context 再发；模型对话照常续接、靠压缩变长。
+   * 每轮附在输入前的当前事实：先记一条 turn_context 再发；模型对话照常续接、靠压缩变长。
    * fresh = 这一轮是新开的模型对话（没有可续接的），这时开场还要从记录补上前面说过的（重建只作后备）。
    * inputLine = 这条输入在正本里的行号。
    */
   preface?(sessionId: string, inputLine: number, fresh: boolean): Promise<string>;
-  /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
+  /** 为真时放开模型服务自带的联网搜索与网页抓取（谈方向、找资料、学习对话）。 */
   webSearch?: boolean;
-  /** 主模型能派的子代理（学习对话的页面子代理）；开模型对话时算一次。 */
-  subagents?(sessionId: string): Promise<SubagentSpec[]>;
   /**
    * 为真时按时间线交给模型：每条前面带行号与时间，不包“程序事实”标记，每条自己说清是什么
    * （学习对话，会话/学习对话.md §3「上下文里的身份与时间线」）。
    */
   timeline?: boolean;
-  /**
-   * 模型一轮输出完之后调（学习对话：框架照这一轮的输出摆一屏，会话/学习对话.md §11.1）。fromLine = 这一轮从正本
-   * 哪一行之后开始。在下一轮开始前跑完；出错只写日志，不算这一轮失败。
-   */
-  afterTurn?(sessionId: string, fromLine: number): Promise<void>;
 }
 
 export interface HubOptions {
@@ -83,17 +79,33 @@ interface Live {
   log: SessionLog;
   kind: ConversationKind;
   conversation: ModelConversation | undefined;
-  /** 排着的轮：一条输入，或模型自己起的一轮（子代理做完后，事件已在流里）。 */
+  /**
+   * 排着的轮：一条输入（replyTo = 这条是别的会话发来的话，这一轮最后写的话要送回那个会话），
+   * 或模型自己起的一轮（事件已在流里）。
+   */
   queue: (
-    | { input: TurnInput; line: number; resolve: () => void }
+    | { input: TurnInput; line: number; resolve: () => void; replyTo?: string }
     | { events: AsyncIterable<ModelEvent>; resolve: () => void }
   )[];
   running: boolean;
   idle: (() => void)[];
-  /** 本轮收下的中途插话，在本轮跑完时兑现。 */
-  turnWaiters: (() => void)[];
   /** 模型侧最近报告的实际执行模型。 */
   model?: string;
+  /** W12 §4.6：这一轮里最近一段还没定性的文字（后面又有动作就记成中途碎话，这一轮结束才是写给学习者的话）。 */
+  pending?: string | undefined;
+  /** 学习者点了停止：这一轮按停下处理（不记成失败）。 */
+  stopping?: boolean;
+}
+
+/** 别的会话发来一句话（W12 §3.1）。 */
+export interface PeerMessage {
+  /** 发话的会话 id。 */
+  from: string;
+  text: string;
+  /** 附上的学习者原话（程序照抄）。 */
+  cited?: { session: string; line: number; at: string; text: string }[];
+  /** 这是回它先前发来的话：收话方这一轮的话不再转回去。 */
+  reply?: boolean;
 }
 
 export class NotFoundError extends Error {}
@@ -112,7 +124,7 @@ export class Hub {
     return this.opts.model.name;
   }
 
-  /** 模型接口本身：框架另开的一次性对话（学习对话里框架另开的子代理，W10 §9 第 4 条）用。 */
+  /** 模型接口本身：问别的项目的主对话（一次性的分叉对话）用。 */
   get adapter(): ModelAdapter {
     return this.opts.model;
   }
@@ -155,7 +167,7 @@ export class Hub {
       review?: ReviewWindow;
       /** 学习对话按屏幕跑（W10）。 */
       screens?: true;
-      /** 学习页用竖流（10-29 #74 试验）。 */
+      /** 学习页用竖流（10-29 #74 起；W12 起是唯一的学习页）。 */
       page?: 'stream';
     },
   ): Promise<SessionSummary> {
@@ -181,8 +193,14 @@ export class Hub {
     return summary(opened);
   }
 
+  /** 会话列表（学习者删掉的讨论串不列）。 */
   listSessions(): SessionSummary[] {
     return this.opts.index.listSessions();
+  }
+
+  /** 学习者删掉的讨论串（W12 §4.3）。 */
+  isDeleted(sessionId: string): boolean {
+    return this.opts.index.isDeleted(sessionId);
   }
 
   search(text: string): ReturnType<DerivedIndex['search']> {
@@ -213,7 +231,7 @@ export class Hub {
   }
 
   /**
-   * 记下一条输入（学习者的话或程序事实），排进这个会话的队列。
+   * 记下一条输入（学习者的话或程序事实），排进这个会话的队列（正在跑就等这一轮跑完）。
    * 返回时输入已落盘；done 在这条输入那一轮跑完时兑现。
    */
   async send(
@@ -222,14 +240,19 @@ export class Hub {
     meta: {
       objection?: { toLine: number };
       images?: ImageInput[];
-      /** 这条输入已经记在正本这一行（如学习者在组件上的操作）：不再另记，只交给模型。 */
+      /** 这条输入已经记在正本这一行（如学习者在组件上的操作、改过的那句话）：不再另记，只交给模型。 */
       recorded?: number;
-      /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3）：记成和那块有关；交给模型时写那块的一句话。 */
+      /** 旧数据（区域图学习页）：学习者在某一块下面回的。 */
       replyTo?: { key: string; pointer: string };
-      /** 竖流学习页：学习者选中页面上一处再说的（交给模型时开头写明选中了哪段）。 */
+      /** 学习页：学习者选中页面上一处再说的（交给模型时开头写明选中了哪段）。 */
       quote?: MessageQuote;
+      /** 学习者附图的字节（W12 §5.6，原样送给模型）与给模型的一句（图在沙盒哪里）。 */
+      attach?: { data: ImageData[]; note?: string };
     } = {},
   ): Promise<{ line: number; done: Promise<void> }> {
+    if (this.opts.index.isDeleted(sessionId)) {
+      throw new NotFoundError(`这个对话已经删了：${sessionId}`);
+    }
     const live = await this.ensureLive(sessionId);
     const objection = input.role === 'learner' ? meta.objection : undefined;
     const images = input.role === 'learner' ? meta.images : undefined;
@@ -251,31 +274,121 @@ export class Hub {
             }
           : { type: 'program_fact', at: this.iso(), text: input.text },
       ));
-    // 证据引用照模型最顺手的方式：交给模型的每条消息前印它在正本里的行号（00 原则 8）与时间，
-    // 离开多久模型自己看（01-流程.md「暂停」）；按时间线的会话不包标记
+    // 证据引用照模型最顺手的方式：交给模型的每条消息前印它在正本里的行号（00 原则 8）、时间、谁说的、
+    // 距学习者上次说话多久（W12 §3.1 来历标注）；按时间线的会话不包标记
     const timeline = this.opts.kinds(live.kind).timeline === true;
     const delivered: TurnInput = {
       role: input.role,
       ...(timeline ? { plain: true } : {}),
-      text: `[第 ${String(line)} 行 · ${localMinute(this.iso())}] ${
+      text: `${await this.head(sessionId, line, input.role === 'learner' ? '学习者' : '程序')} ${
         objection !== undefined
           ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
           : ''
       }${replyTo !== undefined ? `（回在「${replyTo.pointer}」下面）` : ''}${
         quote !== undefined ? quotePrefix(quote) : ''
-      }${input.text}`,
+      }${input.text}${meta.attach?.note !== undefined ? `\n${meta.attach.note}` : ''}`,
+      ...(meta.attach !== undefined && meta.attach.data.length > 0
+        ? { images: meta.attach.data }
+        : {}),
     };
+    return { line, done: this.enqueue(sessionId, live, { input: delivered, line }) };
+  }
+
+  /** 排进这个会话的队列（空着就当场跑）；返回这一轮跑完时兑现的承诺。 */
+  private enqueue(
+    sessionId: string,
+    live: Live,
+    item: { input: TurnInput; line: number; replyTo?: string },
+  ): Promise<void> {
     let resolve!: () => void;
     const done = new Promise<void>((r) => (resolve = r));
-    // 中途插话：本轮还在跑就交给正在跑的模型对话，它在下一个停顿处看到；
-    // 适配器不支持或本轮已在收尾时，退回排队成新一轮（04「实现时要守的」流式输入）
-    if (live.running && live.conversation?.interject?.(delivered) === true) {
-      live.turnWaiters.push(resolve);
-      return { line, done };
-    }
-    live.queue.push({ input: delivered, line, resolve });
+    live.queue.push({ ...item, resolve });
     if (!live.running) void this.drain(sessionId, live);
-    return { line, done };
+    return done;
+  }
+
+  /**
+   * 别的会话给这个会话发一句话（W12 §3.1，照 Claude 讨论串的 wake）：记一条 thread_message，排进队列（空着就当场跑，
+   * 正忙就等这一轮跑完），马上返回行号。这一轮它最后写的话再按同样方式送回发话方（回话不再转回）。
+   */
+  async message(to: string, m: PeerMessage): Promise<number> {
+    if (this.opts.index.isDeleted(to)) throw new NotFoundError(`这个对话已经删了：${to}`);
+    const live = await this.ensureLive(to);
+    const line = await this.append(to, {
+      type: 'thread_message',
+      at: this.iso(),
+      from: m.from,
+      text: m.text,
+      ...(m.cited !== undefined && m.cited.length > 0 ? { cited: m.cited } : {}),
+      ...(m.reply === true ? { reply: true as const } : {}),
+    });
+    const who = `${this.labelOf(m.from)}${m.reply === true ? '回话' : '发来'}（${m.from}；学习者看不到这条）`;
+    const cited = (m.cited ?? []).map(
+      (c) =>
+        `<cited author="learner" session="${this.labelOf(c.session)}" line="${String(c.line)}" at="${localMinute(c.at)}">\n${c.text}\n</cited>`,
+    );
+    const timeline = this.opts.kinds(live.kind).timeline === true;
+    const input: TurnInput = {
+      role: 'peer',
+      ...(timeline ? { plain: true } : {}),
+      text: [await this.head(to, line, who), m.text, ...cited].join('\n'),
+    };
+    void this.enqueue(to, live, { input, line, ...(m.reply === true ? {} : { replyTo: m.from }) });
+    return line;
+  }
+
+  /** 会话怎么称呼：主对话 / 「标题」（种类）。 */
+  labelOf(sessionId: string): string {
+    const s = this.opts.index.listSessions().find((x) => x.sessionId === sessionId);
+    if (s === undefined) return sessionId;
+    return s.kind === 'main' ? '主对话' : `「${s.title}」（${CONVERSATION_KIND_LABELS[s.kind]}）`;
+  }
+
+  /** 交给模型的每条输入前那一头：行号 · 时间 · 谁 · 距学习者上次说话多久（同一项目里所有对话算在一起）。 */
+  private async head(sessionId: string, line: number, who: string): Promise<string> {
+    const now = this.iso();
+    const at = (await this.records(sessionId)).find((r) => r.line === line)?.record.at ?? now;
+    const last = this.opts.index.lastLearnerAt(this.family(sessionId), at);
+    const since =
+      last === undefined
+        ? '学习者之前没说过话'
+        : `距学习者上次说话 ${ago(Date.parse(at) - Date.parse(last))}`;
+    return `[第 ${String(line)} 行 · ${localMinute(at)} · ${who} · ${since}]`;
+  }
+
+  /** 和这个会话同属一个项目的所有会话（沿 parent 找到最上面那条，再列它下面的全部）。 */
+  private family(sessionId: string): string[] {
+    const all = this.opts.index.listSessions();
+    const parent = new Map(all.map((s) => [s.sessionId, s.parent]));
+    const root = (id: string): string => {
+      let cur = id;
+      for (let i = 0; i < 8; i++) {
+        const p = parent.get(cur);
+        if (p === undefined) return cur;
+        cur = p;
+      }
+      return cur;
+    };
+    const mine = root(sessionId);
+    return all.filter((s) => root(s.sessionId) === mine).map((s) => s.sessionId);
+  }
+
+  /**
+   * 学习者点了停止（W12 §4.4）：正在跑的这一轮断开（适配器能中断就中断，不能就关掉模型对话、下一轮按续接凭据接上）；
+   * 记一条 turn_stopped，下一轮交给模型时前面接“学习者停止了生成”。排着的输入照旧。没在跑返回假。
+   */
+  async interrupt(sessionId: string): Promise<boolean> {
+    const live = this.live.get(sessionId);
+    if (live === undefined || !live.running) return false;
+    live.stopping = true;
+    await this.append(sessionId, { type: 'turn_stopped', at: this.iso() });
+    const conv = live.conversation;
+    if (conv?.interrupt !== undefined) await conv.interrupt();
+    else {
+      await conv?.close();
+      live.conversation = undefined;
+    }
+    return true;
   }
 
   /** 追加一条程序记录（不发给模型）。 */
@@ -285,7 +398,7 @@ export class Hub {
   }
 
   /**
-   * 停掉一个会话（导入会话超时，W11 §4）：排着的轮丢掉，正在跑的模型对话关掉（这一轮记成没跑成）；
+   * 停掉一个会话（导入会话超时、学习者删掉讨论串）：排着的轮丢掉，正在跑的模型对话关掉（这一轮记成没跑成）；
    * 正本照旧，之后不再自己跑，有新输入才按续接凭据重开。
    */
   async stop(sessionId: string): Promise<void> {
@@ -325,30 +438,41 @@ export class Hub {
   private async drain(sessionId: string, live: Live): Promise<void> {
     live.running = true;
     this.emit({ type: 'running', sessionId, running: true });
-    const cfg = this.opts.kinds(live.kind);
     for (let item = live.queue.shift(); item; item = live.queue.shift()) {
-      let fromLine: number;
       if ('events' in item) {
-        fromLine = live.log.lines;
         await this.consume(sessionId, live, item.events).catch(async (err: unknown) => {
           const reason = err instanceof Error ? err.message : String(err);
           await this.append(sessionId, { type: 'turn_failed', at: this.iso(), reason });
         });
+        await this.flushPending(sessionId, live, false);
       } else {
-        fromLine = item.line;
+        // 这一轮从正本哪一行之后开始写（发来的话可能在上一轮还在跑时就记下了，它后面还有上一轮的话）
+        const from = live.log.lines;
         await this.runTurn(sessionId, live, item.input, item.line);
+        if (item.replyTo !== undefined) await this.replyBack(sessionId, from, item.replyTo);
       }
-      if (cfg.afterTurn !== undefined) {
-        await cfg.afterTurn(sessionId, fromLine).catch((err: unknown) => {
-          console.error(`会话 ${sessionId} 一轮之后的收尾失败：`, err);
-        });
-      }
+      live.stopping = false;
       item.resolve();
-      for (const r of live.turnWaiters.splice(0)) r();
     }
     live.running = false;
     this.emit({ type: 'running', sessionId, running: false });
     for (const r of live.idle.splice(0)) r();
+  }
+
+  /** 别的会话发来的那一轮跑完：这一轮里它最后写的话（不含中途碎话）送回发话方；没说话就不送。fromLine = 这一轮开始前正本的最后一行。 */
+  private async replyBack(sessionId: string, fromLine: number, to: string): Promise<void> {
+    const said = (await this.records(sessionId))
+      .flatMap(({ line, record: r }) =>
+        line > fromLine && r.type === 'assistant_message' && r.interim !== true ? [r.text] : [],
+      )
+      .join('\n\n')
+      .trim();
+    if (said === '' || this.opts.index.isDeleted(to) || this.opts.index.isDeleted(sessionId)) {
+      return;
+    }
+    await this.message(to, { from: sessionId, text: said, reply: true }).catch((err: unknown) => {
+      console.error(`会话 ${sessionId} 的回话送回 ${to} 失败：`, err);
+    });
   }
 
   private async runTurn(
@@ -359,15 +483,19 @@ export class Hub {
   ): Promise<void> {
     const cfg = this.opts.kinds(live.kind);
     try {
-      // 沙盒里每轮重渲染的只读文件（如本次对话）在这里刷新；插话不走这里（工单 W4 §5.3）
+      // 沙盒里每轮重渲染的只读文件（如本次对话）在这里刷新（工单 W4 §5.3）
       await cfg.beforeTurn?.(sessionId);
       let delivered = input;
       const fresh = live.conversation === undefined && !(await this.resumable(sessionId));
       live.conversation ??= await this.openConversation(sessionId, live.kind, cfg);
-      const text = await cfg.preface?.(sessionId, inputLine, fresh);
-      if (text !== undefined && text !== '') {
-        // 主对话：连续上下文，每轮附上当前事实（会话/主对话.md「每轮附上的事实」）；
-        // 学习对话：攒着的页面事实（会话/学习对话.md §11）
+      // 上一轮之后发生、要接在上下文后面的事（学习者停止了生成、删了讨论串，W12 §4.3 §4.4）+ 各会话自己的当前事实
+      const text = [
+        await this.notesBefore(sessionId, inputLine),
+        (await cfg.preface?.(sessionId, inputLine, fresh)) ?? '',
+      ]
+        .filter((x) => x !== '')
+        .join('\n');
+      if (text !== '') {
         await this.append(sessionId, {
           type: 'turn_context',
           at: this.iso(),
@@ -377,14 +505,64 @@ export class Hub {
         delivered = { ...input, preface: text };
       }
       await this.consume(sessionId, live, live.conversation.send(delivered));
+      await this.flushPending(sessionId, live, false);
     } catch (err) {
-      const reason = err instanceof Error ? err.message : String(err);
-      console.error(`会话 ${sessionId} 本轮失败：`, err);
-      await this.append(sessionId, { type: 'turn_failed', at: this.iso(), reason });
+      await this.flushPending(sessionId, live, false);
       // 模型侧对话可能已坏：丢掉，下一轮按正本里的续接凭据重开
       await live.conversation?.close();
       live.conversation = undefined;
+      // 学习者点了停止、适配器断开时抛出：不算这一轮失败（turn_stopped 已记）
+      if (live.stopping === true) return;
+      const reason = err instanceof Error ? err.message : String(err);
+      console.error(`会话 ${sessionId} 本轮失败：`, err);
+      await this.append(sessionId, { type: 'turn_failed', at: this.iso(), reason });
     }
+  }
+
+  /**
+   * 上一条输入之后、这条输入之前发生的、要接在上下文后面的事（W12 §4.3 §4.4）：学习者停止了生成、删了讨论串。
+   * 从正本现算，重启也不丢；附过的（在上一条输入或 turn_context 之前的）不再附。
+   */
+  private async notesBefore(sessionId: string, inputLine: number): Promise<string> {
+    const recs = await this.records(sessionId);
+    let from = 0;
+    for (const { line, record: r } of recs) {
+      if (line >= inputLine) break;
+      if (
+        r.type === 'turn_context' ||
+        r.type === 'user_message' ||
+        r.type === 'program_fact' ||
+        r.type === 'thread_message'
+      ) {
+        from = line;
+      }
+    }
+    return recs
+      .flatMap(({ line, record: r }) => {
+        if (line <= from || line >= inputLine) return [];
+        if (r.type === 'turn_stopped') return [`[${localMinute(r.at)}] 学习者停止了生成。`];
+        if (r.type === 'thread_deleted') {
+          return [`[${localMinute(r.at)}] 学习者删了「${r.title}」（${r.session}）。`];
+        }
+        return [];
+      })
+      .join('\n');
+  }
+
+  /**
+   * W12 §4.6：把这一轮里还没定性的那段文字记下。interim = 后面又有动作（工具调用、下一条消息）——它是中途碎话；
+   * 不是 = 这一轮结束了，它是最后写给学习者的话。
+   */
+  private async flushPending(sessionId: string, live: Live, interim: boolean): Promise<void> {
+    const text = live.pending;
+    if (text === undefined) return;
+    live.pending = undefined;
+    await this.append(sessionId, {
+      type: 'assistant_message',
+      at: this.iso(),
+      text,
+      ...(interim ? { interim: true as const } : {}),
+    });
   }
 
   /** 一轮的事件逐条记进正本（send() 的一轮与模型自己起的一轮都经这里）。 */
@@ -403,13 +581,16 @@ export class Hub {
         this.emit({ type: 'delta', sessionId, text: ev.text });
         break;
       case 'assistant_text':
-        await this.append(sessionId, {
-          type: 'assistant_message',
-          at: this.iso(),
-          text: ev.text,
-        });
+        // 先不定性：后面还有动作就是中途碎话，这一轮就此结束才是写给学习者的话（W12 §4.6）
+        await this.flushPending(sessionId, live, true);
+        live.pending = ev.text;
+        break;
+      case 'activity':
+        // 正在做什么（W12 §4.5）：由程序从工具调用得出，只推给界面，不记
+        this.emit({ type: 'activity', sessionId, text: activityText(ev.tool, ev.input, this) });
         break;
       case 'raw':
+        await this.flushPending(sessionId, live, true);
         await this.append(sessionId, {
           type: 'model_raw',
           at: this.iso(),
@@ -426,6 +607,7 @@ export class Hub {
         });
         break;
       case 'sandbox_action': {
+        await this.flushPending(sessionId, live, true);
         const tag = sandboxTag(ev.action);
         await this.append(sessionId, {
           type: 'sandbox_action',
@@ -455,6 +637,8 @@ export class Hub {
         }
         break;
       case 'turn_error':
+        // 学习者点了停止：断开时适配器报的错不算失败（turn_stopped 已记）
+        if (live.stopping === true) break;
         await this.append(sessionId, {
           type: 'turn_failed',
           at: this.iso(),
@@ -463,6 +647,7 @@ export class Hub {
         });
         break;
       case 'subagent':
+        await this.flushPending(sessionId, live, true);
         await this.append(
           sessionId,
           ev.phase === 'started'
@@ -511,7 +696,6 @@ export class Hub {
     cfg: KindConfig,
   ): Promise<ModelConversation> {
     const sandbox = await cfg.sandbox?.(sessionId);
-    const subagents = sandbox !== undefined ? await cfg.subagents?.(sessionId) : undefined;
     const systemPrompt = (await cfg.systemPromptFor?.(sessionId)) ?? cfg.systemPrompt;
     const tools = await cfg.tools(sessionId);
     await this.recordContext(sessionId, {
@@ -525,30 +709,24 @@ export class Hub {
           ? [sandbox.commands === false ? '沙盒：读写搜索（无命令行）' : '沙盒：读写搜索 + 命令行']
           : []),
         ...(cfg.webSearch === true ? ['联网搜索 + 网页抓取'] : []),
-        ...(subagents !== undefined && subagents.length > 0 ? ['派子代理'] : []),
       ],
-      subagents: (subagents ?? []).map((a) => ({
-        name: a.name,
-        description: a.description,
-        prompt: a.prompt,
-      })),
+      subagents: [],
     });
     const conv = this.opts.model.open({
       systemPrompt,
       tools: tools.map((t) => this.logged(sessionId, t)),
       session: { id: sessionId, kind },
       ...(sandbox !== undefined ? { sandbox } : {}),
-      ...(subagents !== undefined && subagents.length > 0 ? { subagents } : {}),
       ...(cfg.webSearch === true ? { webSearch: true } : {}),
       ...(await this.resumeFrom(sessionId)),
     });
-    // 子代理在后台跑：它的动作当场记；主模型空着时它做完、模型自己起的一轮排进队列当一轮记
+    // 不是 send() 引起的一轮（框架自己接着跑的）：动作当场记；模型自己起的一轮排进队列当一轮记
     conv.listen?.({
       side: (ev) => {
         const live = this.live.get(sessionId);
         if (live === undefined) return;
         this.onEvent(sessionId, live, ev).catch((e: unknown) => {
-          console.error(`会话 ${sessionId} 记子代理的事失败：`, e);
+          console.error(`会话 ${sessionId} 记旁边的事失败：`, e);
         });
       },
       unprompted: (events) => {
@@ -593,6 +771,9 @@ export class Hub {
     return {
       ...t,
       run: async (args) => {
+        // 工具调用前说的话是中途碎话（W12 §4.6）：先记下，免得排在工具调用后面
+        const live = this.live.get(sessionId);
+        if (live !== undefined) await this.flushPending(sessionId, live, true);
         let r: Awaited<ReturnType<ToolSpec['run']>>;
         try {
           r = await t.run(args);
@@ -673,8 +854,73 @@ function newLive(log: SessionLog, kind: ConversationKind): Live {
     queue: [],
     running: false,
     idle: [],
-    turnWaiters: [],
   };
+}
+
+/** 多久之前（来历标注用）：分钟 / 小时 / 天。 */
+function ago(ms: number): string {
+  const m = Math.max(0, Math.round(ms / 60_000));
+  if (m < 1) return '不到 1 分钟';
+  if (m < 60) return `${String(m)} 分钟`;
+  const h = ms / 3_600_000;
+  if (h < 48) return `${String(Math.round(h))} 小时`;
+  return `${String(Math.round(h / 24))} 天`;
+}
+
+/** 正在做什么的一行（W12 §4.5）：按工具认，不显示内容；转话时写转给谁。 */
+export function activityText(
+  tool: string,
+  input: Record<string, unknown>,
+  names: { labelOf(id: string): string },
+): string {
+  const ours = tool.startsWith('mcp__') ? tool.slice(tool.lastIndexOf('__') + 2) : tool;
+  switch (ours) {
+    case 'Read':
+      return '正在读文件';
+    case 'Glob':
+    case 'Grep':
+      return '正在搜索';
+    case 'Bash':
+      return '正在跑命令';
+    case 'Write':
+    case 'Edit':
+      return '正在写草稿';
+    case 'WebSearch':
+      return '正在网上搜索';
+    case 'WebFetch':
+      return '正在读网页';
+    case 'put_component':
+      return '正在写组件';
+    case 'edit_page':
+    case 'move_on_page':
+    case 'remove_from_page':
+    case 'bring_back':
+      return '正在改页面';
+    case 'read_page':
+      return '正在看页面';
+    case 'message_thread':
+      return typeof input.thread === 'string'
+        ? `正在把话转给${names.labelOf(input.thread)}`
+        : '正在转话';
+    case 'message_coordinator':
+      return '正在给主对话发话';
+    case 'start_thread':
+      return '正在开新的对话';
+    case 'read_thread':
+    case 'read_project_chat':
+    case 'list_threads':
+    case 'list_learned':
+      return '正在读对话记录';
+    case 'materials_index':
+    case 'read_material':
+    case 'search_materials':
+    case 'read_import':
+      return '正在读资料';
+    case 'save_material':
+      return '正在存资料';
+    default:
+      return '正在用工具';
+  }
 }
 
 function summary(o: SessionOpened): SessionSummary {

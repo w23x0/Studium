@@ -1,13 +1,10 @@
-// 依据可见：把收尾那一句（旧数据：守卫判定）、单子与出处、教法记录 / 状态记录整理成界面能直接读的只读视图。
+// 依据可见：把收尾那一句（旧数据：守卫判定、单子与出处）整理成界面能直接读的只读视图。
 // 只读：不写任何记录；异议的写入在 studium.ts。
 import {
   CONVERSATION_KIND_LABELS,
-  EXTRA_PROFILE_KEYS,
-  EXTRA_PROFILE_LABELS,
   modelInfoOf,
   type CardOptionView,
   type CardView,
-  type CurrentStateView,
   type DisclosureResponse,
   type DisclosureRowKind,
   type GoalView,
@@ -24,8 +21,6 @@ import {
   type QuoteView,
   type RouteDecisionView,
   type SourceView,
-  type StateRecordView,
-  type StrategyView,
   type TicketEditView,
   type TicketView,
 } from '../shared/protocol.ts';
@@ -45,23 +40,28 @@ import type { Learned } from './learned.ts';
 import { locate } from './locate.ts';
 import { currentTicket } from './ticket.ts';
 
-/** 旧数据里才有的会话类（页面编辑员 10-26、守卫 10-31 起不再开）：不列进外发披露的模型表。 */
-const RETIRED_KINDS: ConversationKind[] = ['editor', 'guard'];
-import { foldLoop, LOAD_HEAVY, PARKING_PILE } from './loop-state.ts';
-import type { PedagogyStore } from './knowledge/pedagogy.ts';
-import type { StateStore } from './knowledge/state.ts';
+import { foldLoop, LOAD_HEAVY, PARKING_PILE } from '../shared/loop-flags.ts';
 import type { Objections } from './knowledge/objections.ts';
 import type { Inputs } from './inputs.ts';
 import type { Sources } from './sources.ts';
 import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
 import { BadRequestError, foldDeadline } from './studium.ts';
 
+/** 旧数据里才有的会话类（页面编辑员 10-26、守卫 10-31，导航、检索、后台整理、写产出 W12 起不再开）：不列进外发披露的模型表。 */
+const RETIRED_KINDS: ConversationKind[] = [
+  'editor',
+  'guard',
+  'nav',
+  'retrieve',
+  'state',
+  'pedagogy',
+  'output',
+];
+
 export interface EvidenceDeps {
   hub: Hub;
   /** 学过的记录（按层读；项目概览的积压数从这里取）。 */
   learned: Learned;
-  pedagogy: PedagogyStore;
-  state: StateStore;
   objections: Objections;
   /** 回查资料里的出处（批 2a）。 */
   sources: Sources;
@@ -555,79 +555,6 @@ export class Evidence {
     };
   }
 
-  // ───────────── 教法记录 / 状态记录 ─────────────
-
-  async strategies(loopId?: string): Promise<StrategyView[]> {
-    const out: StrategyView[] = [];
-    for (const r of this.d.pedagogy
-      .all()
-      .filter((x) => loopId === undefined || x.loopSessionId === loopId)) {
-      out.push({
-        id: r.id,
-        at: r.at,
-        loopSessionId: r.loopSessionId,
-        conditions: r.conditions,
-        strategies: r.strategies,
-        followedBy: r.followedBy,
-        evidenceLines: r.evidenceLines,
-        quotes: await this.quotes(r.loopSessionId, r.evidenceLines),
-        toolsUsed: r.toolsUsed,
-        ...(r.toolUses ? { toolUses: r.toolUses } : {}),
-        ...(r.selfCheck ? { selfCheck: r.selfCheck } : {}),
-        model: modelInfoOf(r.model),
-        objections: this.d.objections.forRecord('pedagogy', r.id).map(storedView),
-      });
-    }
-    return out;
-  }
-
-  async state(): Promise<{ current?: CurrentStateView; records: StateRecordView[] }> {
-    const records: StateRecordView[] = [];
-    for (const r of this.d.state.allRecords()) {
-      const refs: StateRecordView['refs'] = [];
-      for (const x of r.refs) {
-        refs.push({
-          sessionId: x.sessionId,
-          lines: x.lines,
-          quotes: await this.quotes(x.sessionId, x.lines),
-        });
-      }
-      const verdict = this.d.state.verdictOf(r.id);
-      records.push({
-        id: r.id,
-        at: r.at,
-        text: r.text,
-        source: r.source,
-        sourceLevel: this.d.state.sourceLevel(r),
-        output: r.output,
-        timeRange: r.timeRange,
-        refs,
-        ...(r.afterTeaching ? { afterTeaching: r.afterTeaching } : {}),
-        confirmations: this.d.state.confirmationsFor(r.id),
-        ...(verdict ? { learnerVerdict: verdict.verdict } : {}),
-        stateSessionId: r.stateSessionId,
-        model: modelInfoOf(r.model),
-        objections: this.d.objections.forRecord('state', r.id).map(storedView),
-      });
-    }
-    const cur = this.d.state.current();
-    return {
-      ...(cur !== undefined
-        ? {
-            current: {
-              at: cur.at,
-              text: cur.text,
-              stage: cur.stage,
-              basisSpan: cur.basisSpan,
-              stateSessionId: cur.stateSessionId,
-              model: modelInfoOf(cur.model),
-            },
-          }
-        : {}),
-      records,
-    };
-  }
-
   /** 异议存放处里的全部异议（可按种类、记录 id 过滤）。 */
   objections(kind?: string, recordId?: string): ObjectionView[] {
     return this.d.objections
@@ -681,7 +608,6 @@ export class Evidence {
         ...kinds
           .filter((k) => !RETIRED_KINDS.includes(k))
           .map((k) => row(k, CONVERSATION_KIND_LABELS[k])),
-        ...EXTRA_PROFILE_KEYS.map((k) => row(k, EXTRA_PROFILE_LABELS[k])),
       ],
       note: '没单独指定模型的会话用服务的默认模型；每条记录里的“模型”是实际执行的那个，取不到时会写明只是适配器名。',
       inputs: this.d.inputs?.disclosure(d) ?? [],

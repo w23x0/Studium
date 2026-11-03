@@ -1,21 +1,16 @@
-// 批 10b 的接口：资料的来源说明、状态回看与学习者解释。
+// 批 10b 的接口：资料的来源说明（状态回看与学习者解释随状态记录 W12 撤掉）。
 // 认出路径就回答并返回真；BadRequestError / NotFoundError 由 server.ts 按 400 / 404 回。
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type {
-  AddExplanationRequest,
-  AddExplanationResponse,
   AddSourceNoteRequest,
   SourceNoteResponse,
   SourceNotesResponse,
-  StateTimelineResponse,
 } from '../../shared/protocol.ts';
 import type { Crosslinks } from '../crosslinks.ts';
-import type { Lookback } from '../lookback.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
 
 export interface CrossServices {
   links: Crosslinks;
-  lookback: Lookback;
 }
 
 export async function crossRoute(
@@ -28,7 +23,7 @@ export async function crossRoute(
   svc: CrossServices,
 ): Promise<boolean> {
   const q = url.searchParams;
-  const [, a, b, c, d] = parts;
+  const [, a, b] = parts;
   const n = parts.length;
 
   if (a === 'sources' && method === 'GET') {
@@ -53,17 +48,6 @@ export async function crossRoute(
     }
     const note = await studium.addSourceNote(body.material, body.field, body.text);
     send(res, 201, { note } satisfies SourceNoteResponse);
-    return true;
-  }
-  if (a === 'state' && b === 'timeline' && n === 3 && method === 'GET') {
-    send(res, 200, (await svc.lookback.timeline()) satisfies StateTimelineResponse);
-    return true;
-  }
-  if (a === 'state' && b === 'records' && d === 'explanations' && n === 5 && method === 'POST') {
-    const body = (await readJson(req)) as Partial<AddExplanationRequest>;
-    if (typeof body.text !== 'string') throw new BadRequestError('text 要是字符串');
-    const explanation = await studium.addStateExplanation(c ?? '', body.text);
-    send(res, 201, { explanation } satisfies AddExplanationResponse);
     return true;
   }
   return false;

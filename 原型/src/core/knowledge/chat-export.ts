@@ -1,13 +1,15 @@
-// 别处的 AI 对话记录（导出的 JSON）→ “学习者：… / AI：…” 逐条 md（工单 W9 §4.3）。
-// 认得的：ChatGPT 导出（mapping 树）、Claude 导出（chat_messages）、通用的 [{ role, content }] 或 { messages }。
-// 认不出的原样放进代码块，不猜内容。
+// 别处的 AI 对话记录（导出的 JSON / JSONL）→ “学习者：… / AI（模型名）：…” 逐条 md（工单 W9 §4.3）。
+// 认得的：ChatGPT 导出（mapping 树）、Claude 导出（chat_messages）、Claude Code 会话文件（JSONL，每行一条，
+// message.model 是实际模型）、通用的 [{ role, content }] 或 { messages }。认不出的原样放进代码块，不猜内容。
+// AI 那方写原件里的实际模型名，取不到写“AI（模型未知）”，不一律写成某家（W12 §6.1）。
 
-/** 对话记录的 md 开头那句（工单 W9 §4.3）：只有学习者说的、做的算证据。 */
+/** 对话记录的 md 开头那句（W12 §6.2）：学习者的话可作了解他的依据；AI 讲的未经核对，不作讲解依据。 */
 export const CHAT_RECORD_HEAD =
-  '> 这是学习者在别处跟 AI 学的对话；只有学习者说的、做的算证据，AI 讲的不算学习者会。';
+  '> 这是学习者以前和别的 AI 的对话。学习者说的话可作了解他的依据；AI 讲的内容未经核对，不作讲解依据。';
 
 interface Turn {
-  who: '学习者' | 'AI';
+  /** 学习者，或 AI（模型名）。 */
+  who: string;
   text: string;
 }
 
@@ -22,7 +24,10 @@ export function chatExportToMarkdown(raw: string, title: string): string {
   try {
     data = JSON.parse(raw);
   } catch {
-    return fallback(raw, title);
+    // 一行一条的会话文件（Claude Code 的 .jsonl）
+    const lines = jsonLines(raw);
+    if (lines === undefined) return fallback(raw, title);
+    data = lines;
   }
   const convs = conversations(data);
   if (convs === undefined || convs.every((c) => c.turns.length === 0)) return fallback(raw, title);
@@ -84,14 +89,33 @@ function lastLeaf(mapping: Record<string, Record<string, unknown>>): string {
   return leaves.at(-1)?.[0] ?? '';
 }
 
-/** 一串消息 → 一轮轮；系统、工具消息不要。一条都认不出返回空。 */
+/** 每行一个 JSON 的文本 → 一串对象；不是这种格式返回空。 */
+function jsonLines(raw: string): unknown[] | undefined {
+  const rows = raw.split('\n').filter((l) => l.trim() !== '');
+  if (rows.length === 0) return undefined;
+  const out: unknown[] = [];
+  for (const l of rows) {
+    try {
+      out.push(JSON.parse(l));
+    } catch {
+      return undefined;
+    }
+  }
+  return out;
+}
+
+/**
+ * 一串消息 → 一轮轮；系统、工具消息不要（只有工具结果的用户消息、只有工具调用 / 思考的 AI 消息不算一轮）。
+ * Claude Code 会话文件一行是 { type, message: { role, content, model } }，先拆出 message。一条都认不出返回空。
+ */
 function messages(list: unknown[]): Turn[] | undefined {
   const out: Turn[] = [];
   let recognized = false;
-  for (const m of list) {
-    if (!isObject(m)) continue;
+  for (const raw of list) {
+    if (!isObject(raw)) continue;
+    const m = isObject(raw.message) && raw.role === undefined ? raw.message : raw;
     const role = str(m.role) || str(m.sender) || (isObject(m.author) ? str(m.author.role) : '');
-    const who = whoOf(role);
+    const who = whoOf(role, modelOf(m));
     if (role !== '') recognized = true;
     if (who === undefined) continue;
     const text = textOf(m.content) || str(m.text) || textOf(m.parts);
@@ -100,19 +124,35 @@ function messages(list: unknown[]): Turn[] | undefined {
   return recognized ? out : undefined;
 }
 
-function whoOf(role: string): Turn['who'] | undefined {
+/** 原件里这条消息的实际模型名（Claude Code：message.model；ChatGPT：metadata.model_slug；通用：model）。 */
+function modelOf(m: Record<string, unknown>): string {
+  const meta = isObject(m.metadata) ? m.metadata : {};
+  const name = str(m.model) || str(meta.model_slug) || str(meta.model);
+  // SDK 报错时造的那条消息不是实际模型
+  return name === '<synthetic>' ? '' : name;
+}
+
+function whoOf(role: string, model: string): Turn['who'] | undefined {
   const r = role.toLowerCase();
   if (r === 'user' || r === 'human') return '学习者';
-  if (r === 'assistant' || r === 'model' || r === 'ai' || r === 'bot') return 'AI';
+  if (r === 'assistant' || r === 'model' || r === 'ai' || r === 'bot') {
+    return `AI（${model !== '' ? model : '模型未知'}）`;
+  }
   return undefined;
 }
 
-/** 消息内容：字符串、{ parts: [...] }（ChatGPT）、[{ type: 'text', text }]（Claude / 通用）。 */
+/** 消息内容：字符串、{ parts: [...] }（ChatGPT）、[{ type: 'text', text }]（Claude / 通用；工具调用、思考不要）。 */
 function textOf(c: unknown): string {
   if (typeof c === 'string') return c;
   if (Array.isArray(c)) {
     return c
-      .map((p) => (typeof p === 'string' ? p : isObject(p) ? str(p.text) : ''))
+      .map((p) =>
+        typeof p === 'string'
+          ? p
+          : isObject(p) && (p.type === undefined || p.type === 'text')
+            ? str(p.text)
+            : '',
+      )
       .filter((t) => t !== '')
       .join('\n');
   }

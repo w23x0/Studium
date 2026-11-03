@@ -1,5 +1,5 @@
-// 输入框的纯转换（批 4）：正在写的公式切段预览、在光标处插入公式、送去转写前要不要缩小。单测覆盖。
-import { TRANSCRIBE_MAX_BYTES } from '../shared/protocol.ts';
+// 输入框的纯转换（批 4）：正在写的公式切段预览、在光标处插入公式、送给模型前要不要缩小。单测覆盖。
+import { MODEL_IMAGE_MAX_BYTES } from '../shared/protocol.ts';
 
 export type Segment =
   | { kind: 'text'; text: string }
@@ -94,9 +94,9 @@ export function insertFormula(
   return insertAt(text, start, end, `${lead}$$${tex}$$${tail}`);
 }
 
-/** 送去转写前要不要先缩小一份副本（原图照传、照存）。 */
+/** 送给模型前要不要先缩小一份副本（原图照传、照存）。 */
 export function needsSmallerCopy(size: number): boolean {
-  return size > TRANSCRIBE_MAX_BYTES;
+  return size > MODEL_IMAGE_MAX_BYTES;
 }
 
 /** 缩小副本的尺寸：长边不超过 limit，按比例缩。 */

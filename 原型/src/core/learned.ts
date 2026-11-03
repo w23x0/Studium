@@ -5,6 +5,7 @@ import { dirname, join } from 'node:path';
 import type { Import, LearnedResponse, Learning } from '../shared/protocol-learned.ts';
 import type { NumberedRecord, Ticket } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
+import { foldLoop } from '../shared/loop-flags.ts';
 import { Materials } from './knowledge/materials.ts';
 import { isNotFound } from './log/session-log.ts';
 import { currentTicket, ticketEdits } from './ticket.ts';
@@ -206,7 +207,10 @@ export class Learned {
     openedAt: string,
     records: NumberedRecord[],
   ): Promise<Learning> {
-    const ended = records.find((r) => r.record.type === 'loop_ended');
+    // 现在结束着的那次结束（W12 §2 起结束后能重开：重开过的看最后一次结束，重开后还没再结束 = 进行中）
+    const flags = foldLoop(records);
+    const ended =
+      flags.ended === undefined ? undefined : records.find((r) => r.record === flags.ended);
     const ticket = await this.ticketOf(loopId, records);
     const status: Learning['status'] =
       ended?.record.type !== 'loop_ended' ? '进行中' : ended.record.closed ? '合上' : '没合上';
@@ -337,7 +341,8 @@ export class Learned {
   line(l: Learning): string {
     const start = l.openedAt.slice(0, 10);
     const span = l.endedAt !== undefined ? `${start}–${l.endedAt.slice(0, 10)}` : start;
-    const parts = [`${l.loopId}「${l.title}」${l.status}，${span}：${ticketText(l.ticket)}`];
+    const t = ticketText(l.ticket);
+    const parts = [`${l.loopId}「${l.title}」${l.status}，${span}${t !== '' ? `：${t}` : ''}`];
     if (l.closing !== undefined) {
       parts.push(`收尾那一句 L${String(l.closing.line)}：${l.closing.summary}`);
     }
@@ -368,8 +373,9 @@ export interface ParkedLearning {
   endLine?: number;
 }
 
-/** 单子的一句话：新点 + 预期理解 + 出发点各注来源。 */
+/** 单子的一句话：新点 + 预期理解 + 出发点各注来源（W12 起新开的学习没有单子：空串）。 */
 export function ticketText(t: Ticket): string {
+  if (t.newPoint === '' && t.clause === '' && t.startPoints.length === 0) return '';
   const starts = t.startPoints
     .map((s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`)
     .join('；');

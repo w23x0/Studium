@@ -1,12 +1,11 @@
 // 输入框（批 4，照 Claude 的输入框）：打字 · 加图片（选文件、拖进来、粘贴；手机上可直接拍照）· 语音 · 公式。
-// 图片原样传给核心保存，再请核心转写成文字；转写结果放在图旁边，发送前可以改。正在写的公式在上方预览。
+// 图片原样传给核心保存，随消息原样送给模型（W12 §5.6；太大的先缩小一份副本送去）。正在写的公式在上方预览。
 import {
   ArrowUpIcon,
   CameraIcon,
   ImagePlusIcon,
   LoaderCircleIcon,
   MicIcon,
-  RotateCcwIcon,
   SigmaIcon,
   SquareIcon,
   XIcon,
@@ -19,9 +18,10 @@ import { hasMath, insertFormula, needsSmallerCopy, scaledSize } from '@/input-mo
 import { cn } from '@/lib/utils';
 import type { PickedFile } from '@/files';
 import { W } from '@/wording';
+import { WT } from '@/wording-tools';
 import {
   IMAGE_MIME_TYPES,
-  TRANSCRIBE_MAX_BYTES,
+  MODEL_IMAGE_MAX_BYTES,
   type MessageImageInput,
 } from '../../../shared/protocol.ts';
 import { MathPreview } from './math-preview';
@@ -36,13 +36,10 @@ export type SendInput = (text: string, images: MessageImageInput[]) => Promise<v
 interface PendingImage {
   key: string;
   preview: string;
-  status: 'uploading' | 'transcribing' | 'done' | 'failed';
+  status: 'uploading' | 'done' | 'failed';
   attachmentId?: string;
-  /** 实际送去转写的那张（原图或缩小副本）。 */
-  transcribeId?: string;
-  transcriptionId?: string;
-  /** 转写出的文字（学习者可改）；没转写成时是学习者自己写的说明。 */
-  text: string;
+  /** 原图太大时缩小的副本（送给模型的是它）。 */
+  sentAs?: string;
   error?: string;
 }
 
@@ -52,6 +49,9 @@ const coarse = (): boolean =>
 export function InputComposer(props: {
   placeholder: string;
   onSend: SendInput;
+  /** 模型在生成：没打字时发送键换成停止键（W12 §4.4）；打了字照常能发（排到这一轮之后）。 */
+  running?: boolean;
+  onStop?: () => Promise<void>;
   /** 拖进 / 选了非图片文件时（只有主对话给）：不进输入，交给项目的上传；回一句给学习者看的话。 */
   /** 回给学习者看的：一句话，或上传结果那一条（可点改，W11 §2）。 */
   onOtherFiles?: (files: PickedFile[]) => Promise<ReactNode>;
@@ -102,27 +102,20 @@ export function InputComposer(props: {
     setImages((xs) => xs.map((x) => (x.key === key ? { ...x, ...p } : x)));
   };
 
-  const transcribe = async (key: string, id: string) => {
-    patch(key, { status: 'transcribing' });
-    try {
-      const { transcription } = await api.transcribe(id);
-      patch(key, { status: 'done', transcriptionId: transcription.id, text: transcription.text });
-    } catch (err) {
-      patch(key, { status: 'failed', error: err instanceof Error ? err.message : String(err) });
-    }
-  };
-
   const process = async (key: string, file: File) => {
     try {
       const att = await api.uploadImage(file, file.name);
-      let target = att.id;
+      let sentAs: string | undefined;
       if (needsSmallerCopy(file.size)) {
-        // 原图照存；转写服务一次收不下，就缩小一份副本送去转写（副本记着出自哪张原图）
+        // 原图照存；模型接口一次收不下，就缩小一份副本送去（副本记着出自哪张原图）
         const copy = await smallerCopy(file);
-        target = (await api.uploadImage(copy, undefined, att.id)).id;
+        sentAs = (await api.uploadImage(copy, undefined, att.id)).id;
       }
-      patch(key, { attachmentId: att.id, transcribeId: target });
-      await transcribe(key, target);
+      patch(key, {
+        status: 'done',
+        attachmentId: att.id,
+        ...(sentAs !== undefined ? { sentAs } : {}),
+      });
     } catch (err) {
       patch(key, { status: 'failed', error: err instanceof Error ? err.message : String(err) });
     }
@@ -143,10 +136,7 @@ export function InputComposer(props: {
     }
     for (const file of ok) {
       const key = `${String(Date.now())}-${Math.random().toString(36).slice(2)}`;
-      setImages((xs) => [
-        ...xs,
-        { key, preview: URL.createObjectURL(file), status: 'uploading', text: '' },
-      ]);
+      setImages((xs) => [...xs, { key, preview: URL.createObjectURL(file), status: 'uploading' }]);
       void process(key, file);
     }
   };
@@ -156,8 +146,8 @@ export function InputComposer(props: {
     setImages((xs) => xs.filter((x) => x.key !== img.key));
   };
 
-  const busy = images.some((i) => i.status === 'uploading' || i.status === 'transcribing');
-  const ready = images.filter((i) => i.attachmentId !== undefined);
+  const busy = images.some((i) => i.status === 'uploading');
+  const ready = images.filter((i) => i.status === 'done' && i.attachmentId !== undefined);
   const canSend = !sending && !busy && (text.trim() !== '' || ready.length > 0);
 
   const send = async () => {
@@ -172,10 +162,7 @@ export function InputComposer(props: {
         text,
         ready.map((i) => ({
           attachmentId: i.attachmentId ?? '',
-          ...(i.status === 'done' && i.transcriptionId !== undefined
-            ? { transcriptionId: i.transcriptionId }
-            : {}),
-          text: i.text,
+          ...(i.sentAs !== undefined ? { sentAs: i.sentAs } : {}),
         })),
       );
       for (const i of images) URL.revokeObjectURL(i.preview);
@@ -229,7 +216,7 @@ export function InputComposer(props: {
       >
         {dragging && <p className="text-primary px-1.5 text-sm">{W.dropHere}</p>}
         {images.length > 0 && (
-          <div className="flex flex-col gap-2" data-testid="composer-images">
+          <div className="flex flex-wrap gap-2" data-testid="composer-images">
             {images.map((img, n) => (
               <ImageRow
                 key={img.key}
@@ -237,13 +224,8 @@ export function InputComposer(props: {
                 n={n + 1}
                 onView={() => setViewing(img)}
                 onRemove={() => remove(img)}
-                onText={(t) => patch(img.key, { text: t })}
-                onRetry={() => {
-                  if (img.transcribeId !== undefined) void transcribe(img.key, img.transcribeId);
-                }}
               />
             ))}
-            <p className="text-muted-foreground px-1 text-xs">{W.imageNotice}</p>
           </div>
         )}
         {hasMath(text) && (
@@ -331,23 +313,46 @@ export function InputComposer(props: {
             <SigmaIcon />
           </TooltipIconButton>
           <div className="flex-1" />
-          <TooltipIconButton
-            tooltip={busy ? W.waitImages : W.send}
-            side="bottom"
-            type="button"
-            variant="default"
-            size="icon"
-            className="size-8 rounded-lg"
-            aria-label={W.send}
-            disabled={!canSend}
-            onClick={() => void send()}
-          >
-            {sending ? (
-              <LoaderCircleIcon className="size-4 animate-spin" />
-            ) : (
-              <ArrowUpIcon className="size-4" />
-            )}
-          </TooltipIconButton>
+          {props.running === true &&
+          props.onStop !== undefined &&
+          text.trim() === '' &&
+          ready.length === 0 ? (
+            <TooltipIconButton
+              tooltip={WT.stop}
+              side="bottom"
+              type="button"
+              variant="default"
+              size="icon"
+              className="size-8 rounded-lg"
+              aria-label={WT.stop}
+              data-testid="stop"
+              onClick={() => {
+                props.onStop?.().catch((e: unknown) => {
+                  setNotice(e instanceof Error ? e.message : String(e));
+                });
+              }}
+            >
+              <SquareIcon className="size-3.5 fill-current" />
+            </TooltipIconButton>
+          ) : (
+            <TooltipIconButton
+              tooltip={busy ? W.waitImages : W.send}
+              side="bottom"
+              type="button"
+              variant="default"
+              size="icon"
+              className="size-8 rounded-lg"
+              aria-label={W.send}
+              disabled={!canSend}
+              onClick={() => void send()}
+            >
+              {sending ? (
+                <LoaderCircleIcon className="size-4 animate-spin" />
+              ) : (
+                <ArrowUpIcon className="size-4" />
+              )}
+            </TooltipIconButton>
+          )}
         </div>
       </div>
       <input
@@ -398,13 +403,10 @@ function ImageRow(props: {
   n: number;
   onView: () => void;
   onRemove: () => void;
-  onText: (t: string) => void;
-  onRetry: () => void;
 }) {
   const { img } = props;
-  const working = img.status === 'uploading' || img.status === 'transcribing';
   return (
-    <div className="flex gap-2" data-testid="composer-image">
+    <div className="flex flex-col gap-1" data-testid="composer-image">
       <div className="relative shrink-0">
         <button
           type="button"
@@ -414,6 +416,11 @@ function ImageRow(props: {
         >
           <img src={img.preview} alt={W.imageAlt(props.n)} className="size-16 object-cover" />
         </button>
+        {img.status === 'uploading' && (
+          <span className="bg-background/60 absolute inset-0 flex items-center justify-center rounded-lg">
+            <LoaderCircleIcon className="size-4 animate-spin" />
+          </span>
+        )}
         <button
           type="button"
           aria-label={W.removeImage}
@@ -423,48 +430,14 @@ function ImageRow(props: {
           <XIcon className="size-3" />
         </button>
       </div>
-      <div className="flex min-w-0 flex-1 flex-col gap-1">
-        {working ? (
-          <p className="text-muted-foreground flex items-center gap-1.5 text-xs">
-            <LoaderCircleIcon className="size-3.5 animate-spin" />
-            {img.status === 'uploading' ? W.uploading : W.transcribing}
-          </p>
-        ) : (
-          <>
-            <span className="text-muted-foreground text-xs">
-              {img.status === 'done' ? W.transcript : W.ownText}
-            </span>
-            {img.status === 'failed' && img.error !== undefined && (
-              <span className="text-destructive flex items-center gap-2 text-xs">
-                {img.error}
-                {img.transcribeId !== undefined && (
-                  <button
-                    type="button"
-                    className="text-primary inline-flex items-center gap-0.5"
-                    onClick={props.onRetry}
-                  >
-                    <RotateCcwIcon className="size-3" />
-                    {W.retry}
-                  </button>
-                )}
-              </span>
-            )}
-            <textarea
-              value={img.text}
-              placeholder={W.transcriptPlaceholder}
-              rows={Math.min(6, Math.max(2, img.text.split('\n').length))}
-              spellCheck={false}
-              className="bg-muted/40 rounded-md border px-2 py-1 font-mono text-xs leading-5 outline-none"
-              onChange={(e) => props.onText(e.target.value)}
-            />
-          </>
-        )}
-      </div>
+      {img.status === 'failed' && img.error !== undefined && (
+        <span className="text-destructive max-w-40 text-xs">{img.error}</span>
+      )}
     </div>
   );
 }
 
-/** 缩小一份 JPEG 副本送去转写（长边 2000 像素以内，再大就降画质）。 */
+/** 缩小一份 JPEG 副本送给模型（长边 2000 像素以内，再大就降画质）。 */
 async function smallerCopy(file: File): Promise<Blob> {
   const bitmap = await createImageBitmap(file);
   const { width, height } = scaledSize(bitmap.width, bitmap.height);
@@ -477,7 +450,7 @@ async function smallerCopy(file: File): Promise<Blob> {
   bitmap.close();
   for (const quality of [0.9, 0.75, 0.6]) {
     const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, 'image/jpeg', quality));
-    if (blob !== null && blob.size <= TRANSCRIBE_MAX_BYTES) return blob;
+    if (blob !== null && blob.size <= MODEL_IMAGE_MAX_BYTES) return blob;
   }
   throw new Error('图片缩小后还是太大，裁一下再试');
 }

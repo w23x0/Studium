@@ -28,7 +28,6 @@ import {
   Section,
   TicketRowList,
 } from '../evidence/parts.tsx';
-import { DeviationsSection } from './deviations.tsx';
 
 export function LearnedView(props: { loopId?: string | undefined }) {
   const project = useProject();
@@ -63,7 +62,6 @@ export function LearnedView(props: { loopId?: string | undefined }) {
           {imports.length > 0 && <ImportsSection rows={imports} />}
         </>
       )}
-      <DeviationsSection projectId={project} />
     </div>
   );
 }

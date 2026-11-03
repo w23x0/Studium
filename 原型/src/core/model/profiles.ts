@@ -1,5 +1,4 @@
 // 模型与思考强度按会话类分开配：配置项，不全局一个（`docs/设计/实现选型.md`）。
-import { EXTRA_PROFILE_KEYS } from '../../shared/protocol.ts';
 import { CONVERSATION_KINDS, type ConversationKind } from '../../shared/records.ts';
 
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max';
@@ -11,38 +10,27 @@ export interface Profile {
   effort?: Effort;
 }
 
+export type ProfileKey = ConversationKind;
 /**
- * 不是会话种类、也要单独配模型的两样（W10）：学习对话派的子代理（会话/页面子代理.md「模型」单独配）、
- * 框架里对块摆屏的小模型（实现选型「框架小模型」）。
+ * 旧配置里的两项（W10 的学习对话子代理、框架小模型，W12 随区域图学习页撤掉）：STUDIUM_PROFILES 里配了不报错、不起作用。
  */
-export { EXTRA_PROFILE_KEYS };
-export type ProfileKey = ConversationKind | (typeof EXTRA_PROFILE_KEYS)[number];
-const PROFILE_KEYS: readonly string[] = [...CONVERSATION_KINDS, ...EXTRA_PROFILE_KEYS];
+const RETIRED_PROFILE_KEYS: readonly string[] = ['subagent', 'framework'];
+const PROFILE_KEYS: readonly string[] = [...CONVERSATION_KINDS, ...RETIRED_PROFILE_KEYS];
 
 export type Profiles = Partial<Record<ProfileKey, Profile>>;
 
 /**
- * 默认：主对话低强度；找资料中等；畅谈、学习对话、导航、检索子代理、状态整理高强度；教法记录整理没规定，不设；
- * 学习对话的子代理用 Sonnet、中等强度（会话/页面子代理.md：主对话用 Opus 时子代理用 Opus 或 Sonnet，可选更快的）；
- * 导入会话用 Sonnet、中等强度（W11 §4）；框架小模型用 Haiku 5.5（实现选型「框架小模型」），强度不设（用 SDK 默认）。
- * `editor` 一行留给旧数据（10-26 的页面编辑员会话，不再开）；`guard` 一行同理（守卫 10-31 起不再开，
- * STUDIUM_PROFILES 里配了也不报错、不起作用）。
+ * 默认：主对话低强度；找资料中等；谈方向、学习对话高强度；导入会话用 Sonnet、中等强度（W11 §4）。
+ * 不再开的种类（守卫、导航、检索子代理、状态整理、教法记录整理、写产出、页面编辑员）不设；STUDIUM_PROFILES 里
+ * 配了也不报错、不起作用。
  */
 export const DEFAULT_PROFILES: Profiles = {
   main: { effort: 'low' },
   talk: { effort: 'high' },
   loop: { effort: 'high' },
-  output: { effort: 'high' },
-  guard: { effort: 'high' },
-  nav: { effort: 'high' },
-  retrieve: { effort: 'high' },
-  state: { effort: 'high' },
   find: { effort: 'medium' },
-  editor: { model: 'sonnet', effort: 'medium' },
   // 导入会话（W11 §4，试验）：把原件里不是纯文字的东西处理成别的会话能读的文字
   import: { model: 'sonnet', effort: 'medium' },
-  subagent: { model: 'sonnet', effort: 'medium' },
-  framework: { model: 'claude-haiku-5-5' },
 };
 
 const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];
@@ -60,6 +48,7 @@ export function mergeProfiles(overrides: unknown, base: Profiles = DEFAULT_PROFI
         `STUDIUM_PROFILES 里没有这一项：${kind}（可用：${PROFILE_KEYS.join(' / ')}）`,
       );
     }
+    if (RETIRED_PROFILE_KEYS.includes(kind)) continue;
     const p = raw as Profile;
     if (p.effort !== undefined && !EFFORTS.includes(p.effort)) {
       throw new Error(`强度只能是 ${EFFORTS.join(' / ')}，收到 ${p.effort}`);

@@ -6,13 +6,10 @@ import type { BBox } from '../shared/protocol.ts';
 export type PanelTarget =
   /**
    * focusLine：滚到这一次收尾（收尾那一句所在行；旧数据是守卫判定所在行）；
-   * editTicket：打开就展开改单子。
    */
-  | { kind: 'loop'; loopId: string; focusLine?: number; editTicket?: true }
+  | { kind: 'loop'; loopId: string; focusLine?: number }
   /** 我学会的：不给 = 全部；给 loopId = 直接展开那一次学习。 */
   | { kind: 'learned'; loopId?: string }
-  | { kind: 'state' }
-  | { kind: 'teaching' }
   | { kind: 'disclosure' }
   /** 资料浏览：不给 material = 资料列表；给 material（资料 id）= 这份资料的文件清单。 */
   | { kind: 'materials'; material?: string }
@@ -32,18 +29,6 @@ export type PanelTarget =
       bbox?: BBox;
       problem?: string;
     }
-  /**
-   * 我的产出里的一份（照 Claude 的 artifact：在面板里看与改）。tab 不给 = 正文；version 不给 = 最新版；
-   * compare = 正在对比的两版；edit = 正在改（稿子另存在界面里，翻到别处再回来还在）。
-   */
-  | {
-      kind: 'output';
-      id: string;
-      tab?: OutputTab;
-      version?: number;
-      compare?: [number, number];
-      edit?: boolean;
-    }
   /** 原件的一页；bbox 标出位置，quote 是书里的原句，file / line 能回到转录的原文。 */
   | {
       kind: 'page';
@@ -55,17 +40,9 @@ export type PanelTarget =
       line?: number;
     };
 
-export type OutputTab = 'text' | 'versions' | 'literature';
-
-/** 面板里看书的几类东西与产出物：面板放宽一些。 */
+/** 面板里看书的几类东西：面板放宽一些。 */
 export function isWideTarget(t: PanelTarget): boolean {
-  return (
-    t.kind === 'materials' ||
-    t.kind === 'search' ||
-    t.kind === 'source' ||
-    t.kind === 'page' ||
-    t.kind === 'output'
-  );
+  return t.kind === 'materials' || t.kind === 'search' || t.kind === 'source' || t.kind === 'page';
 }
 
 /** 对话里要高亮的几句；seq 每次跳转都变，好让同一处能再跳一次。 */

@@ -66,7 +66,29 @@ export function currentTicket(records: NumberedRecord[]): Ticket | undefined {
   return t;
 }
 
-/** 学习对话顶部：这次学什么（一行），点开见学完应该能、从哪出发、先假定你会的（界面说明 §2.6）。 */
+/** 旧数据：单子条点开后的几项（学完应该能、从哪出发、先假定你会的）。 */
+function TicketDetails(props: { ticket: Ticket; className?: string }) {
+  const t = props.ticket;
+  const known = t.startPoints.filter((p) => p.source !== '假定');
+  const assumed = t.startPoints.filter((p) => p.source === '假定');
+  const item = (label: string, text: string) => (
+    <div className="flex flex-col">
+      <dt className="text-muted-foreground text-xs">{label}</dt>
+      <dd>
+        <MathPreview text={text} />
+      </dd>
+    </div>
+  );
+  return (
+    <dl className={`flex flex-col gap-1.5 text-sm ${props.className ?? ''}`}>
+      {item(W.clause, t.clause)}
+      {known.length > 0 && item(W.startPoints, known.map((p) => p.point).join('；'))}
+      {assumed.length > 0 && item(W.startSource.假定, assumed.map((p) => p.point).join('；'))}
+    </dl>
+  );
+}
+
+/** 旧数据（W12 前开的学习有单子）：顶部一行这次学什么，点开见几项（界面说明 §2.6）。 */
 export function TicketStrip(props: { ticket: Ticket }) {
   const [open, setOpen] = useState(false);
   const t = props.ticket;
@@ -87,42 +109,6 @@ export function TicketStrip(props: { ticket: Ticket }) {
         <MathPreview text={t.newPoint} className={open ? '' : 'line-clamp-1'} />
       </button>
       {open && <TicketDetails ticket={t} className="mt-1.5 ps-5.5" />}
-    </div>
-  );
-}
-
-/**
- * 单子条点开后的几项（学完应该能、从哪出发、先假定你会的）；学习页上点名拿回的开场也用它，
- * 另加新点与路线动作（会话/学习对话.md §11.3「程序推来的块上屏」）。
- */
-export function TicketDetails(props: { ticket: Ticket; className?: string; opening?: boolean }) {
-  const t = props.ticket;
-  const known = t.startPoints.filter((p) => p.source !== '假定');
-  const assumed = t.startPoints.filter((p) => p.source === '假定');
-  return (
-    <dl className={`flex flex-col gap-1.5 text-sm ${props.className ?? ''}`}>
-      {props.opening === true && <TicketItem label={W.loopTopic} text={t.newPoint} />}
-      <TicketItem label={W.clause} text={t.clause} />
-      {known.length > 0 && (
-        <TicketItem label={W.startPoints} text={known.map((p) => p.point).join('；')} />
-      )}
-      {assumed.length > 0 && (
-        <TicketItem label={W.startSource.假定} text={assumed.map((p) => p.point).join('；')} />
-      )}
-      {props.opening === true && t.routeAction !== '' && (
-        <TicketItem label={W.routeAction} text={t.routeAction} />
-      )}
-    </dl>
-  );
-}
-
-function TicketItem(props: { label: string; text: string }) {
-  return (
-    <div className="flex flex-col">
-      <dt className="text-muted-foreground text-xs">{props.label}</dt>
-      <dd>
-        <MathPreview text={props.text} />
-      </dd>
     </div>
   );
 }

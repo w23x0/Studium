@@ -43,7 +43,7 @@ export interface SandboxSpec {
 }
 
 /**
- * 主模型可以派的一个子代理（框架自带的子代理机制；会话/页面子代理.md）。默认在后台跑，做完交回一段话，
+ * 旧：主模型可以派的一个子代理（框架自带的子代理机制；W12 撤掉区域图学习页后没有会话再派，类型留给适配器的权限判断）。默认在后台跑，做完交回一段话，
  * 按时间接在主模型上下文后面。只能写 `writable` 下面、只能读 `writable` 与 `readable`，不给跑命令。
  * 模型与强度不在这里写死：适配器按 profiles 的 `subagent` 一项配（会话/页面子代理.md「模型」单独配）。
  */
@@ -75,22 +75,17 @@ export interface ConversationSpec {
   tools: ToolSpec[];
   /** 有这一项 = 这个会话在沙盒里跑（通用读写与命令），工具只是沙盒里的两个命令。 */
   sandbox?: SandboxSpec;
-  /** 主模型能派的子代理（要有沙盒）。 */
-  subagents?: SubagentSpec[];
   /** 上次的续接凭据（正本里最近一条 model_session），没有就是新开。 */
   resumeToken?: string;
   /** 为真时从 resumeToken 分叉：分出来的不写回原来那条线（W11 §6 问别的项目的主对话）。 */
   fork?: boolean;
   /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
   session?: { id: string; kind: ConversationKind };
-  /** 为真时放开模型服务自带的联网搜索与网页抓取（畅谈、导航）。 */
+  /** 为真时放开模型服务自带的联网搜索与网页抓取（谈方向、找资料、学习对话；W12 起可与沙盒同时有）。 */
   webSearch?: boolean;
-  /**
-   * 按哪一项配模型与强度；不给 = 按 `session.kind`。框架小模型（`framework`）与框架另开的子代理（`subagent`）用
-   * （W10，实现选型「框架小模型」、会话/页面子代理.md「模型」）。
-   */
+  /** 按哪一项配模型与强度；不给 = 按 `session.kind`。 */
   profile?: ProfileKey;
-  /** 一次性的（框架小模型、框架另开的子代理）：不留续接用的会话文件。 */
+  /** 一次性的（问别的项目的主对话）：不留续接用的会话文件。 */
   ephemeral?: boolean;
 }
 
@@ -114,9 +109,9 @@ export interface SandboxActionEvent {
   };
 }
 
-/** 一条输入：学习者的话与动作，或程序追加的事实（守卫结论等）。 */
+/** 一条输入：学习者的话与动作、程序追加的事实，或别的会话发来的话（peer，W12 §3.1：不包程序事实标记）。 */
 export interface TurnInput {
-  role: 'learner' | 'program';
+  role: 'learner' | 'program' | 'peer';
   text: string;
   /** 本轮之前程序从记录重建的开场（主对话每轮新开时用）；不算进 text。 */
   preface?: string;
@@ -125,6 +120,8 @@ export interface TurnInput {
    * （会话/学习对话.md §3「上下文里的身份与时间线」）。
    */
   plain?: boolean;
+  /** 学习者附的图片（W12 §5.6）：原样随这条输入送给模型；看不了图的模型按 text 里写的沙盒路径自己打开。 */
+  images?: ImageData[];
 }
 
 /** 子代理开始 / 做完（程序当场记）。 */
@@ -157,6 +154,8 @@ export type ModelEvent =
   /** 沙盒里的一个动作（读 / 写 / 跑命令……），程序当场记进正本。 */
   | SandboxActionEvent
   | SubagentEvent
+  /** 主模型开始调一个工具（W12 §4.5 正在做什么）：工具名与参数，只给界面显示一行，不进正本。 */
+  | { kind: 'activity'; tool: string; input: Record<string, unknown> }
   /** 一轮跑完时主模型上下文多大（最后一次回话的 input + 缓存读 + 缓存写）与这一轮输出了多少（token）。 */
   | { kind: 'usage'; context: number; output: number }
   /** 本轮结束。 */
@@ -168,11 +167,10 @@ export interface ModelConversation {
   /** 发一条输入，流式拿回本轮事件，直到 turn_end 或 turn_error。一次只跑一轮。 */
   send(input: TurnInput): AsyncIterable<ModelEvent>;
   /**
-   * 中途插话：本轮还在跑时再交一条输入，模型在本轮下一个停顿处（工具调用之间）看到它，
-   * 对它的回应仍从正在跑的 send() 里出来。返回 false 表示本轮已在收尾，调用方改按新一轮发。
-   * 适配器不支持就不实现，核心退回排队。
+   * 学习者点了停止（W12 §4.4）：中断正在跑的这一轮，send() 的事件流随之结束；对话之后还能接着发。
+   * 适配器不支持就不实现，核心改为关掉对话、下一轮按续接凭据接上。
    */
-  interject?(input: TurnInput): boolean;
+  interrupt?(): Promise<void>;
   /**
    * 接住不是 send() 引起的事（子代理在后台跑）：`side` 是不属于主模型某一轮的事件（子代理的动作、
    * 开始 / 做完）；`unprompted` 是模型自己起的一轮（子代理做完、主模型空着时框架自己接着跑一轮），
@@ -202,8 +200,6 @@ export interface ModelAdapter {
   readonly name: string;
   /** 内容送往哪个服务；没有就是不外发（或还没声明）。 */
   readonly disclosure?: ModelDisclosure;
-  /** 图片转写（学习者拍的手写等，批 4）；适配器做不了就不给，核心如实告诉学习者。 */
-  readonly transcriber?: ImageTranscriber;
   open(spec: ConversationSpec): ModelConversation;
 }
 
@@ -211,20 +207,6 @@ export interface ModelAdapter {
 export interface ImageData {
   mime: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
   data: Buffer;
-}
-
-export interface TranscribeResult {
-  text: string;
-  /** 实际执行的模型（不是别名）；取不到就不填，核心写明兜底。 */
-  model?: string;
-}
-
-/** 把图片转成文字：一问一答、不留对话、不给工具。 */
-export interface ImageTranscriber {
-  /** 声明要用的模型（外发披露用）；不填 = 服务默认。实际执行的模型看每次结果。 */
-  readonly model?: string;
-  /** instructions 是系统提示（只写定义、边界、输出格式）。 */
-  transcribe(image: ImageData, instructions: string): Promise<TranscribeResult>;
 }
 
 /** 程序事实在各家模型那里都以一条用户消息送达，用固定标记与学习者的话区分。 */

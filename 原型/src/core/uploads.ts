@@ -34,16 +34,6 @@ export const MAX_UPLOAD_BYTES = 300 * 1024 * 1024;
 export const MAX_LOCAL_FILES = 3000;
 
 type Owner = '学习者' | '项目';
-type Judged = {
-  to: '资料' | '学过的';
-  channel?: '笔记' | '对话记录';
-  owner: Owner;
-  reason: string;
-};
-
-/** 模型判一次：归资料还是学过的（学过的再分笔记 / 对话记录）、归学习者还是项目 + 一句理由。 */
-export type RouteJudge = (name: string, sample: string) => Promise<Judged>;
-
 /** 没判出归属时的默认（W11 §2）：学过的 → 学习者；资料 → 项目。 */
 export function defaultOwner(to: '资料' | '学过的'): Owner {
   return to === '学过的' ? '学习者' : '项目';
@@ -59,8 +49,6 @@ export interface UploadsDeps {
   root: string;
   newId: (prefix: string) => string;
   iso: () => string;
-  /** 不给 = 没接模型，拿不准的按扩展名默认。 */
-  judge?: RouteJudge;
   addMaterial: (mainId: string, req: AddMaterialRequest) => Promise<string>;
   /** 改判时改那份资料的“学过的”标记与归属，并重做工作层。 */
   relabel: (
@@ -302,7 +290,10 @@ export class Uploads {
     return { ...rec, at: this.o.iso() };
   }
 
-  /** 判一份：扩展名定得了的直接定，拿不准的问模型；然后落地。 */
+  /**
+   * 判一份：扩展名定得了的直接定；拿不准的（笔记、对话导出）先按扩展名放，交导入会话看内容再判归哪边、归谁
+   * （W12 §1.6，取代单独的一次判断）；然后落地。
+   */
   private async land(mainId: string, upload: string, unit: Unit): Promise<UploadItemView> {
     if (unit.kind !== 'notes' && unit.kind !== 'chat') {
       return this.put(mainId, upload, unit, {
@@ -315,27 +306,26 @@ export class Uploads {
             : `按扩展名：${KIND_WORD[unit.kind]}先当资料，不对就点改`,
       });
     }
-    const judged = await this.judge(this.dir(mainId, upload), unit);
-    return this.put(mainId, upload, unit, { ...judged, by: 'model' });
-  }
-
-  private async judge(dir: string, unit: Unit): Promise<Judged> {
-    const fallback: Judged =
+    return this.put(
+      mainId,
+      upload,
+      unit,
       unit.kind === 'chat'
         ? {
             to: '学过的',
             channel: '对话记录',
+            by: 'model',
             owner: '学习者',
-            reason: '没接模型：.json 多是对话导出',
+            reason: '按扩展名：.json 多是对话导出，导入时再看内容判',
           }
-        : { to: '资料', owner: '项目', reason: '没接模型：按扩展名默认当资料，不对就点改' };
-    if (this.o.judge === undefined) return fallback;
-    try {
-      return await this.o.judge(unit.file, await sample(join(dir, unit.file)));
-    } catch (err) {
-      console.error('分流判断失败：', err);
-      return { ...fallback, reason: '判断没成功，先按扩展名放；不对就点改' };
-    }
+        : {
+            to: '资料',
+            by: 'model',
+            owner: '项目',
+            reason: '按扩展名先当资料，导入时再看内容判',
+          },
+      true,
+    );
   }
 
   /** 落地并记一条 upload_routed：两边都建一份资料；学过的另追加一条外部导入。 */
@@ -350,6 +340,8 @@ export class Uploads {
       reason?: string;
       channel?: '笔记' | '对话记录';
     },
+    /** 交导入会话看内容再判归哪边、归谁（W12 §1.6）。 */
+    classify = false,
   ): Promise<UploadItemView> {
     const abs = join(this.dir(mainId, upload), unit.file);
     const title = unit.title ?? titleOf(unit.file);
@@ -386,6 +378,7 @@ export class Uploads {
           title,
           owner: ownerOf(how.owner, mainId),
           ...(channel !== undefined ? { learned: { channel } } : {}),
+          ...(classify ? { classify: { upload, file: unit.file } } : {}),
         });
         landed = {
           material,
@@ -463,7 +456,7 @@ function fileKind(p: string, binary: boolean): UnitKind {
   if (ext === '.pdf') return 'pdf';
   if (ext === '.srt' || ext === '.vtt') return 'subtitle';
   if (NOTE_EXT.has(ext)) return 'notes';
-  if (ext === '.json') return 'chat';
+  if (ext === '.json' || ext === '.jsonl') return 'chat';
   if (UNSUPPORTED_EXT.has(ext)) return 'unsupported';
   if (IMAGE_EXT.has(ext)) return 'image';
   if (binary) return 'doc';
@@ -484,23 +477,4 @@ async function folderKind(dir: string): Promise<UnitKind> {
   };
   await walk(dir);
   return kindOfFolder(kinds);
-}
-
-/** 给模型看的样子：文件开头一段；文件夹 = 文件清单 + 第一份的开头。只够判归哪类。 */
-async function sample(abs: string): Promise<string> {
-  const st = await stat(abs);
-  if (!st.isDirectory()) return (await readFile(abs, 'utf8')).slice(0, 3000);
-  const names: string[] = [];
-  const walk = async (d: string, rel: string): Promise<void> => {
-    for (const e of await readdir(d, { withFileTypes: true })) {
-      if (names.length >= 40) return;
-      const r = rel === '' ? e.name : `${rel}/${e.name}`;
-      if (e.isDirectory()) await walk(join(d, e.name), r);
-      else names.push(r);
-    }
-  };
-  await walk(abs, '');
-  const first = names.find((n) => NOTE_EXT.has(extname(n).toLowerCase()));
-  const head = first !== undefined ? (await readFile(join(abs, first), 'utf8')).slice(0, 2000) : '';
-  return `文件夹里的文件：\n${names.join('\n')}\n\n${first ?? ''} 开头：\n${head}`;
 }

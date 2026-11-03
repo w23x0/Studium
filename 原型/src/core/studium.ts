@@ -1,5 +1,6 @@
-// Studium：按事件跑清单（`docs/设计/01-流程.md`；一次学习之外的流程见 `docs/设计/会话/` 各页，收口 10-31 起不开守卫：学习对话自己写收尾那一句，见 `requestClose`）。
-// 每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（`docs/设计/记录/读写权限.md`）。
+// Studium：每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（`docs/设计/记录/读写权限.md`）。
+// W12（一个对话一个模型）：主对话开讨论串（学习对话、谈方向、找资料）、给它们发话；讨论串自己读记录、互相发话
+// （照 Claude 项目的主对话与讨论串）。收口 10-31 起不开守卫：学习对话自己写收尾那一句，见 `requestClose`。
 import { randomBytes } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -7,7 +8,7 @@ import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
 import { CONVERSATION_KIND_LABELS } from '../shared/protocol.ts';
-import { REOPENABLE_KINDS, THREAD_KINDS, threadEnded, threadGroup } from '../shared/threads.ts';
+import { THREAD_KINDS, threadEnded, threadGroup } from '../shared/threads.ts';
 import type {
   AddMaterialRequest,
   MaterialOwner,
@@ -16,87 +17,49 @@ import type {
   ProjectInstructionsResponse,
   ProjectMaterialsResponse,
   ProjectMaterialView,
-  RouteDeviationView,
   SourceNoteView,
-  StateExplanationView,
 } from '../shared/protocol.ts';
-import { CROSS_KINDS } from '../shared/records-cross.ts';
 import {
-  START_SOURCES,
-  type ChoiceCard,
-  type ChoiceOption,
   type ConversationKind,
-  type FindCandidate,
   type GoalAbility,
   type ImageInput,
   type LearnerObjection,
   type MessageQuote,
   type LogRecord,
   type NumberedRecord,
-  type RouteDecision,
   type SessionOpened,
-  type Ticket,
 } from '../shared/records.ts';
 import type { Crosslinks } from './crosslinks.ts';
 import { currentGoal, describeGoal, goalText } from './goal.ts';
 import { Learned } from './learned.ts';
-import type { Learning } from '../shared/protocol-learned.ts';
 import { LongTerm } from './longterm.ts';
-import { routeDeviations } from './route-deviations.ts';
-import { REVISIT_KINDS } from '../shared/records-longterm.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
-import { foldLoop } from './loop-state.ts';
+import { foldLoop } from '../shared/loop-flags.ts';
 import { MaterialError, Materials } from './knowledge/materials.ts';
 import type { Sources } from './sources.ts';
-import type { PedagogyStore } from './knowledge/pedagogy.ts';
 import type { Objections } from './knowledge/objections.ts';
-import { STAGES, type StateStore, type StateConfirmation } from './knowledge/state.ts';
-import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
-import { locate, type LocateDeps } from './locate.ts';
+import type { TeachingTools } from './teaching-tools.ts';
 import { canDescend, canRead } from './model/sandbox-paths.ts';
-import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
-import type { Outputs } from './outputs.ts';
+import type { ImageData, SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
-import { Components } from './page/agent.ts';
-import { ARRANGE_TOOL, Screens } from './page/screens.ts';
+import { Screens } from './page/screens.ts';
 import { PageStore } from './page/store.ts';
 import { streamTools } from './page/stream-tools.ts';
-import { LearnPageSetting } from './learn-page-setting.ts';
-import { currentTicket } from './ticket.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
 import { closeStatus, closingOf } from '../shared/closing.ts';
-import { Uploads, type RouteJudge } from './uploads.ts';
+import { Uploads } from './uploads.ts';
+import type { Inputs } from './inputs.ts';
 import { localMinute } from '../shared/time.ts';
 
 export class BadRequestError extends Error {}
 
-/** 定下一步的结果：导航定了、已开学习对话；或导航要先问学习者一件事。 */
-export type PlanResult = (
-  | { kind: 'opened'; loopSessionId: string; title: string; reason: string; navSessionId: string }
-  | { kind: 'question'; question: string; navSessionId: string }
-) & {
-  /** 导航发现资料缺的那段，经主对话提议去找（会话/找资料.md「何时开」）。 */
-  materialGap?: string;
-};
-
-/** 出发点的来源（学过的记录 / 自述 / 假定）。 */
-type StartSource = (typeof START_SOURCES)[number];
-
-/** 状态整理开场里，学习者两句话之间隔多久标一句“停了约…”。 */
-const AWAY_MS = 30 * 60 * 1000;
-/** 旧版开的学习对话（W10 前，开场的提示词与工具已定死）：只看，要接着学另开一次（W10 §9 第 1 条）。 */
+/** 旧版开的学习对话（W12 前的区域图学习页与更早的）：只读看，要接着学另开一次。 */
 const OLD_LOOP = '这次学习是旧版开的，只能看；要接着学，请回项目另开一次。';
 /** 学习者点“我觉得懂了”时交给学习对话的程序事实（10-31 起不开守卫）。 */
 const LEARNER_WANTS_CLOSE =
   '学习者点了“我觉得懂了”。你也觉得可以收，就调 request_close 写收尾那一句（这次做了什么、停在哪）；觉得还差，就直接跟学习者说差在哪，不调。';
-/** 隔多久回来算“隔很久”，状态整理顺带跑一次（`docs/设计/会话/后台整理.md`；阈值属实现细节，先定 12 小时）。 */
-const LONG_AWAY_MS = 12 * 3600 * 1000;
-/** 状态整理开场里教学行只放开头一段（作紧邻前序事件），全文用 read_session 查。 */
-const TEACHING_EXCERPT = 160;
 /** 项目说明上限（字；参照 Claude，`docs/设计/记录/项目说明.md`）。 */
 export const INSTRUCTIONS_LIMIT = 16000;
-/** 找资料一次最多交回几份候选（`docs/设计/会话/找资料.md`）。 */
-const MAX_CANDIDATES = 10;
 /** 导入会话多久没交回算超时（W11 §4；实现细节，先定 60 分钟：几百页的 PDF 交 MinerU 要几分钟到十几分钟）。 */
 const IMPORT_TIMEOUT_MS = 60 * 60 * 1000;
 
@@ -106,69 +69,49 @@ export interface StudiumOptions {
   materials: Materials;
   /** 数据目录（学过的记录的导入存放处在其下）。 */
   dataDir: string;
-  pedagogy: PedagogyStore;
-  state: StateStore;
-  /** 学习者异议存放处。 */
+  /** 学习者异议存放处（旧数据：对守卫判定的异议）。 */
   objections: Objections;
   /** 原文与出处（资料检索、教材出处核对）。 */
   sources: Sources;
   /** 教学工具（官方 + 学习者自己的）。 */
   teaching: TeachingTools;
-  /** 知识产出物（批 8）。 */
-  outputs: Outputs;
+  /** 附图存放处（W12 §5.6：图片原样送给模型）。 */
+  inputs: Inputs;
   /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
   cross: Crosslinks;
-  /** 上传分流里拿不准的交模型判一次（工单 W9 §4.2）；不给 = 按扩展名默认。 */
-  judge?: RouteJudge;
-  /** 框架小模型的一次调用（W10：对块、摆屏）；不给 = 主模型点名的旧块一律对不上。 */
-  arrange?: (input: string) => Promise<{ text: string; model?: string }>;
-  /**
-   * 学习对话提示词里“页面”那一段，按学习页的种类接进 loop.md 的 {{页面}}（10-29 #74）：grid = 区域图（三方），
-   * stream = 竖流（主模型一个人管）。不给 = 只用 loop.md（{{页面}} 去掉）。
-   */
-  loopPages?: { grid: string; stream: string };
+  /** 学习对话提示词里“页面”那一段（loop-stream.md），接进 loop.md 的 {{页面}}。 */
+  loopPage: string;
   now?: () => Date;
 }
 
 export class Studium {
   private hubRef: Hub | undefined;
   private readonly now: () => Date;
-  /** 后台跑着的清单（合上之后、状态整理、教法记录整理……），回放与测试用来等它们跑完。 */
+  /** 后台跑着的清单（合上之后、导入会话……），回放与测试用来等它们跑完。 */
   private readonly tasks = new Set<Promise<unknown>>();
-  /** 状态整理一次只跑一个，后到的排在后面。 */
-  private stateChain: Promise<void> = Promise.resolve();
   /** 超时被停掉的导入会话（W11 §4）：之后它的工具一律不算数。 */
   private readonly stoppedImports = new Set<string>();
-  /** 每个主对话一条：路线决定与卡排队写。 */
-  private readonly routeChains = new Map<string, Promise<unknown>>();
 
-  /** 长期功能：复习 / 复检、阶段复盘、提醒与今天该做的。 */
+  /** 长期功能：提醒与今天该做的。 */
   readonly longterm: LongTerm;
 
   /** 学过的记录（按层读每次学习）与外部导入存放处。 */
   readonly learned: Learned;
 
-  /** 学习对话与检索子代理的沙盒（只读的资料与记录、可写的工作区）。 */
+  /** 学习对话与导入会话的沙盒（只读的资料与记录、可写的工作区）。 */
   private readonly sandboxes: Sandboxes;
 
   /** 上传与分流（工单 W9）。 */
   private readonly uploads: Uploads;
 
-  /** 学习对话的子代理的外围：组件摊成文件、能读写哪些、交时检查、试跑（会话/页面子代理.md）。 */
-  readonly components: Components;
-
-  /** 学习者看到的屏幕：每轮照主模型的输出摆一屏、学习者在组件上的操作、试跑（会话/学习对话.md §11）。 */
+  /** 学习页：学习者在组件上的操作、组件试跑、旧区域图学习的组件（会话/学习对话.md §11）。 */
   readonly screens: Screens;
 
-  /** 屏幕与组件的块（按指纹存）。 */
+  /** 组件的块（按指纹存）。 */
   private readonly screenStore: PageStore;
-
-  /** 新开的学习用哪种学习页（界面设置里切，10-29 #74）。 */
-  readonly learnPage: LearnPageSetting;
 
   constructor(private readonly o: StudiumOptions) {
     this.now = o.now ?? (() => new Date());
-    this.learnPage = new LearnPageSetting(join(o.dataDir, 'ui', 'learn-page.json'));
     this.learned = new Learned({
       hub: () => this.hub,
       dir: o.dataDir,
@@ -180,9 +123,6 @@ export class Studium {
       hub: () => this.hub,
       learned: this.learned,
       materials: o.materials,
-      pedagogy: o.pedagogy,
-      state: o.state,
-      objections: o.objections,
       teaching: o.teaching,
       dataDir: o.dataDir,
       scopeOf: (id) => this.scopeOf(id),
@@ -191,10 +131,18 @@ export class Studium {
         const main = await this.projectOf(id);
         return main === undefined ? '' : (await this.instructions(main)).text;
       },
-      positionText: (id) => this.positionBasis(id),
+      goalText: async (id) => {
+        const main = await this.projectOf(id);
+        const goal = main === undefined ? undefined : currentGoal(await this.hub.records(main));
+        return goal === undefined
+          ? ''
+          : `${describeGoal(goal.goal)}\n（谈定于 ${localMinute(goal.goal.at)}）`;
+      },
+      imagesDir: o.inputs.imagesDir,
       projectOf: (id) => this.projectOf(id),
+      deleted: (id) => this.hub.isDeleted(id),
     });
-    // 屏幕与组件按块按指纹存在 `<数据>/screens/`（旧活页面的 `pages/` 原样留着，不再写）
+    // 组件按块按指纹存在 `<数据>/screens/`（旧活页面的 `pages/` 原样留着，不再写）
     const screenStore = new PageStore(join(o.dataDir, 'screens'));
     this.screenStore = screenStore;
     this.screens = new Screens({
@@ -202,31 +150,13 @@ export class Studium {
       store: screenStore,
       iso: () => this.iso(),
       newId: (prefix) => this.newId(prefix),
-      arrange:
-        o.arrange ?? (() => Promise.reject(new Error('没配框架小模型：主模型点名的旧块对不上'))),
       assertOpen: (id) => this.assertActiveLoop(id),
       badRequest: (m) => new BadRequestError(m),
-      toMaker: (loopId, component, text, awaited) =>
-        this.components.onAction(loopId, component, text, awaited),
-      toRepair: (loopId, component, version, message) =>
-        this.components.onError(loopId, component, version, message),
-    });
-    this.components = new Components({
-      hub: () => this.hub,
-      screens: this.screens,
-      store: screenStore,
-      iso: () => this.iso(),
-      workdir: (id) => this.sandboxes.workdir(id),
-      sandbox: (id) => this.sandboxes.forLoop(id),
-      assertOpen: (id) => this.assertActiveLoop(id),
-      // 旧数据里的“页面编辑员”会话种类还在，它的提示词文件就是子代理的提示词
-      prompt: o.prompts.editor,
     });
     this.uploads = new Uploads({
       root: join(o.dataDir, 'projects'),
       newId: (prefix) => this.newId(prefix),
       iso: () => this.iso(),
-      ...(o.judge !== undefined ? { judge: o.judge } : {}),
       addMaterial: async (mainId, req) => (await this.newMaterial(mainId, req)).id,
       relabel: async (mainId, id, learned, owner) => {
         if ((await this.o.materials.source(id))?.status === '处理中') {
@@ -262,20 +192,12 @@ export class Studium {
     });
     this.longterm = new LongTerm({
       hub: () => this.hub,
-      learned: this.learned,
-      state: o.state,
       now: () => this.now(),
       iso: () => this.iso(),
       newId: (prefix) => this.newId(prefix),
-      projectOf: (id) => this.projectOf(id),
-      stateQueryTool: () => this.stateQueryTool(),
     });
     // 原件里有不是纯文字的：交导入会话（W11 §4）
     o.materials.setImporter((id, files) => this.startImport(id, files));
-    // 产出物那边生成的编号也经这里报给录带
-    o.outputs.onNewId((prefix, id) => {
-      for (const fn of this.idListeners) fn(prefix, id);
-    });
   }
 
   private iso(): string {
@@ -322,7 +244,6 @@ export class Studium {
 
   attach(hub: Hub): void {
     this.hubRef = hub;
-    this.components.attach(hub);
   }
 
   private get hub(): Hub {
@@ -334,41 +255,25 @@ export class Studium {
 
   kind = (kind: ConversationKind): KindConfig => ({
     systemPrompt: this.o.prompts[kind],
+    // 主对话每轮只附时间类的事实（W12 §3.2：方向、讨论串、学过的不再每轮附，要用自己读）
     ...(kind === 'main'
       ? {
           preface: (sessionId: string, inputLine: number, fresh: boolean) =>
             this.mainPreface(sessionId, inputLine, fresh),
         }
       : {}),
-    // 畅谈、导航、找资料可联网搜索；其余会话不放开（工单 W5 §4.6、W9 §4.5）
-    ...(kind === 'talk' || kind === 'nav' || kind === 'find' ? { webSearch: true } : {}),
+    // 谈方向、找资料、学习对话可联网搜索（W12 §2：学习对话放开，沙盒照旧不联网）
+    ...(kind === 'talk' || kind === 'find' || kind === 'loop' ? { webSearch: true } : {}),
     ...(kind === 'loop'
       ? {
-          systemPromptFor: async (sessionId: string) => {
-            const stream = await this.isStream(sessionId);
-            const part = stream ? this.o.loopPages?.stream : this.o.loopPages?.grid;
-            return this.o.prompts.loop.replace('{{页面}}', (part ?? '').trim());
-          },
+          systemPromptFor: () =>
+            Promise.resolve(this.o.prompts.loop.replace('{{页面}}', this.o.loopPage.trim())),
           sandbox: (sessionId: string) => this.sandboxes.forLoop(sessionId),
           beforeTurn: (sessionId: string) => this.sandboxes.refreshLoop(sessionId),
-          // 上一轮之后攒着的（学习者在组件上的操作、子代理报的、框架回的一句），按时间接在这一轮前面
-          // （会话/学习对话.md §3、§11.3）
+          // 上一轮之后攒着的（学习者在组件上的操作、组件报错），按时间接在这一轮前面
           preface: (sessionId: string) => this.screens.preface(sessionId),
-          // 竖流学习页：主模型自己写组件，不派子代理（10-29 #74）
-          subagents: async (sessionId: string) =>
-            (await this.isStream(sessionId)) ? [] : [await this.components.spec(sessionId)],
           timeline: true,
-          // 主模型一轮输出完：框架照它的输出摆一屏（会话/学习对话.md §11.1）
-          afterTurn: (sessionId: string, fromLine: number) =>
-            this.screens.afterTurn(sessionId, fromLine),
         }
-      : {}),
-    ...(kind === 'retrieve'
-      ? { sandbox: (sessionId: string) => this.retrieveSandbox(sessionId) }
-      : {}),
-    // 主对话只读本机（W11 §5）：家目录只读、挡掉存密钥的位置，命令行在只读沙盒里，不联网
-    ...(kind === 'main'
-      ? { sandbox: (sessionId: string) => this.sandboxes.forMain(sessionId) }
       : {}),
     // 导入会话（W11 §4，试验）：只读原件，工作区就是那份资料的正文
     ...(kind === 'import' ? { sandbox: (sessionId: string) => this.importSandbox(sessionId) } : {}),
@@ -383,58 +288,33 @@ export class Studium {
             await this.askProjectTool(sessionId),
           ];
         case 'talk':
-          // 同一类会话两种活：谈方向；阶段复盘（finish_review 只在复盘会话里可用）
           return [
             ...this.readTools(sessionId),
             this.listLearnedTool(sessionId, true),
             this.readImportTool(sessionId),
             this.settleGoalTool(sessionId),
-            ...this.longterm.reviewTools(sessionId),
-            this.threadTitleTool(sessionId),
+            ...this.threadTools(sessionId),
             await this.askProjectTool(sessionId),
           ];
         case 'loop':
-          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），工具只剩几个命令
-          return [...(await this.loopToolsFor(sessionId)), await this.askProjectTool(sessionId)];
-        case 'guard':
-          // 旧数据：守卫 10-31 起不再开，留这一项只为种类名单完整
-          return [];
-        case 'nav':
-          // 导航：定下一次学什么（会话/导航.md「能读什么 · 工具」）
+          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），自己读、自己定这次的边界（W12 §2）
           return [
-            ...this.readTools(sessionId),
-            this.readSessionTool(),
-            this.stateQueryTool(),
-            this.retrieveTool(sessionId),
-            this.cardTool(sessionId),
-            this.askLearnerTool(sessionId),
-            this.materialGapTool(sessionId),
-            ...this.longterm.reminderTools(sessionId),
-            this.o.cross.addNoteTool(sessionId),
+            ...this.loopTools(sessionId),
+            ...this.threadTools(sessionId),
             await this.askProjectTool(sessionId),
           ];
-        case 'retrieve':
-          // 检索子代理：在只读沙盒里自己读，只挂交回结果这一个工具（工单 README §2.7）
-          return [this.findingsTool(sessionId)];
-        case 'state':
-          return this.stateTools(sessionId);
-        case 'pedagogy':
-          return [this.stateQueryTool(), this.strategyTool(sessionId)];
-        case 'output':
-          // 写产出对话只读资料；写产出新版本的工具由 Outputs 给
+        case 'find':
           return [
             ...this.readTools(sessionId),
-            ...this.o.outputs.sessionTools(sessionId),
-            this.threadTitleTool(sessionId),
+            this.listLearnedTool(sessionId),
+            ...this.findTools(sessionId),
+            ...this.threadTools(sessionId),
           ];
-        case 'find':
-          // 找资料：联网搜（模型服务自带），只挂交回候选这一个工具（会话/找资料.md）
-          return [this.candidatesTool(sessionId), this.threadTitleTool(sessionId)];
-        case 'editor':
-          // 旧数据里的页面编辑员会话（10-26 起改成学习对话派的子代理），不再开
-          return [];
         case 'import':
           return this.importTools(sessionId);
+        default:
+          // 旧数据：守卫、导航、检索子代理、状态整理、教法记录整理、写产出、页面编辑员都不再开（W12 §1）
+          return [];
       }
     },
   });
@@ -476,11 +356,15 @@ export class Studium {
           `当前目录（就是这份资料给别的会话读的文字版）：${body}`,
           '纯文字的文件程序已经按原件里的相对路径放进当前目录了。原件里不是纯文字、要你处理的：',
           ...(files.length > 0 ? files.map((f) => `- ${f}`) : ['（没有）']),
-          ...(src.learned !== undefined
+          ...(src.classify !== undefined
             ? [
-                `这份是学习者的${src.learned.channel}：处理完在当前目录写 说明.md（总结，见提示词）。`,
+                `这份是学习者上传的，程序按扩展名先放成了「${src.learned !== undefined ? `学过的：${src.learned.channel}` : '资料'}」、归${src.owner.kind === 'learner' ? '学习者' : '本项目'}。先看内容判它归哪边、归谁，调 classify；判完再接着处理。`,
               ]
-            : []),
+            : src.learned !== undefined
+              ? [
+                  `这份是学习者的${src.learned.channel}：处理完在当前目录写 说明.md（总结，见提示词）。`,
+                ]
+              : []),
         ].join('\n'),
       });
       let timer: NodeJS.Timeout | undefined;
@@ -531,9 +415,76 @@ export class Studium {
     return { src };
   }
 
-  /** 导入会话自己的两个工具：mineru（PDF 交 MinerU 转）、finish_import（交回）。 */
+  /** 导入会话自己的工具：classify（判归哪边、归谁，W12 §1.6）、mineru（PDF 交 MinerU 转）、finish_import（交回）。 */
   private importTools(sessionId: string): ToolSpec[] {
     return [
+      {
+        name: 'classify',
+        description:
+          '判这份上传归哪边、归谁（只在开场说要判时用，一次）：to = 资料（讲知识的原文：教材、讲义、文章、文档、代码、题集）/ 学过的（学习者自己学过的痕迹：他写的笔记，或他和别的 AI 的对话记录，channel 写是哪种）；owner = 学习者（跟着学习者，所有项目都能读；笔记、别处的学习记录多是）/ 项目（只给这个项目读；为这个项目拿来的书、仓库、课程材料）。reason 一句话。学习者事后可以改。',
+        input: {
+          to: z.enum(['资料', '学过的']),
+          channel: z.enum(['笔记', '对话记录']).optional(),
+          owner: z.enum(['学习者', '项目']),
+          reason: z.string(),
+        },
+        run: async (a) => {
+          const now = await this.liveImport(sessionId);
+          if ('problem' in now) return err(now.problem);
+          const src = now.src;
+          const mainId = src.importedFrom;
+          if (src.classify === undefined || mainId === undefined) return err('这份不用判');
+          const to = a.to as '资料' | '学过的';
+          const channel =
+            to === '学过的'
+              ? ((a.channel as '笔记' | '对话记录' | undefined) ?? '笔记')
+              : undefined;
+          const ownerWord = a.owner as '学习者' | '项目';
+          const owner: MaterialOwner =
+            ownerWord === '学习者' ? { kind: 'learner' } : { kind: 'project', projects: [mainId] };
+          const was = src.classify;
+          await this.o.materials.reclassify(
+            src.id,
+            channel !== undefined ? { channel } : undefined,
+            owner,
+          );
+          // 外部导入的指针跟着改：判成学过的补一条，判成资料去掉
+          const had = (await this.learned.imports()).find(
+            (x) => 'material' in x.ref && x.ref.material === src.id,
+          );
+          let imp = had?.id;
+          if (channel !== undefined && had === undefined) {
+            imp = (
+              await this.learned.importMaterial({
+                material: src.id,
+                channel,
+                title: src.title,
+                project: mainId,
+              })
+            ).id;
+          } else if (channel === undefined && had !== undefined) {
+            await this.learned.removeImport(had.id);
+            imp = undefined;
+          }
+          await this.hub.record(mainId, {
+            type: 'upload_routed',
+            at: this.iso(),
+            upload: was.upload,
+            file: was.file,
+            routedTo: to,
+            by: 'model',
+            owner: ownerWord,
+            reason: (a.reason as string).trim().slice(0, 80) || '导入时看内容判的',
+            material: src.id,
+            ...(imp !== undefined ? { import: imp } : {}),
+          });
+          return ok(
+            channel !== undefined
+              ? `记下了：学过的（${channel}），归${ownerWord}。接着处理，处理完在当前目录写 说明.md（见提示词），再 finish_import。`
+              : `记下了：资料，归${ownerWord}。接着处理（纯文字已在当前目录），处理完 finish_import。`,
+          );
+        },
+      },
       {
         name: 'mineru',
         description:
@@ -572,14 +523,17 @@ export class Studium {
     ];
   }
 
-  // ───────────── 主对话读本机、改归属（W11 §2 §5） ─────────────
+  // ───────────── 本机路径与归属（W11 §2；W12 §3.2 主对话不读本机） ─────────────
 
-  /** 学习者给的本机路径拷一份进来，和拖进来的一样分流（主对话的 import_local）。 */
+  /**
+   * 学习者给的本机路径拷一份进来，和拖进来的一样分流（主对话的 import_local）：程序拷，模型不读本机；
+   * 不是纯文字的、要判归哪边的交导入会话处理。
+   */
   private importLocalTool(mainId: string): ToolSpec {
     return {
       name: 'import_local',
       description:
-        '学习者给的本机路径（文件或文件夹），你读过、要当以后的依据（学习者以前学过什么、要配着学的资料）时调用：程序拷一份进来，和学习者拖进来的一样分流（资料 / 学过的、归学习者还是本项目），学习者可改。本机的文件不改。',
+        '学习者给了本机的路径（文件或文件夹），要当以后的依据（学习者以前学过什么、要配着学的资料）时调用：程序拷一份进项目，和学习者拖进来的一样处理（判资料还是学过的、归谁，学习者可改）。你读不到本机；本机的文件不改。',
       input: {
         path: z.string().describe('本机的绝对路径（家目录下；~ 开头也行）'),
         title: z.string().optional().describe('只导入一份时的标题；不填用文件名'),
@@ -597,10 +551,9 @@ export class Studium {
           if ((e as { code?: string }).code === 'ENOENT') return err(`本机没有这个路径：${given}`);
           throw e;
         }
-        // 和主对话的 Glob / Grep 同一条规则：在家目录内、不在被挡的位置里、也不包着被挡的位置
-        const sb = await this.sandboxes.forMain(mainId);
+        // 在家目录内、不在挡掉的位置（存密钥的隐藏目录、数据目录）里、也不包着它们
+        const sb = this.sandboxes.localScope();
         if (!canDescend(sb, abs)) {
-          const home = homedir();
           return err(
             abs !== home && !abs.startsWith(`${home}/`)
               ? '只能导入家目录下的文件'
@@ -630,7 +583,7 @@ export class Studium {
             )
             .join(
               '\n',
-            )}${skipped.length > 0 ? `\n没拷的链接：${skipped.join('、')}` : ''}\n处理在后台跑（PDF、图片等要几分钟）；跟学习者说一句放到了哪、归谁，不对他可以改。`,
+            )}${skipped.length > 0 ? `\n没拷的链接：${skipped.join('、')}` : ''}\n处理在后台跑（PDF、图片、要判归哪边的要几分钟）；跟学习者说一句放到了哪、归谁，不对他可以改。`,
         );
       },
     };
@@ -841,7 +794,6 @@ export class Studium {
       owner: src.owner,
       ...(src.learned !== undefined ? { learned: src.learned } : {}),
       ...(src.problems !== undefined ? { problems: src.problems } : {}),
-      ...(src.role !== undefined ? { role: src.role } : {}),
     }));
     const d = foldDeadline(recs);
     return {
@@ -1063,124 +1015,74 @@ export class Studium {
     ].join('\n');
   }
 
-  /** 找资料对话交回候选：程序核网址、去重、标出已在本项目的，存成 find_candidates 给界面勾。 */
-  private candidatesTool(findId: string): ToolSpec {
-    return {
-      name: 'submit_candidates',
-      description: `候选找好了时调用：交回至多 ${String(MAX_CANDIDATES)} 份（标题、网址、为什么选——对着方向说明说），学习者在界面上勾了才存。可以再调，以最后一次为准。`,
-      input: {
-        candidates: z
-          .array(
-            z.object({
-              title: z.string(),
-              url: z.string().describe('http(s) 网址'),
-              why: z.string().describe('为什么选，对着方向说明说，一两句'),
-            }),
-          )
-          .describe(`至多 ${String(MAX_CANDIDATES)} 份`),
-      },
-      run: async (a) => {
-        const mainId = await this.projectOf(findId);
-        if (mainId === undefined) return err('找不到这个对话所属的项目');
-        const given = a.candidates as { title: string; url: string; why: string }[];
-        if (given.length === 0) return err('一份候选都没有；没找到合适的就直接跟学习者说');
-        if (given.length > MAX_CANDIDATES) {
-          return err(`至多 ${String(MAX_CANDIDATES)} 份，这次交了 ${String(given.length)} 份`);
-        }
-        const origins = new Map<string, string>();
-        for (const src of await this.o.materials.ofProject(mainId)) {
-          origins.set(normalUrl(src.origin), src.id);
-        }
-        const out: FindCandidate[] = [];
-        const dropped: string[] = [];
-        for (const c of given) {
+  /**
+   * 找资料对话的工具（W12 §4.8）：自己定存哪些、直接存，每份在工作层写一张说明（§6.3）；学习者说不要就删
+   * （资料标删，只追加）。
+   */
+  private findTools(findId: string): ToolSpec[] {
+    return [
+      {
+        name: 'save_material',
+        description:
+          '把一份网上找到的原文存进本项目资料（程序联网抓取、转成文字放进原件层；同一网址已在本项目就不再存）。note 是这份的说明，写进它的工作层，别的对话读资料时先看到：讲什么、可信度（谁写的、什么性质的来源）、和官方 / 主流说法哪里不一致（没发现就写没发现）。',
+        input: {
+          url: z.string().describe('http(s) 网址'),
+          title: z.string(),
+          note: z.string().describe('说明：讲什么、可信度、和官方说法哪里不一致'),
+        },
+        run: async (a) => {
+          const mainId = await this.projectOf(findId);
+          if (mainId === undefined) return err('找不到这个对话所属的项目');
           let u: URL;
           try {
-            u = new URL(c.url.trim());
+            u = new URL((a.url as string).trim());
           } catch {
-            dropped.push(`${c.title}（网址不对）`);
-            continue;
+            return err('网址不对');
           }
-          if (u.protocol !== 'http:' && u.protocol !== 'https:') {
-            dropped.push(`${c.title}（不是 http(s) 网址）`);
-            continue;
+          if (u.protocol !== 'http:' && u.protocol !== 'https:') return err('不是 http(s) 网址');
+          const already = (await this.o.materials.ofProject(mainId)).find(
+            (s) => normalUrl(s.origin) === normalUrl(u.href),
+          );
+          if (already !== undefined) {
+            return ok(`本项目已有这份：${already.id}《${already.title}》，没再存。`);
           }
-          if (out.some((x) => normalUrl(x.url) === normalUrl(u.href))) {
-            dropped.push(`${c.title}（和前面的重复）`);
-            continue;
+          const title = (a.title as string).trim() || u.hostname;
+          let src: MaterialSource;
+          try {
+            src = await this.newMaterial(mainId, { kind: 'search', origin: u.href, title });
+          } catch (e) {
+            if (e instanceof BadRequestError) return err(e.message);
+            throw e;
           }
-          const already = origins.get(normalUrl(u.href));
-          out.push({
-            title: c.title.trim() || u.hostname,
-            url: u.href,
-            why: c.why.trim(),
-            ...(already !== undefined ? { alreadyIn: already } : {}),
-          });
-        }
-        if (out.length === 0) return err(`没有能用的候选：${dropped.join('；')}`);
-        await this.hub.record(findId, { type: 'find_candidates', at: this.iso(), candidates: out });
-        return ok(
-          `已列给学习者 ${String(out.length)} 份${dropped.length > 0 ? `；去掉了：${dropped.join('；')}` : ''}${out.some((x) => x.alreadyIn !== undefined) ? '；标了已在本项目的' : ''}。等学习者勾，不用再把清单说一遍。`,
-        );
+          const note = (a.note as string).trim();
+          if (note !== '') await this.o.materials.writeNote(src.id, note, findId);
+          return ok(
+            `已存：${src.id}《${title}》（正在抓取转换，几秒到几分钟）。学习者说不要再用 remove_material 删。`,
+          );
+        },
       },
-    };
-  }
-
-  /** 学习者在候选清单上勾了、点“存所选”：勾中的存成本项目资料（联网查来），告诉主对话存了几份。 */
-  async pickCandidates(findId: string, forLine: number, picked: number[]): Promise<void> {
-    const opened = await this.hub.opened(findId);
-    if (opened.kind !== 'find') throw new BadRequestError('这不是找资料的对话');
-    const mainId = await this.projectOf(findId);
-    if (mainId === undefined) throw new BadRequestError('找不到这个对话所属的项目');
-    const records = await this.hub.records(findId);
-    const list = records.find((r) => r.line === forLine)?.record;
-    if (list?.type !== 'find_candidates')
-      throw new BadRequestError(`第 ${String(forLine)} 行不是候选清单`);
-    if (
-      records.some((r) => r.record.type === 'candidates_picked' && r.record.forLine === forLine)
-    ) {
-      throw new BadRequestError('这份清单已经存过了');
-    }
-    const chosen = [...new Set(picked)].sort((x, y) => x - y);
-    if (chosen.some((i) => !Number.isInteger(i) || i < 0 || i >= list.candidates.length)) {
-      throw new BadRequestError('勾的序号不对');
-    }
-    const materials: string[] = [];
-    const saved: string[] = [];
-    for (const i of chosen) {
-      const c = list.candidates[i];
-      if (c === undefined) continue;
-      if (c.alreadyIn !== undefined) {
-        materials.push(c.alreadyIn);
-        continue;
-      }
-      try {
-        const src = await this.newMaterial(mainId, {
-          kind: 'search',
-          origin: c.url,
-          title: c.title,
-        });
-        materials.push(src.id);
-        saved.push(`《${c.title}》`);
-      } catch (e) {
-        if (!(e instanceof BadRequestError)) throw e;
-        materials.push('');
-      }
-    }
-    await this.hub.record(findId, {
-      type: 'candidates_picked',
-      at: this.iso(),
-      forLine,
-      picked: chosen,
-      materials,
-    });
-    await this.hub.send(mainId, {
-      role: 'program',
-      text:
-        saved.length > 0
-          ? `学习者在找资料对话里勾了 ${String(saved.length)} 份存进本项目资料（联网查来，正在抓取转换）：${saved.join('、')}；${String(list.candidates.length - chosen.length)} 份没勾，没存。跟学习者说一句存了几份。`
-          : '学习者在找资料对话里一份都没存。跟学习者说一句即可。',
-    });
+      {
+        name: 'remove_material',
+        description:
+          '学习者说某份资料不要时调用：从本项目资料里删掉（资料标删，原件留着，以前引用过的照旧能定位）。',
+        input: {
+          material: z.string().describe('资料 id'),
+          reason: z.string().describe('学习者怎么说的（行号 + 一句）'),
+        },
+        run: async (a) => {
+          const mainId = await this.projectOf(findId);
+          if (mainId === undefined) return err('找不到这个对话所属的项目');
+          try {
+            await this.removeMaterial(mainId, (a.material as string).trim());
+          } catch (e) {
+            if (e instanceof BadRequestError) return err(e.message);
+            throw e;
+          }
+          return ok('已删。');
+        },
+      },
+      this.threadTitleTool(findId),
+    ];
   }
 
   /** 去掉资料（一次几份）：本项目读不到的名字跳过。 */
@@ -1240,16 +1142,6 @@ export class Studium {
     return this.deadlineView(mainId);
   }
 
-  /** 路线偏差（现算，不另存）；项目不存在 / 不是项目 → 404。 */
-  async routeDeviations(mainId: string): Promise<RouteDeviationView[]> {
-    const opened = await this.hub.opened(mainId).catch((e: unknown) => {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
-    });
-    if (opened?.kind !== 'main') throw new NotFoundError(`没有这个项目：${mainId}`);
-    return routeDeviations(this.hub, mainId);
-  }
-
   async deadlineView(mainId: string): Promise<ProjectDeadlineResponse> {
     const d = foldDeadline(await this.requireProject(mainId));
     return {
@@ -1278,287 +1170,47 @@ export class Studium {
     quote?: MessageQuote,
   ): Promise<void> {
     const opened = await this.hub.opened(sessionId);
-    if (opened.kind === 'loop' && opened.screens !== true) throw new BadRequestError(OLD_LOOP);
+    if (opened.kind === 'loop' && opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
+    if (!['main', 'talk', 'loop', 'find'].includes(opened.kind)) {
+      throw new BadRequestError('这段对话只能看，不能再说话。');
+    }
     const meta = {
       ...(images !== undefined && images.length > 0 ? { images } : {}),
       ...(replyTo !== undefined && opened.kind === 'loop' ? { replyTo } : {}),
       ...(quote !== undefined && opened.page === 'stream' ? { quote } : {}),
     };
-    const recs = await this.hub.records(sessionId);
-    if (recs.some((r) => r.record.type === 'loop_ended')) {
-      throw new BadRequestError('这段对话已经结束了，回到项目里接着聊。');
-    }
-    // 结束的讨论串只是收起来：学习者再说话就重开（照 Claude 项目的讨论串，10-28）
-    if (REOPENABLE_KINDS.has(opened.kind) && threadEnded(recs)) {
-      await this.hub.record(sessionId, { type: 'thread_reopened', at: this.iso(), by: 'learner' });
-    }
+    // 结束的讨论串只是收起来：学习者再说话就重开（照 Claude 项目的讨论串；W12 §2 学习对话也一样）
+    if (opened.kind !== 'main') await this.reopenIfEnded(opened, 'learner', '学习者又说话了');
     // 搁置着的一次学习里学习者又说话 = 接着学（先恢复，再交这句话）
-    if (foldLoop(recs).shelved !== undefined) await this.resumeShelved(sessionId, 'message');
-    const last = recs
-      .map((r) => r.record)
-      .filter((r) => r.type === 'user_message' || r.type === 'assistant_message')
-      .at(-1);
-    await this.hub.send(sessionId, { role: 'learner', text }, meta);
-    if (last !== undefined) {
-      const away = this.now().getTime() - Date.parse(last.at);
-      if (away > LONG_AWAY_MS) {
-        this.organizeStateLater(`学习者隔了约 ${formatDuration(away)} 回来`, sessionId);
-      }
+    if (foldLoop(await this.hub.records(sessionId)).shelved !== undefined) {
+      await this.resumeShelved(sessionId, 'message');
     }
-  }
-
-  /**
-   * 定下一次学什么（会话/导航.md）：开导航会话、全自动跑完；导航定了就存单子与路线决定、直接开学习对话，
-   * 要问学习者就交回问题（由主对话顺口问）。导航会话挂在主对话下，学习者可点进去看它怎么想的。
-   */
-  async planNext(trigger: string, mainId: string): Promise<PlanResult> {
-    const title = '想下一步学什么';
-    const nav = await this.hub.createSession('nav', { title, parent: mainId });
-    const mainRecs = await this.hub.records(mainId);
-    await this.hub.record(mainId, {
-      type: 'task_opened',
-      at: this.iso(),
-      sessionId: nav.sessionId,
-      kind: 'nav',
-      title,
-      anchorLine: mainRecs.filter((r) => r.record.type === 'user_message').at(-1)?.line ?? 0,
-    });
-    await this.hub.send(nav.sessionId, {
-      role: 'program',
-      text: await this.navOpening(trigger, mainId),
-    });
-    await this.hub.idle(nav.sessionId);
-    const gap = this.navGaps.get(nav.sessionId);
-    const withGap = gap !== undefined ? { materialGap: gap } : {};
-    const question = this.navQuestions.get(nav.sessionId);
-    if (question !== undefined)
-      return { kind: 'question', question, navSessionId: nav.sessionId, ...withGap };
-    const card = this.cards.get(nav.sessionId);
-    if (!card) throw new Error('导航没有交回下一步（见该会话记录）');
-    // 先写路线决定，紧接着写导航定的单子（记录/单子与路线.md「路线决定与理由」）；
-    // 同一主对话的几次排队写，决定与单子才相邻、取代链不断
-    const record = await this.inRouteOrder(mainId, async () => {
-      const before = await this.hub.records(mainId);
-      const last = [...before].reverse().find((r) => r.record.type === 'route_decision');
-      const decision: RouteDecision = {
-        type: 'route_decision',
-        at: this.iso(),
-        navSessionId: nav.sessionId,
-        trigger,
-        decision: card.routeDecision.decision,
-        reason: card.routeDecision.reason,
-        basis: card.routeDecision.basis,
-        ...(last !== undefined ? { supersedes: last.line } : {}),
-      };
-      await this.hub.record(mainId, decision);
-      const planned: ChoiceCard = {
-        type: 'choice_card',
-        at: this.iso(),
-        cardId: this.newId('card'),
-        navSessionId: nav.sessionId,
-        options: card.options,
-        recommended: 0,
-        trigger,
-      };
-      await this.hub.record(mainId, planned);
-      return planned;
-    });
-    const picked = card.options[0];
-    const loopSessionId = await this.openPlanned(record.cardId);
-    await this.withdrawUntouched(mainId, loopSessionId);
-    return {
-      kind: 'opened',
-      loopSessionId,
-      title: picked?.title ?? '',
-      reason: picked?.reason ?? '',
-      navSessionId: nav.sessionId,
-      ...withGap,
-    };
-  }
-
-  /**
-   * 学习者要换一个时：之前定下、学习者还没开口的学习对话直接收掉（不算搁着、不进停车场）；
-   * 学习者在里面说过话的不动，照常算一次学习。
-   */
-  private async withdrawUntouched(mainId: string, keep: string): Promise<void> {
-    for (const s of this.hub.listSessions()) {
-      if (s.kind !== 'loop' || s.parent !== mainId || s.sessionId === keep) continue;
-      const recs = await this.hub.records(s.sessionId);
-      if (recs.some((r) => r.record.type === 'user_message' || r.record.type === 'loop_ended'))
-        continue;
-      await this.hub.record(s.sessionId, {
-        type: 'session_withdrawn',
-        at: this.iso(),
-        reason: '学习者还没开始就换了一个',
-      });
-    }
-  }
-
-  private inRouteOrder<T>(mainId: string, f: () => Promise<T>): Promise<T> {
-    const run = (this.routeChains.get(mainId) ?? Promise.resolve()).then(f);
-    this.routeChains.set(
-      mainId,
-      run.catch(() => undefined),
+    // 附图原样送给模型（W12 §5.6）；在沙盒里跑的会话还能在只读区打开原图
+    const attach =
+      images !== undefined && images.length > 0
+        ? await this.imagesForModel(sessionId, images)
+        : undefined;
+    await this.hub.send(
+      sessionId,
+      { role: 'learner', text },
+      { ...meta, ...(attach !== undefined ? { attach } : {}) },
     );
-    return run;
   }
 
-  /** 导航定下之后：存路线事实，开学习对话，交开场。 */
-  private async openPlanned(cardId: string): Promise<string> {
-    const option = 0;
-    let mainId = '';
-    let recs: LogRecord[] = [];
-    let card: LogRecord | undefined;
-    for (const m of this.hub.listSessions().filter((s) => s.kind === 'main')) {
-      const rs = (await this.hub.records(m.sessionId)).map((r) => r.record);
-      const found = rs.find((r) => r.type === 'choice_card' && r.cardId === cardId);
-      if (found) {
-        mainId = m.sessionId;
-        recs = rs;
-        card = found;
-        break;
-      }
-    }
-    if (card?.type !== 'choice_card') throw new Error(`找不到导航定的单子：${cardId}`);
-    if (recs.some((r) => r.type === 'choice_made' && r.cardId === cardId)) {
-      throw new Error(`这张单子已经开过学习了：${cardId}`);
-    }
-    const picked = card.options[option];
-    if (!picked) throw new Error(`导航定的单子是空的：${cardId}`);
-
-    // 接着学：带上原学习（原学习正本不改）
-    let resumeOf: { fromLoop: string; endedAt: string } | undefined;
-    if (picked.ticket.resumeOf !== undefined) {
-      const origId = picked.ticket.resumeOf;
-      // 导航定下后可能已经从别处接着学了
-      const bad = await this.resumeProblem(origId, mainId);
-      if (bad !== undefined) throw new Error(bad);
-      const ended = (await this.hub.records(origId)).find((r) => r.record.type === 'loop_ended');
-      const at =
-        ended?.record.type === 'loop_ended' ? ended.record.at : (await this.hub.opened(origId)).at;
-      resumeOf = { fromLoop: origId, endedAt: at };
-    }
-    const stream = (await this.learnPage.get()) === 'stream';
-    const loop = await this.hub.createSession('loop', {
-      title: picked.title,
-      parent: mainId,
-      ticket: picked.ticket,
-      screens: true,
-      ...(stream ? { page: 'stream' as const } : {}),
-      ...(resumeOf !== undefined ? { resumeOf } : {}),
-    });
-    await this.hub.record(mainId, {
-      type: 'choice_made',
-      at: this.iso(),
-      cardId,
-      option,
-      loopSessionId: loop.sessionId,
-    });
-    await this.longterm.onChosen(mainId, card, option, loop.sessionId);
-    await this.hub.send(loop.sessionId, {
-      role: 'program',
-      text: await this.loopOpening(picked.ticket, loop.sessionId),
-    });
-    return loop.sessionId;
-  }
-
-  // ───────────── 改单子（学习者侧）─────────────
-
-  /**
-   * 学习者改这次学习的单子（工单 W6 §4.1；记录/单子与路线.md「单子」规矩“可见可改”）：
-   * 合格就追加一条 `ticket_edited`（改前、改后、时间），把改动告诉学习对话，回改后的整张单子；
-   * 不合格什么都不写。开学习那行与卡上那张都不改（只追加）。
-   */
-  async editTicket(
-    loopId: string,
-    raw: { newPoint?: unknown; clause?: unknown; startPoints?: unknown } | null | undefined,
-  ): Promise<{ line: number; ticket: Ticket }> {
-    const body = raw ?? {};
-    const opened = await this.hub.opened(loopId).catch((err: unknown) => {
-      if (err instanceof NotFoundError) throw new NotFoundError(`没有这个会话：${loopId}`);
-      throw err;
-    });
-    if (opened.kind !== 'loop') throw new BadRequestError('只能改一次学习的单子。');
-    const records = await this.hub.records(loopId);
-    if (records.some((r) => r.record.type === 'loop_ended')) {
-      throw new BadRequestError('这次学习已经结束了，单子不能再改。');
-    }
-    const before = currentTicket(records);
-    if (before === undefined) throw new BadRequestError('这次学习没有单子，改不了。');
-    const after: Ticket = { ...before };
-    let given = 0;
-    if (body.newPoint !== undefined) {
-      after.newPoint = ticketText('要学的', body.newPoint);
-      given += 1;
-    }
-    if (body.clause !== undefined) {
-      after.clause = ticketText('学完应该能', body.clause);
-      given += 1;
-    }
-    if (body.startPoints !== undefined) {
-      after.startPoints = await this.checkedStartPoints(body.startPoints, loopId);
-      given += 1;
-    }
-    if (given === 0)
-      throw new BadRequestError('没有给要改的项：可以改要学的、学完应该能、从哪些已有的出发。');
-    if (JSON.stringify(before) === JSON.stringify(after)) {
-      throw new BadRequestError('和现在的单子一样，没有改动。');
-    }
-    const line = await this.hub.record(loopId, {
-      type: 'ticket_edited',
-      at: this.iso(),
-      by: 'learner',
-      before,
-      after,
-    });
-    await this.hub.send(loopId, {
-      role: 'program',
-      text: [
-        `学习者改了这次的单子（第 ${String(line)} 行），之后按改后的来。`,
-        `改前：${this.describeTicket(before)}`,
-        `改后：${this.describeTicket(after)}`,
-      ].join('\n'),
-    });
-    return { line, ticket: after };
-  }
-
-  /**
-   * 出发点数组的核对：至少一项；每项写清是什么、从哪来；给了依据要能定位（同选择卡的规则；资料行须是
-   * 这次学习所属项目能读的）。
-   */
-  private async checkedStartPoints(v: unknown, loopId: string): Promise<Ticket['startPoints']> {
-    if (!Array.isArray(v) || v.length === 0) {
-      throw new BadRequestError('从哪些已有的出发要给一项以上，每项写清是什么、从哪来。');
-    }
-    const out: Ticket['startPoints'] = [];
-    for (const [i, one] of v.entries()) {
-      const where = `第 ${String(i + 1)} 个出发点`;
-      if (typeof one !== 'object' || one === null)
-        throw new BadRequestError(`${where}没写清是什么。`);
-      const x = one as { point?: unknown; source?: unknown; ref?: unknown };
-      if (typeof x.point !== 'string' || x.point.trim() === '') {
-        throw new BadRequestError(`${where}没写清是什么。`);
-      }
-      const source = x.source as StartSource | undefined;
-      if (typeof source !== 'string' || !START_SOURCES.includes(source)) {
-        throw new BadRequestError(
-          `${where}的“从哪来”只能是 ${START_SOURCES.join(' / ')} 里的一个。`,
-        );
-      }
-      if (x.ref !== undefined && typeof x.ref !== 'string') {
-        throw new BadRequestError(`${where}的依据要写成文字。`);
-      }
-      if (typeof x.ref === 'string') {
-        const at = await locate(x.ref, this.locateDeps(loopId));
-        if (!at.ok) throw new BadRequestError(`${where}的依据「${x.ref}」查不到，改一下或去掉。`);
-      }
-      out.push({
-        point: x.point.trim(),
-        source: source,
-        ...(typeof x.ref === 'string' ? { ref: x.ref } : {}),
-      });
-    }
-    return out;
+  /** 附图交给模型：字节，加一句图在沙盒哪里（只有带沙盒的会话有这一句）。 */
+  private async imagesForModel(
+    sessionId: string,
+    images: ImageInput[],
+  ): Promise<{ data: ImageData[]; note?: string }> {
+    const got = await Promise.all(images.map((r) => this.o.inputs.forModel(r)));
+    const kind = (await this.hub.opened(sessionId)).kind;
+    const inSandbox = kind === 'loop';
+    return {
+      data: got.map(({ mime, data }) => ({ mime, data })),
+      ...(inSandbox
+        ? { note: `（附图 ${got.map((g) => `只读/附图/${g.file}`).join('、')}）` }
+        : {}),
+    };
   }
 
   /**
@@ -1603,7 +1255,7 @@ export class Studium {
     this.background('合上之后的清单', () => this.afterLoop(loopId, true));
   }
 
-  /** 学习者要结束、没合上：导航读那次完整对话出下一张卡（01-流程.md §3）。 */
+  /** 学习者要结束、没合上：先搁着（W12 §2 起能重开）。 */
   async endUnclosed(loopId: string, note: string): Promise<void> {
     await this.assertOpenLoop(loopId);
     await this.hub.record(loopId, {
@@ -1636,8 +1288,8 @@ export class Studium {
   private async resumeShelved(loopId: string, by: 'button' | 'message'): Promise<void> {
     const opened = await this.hub.opened(loopId);
     if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
-    // 旧版开的学习对话不再跑新一轮（工具数组开场已定死，W10 §9 第 1 条）
-    if (opened.screens !== true) throw new BadRequestError(OLD_LOOP);
+    // 旧版开的学习对话不再跑新一轮
+    if (opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
     const flags = foldLoop(await this.hub.records(loopId));
     if (flags.ended !== undefined) throw new BadRequestError('这次学习已经结束了。');
     if (flags.shelved === undefined) throw new BadRequestError('这次学习没有搁置。');
@@ -1668,7 +1320,7 @@ export class Studium {
       throw new BadRequestError(`第 ${String(line)} 行不是一次判定，找不到要提异议的地方。`);
     }
     const target = { kind: 'guard_verdict', loopSessionId: loopId, line } as const;
-    if (recs.some((r) => r.record.type === 'loop_ended')) {
+    if (foldLoop(recs).ended !== undefined) {
       const objection: LearnerObjection = {
         id: this.newId('obj'),
         at: this.iso(),
@@ -1678,8 +1330,8 @@ export class Studium {
       await this.o.objections.add(objection);
       return { objection, inLoop: false };
     }
-    // 还开着的旧版学习对话：异议要进那次学习、会跑新一轮，旧的不再跑（W10 §9 第 1 条）
-    if (opened.screens !== true) throw new BadRequestError(OLD_LOOP);
+    // 还开着的旧版学习对话：异议要进那次学习、会跑新一轮，旧的不再跑
+    if (opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
     const sent = await this.hub.send(
       loopId,
       { role: 'learner', text: body },
@@ -1692,87 +1344,10 @@ export class Studium {
     };
   }
 
-  /** 对一条教法记录 / 状态记录提异议：只追加一条异议记录，不改原记录；下次整理 / 出卡时被读到。 */
-  async objectToRecord(
-    kind: 'pedagogy' | 'state',
-    recordId: string,
-    text: string,
-  ): Promise<LearnerObjection> {
-    const body = text.trim();
-    if (body === '') throw new BadRequestError('异议不能是空的。');
-    const exists =
-      kind === 'pedagogy' ? this.o.pedagogy.record(recordId) : this.o.state.record(recordId);
-    if (exists === undefined) throw new BadRequestError(`找不到这条记录：${recordId}。`);
-    const objection: LearnerObjection = {
-      id: this.newId('obj'),
-      at: this.iso(),
-      text: body,
-      target: { kind, recordId },
-    };
-    await this.o.objections.add(objection);
-    return objection;
-  }
-
-  /** 学习者对一条状态记录确认 / 否认（界面上点的）：只追加一条，不改原记录；下次整理时被读到。 */
-  async confirmRecord(
-    recordId: string,
-    verdict: 'confirm' | 'deny',
-    note?: string,
-  ): Promise<StateConfirmation> {
-    if (this.o.state.record(recordId) === undefined) {
-      throw new BadRequestError(`找不到这条状态记录：${recordId}。`);
-    }
-    const text = note?.trim();
-    const c: StateConfirmation = {
-      id: this.newId('cf'),
-      at: this.iso(),
-      recordId,
-      verdict: verdict === 'confirm' ? '确认' : '否认',
-      ...(text ? { note: text } : {}),
-    };
-    await this.o.state.addConfirmation(c);
-    return c;
-  }
-
-  /**
-   * “这条状态出现在某段学习里某句教学之后”的核对（工单 W4 §5.11）：会话须是一次学习，
-   * 行须是那次学习里的一句教学（assistant_message）；不然退回。
-   */
-  private async checkAfterTeaching(a: {
-    session?: string;
-    line?: number;
-    note?: string;
-  }): Promise<{ loopSessionId: string; line: number; text: string } | { problem: string }> {
-    const id = (a.session ?? '').trim();
-    const note = (a.note ?? '').trim();
-    if (id === '') return { problem: 'after_teaching.session 不能是空的' };
-    if (note === '') return { problem: 'after_teaching.note 要写清这条状态出现在什么之后' };
-    const opened = await this.hub.opened(id).catch((e: unknown) => {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
-    });
-    if (opened?.kind !== 'loop')
-      return { problem: `after_teaching.session 指的 ${id} 不是一次学习` };
-    const line = a.line;
-    if (typeof line !== 'number') return { problem: 'after_teaching.line 要填那句教学的行号' };
-    const rec = (await this.hub.records(id)).find((r) => r.line === line)?.record;
-    if (rec?.type !== 'assistant_message') {
-      return { problem: `第 ${String(line)} 行不是那次学习里的一句教学；只引教学行` };
-    }
-    return { loopSessionId: id, line, text: note };
-  }
-
-  /** 附在一条教法记录 / 状态记录描述后面的学习者异议（交给模型读；没有就是空串）。 */
-  private objectionNotes(kind: 'pedagogy' | 'state', recordId: string): string {
-    const rows = this.o.objections.forRecord(kind, recordId);
-    return rows.map((o) => `\n  学习者异议（自述，原记录没改）：${o.text}`).join('');
-  }
-
   // ───────────── 清单 ─────────────
 
   /**
-   * 一次学习结束（01-流程.md §3）：① 存盘（已在 loop_ended）② 主对话里说一句，不自动开下一次
-   * （开新学习由学习者主动，主对话只提醒）③ 后台：状态整理与教法记录整理，不等它们。
+   * 一次学习结束（合上 / 没合上）：告诉主对话一句（带收尾那一句）。不自动开下一次，不再跑后台整理（W12 §1.2）。
    */
   private async afterLoop(loopId: string, closed: boolean): Promise<void> {
     const opened = await this.hub.opened(loopId);
@@ -1780,13 +1355,13 @@ export class Studium {
     // 学习对话总挂在项目的主对话下；没有就是坏数据，不替它新建项目
     if (mainId === undefined) throw new Error(`学习对话 ${loopId} 没有挂在项目下`);
     try {
-      // 合上：带上学习对话写的收尾那一句（只是指针）
       const closing = closed ? closingOf(await this.hub.records(loopId)) : undefined;
+      const title = this.hub.labelOf(loopId);
       await this.hub.send(mainId, {
         role: 'program',
         text: closed
-          ? `“${opened.title}”学完了（学习者已确认结束）。${closing !== undefined ? `收尾那一句：${closing.summary}` : ''}`
-          : `“${opened.title}”没学完就结束了，先搁着。`,
+          ? `${title}（${loopId}）学完了（学习者已确认结束）。${closing !== undefined ? `收尾那一句：${closing.summary}` : ''}`
+          : `${title}（${loopId}）没学完就结束了，先搁着（能重开）。`,
       });
     } catch (err) {
       console.error(`一次学习（${loopId}）结束后的清单失败：`, err);
@@ -1797,548 +1372,74 @@ export class Studium {
         detail: err instanceof Error ? err.message : String(err),
       });
     }
-    await this.backToBranchOrigin(loopId, closed);
-    this.organizeStateLater(`一段学习（${loopId}）结束了`, loopId);
-    this.background('教法记录整理', () => this.recordStrategy(loopId));
   }
 
-  /** 分叉（单子带 return_to）结束：告诉原来那次学习，它接着往下（照 Claude 项目里讨论串按事件醒来）。 */
-  private async backToBranchOrigin(loopId: string, closed: boolean): Promise<void> {
-    const back = currentTicket(await this.hub.records(loopId))?.returnTo;
-    if (back === undefined) return;
-    const recs = await this.hub.records(back).catch((e: unknown) => {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
-    });
-    if (recs === undefined || recs.some((r) => r.record.type === 'loop_ended')) return;
-    const opened = await this.hub.opened(loopId);
-    const closing = closed ? closingOf(await this.hub.records(loopId)) : undefined;
-    await this.hub.send(back, {
-      role: 'program',
-      text: closed
-        ? `为这次学习另开的「${opened.title}」（${loopId}）学完了（学习者已确认）${closing !== undefined ? `，收尾那一句：${closing.summary}` : ''}；学习者会什么以那次的对话原文为准（只读/学过的记录/${loopId}-对话.md）。学习者回来时，对照当初说的返回条件接着学。`
-        : `为这次学习另开的「${opened.title}」（${loopId}）没学完就结束了，先搁着。学习者回来时问问他想先补完还是接着这里学。`,
-    });
-  }
-
-  // ───────────── 导航 ─────────────
-
-  private readonly cards = new Map<
-    string,
-    {
-      options: ChoiceOption[];
-      routeDecision: { decision: string; reason: string; basis: string[] };
-    }
-  >();
-
-  /** 导航交回的、要问学习者的问题（导航会话 id → 问题）。 */
-  private readonly navQuestions = new Map<string, string>();
-
-  /** 导航交回的资料缺口（导航会话 id → 缺什么、为什么要）。 */
-  private readonly navGaps = new Map<string, string>();
+  // ───────────── 删除、停止与编辑（W12 §4.3 §4.4） ─────────────
 
   /**
-   * 导航开场（会话/导航.md「开场给什么」）：触发原因、方向目标、期限、资料范围、各次学习现在的样子、
-   * 主对话原文、路线事实（最近 5 次定下的与路线决定）、停车场、学过的记录上 / 中层、其他。
-   * 用时现算，读当时最新的记录，不提前备好。
+   * 学习者删一个讨论串：正在跑的先停；主对话正本追加 thread_deleted（主对话下一轮前面接一句“学习者删了「…」”）。
+   * 之后界面不显示、别的会话读不到、学过的记录与沙盒里不再包含。找资料存下的资料、谈方向定下的方向不跟着删。不做撤销。
    */
-  private async navOpening(trigger: string, mainId: string): Promise<string> {
-    const records = await this.hub.records(mainId);
-    const main = records.map((r) => r.record);
-    const goal = currentGoal(records);
-    const learned = await this.learned.list(mainId);
-    const parked = await this.learned.parked(mainId);
-    const devs = (await routeDeviations(this.hub, mainId)).slice(-5);
-    const objections = this.o.objections.all().slice(-20);
-    const scope = await this.scopeOf(mainId);
-    const deadline = foldDeadline(main).deadline;
-    const elsewhere = (await this.learned.all()).length - learned.learnings.length;
-
-    // ── 路线事实：最近 5 次定下的（路线决定、单子、开了哪次学习）──
-    const cardLines: string[] = [];
-    for (const { line, record } of records
-      .filter((r) => r.record.type === 'choice_card')
-      .slice(-5)) {
-      if (record.type !== 'choice_card') continue;
-      const rd = records.find(
-        (r) => r.record.type === 'route_decision' && r.record.navSessionId === record.navSessionId,
-      );
-      const made = records.find(
-        (r) => r.record.type === 'choice_made' && r.record.cardId === record.cardId,
-      );
-      const o = record.options[made?.record.type === 'choice_made' ? made.record.option : 0];
-      cardLines.push(
-        `- ${record.at.slice(0, 10)}（主对话 L${String(line)}）触发：${record.trigger}；定下「${o?.title ?? ''}」${o?.ticket.newPoint ?? ''}${made?.record.type === 'choice_made' ? ` → 学习 ${made.record.loopSessionId}` : ''}`,
-      );
-      if (rd?.record.type === 'route_decision') {
-        cardLines.push(
-          `  路线决定 L${String(rd.line)}：${rd.record.decision}（理由：${rd.record.reason}；依据：${rd.record.basis.join('、')}）`,
-        );
-      }
+  async deleteThread(threadId: string): Promise<void> {
+    const opened = await this.hub.opened(threadId);
+    const mainId = opened.parent;
+    if (mainId === undefined || !THREAD_KINDS.has(opened.kind)) {
+      throw new BadRequestError('只能删项目里的讨论串');
     }
-
-    // ── 学过的记录：最近 20 次 + 总数；别的项目里的学习也要能看到（不按项目划界）──
-    const recent = learned.learnings.slice(-20).reverse();
-    const learnedLines =
-      recent.length > 0
-        ? recent.map((l) => `- ${this.learned.line(l)}`)
-        : ['（空：冷启动，第一次学习选小的）'];
-    const total = learned.learnings.length;
-    const totalLine =
-      total > 20
-        ? `共 ${String(total)} 次，这里只列最近 20 次；更早的用 retrieve 查`
-        : `共 ${String(total)} 次`;
-    const elseLine =
-      elsewhere > 0 ? [`别的项目里还有 ${String(elsewhere)} 次学习，要用时用 retrieve 查`] : [];
-
-    return [
-      `触发原因：${trigger}`,
-      '',
-      goal !== undefined
-        ? describeGoal(goal.goal)
-        : '方向目标：（还没有；按默认先验——高中以上、脱离应试——出临时选项，标“临时”）',
-      '',
-      `期限：${deadline !== undefined ? this.deadlineText(foldDeadline(main)) : '没有记'}`,
-      '',
-      await this.instructionsBlock(mainId),
-      '',
-      scope.length > 0
-        ? `本项目的资料（资料定范围：这个人要学会什么；每份 id｜标题｜种类｜归属｜版本｜日期｜状态｜角色｜正文大小；跟眼下相关的整份读）：\n${(await this.materialLines(scope)).join('\n')}`
-        : '本项目还没有能用的资料（缺资料依据）：按方向说明与学过的记录推，候选里资料核不了的标“模型补的”。',
-      '',
-      '── 各次学习现在的样子 ──',
-      ...(await this.learningsNow(mainId)),
-      '',
-      '── 主对话原文（学习者在主对话里说过的，最近的）──',
-      this.recentMessages(records, Number.POSITIVE_INFINITY, 60, 600) || '（还没有）',
-      '',
-      '── 路线事实（最近 5 次定下的）──',
-      cardLines.join('\n') || '（还没有）',
-      '',
-      '── 停车场（没合上的学习，上层；完整对话用 read_session 读）──',
-      parked.map((p) => `- ${this.learned.parkedLine(p)}`).join('\n') || '空',
-      '',
-      '── 学过的记录（上层 / 中层）──',
-      ...learnedLines,
-      totalLine,
-      ...elseLine,
-      '',
-      ...(learned.imports.length > 0
-        ? [
-            `外部导入（学习者在系统之外学到的：畅谈里说的 / 笔记里写的 / 别处跟 AI 学的对话；未验证，可信度低于学习记录，学习里的证据永远优先，可以怀疑，不算“已合上过”；笔记与对话记录的全文用 retrieve 查）：\n${learned.imports.map((x) => `- ${this.learned.importLine(x)}（未验证）`).join('\n')}`,
-            '',
-          ]
-        : []),
-      '── 其他 ──',
-      `提醒（还没办的）：${
-        (await this.longterm.reminderViews(mainId)).filter((r) => r.closed === undefined).length > 0
-          ? '\n' +
-            (await this.longterm.reminderViews(mainId))
-              .filter((r) => r.closed === undefined)
-              .map(
-                (r) =>
-                  `- ${r.id} ${r.due}${r.isDue ? '（已到期）' : `（还有 ${String(daysBetween(this.today(), r.due))} 天）`} ${r.text}`,
-              )
-              .join('\n')
-          : '没有'
-      }`,
-      `最近的路线偏差（事实，不是结论）：${
-        devs.length > 0
-          ? '\n' + devs.map((d) => `- ${d.at.slice(0, 10)} ${d.kind}：${d.text}`).join('\n')
-          : '（没有）'
-      }`,
-      ...(objections.length > 0
-        ? [
-            `学习者提过的异议（自述；没有改原记录，选单子时参考）：\n${objections.map((o) => `- ${this.o.objections.describe(o)}`).join('\n')}`,
-          ]
-        : []),
-      '学习者状态：要用时用 query_state 查；没有记录按无状态约束。',
-    ].join('\n');
-  }
-
-  private today(): string {
-    return this.iso().slice(0, 10);
-  }
-
-  private deadlineText(d: { deadline?: string; note?: string }): string {
-    if (d.deadline === undefined) return '没有记';
-    const days = this.daysUntil(d.deadline);
-    const left = days >= 0 ? `还有 ${String(days)} 天` : `已过 ${String(-days)} 天`;
-    return `${d.deadline}（${left}）${d.note !== undefined ? `；${d.note}` : ''}`;
-  }
-
-  private cardTool(sessionId: string): ToolSpec {
-    const ticketShape = z.object({
-      new_point: z.string().describe('新点，一句话'),
-      clause: z.string().describe('预期理解：出发点怎么接到新点，一两句'),
-      start_points: z
-        .array(
-          z.object({
-            point: z.string().describe('出发点，一句话'),
-            source: z.enum(START_SOURCES).describe('来源：学过的记录 / 自述 / 假定'),
-            ref: z.string().optional().describe('依据：学过的记录或自述写“会话 id:行号”'),
-          }),
-        )
-        .describe('这次用的出发点（一个或几个）'),
-      route_action: z.string().describe('继续主线 / 补前置 / 复习 / 复检 / 接着学 ……'),
-      source_check: z
-        .array(
-          z.object({
-            claim: z.string().describe('对资料核过的一条说法'),
-            at: z.string().optional().describe('教材出处“资料id/文件:行号”'),
-            model_added: z.boolean().optional().describe('资料里没有、模型补的'),
-          }),
-        )
-        .optional()
-        .describe('对资料核的结果；一条都没有就不填'),
-      stage_check: z
-        .boolean()
-        .optional()
-        .describe(
-          '阶段验收：这次学习是一次阶段验收（练习都按验收算、默认不给提示），不是学新内容或日常练习时填真',
-        ),
-      return_to: z
-        .string()
-        .optional()
-        .describe('补前置：合上后回到哪次学习（学习会话 id）；不是补前置不填'),
-      resume_of: z
-        .string()
-        .optional()
-        .describe('接着学：接着哪次没合上的学习（学习会话 id）；不是接着学不填'),
-      revisit: z
-        .object({
-          kind: z.enum(REVISIT_KINDS),
-          of_loop: z.string().describe('回看的是哪次学习（学习会话 id）'),
-        })
-        .optional()
-        .describe('复习 / 复检以前学过的东西时填：kind + 回看哪次学习（会话 id）；学新点不填'),
-      cross_domain: z
-        .object({
-          kind: z.enum(CROSS_KINDS),
-          other_point: z.string().describe('另一边的点，一句话'),
-          problem: z.string().describe('驱动这次学习的原问题，一句话'),
-        })
-        .optional()
-        .describe(
-          '跨领域选项才填：补习型（新点是学习者还没学过的那一边、原问题需要的前置）或对比链接型（另一边的点与学习者已经会了的那个结构相似）。只写这三项，领域自己判断、不用填',
-        ),
-      title: z.string().describe('给学习者看的一句话'),
-      reason: z.string(),
-      sources: z
-        .array(z.string().min(1))
-        .min(1)
-        .describe(
-          '这个选项从哪来，每条可回查：学习对话原文“会话 id:行号”、书里“书名/文件:行号”（书名、文件照教材查询工具给的写）',
-        ),
+    if (this.hub.isDeleted(threadId)) throw new BadRequestError('已经删了');
+    const title = this.hub.labelOf(threadId);
+    await this.hub.stop(threadId);
+    await this.hub.record(mainId, {
+      type: 'thread_deleted',
+      at: this.iso(),
+      session: threadId,
+      title: title.replace(/^「(.*)」.*$/, '$1'),
     });
-    return {
-      name: 'submit_next',
-      description:
-        '交回定下的下一次学习（一张单子）与这次的路线决定；交回后程序直接开这次学习。只提交一次。',
-      input: {
-        next: ticketShape,
-        route_decision: z.object({
-          decision: z.string().describe('这次走哪条路（含“维持”），一句话'),
-          reason: z.string().describe('为什么这样定'),
-          basis: z
-            .array(z.string())
-            .min(1)
-            .describe('理由的依据，每条“会话 id:行号”或“资料id/文件:行号”'),
-        }),
-        roles: z
-          .array(
-            z.object({
-              material: z.string().describe('资料 id'),
-              value: z.enum(['主资料', '参考资料']),
-            }),
-          )
-          .optional()
-          .describe(
-            '可选：你读过的资料在这个项目里是主资料（目标所在、定范围）还是参考资料（补讲法与细节）；界面会显示',
-          ),
-      },
-      run: async (a) => {
-        if (this.cards.has(sessionId)) return err('已经交回过了');
-        if (this.navQuestions.has(sessionId)) return err('已经交回了要问学习者的问题');
-        // 假模型直接调 run、不经 zod（工单 README §4.2）：这里按“字段可能缺”的宽松形状收，逐条核
-        const raw = [a.next] as {
-          new_point?: string;
-          clause?: string;
-          start_points?: { point?: string; source?: string; ref?: string }[];
-          route_action?: string;
-          source_check?: { claim?: string; at?: string; model_added?: boolean }[];
-          stage_check?: boolean;
-          return_to?: string;
-          resume_of?: string;
-          revisit?: { kind?: '复习' | '复检'; of_loop?: string };
-          cross_domain?: { kind?: string; other_point?: string; problem?: string };
-          title?: string;
-          reason?: string;
-          sources?: string[];
-        }[];
-        const decision = a.route_decision as
-          { decision?: string; reason?: string; basis?: string[] } | undefined;
-        const problems: string[] = [];
-        const blank = (s: unknown): boolean => typeof s !== 'string' || s.trim() === '';
-        if (a.next === undefined || a.next === null) return err('缺 next（定下的那张单子）');
-
-        // 路线决定：必有，决定与理由非空，依据至少一条且每条都能定位
-        const basis = Array.isArray(decision?.basis) ? decision.basis : [];
-        if (blank(decision?.decision)) problems.push('路线决定缺 decision（这次走哪条路）');
-        if (blank(decision?.reason)) problems.push('路线决定的 reason 不能是空的');
-        if (basis.length === 0) problems.push('路线决定的 basis 至少给一条依据');
-        for (const b of basis) {
-          const at = await locate(b, this.locateDeps(sessionId));
-          if (!at.ok) problems.push(`路线决定的依据 ${b} 定位不了`);
-        }
-
-        const options: ChoiceOption[] = [];
-        for (const [i, o] of raw.entries()) {
-          const n = i === 0 ? '单子' : `第 ${String(i + 1)} 项`;
-          const textFields: [string | undefined, string][] = [
-            [o.new_point, 'new_point（新点）'],
-            [o.clause, 'clause（预期理解）'],
-            [o.route_action, 'route_action（路线动作）'],
-            [o.title, 'title'],
-            [o.reason, 'reason'],
-          ];
-          for (const [value, label] of textFields) {
-            if (blank(value)) problems.push(`${n}的 ${label} 不能是空的`);
-          }
-          const sources = o.sources ?? [];
-          if (sources.length === 0) problems.push(`${n}的 sources 至少给一条（这个选项从哪来）`);
-          if (sources.some((x) => blank(x))) problems.push(`${n}的 sources 有空白条目`);
-          const startPoints: Ticket['startPoints'] = [];
-          for (const sp of o.start_points ?? []) {
-            if (blank(sp.point)) problems.push(`${n}的出发点不能是空的`);
-            if (
-              sp.source === undefined ||
-              !(START_SOURCES as readonly string[]).includes(sp.source)
-            ) {
-              problems.push(`${n}的出发点来源 ${sp.source} 不在 ${START_SOURCES.join(' / ')} 里`);
-            }
-            if (sp.ref !== undefined && sp.ref.trim() !== '') {
-              const at = await locate(sp.ref, this.locateDeps(sessionId));
-              if (!at.ok) problems.push(`${n}的出发点依据 ${sp.ref} 定位不了`);
-            }
-            startPoints.push({
-              point: sp.point ?? '',
-              source: (sp.source ?? '假定') as (typeof START_SOURCES)[number],
-              ...(sp.ref !== undefined && sp.ref.trim() !== '' ? { ref: sp.ref } : {}),
-            });
-          }
-          const sourceCheck: Ticket['sourceCheck'] = [];
-          for (const c of o.source_check ?? []) {
-            if (blank(c.claim)) problems.push(`${n}的对资料核的结果缺 claim（核过的那条说法）`);
-            if (c.at !== undefined && c.at.trim() !== '') {
-              const at = await locate(c.at, this.locateDeps(sessionId));
-              if (at.kind !== 'material')
-                problems.push(`${n}的出处 ${c.at} 不是资料里的一行（要写 资料id/文件:行号）`);
-              else if (!at.ok) problems.push(`${n}的出处 ${c.at} 定位不了`);
-            }
-            sourceCheck.push({
-              claim: c.claim ?? '',
-              ...(c.at !== undefined && c.at.trim() !== '' ? { at: c.at } : {}),
-              ...(c.model_added === true ? { modelAdded: true } : {}),
-            });
-          }
-          let crossDomain: Ticket['crossDomain'];
-          if (o.cross_domain !== undefined) {
-            if (
-              o.cross_domain.kind === undefined ||
-              !(CROSS_KINDS as readonly string[]).includes(o.cross_domain.kind)
-            ) {
-              problems.push(
-                `${n}的跨领域类型 ${o.cross_domain.kind} 不在 ${CROSS_KINDS.join(' / ')} 里`,
-              );
-            }
-            if (blank(o.cross_domain.other_point)) problems.push(`${n}的跨领域缺 other_point`);
-            if (blank(o.cross_domain.problem)) problems.push(`${n}的跨领域缺 problem（原问题）`);
-            crossDomain = {
-              kind: (o.cross_domain.kind ?? '补习型') as (typeof CROSS_KINDS)[number],
-              otherPoint: o.cross_domain.other_point ?? '',
-              problem: o.cross_domain.problem ?? '',
-            };
-          }
-          const navMain = await this.projectOf(sessionId);
-          let returnTo: string | undefined;
-          if (o.return_to !== undefined && o.return_to.trim() !== '') {
-            const bad = await this.returnProblem(o.return_to, navMain);
-            if (bad !== undefined) problems.push(`${n}：${bad}`);
-            else returnTo = o.return_to;
-          }
-          let resumeOf: string | undefined;
-          if (o.resume_of !== undefined && o.resume_of.trim() !== '') {
-            const bad = await this.resumeProblem(o.resume_of, navMain);
-            if (bad !== undefined) problems.push(`${n}：${bad}`);
-            else resumeOf = o.resume_of;
-          }
-          let revisit: Ticket['revisit'];
-          if (o.revisit !== undefined) {
-            if (blank(o.revisit.kind)) problems.push(`${n}的 revisit 缺 kind（复习 / 复检）`);
-            if (blank(o.revisit.of_loop))
-              problems.push(`${n}的 revisit 缺 of_loop（回看哪次学习）`);
-            else {
-              const bad = await this.revisitProblem(o.revisit.of_loop ?? '');
-              if (bad !== undefined) problems.push(`${n}：${bad}`);
-            }
-            revisit = {
-              kind: o.revisit.kind ?? '复习',
-              ofLoop: o.revisit.of_loop ?? '',
-            };
-          }
-          const ticket: Ticket = {
-            newPoint: o.new_point ?? '',
-            clause: o.clause ?? '',
-            startPoints,
-            routeAction: o.route_action ?? '',
-            sourceCheck,
-            ...(revisit !== undefined ? { revisit } : {}),
-            ...(returnTo !== undefined ? { returnTo } : {}),
-            ...(resumeOf !== undefined ? { resumeOf } : {}),
-            ...(crossDomain !== undefined ? { crossDomain } : {}),
-            ...(o.stage_check === true ? { stageCheck: true } : {}),
-          };
-          options.push({
-            title: o.title ?? '',
-            reason: o.reason ?? '',
-            ...(o.sources !== undefined ? { sources: o.sources } : {}),
-            ticket,
-          });
-        }
-        const roles = (a.roles ?? []) as { material?: string; value?: string }[];
-        const scope = await this.scopeOf(sessionId);
-        for (const r of roles) {
-          if (r.material === undefined || !scope.includes(r.material)) {
-            problems.push(`roles 里的 ${r.material ?? '（空）'} 不是本项目的资料`);
-          } else if (r.value !== '主资料' && r.value !== '参考资料') {
-            problems.push(`roles 里 ${r.material} 的 value 要是 主资料 / 参考资料`);
-          }
-        }
-        if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
-        for (const r of roles) {
-          await this.o.materials.setRole(
-            r.material ?? '',
-            r.value as '主资料' | '参考资料',
-            sessionId,
-          );
-        }
-        this.cards.set(sessionId, {
-          options,
-          routeDecision: {
-            decision: decision?.decision ?? '',
-            reason: decision?.reason ?? '',
-            basis: [...basis],
-          },
-        });
-        return ok('收到，程序这就开这次学习');
-      },
-    };
   }
 
-  /** 导航缺一个只有学习者知道的事实时：交回一个问题，由主对话顺口问（会话/导航.md「交回什么」）。 */
-  private askLearnerTool(sessionId: string): ToolSpec {
-    return {
-      name: 'ask_learner',
-      description:
-        '缺一个只有学习者知道、又会改变下一步的事实时（比如应用外最近学到哪）调用：交回一个问题，主对话会顺口问，问到后再开一次导航。和 submit_next 二选一，只调一次。',
-      input: { question: z.string().describe('要问学习者的事，一句日常话') },
-      run: (a) => {
-        if (this.cards.has(sessionId)) return err('已经交回过下一步了');
-        const q = (a.question as string | undefined)?.trim() ?? '';
-        if (q === '') return err('问题不能是空的');
-        this.navQuestions.set(sessionId, q);
-        return ok('问题已交回主对话');
-      },
-    };
-  }
-
-  /** 导航发现资料缺一段时：交回缺什么，由主对话向学习者提议去找（会话/找资料.md「何时开」）。 */
-  private materialGapTool(sessionId: string): ToolSpec {
-    return {
-      name: 'propose_find_materials',
-      description:
-        '本项目资料缺了路线上要用的一段（如讲某块的原文、代码仓库里没有的配置或论文）时调用：交回缺什么、为什么要，主对话会向学习者提议去找资料。不自己去找、不代替 submit_next / ask_learner，照常交下一步；以最后一次为准。',
-      input: {
-        gap: z.string().describe('缺什么资料、路线上哪一段要用它，一两句日常话'),
-      },
-      run: (a) => {
-        const g = (a.gap as string | undefined)?.trim() ?? '';
-        if (g === '') return err('缺什么不能是空的');
-        this.navGaps.set(sessionId, g);
-        return ok('收到，主对话会向学习者提议去找；你照常交下一步');
-      },
-    };
-  }
-
-  /** 定位依据串；给了 sessionId 时资料须属于这个会话所在的项目（工单 W8 §4.4）。 */
-  private locateDeps(sessionId?: string): LocateDeps {
-    return {
-      hub: this.hub,
-      sources: this.o.sources,
-      ...(sessionId !== undefined ? { scope: () => this.scopeOf(sessionId) } : {}),
-      importText: (id) => this.importText(id, sessionId),
-    };
+  /** 学习者点了停止：断开正在跑的这一轮（下一轮前面接“学习者停止了生成”）。 */
+  async stopTurn(sessionId: string): Promise<void> {
+    await this.hub.opened(sessionId);
+    if (!(await this.hub.interrupt(sessionId))) throw new BadRequestError('这会儿没在生成');
   }
 
   /**
-   * 一条外部导入的正文（依据定位用）；没有这条导入、它没有正文，或给了会话而它所属项目读不到（按指向的资料
-   * 的归属）给 undefined。
+   * 学习者停下后改自己刚发的那句、重新生成：记 message_edited（原来那行不动），交给模型“学习者把上一句改成：……”；
+   * 界面只显示改后的。只能改最后一句、而且得在停下之后（没在跑）。
    */
-  private async importText(id: string, sessionId?: string): Promise<string | undefined> {
-    const project = sessionId !== undefined ? await this.projectOf(sessionId) : undefined;
-    const one = (await this.learned.imports(project)).find((x) => x.id === id);
-    return one !== undefined ? this.learned.importText(one) : undefined;
+  async editLast(sessionId: string, text: string): Promise<void> {
+    const t = text.trim();
+    if (t === '') throw new BadRequestError('改后的话不能是空的');
+    if (this.hub.isRunning(sessionId)) throw new BadRequestError('还在生成，先点停止再改');
+    const recs = await this.hub.records(sessionId);
+    const last = recs.filter((r) => r.record.type === 'user_message').at(-1);
+    if (last === undefined) throw new BadRequestError('还没有说过话');
+    const said = recs.some(
+      (r) =>
+        r.line > last.line &&
+        r.record.type === 'assistant_message' &&
+        r.record.interim !== true &&
+        !recs.some((s) => s.line > r.line && s.record.type === 'turn_stopped'),
+    );
+    if (said) throw new BadRequestError('上一句已经有完整的回答了，直接接着说就好');
+    const line = await this.hub.record(sessionId, {
+      type: 'message_edited',
+      at: this.iso(),
+      line: last.line,
+      text: t,
+      by: 'learner',
+    });
+    await this.hub.send(
+      sessionId,
+      { role: 'learner', text: `学习者把上一句（第 ${String(last.line)} 行）改成：${t}` },
+      { recorded: line },
+    );
   }
 
   /** 学习者给一本书 / 笔记补一句来源说明（只追加）。 */
   async addSourceNote(material: string, field: string, text: string): Promise<SourceNoteView> {
     await this.o.cross.addNote({ material, field, text, by: '学习者' });
     return this.o.cross.sourceNote(material);
-  }
-
-  /** 学习者给一条状态记录补“我的解释”：只追加，不改原记录；下次整理时当自述读到。 */
-  async addStateExplanation(recordId: string, text: string): Promise<StateExplanationView> {
-    if (this.o.state.record(recordId) === undefined) {
-      throw new BadRequestError(`找不到这条状态记录：${recordId}。`);
-    }
-    const t = text.trim();
-    if (t === '') throw new BadRequestError('解释不能是空的。');
-    const e = { id: this.newId('ex'), at: this.iso(), recordId, text: t };
-    await this.o.state.addExplanation(e);
-    return e;
-  }
-
-  /** 读一次会话的对话原文（带行号）；状态整理、导航、检索子代理三处共用（工单 §4.6）。 */
-  private readSessionTool(): ToolSpec {
-    return {
-      name: 'read_session',
-      description:
-        '读某个会话（项目主对话 / 谈方向 / 一次学习）里学习者与教学的对话原文，带行号与时间；不含沙盒动作与收尾记录。',
-      input: {
-        session: z.string(),
-        from_line: z.number().int().optional(),
-        to_line: z.number().int().optional(),
-      },
-      run: async (a) => {
-        const opened = await this.hub.opened(a.session as string).catch((e: unknown) => {
-          if (e instanceof NotFoundError) return undefined;
-          throw e;
-        });
-        if (!opened || !['main', 'talk', 'loop'].includes(opened.kind)) {
-          return err('没有这个对话（只能读项目主对话、谈方向、学习对话）');
-        }
-        const from = (a.from_line as number | undefined) ?? 1;
-        const to = (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER;
-        const recs = (await this.hub.records(opened.sessionId)).filter(
-          (r) =>
-            r.line >= from &&
-            r.line <= to &&
-            (r.record.type === 'user_message' || r.record.type === 'assistant_message'),
-        );
-        return ok(renderTranscript(recs) || '（这一段没有对话）');
-      },
-    };
   }
 
   /**
@@ -2362,7 +1463,7 @@ export class Studium {
         if (one === undefined) return err(`本项目读不到这条导入：${a.id as string}`);
         const text = await this.learned.importText(one);
         if (text === undefined)
-          return err('这条导入没有正文（畅谈里说的，用 read_session 读那一行）');
+          return err('这条导入没有正文（谈方向时说的，用 read_thread 读那一行）');
         const lines = text.split('\n');
         const numbered = lines.map((l, i) => `${String(i + 1)}\t${l}`);
         const q = a.query as string | undefined;
@@ -2378,148 +1479,6 @@ export class Studium {
         return ok(
           `《${one.title ?? one.id}》第 ${String(from)}–${String(end)} 行，共 ${String(lines.length)} 行${end < lines.length ? `；往下读 from_line=${String(end + 1)}` : ''}：\n${slice.join('\n')}`,
         );
-      },
-    };
-  }
-
-  // ───────────── 检索子代理（工单 README §2.7、W4 §5.9）─────────────
-
-  private readonly findings = new Map<string, { text: string; ref: string }[]>();
-
-  /** 检索子代理的沙盒：只读的学过的记录与导航所属项目范围内的资料（它不写）。 */
-  private async retrieveSandbox(sessionId: string): Promise<SandboxSpec | undefined> {
-    const navId = (await this.hub.opened(sessionId)).parent;
-    if (navId === undefined) return undefined;
-    return this.sandboxes.forRetrieve(sessionId, navId);
-  }
-
-  /** 导航派检索子代理：另开一个会话去找底层证据，只拿回核过的几条。 */
-  private retrieveTool(navId: string): ToolSpec {
-    return {
-      name: 'retrieve',
-      description:
-        '上层（学过的记录：单子与收尾那一句）答不了细节时派检索子代理：说清要找什么，可点名先看哪几次学习。它只交回至多 5 条、每条指回行号的结果。',
-      input: {
-        question: z.string().describe('要找什么，一句话'),
-        loops: z
-          .array(z.string())
-          .optional()
-          .describe('先看哪几次学习（学习会话 id）；不限于本项目'),
-      },
-      run: async (a) => {
-        const question = (a.question as string).trim();
-        if (question === '') return err('question 不能是空的');
-        const loops = (a.loops as string[] | undefined) ?? [];
-        for (const id of loops) {
-          const opened = await this.hub.opened(id).catch((e: unknown) => {
-            if (e instanceof NotFoundError) return undefined;
-            throw e;
-          });
-          if (opened?.kind !== 'loop') return err(`点名的 ${id} 不是一次学习`);
-        }
-        const sub = await this.hub.createSession('retrieve', {
-          title: `检索：${question.slice(0, 20)}`,
-          parent: navId,
-        });
-        await this.hub.send(sub.sessionId, {
-          role: 'program',
-          text: await this.retrieveOpening(question, loops, navId, sub.sessionId),
-        });
-        await this.hub.idle(sub.sessionId);
-        const found = this.findings.get(sub.sessionId);
-        this.findings.delete(sub.sessionId);
-        if (found === undefined) return err(`检索子代理没有交回（见会话 ${sub.sessionId}）`);
-        if (found.length === 0) return ok(`检索结果（见会话 ${sub.sessionId}）：没找到`);
-        return ok(
-          `检索结果（出处已核对，见会话 ${sub.sessionId}）：\n${found.map((f) => `- ${f.text}（${f.ref}）`).join('\n')}`,
-        );
-      },
-    };
-  }
-
-  /** 检索子会话的开场：问题、点名的学习、本项目与别的项目的学习上层、沙盒说明、交回规矩。 */
-  private async retrieveOpening(
-    question: string,
-    loops: string[],
-    navId: string,
-    sessionId: string,
-  ): Promise<string> {
-    const mainId = (await this.hub.opened(navId)).parent;
-    const here =
-      mainId !== undefined ? (await this.learned.list(mainId)).learnings : await this.learned.all();
-    const everything = await this.learned.all();
-    const elsewhere = everything.filter((l) => !here.some((x) => x.loopId === l.loopId));
-    const first: string[] = [];
-    for (const id of loops) {
-      first.push(`- ${await this.upperLine(await this.learned.one(id))}`);
-    }
-    const lines: string[] = [`问题：${question}`];
-    if (loops.length > 0) lines.push('先看这几次：', ...first);
-    lines.push(
-      '学过的记录（上层 / 中层）：',
-      ...(here.length > 0 ? here.map((l) => `- ${this.learned.line(l)}`) : ['（没有）']),
-    );
-    if (elsewhere.length > 0) {
-      lines.push(
-        '别的项目里的学习：',
-        ...(await Promise.all(elsewhere.map((l) => this.upperLine(l)))),
-      );
-    }
-    const sb = await this.sandboxes.forRetrieve(sessionId, navId);
-    lines.push(
-      '',
-      '只为导航的一个问题找底层证据：从上面的上层（单子、收尾那一句）出发，到沙盒里读——每次学习的对话原文在 只读/学过的记录/<学习 id>-对话.md（带行号），资料正文在 只读/资料/<资料 id>/，定位到原文行。',
-      await this.materialsBlock(sessionId),
-      describeSandbox(sb),
-      '',
-      '用 submit_findings 交回至多 5 条，每条一句话 + 能定位的 ref（会话 id:行号 / 资料id/文件:行号）；没找到交空数组；只交一次。不下结论、不出路线。',
-    );
-    return lines.join('\n');
-  }
-
-  /** 一次学习的上层一行（检索子代理开场用）。 */
-  private async upperLine(l: Learning): Promise<string> {
-    if (l.status !== '没合上') return this.learned.line(l);
-    const endLine = (await this.hub.records(l.loopId)).find(
-      (r) => r.record.type === 'loop_ended',
-    )?.line;
-    return this.learned.parkedLine({
-      learning: l,
-      ...(endLine !== undefined ? { endLine } : {}),
-    });
-  }
-
-  /** 检索子代理交回：至多 5 条，每条 ref 能定位；只交一次。 */
-  private findingsTool(sessionId: string): ToolSpec {
-    return {
-      name: 'submit_findings',
-      description:
-        '交回找到的几条（至多 5 条）：每条一句话 + 能定位的 ref（会话 id:行号 / 资料id/文件:行号 / 外部导入/<导入 id>.md:行号）；没找到交空数组。只交一次。',
-      input: {
-        findings: z.array(
-          z.object({
-            text: z.string().describe('一句话：找到了什么'),
-            ref: z
-              .string()
-              .describe('会话 id:行号、资料id/文件:行号 或 外部导入/<导入 id>.md:行号'),
-          }),
-        ),
-      },
-      run: async (a) => {
-        if (this.findings.has(sessionId)) return err('已经交回过了');
-        const raw = a.findings as { text?: string; ref?: string }[];
-        if (raw.length > 5) return err(`至多 5 条，给了 ${String(raw.length)} 条`);
-        const problems: string[] = [];
-        const out: { text: string; ref: string }[] = [];
-        for (const f of raw) {
-          if ((f.text ?? '').trim() === '') problems.push('有一条没写 text');
-          const at = await locate(f.ref ?? '', this.locateDeps(sessionId));
-          if (!at.ok) problems.push(`ref ${f.ref ?? ''} 定位不了`);
-          out.push({ text: (f.text ?? '').trim(), ref: f.ref ?? '' });
-        }
-        if (problems.length > 0) return err(`${problems.join('；')}。改好后重新提交`);
-        this.findings.set(sessionId, out);
-        return ok('已交回。');
       },
     };
   }
@@ -2561,84 +1520,20 @@ export class Studium {
   }
 
   /**
-   * 主对话每轮附上的当前事实（会话/主对话.md「每轮附上的事实」）：方向说明、期限、各次学习现在的样子、
-   * 最新路线决定。主对话上下文是连续的；只有新开模型对话（没有可续接的）时才从记录补上最近的消息。
+   * 主对话每轮附上的事实（W12 §3.2，照 Claude 的 wake）：只有时间类的（现在几点；每条输入前已带距学习者上次说话多久），
+   * 方向、讨论串清单、学过的记录要用自己读。只有新开模型对话（没有可续接的）时才从记录补上最近的消息。
    */
   private async mainPreface(mainId: string, inputLine: number, fresh: boolean): Promise<string> {
+    if (!fresh) return '';
     const records = await this.hub.records(mainId);
-    const goal = currentGoal(records);
-    const deadline = foldDeadline(records.map((r) => r.record));
-    const decision = records.filter((r) => r.record.type === 'route_decision').at(-1);
-    const out = [
-      '程序附上的当前事实（每轮刷新，以这里为准）',
-      goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
-      `期限：${deadline.deadline !== undefined ? this.deadlineText(deadline) : '没有记'}`,
-      await this.instructionsBlock(mainId),
-      await this.materialsBlock(mainId),
-      '── 各次学习现在的样子 ──',
-      ...(await this.learningsNow(mainId)),
-      '── 讨论串（本项目开出去的对话，最近的在前）──',
-      ...this.threadsNow(mainId),
-      decision?.record.type === 'route_decision'
-        ? `最新路线决定 L${String(decision.line)}：${decision.record.decision}（理由：${decision.record.reason}）`
-        : '还没有路线决定',
-    ];
-    if (fresh) {
-      out.push(
-        '── 前面说过的（这次是新接上的对话，从记录补上最近的）──',
-        this.recentMessages(records, inputLine, 30, 300) || '（还没有）',
-      );
-    }
-    return out.join('\n');
-  }
-
-  /**
-   * 本项目开出去的讨论串：会话 id、种类、标题、等你 / 进行中 / 已结束、最近活动；分组与界面讨论串栏同一处规则
-   * （`shared/threads.ts`）。已结束的只列最近几条。
-   */
-  private threadsNow(mainId: string): string[] {
-    const label = { waiting: '等你', running: '进行中', ended: '已结束' } as const;
-    const rows = this.hub
-      .listSessions()
-      .filter((s) => s.parent === mainId && THREAD_KINDS.has(s.kind))
-      .sort((a, b) => (b.lastAt ?? b.openedAt).localeCompare(a.lastAt ?? a.openedAt));
-    if (rows.length === 0) return ['还没有开过'];
-    const open = rows.filter((s) => threadGroup(s) !== 'ended');
-    const ended = rows.filter((s) => threadGroup(s) === 'ended').slice(0, 8);
-    return [...open, ...ended].map(
-      (s) =>
-        `- ${s.sessionId}（${CONVERSATION_KIND_LABELS[s.kind]}）「${s.title}」${label[threadGroup(s)]} · 最近 ${localMinute(s.lastAt ?? s.openedAt)}`,
-    );
-  }
-
-  /** 本项目各次学习现在的样子：在学 / 搁着 / 学完（记录/单子与路线.md「全局」）。 */
-  private async learningsNow(mainId: string): Promise<string[]> {
-    const { learnings } = await this.learned.list(mainId);
-    const parked = new Set((await this.learned.parked(mainId)).map((p) => p.learning.loopId));
-    const shelved = new Set<string>();
-    for (const l of learnings) {
-      if (l.status === '进行中' && foldLoop(await this.hub.records(l.loopId)).shelved !== undefined)
-        shelved.add(l.loopId);
-    }
-    const row = (l: (typeof learnings)[number]): string =>
-      `- ${l.loopId}「${l.title}」${l.openedAt.slice(0, 10)}：${l.ticket.newPoint}`;
-    const inProgress = learnings.filter((l) => l.status === '进行中' && !shelved.has(l.loopId));
-    const waiting = learnings.filter((l) => shelved.has(l.loopId) || parked.has(l.loopId));
-    const done = learnings.filter((l) => l.status === '合上').slice(-8);
-    if (learnings.length === 0) return ['还没有开过学习'];
     return [
-      `在学（${String(inProgress.length)}）：`,
-      ...inProgress.map(row),
-      `搁着（${String(waiting.length)}）：`,
-      ...waiting.map(
-        (l) => `${row(l)}${l.endNote !== undefined ? `；停下时说：${l.endNote}` : ''}`,
-      ),
-      `学完（共 ${String(learnings.filter((l) => l.status === '合上').length)}，最近的）：`,
-      ...done.map(row),
-    ];
+      `现在：${localMinute(this.iso())}`,
+      '── 前面说过的（这次是新接上的对话，从记录补上最近的；讨论串清单用 list_threads 读）──',
+      this.recentMessages(records, inputLine, 30, 300) || '（还没有）',
+    ].join('\n');
   }
 
-  /** 主对话里 inputLine 之前的学习者 / 主对话 / 程序消息，取最后 n 条。 */
+  /** 主对话里 inputLine 之前的学习者 / 主对话 / 程序 / 讨论串发来的话，取最后 n 条。 */
   private recentMessages(
     records: NumberedRecord[],
     inputLine: number,
@@ -2648,149 +1543,194 @@ export class Studium {
     const messages: string[] = [];
     for (const { line, record } of records) {
       if (line >= inputLine) continue;
-      if (
-        record.type !== 'user_message' &&
-        record.type !== 'assistant_message' &&
-        record.type !== 'program_fact'
-      ) {
-        continue;
-      }
       const who =
         record.type === 'user_message'
           ? '学习者'
-          : record.type === 'assistant_message'
+          : record.type === 'assistant_message' && record.interim !== true
             ? '主对话'
-            : '程序';
+            : record.type === 'program_fact'
+              ? '程序'
+              : record.type === 'thread_message'
+                ? `${this.hub.labelOf(record.from)}发来`
+                : undefined;
+      if (who === undefined || !('text' in record)) continue;
       const text = record.text.length > cut ? `${record.text.slice(0, cut)}…` : record.text;
       messages.push(`L${String(line)} ${who}：${text}`);
     }
     return messages.slice(-n).join('\n');
   }
 
+  /**
+   * 主对话的工具（W12 §3.2，照 Claude 项目的协调者）：开讨论串、发话、读 / 列讨论串、改名、结束 / 重开、改自己上一条、
+   * 回表情；学过的记录、项目说明。主对话不带删除工具（删只在界面上）。
+   */
   private mainTools(mainId: string): ToolSpec[] {
     return [
-      ...this.longterm.mainTools(mainId),
       {
-        name: 'open_goal_talk',
+        name: 'start_thread',
         description:
-          '学习者说出新的学习方向、想改方向，或学了几次之后远处能看清一层、要把方向往远推时调用：在他刚才这条消息下开一个单独谈方向的对话。主对话自己不谈方向。',
-        input: {},
-        run: async () => {
-          const recs = await this.hub.records(mainId);
-          const asked = recs.filter((r) => r.record.type === 'user_message').at(-1);
-          if (asked?.record.type !== 'user_message') return err('主对话里还没有学习者的话');
-          const goal = currentGoal(recs);
-          const deadline = foldDeadline(recs.map((r) => r.record)).deadline;
-          const title = '谈方向';
-          const talk = await this.hub.createSession('talk', {
+          '开一个讨论串，把一件事交给它：kind = loop（学习：讲解、练习、读资料一起学）/ talk（谈方向：学成后能做什么、学到什么程度）/ find（联网找资料、存进本项目）。instructions 是给它的交代：只写它需要、自己读不到的项目背景；学习者的话有两种读法时写一句你的理解；不替它定学什么、不加学习者没要求的要求。学习者的原话用 learner_lines 指行号，程序照抄附上。',
+        input: {
+          kind: z.enum(['loop', 'talk', 'find']),
+          title: z.string().describe('几个字，动词开头，学习者在列表里凭它找回来'),
+          instructions: z.string(),
+          learner_lines: z
+            .array(z.number().int())
+            .min(1)
+            .describe('学习者在主对话里那几句话的行号'),
+        },
+        run: async (a) => {
+          const kind = a.kind as 'loop' | 'talk' | 'find';
+          const title = (a.title as string).trim();
+          if (title === '') return err('title 不能是空的');
+          const cited = await this.citeMain(mainId, a.learner_lines as number[]);
+          if (typeof cited === 'string') return err(cited);
+          const s = await this.hub.createSession(kind, {
             title,
             parent: mainId,
-            anchorLine: asked.line,
-          });
-          await this.hub.send(talk.sessionId, {
-            role: 'program',
-            text: [
-              `学习者在主对话里说（主对话第 ${String(asked.line)} 行）：${asked.record.text}`,
-              await this.instructionsBlock(mainId),
-              await this.materialsBlock(mainId),
-              ...(goal !== undefined
-                ? [
-                    `已有方向（主对话 L${String(goal.line)}，${goal.goal.at.slice(0, 10)}）：`,
-                    describeGoal(goal.goal),
-                    ...(deadline !== undefined ? [`期限：${deadline}`] : []),
-                    '── 各次学习现在的样子 ──',
-                    ...(await this.learningsNow(mainId)),
-                  ]
-                : []),
-              '',
-              goal !== undefined
-                ? '接着学习者这句话谈：在已有方向上接着推，不推倒重来。'
-                : '接着学习者这句话谈。',
-            ].join('\n'),
+            anchorLine: cited.at(-1)?.line ?? 0,
+            ...(kind === 'loop' ? { screens: true as const, page: 'stream' as const } : {}),
           });
           await this.hub.record(mainId, {
             type: 'task_opened',
             at: this.iso(),
-            sessionId: talk.sessionId,
-            kind: 'talk',
+            sessionId: s.sessionId,
+            kind,
             title,
-            anchorLine: asked.line,
+            anchorLine: cited.at(-1)?.line ?? 0,
           });
-          return ok('已在学习者这条消息下开了谈方向的对话，学习者点进去谈；谈定后会交回这里。');
+          // 程序附上它自己一开始就该知道的：学习对话 = 只读区有什么；谈方向、找资料 = 项目说明
+          const facts = `\n\n（程序附）${
+            kind === 'loop'
+              ? describeSandbox(await this.sandboxes.forLoop(s.sessionId))
+              : await this.instructionsBlock(mainId)
+          }`;
+          await this.hub.message(s.sessionId, {
+            from: mainId,
+            text: `${(a.instructions as string).trim()}${facts}`,
+            cited,
+            reply: true,
+          });
+          return ok(
+            `已开：${s.sessionId}「${title}」，入口卡片在主对话里。跟学习者说一句就好；那边做完或有事会自己说，要看进展用 read_thread。`,
+          );
         },
       },
       {
-        name: 'plan_next',
+        name: 'message_thread',
         description:
-          '学习者要下一步时调用：另开一个会话把下一次学什么想清楚、定下来并直接开这次学习（要几分钟，学习者可点进去看它怎么想的）；它也可能先要问学习者一件事。学习者不想学上次定的那个时，同样调用，把他的话写进 reason。',
+          '给一个已有的讨论串发话：学习者在主对话里说的是那边的事（接着那边谈、补一句要求），或那边的事你有项目背景要补。发出去马上返回；那边正在跑就等它这一轮跑完再收到，它回的话会作为一条消息送回这里。学习者的原话用 learner_lines 指行号，程序照抄附上；text 只写你要补的，不加学习者没要求的要求。已结束的会重新打开。',
         input: {
-          reason: z.string().describe('学习者怎么说的、为什么现在要下一步，一两句'),
-          branch_of: z
-            .string()
-            .optional()
-            .describe('一次学习请另开一次先补一段时，填那次学习的会话 id；别的时候不填'),
+          thread: z.string().describe('讨论串的会话 id'),
+          text: z.string(),
+          learner_lines: z.array(z.number().int()).optional(),
         },
         run: async (a) => {
-          const reason = a.reason as string;
-          let trigger = `学习者在主对话里要下一步：${reason}`;
-          if (typeof a.branch_of === 'string' && a.branch_of.trim() !== '') {
-            const t = await this.branchTrigger(mainId, a.branch_of.trim());
-            if (t.startsWith('!')) return err(t.slice(1));
-            trigger = `${t}\n主对话补一句：${reason}`;
-          }
-          const r = await this.planNext(trigger, mainId);
-          const said =
-            r.kind === 'opened'
-              ? `定下了，学习对话已开：「${r.title}」。为什么是它：${r.reason}。跟学习者说一句学什么、为什么，入口已经放在主对话里。`
-              : `想下一步之前要先问学习者一件事：「${r.question}」。照这句原样问学习者（可以补一句为什么问，不改写问题）；学习者答了再调用 plan_next，把学习者的原话写进 reason。`;
-          return ok(
-            r.materialGap !== undefined
-              ? `${said}\n另外，项目资料里缺一段：${r.materialGap}。顺带问学习者要不要去找；他说要，再调用 find_materials，request 里写上缺什么。`
-              : said,
+          const t = await this.threadOf(mainId, a.thread as string);
+          if (typeof t === 'string') return err(t);
+          const cited = await this.citeMain(
+            mainId,
+            (a.learner_lines as number[] | undefined) ?? [],
           );
+          if (typeof cited === 'string') return err(cited);
+          await this.reopenIfEnded(t, 'main', '主对话发话');
+          await this.hub.message(t.sessionId, {
+            from: mainId,
+            text: (a.text as string).trim(),
+            cited,
+          });
+          return ok('已发出。');
+        },
+      },
+      this.readThreadTool(mainId),
+      this.listThreadsTool(mainId),
+      {
+        name: 'rename_thread',
+        description: '给一个讨论串改名（几个字，动词开头）。',
+        input: { thread: z.string(), title: z.string() },
+        run: async (a) => {
+          const t = await this.threadOf(mainId, a.thread as string);
+          if (typeof t === 'string') return err(t);
+          return this.setTitle(t.sessionId, a.title as string);
+        },
+      },
+      {
+        name: 'close_thread',
+        description:
+          '结束一个讨论串（只是收起，学习者再说话或你调 reopen_thread 就重开）：学习者说那件事不用再做了时用。学习对话结束 = 没学完先搁着。',
+        input: {
+          thread: z.string(),
+          reason: z.string().describe('学习者怎么说的（主对话行号 + 一句）'),
+        },
+        run: async (a) => {
+          const t = await this.threadOf(mainId, a.thread as string);
+          if (typeof t === 'string') return err(t);
+          return this.closeThread(t, 'main', a.reason as string);
+        },
+      },
+      {
+        name: 'reopen_thread',
+        description: '重开一个已结束的讨论串（含学习对话）。',
+        input: {
+          thread: z.string(),
+          reason: z.string().describe('学习者怎么说的（主对话行号 + 一句）'),
+        },
+        run: async (a) => {
+          const t = await this.threadOf(mainId, a.thread as string);
+          if (typeof t === 'string') return err(t);
+          if (!(await this.reopenIfEnded(t, 'main', a.reason as string))) return err('它还开着。');
+          return ok('已重新打开。');
+        },
+      },
+      {
+        name: 'edit_message',
+        description:
+          '改你在主对话里上一条说的话（发现理解错了时直接改，不追加更正）：学习者看到的是改后的。',
+        input: { text: z.string().describe('改后的全文') },
+        run: async (a) => {
+          const recs = await this.hub.records(mainId);
+          const last = recs
+            .filter((r) => r.record.type === 'assistant_message' && r.record.interim !== true)
+            .at(-1);
+          if (last === undefined) return err('你还没有说过话');
+          const text = (a.text as string).trim();
+          if (text === '') return err('改后的话不能是空的');
+          await this.hub.record(mainId, {
+            type: 'message_edited',
+            at: this.iso(),
+            line: last.line,
+            text,
+            by: 'model',
+          });
+          return ok('已改。');
+        },
+      },
+      {
+        name: 'react',
+        description: '对学习者的一句话回一个表情、不说话（打招呼、致谢、知会一声时）。',
+        input: {
+          line: z.number().int().describe('学习者那句话的行号'),
+          emoji: z.string().describe('一个表情'),
+        },
+        run: async (a) => {
+          const recs = await this.hub.records(mainId);
+          if (recs.find((r) => r.line === a.line)?.record.type !== 'user_message') {
+            return err('那一行不是学习者的话');
+          }
+          await this.hub.record(mainId, {
+            type: 'message_reaction',
+            at: this.iso(),
+            line: a.line as number,
+            emoji: (a.emoji as string).trim().slice(0, 8),
+          });
+          return ok('已回。这一轮不用再说话。');
         },
       },
       this.listLearnedTool(mainId),
       {
-        name: 'find_materials',
-        description:
-          '学习者要找资料时调用（如“帮我找讲 SVD 的好资料”）：在他这条消息下开一个找资料的对话，联网搜、列候选，学习者勾了才存进本项目资料。主对话自己不搜。',
-        input: {
-          request: z
-            .string()
-            .describe('学习者的原话；是答应了去补之前提的资料缺口时，连同缺什么一起写'),
-        },
-        run: async (a) => {
-          const recs = await this.hub.records(mainId);
-          const asked = recs.filter((r) => r.record.type === 'user_message').at(-1);
-          if (asked?.record.type !== 'user_message') return err('主对话里还没有学习者的话');
-          const title = '找资料';
-          const find = await this.hub.createSession('find', {
-            title,
-            parent: mainId,
-            anchorLine: asked.line,
-          });
-          await this.hub.send(find.sessionId, {
-            role: 'program',
-            text: await this.findOpening(mainId, a.request as string, asked.line),
-          });
-          await this.hub.record(mainId, {
-            type: 'task_opened',
-            at: this.iso(),
-            sessionId: find.sessionId,
-            kind: 'find',
-            title,
-            anchorLine: asked.line,
-          });
-          return ok(
-            '已在学习者这条消息下开了找资料的对话；候选列出来后学习者在那里勾，存了几份程序会告诉你。',
-          );
-        },
-      },
-      {
         name: 'remember',
         description:
-          '学习者明确要你记住一件长期的事（“记住我用 Linux”“以后别先给答案”）时调用：给出改后的项目说明全文（在现有的上面增删改，其余照留）。只记学习者明确要求记的；随口说的、你自己推断的不记。写完跟学习者说一句改了什么。',
+          '学习者明确要你记住一件长期的事（“记住我用 Linux”“以后别先给答案”）时调用：给出改后的项目说明全文（在现有的上面增删改，其余照留）。',
         input: { text: z.string().describe('改后的项目说明全文') },
         run: async (a) => {
           const recs = await this.hub.records(mainId);
@@ -2804,222 +1744,251 @@ export class Studium {
           }
         },
       },
-      {
-        name: 'point_to_conversation',
-        description:
-          '学习者要接着某个已有的对话（比如一次还在进行的学习）时调用：在主对话里放一个回到那里的入口。',
-        input: { session: z.string().describe('会话 id（list_learned 里有）') },
-        run: async (a) => {
-          const id = a.session as string;
-          const opened = await this.hub.opened(id).catch((e: unknown) => {
-            if (e instanceof NotFoundError) return undefined;
-            throw e;
-          });
-          if (
-            opened?.parent !== mainId ||
-            (opened.kind !== 'loop' &&
-              opened.kind !== 'talk' &&
-              opened.kind !== 'output' &&
-              opened.kind !== 'find')
-          ) {
-            return err(`本项目里没有这个对话：${id}`);
-          }
-          await this.hub.record(mainId, {
-            type: 'conversation_pointer',
-            at: this.iso(),
-            sessionId: id,
-          });
-          return ok('入口已放好。');
-        },
-      },
-      ...this.threadControlTools(mainId),
-      this.o.outputs.mainTool(mainId),
     ];
   }
 
-  /**
-   * 学习对话请开分叉时导航的开场依据：照学习对话最后一条 branch_requested 拼，不由主对话转述。
-   * 站不住返回以 ! 开头的一句话。
-   */
-  private async branchTrigger(mainId: string, loopId: string): Promise<string> {
-    const opened = await this.hub.opened(loopId).catch((e: unknown) => {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
-    });
-    if (opened?.kind !== 'loop' || opened.parent !== mainId)
-      return `!本项目里没有这次学习：${loopId}`;
-    const recs = await this.hub.records(loopId);
-    const req = recs.filter((r) => r.record.type === 'branch_requested').at(-1);
-    if (req?.record.type !== 'branch_requested') return `!这次学习没有请开分叉：${loopId}`;
-    if (recs.some((r) => r.record.type === 'loop_ended')) return `!这次学习已经结束了：${loopId}`;
-    const q = req.record;
-    return [
-      `一次学习「${opened.title}」（${loopId}）中途请另开一次先补一段（它的第 ${String(req.line)} 行，学习者已同意）：`,
-      `先学：${q.need}`,
-      `为什么：${q.why}（依据 ${q.lines.map((l) => `${loopId}:${String(l)}`).join('、')}，可用 read_session 读）`,
-      `回到那次学习前要满足：${q.returnCondition}`,
-      `定的这一次 return_to 填 ${loopId}（补完回到那次学习）；route_action 写补前置或旁支。`,
-    ].join('\n');
-  }
+  // ───────────── 讨论串之间（W12 §3.3，照 Claude 讨论串的工具） ─────────────
 
-  /** 主对话管讨论串（照 Claude 项目的协调者，10-28）：读、传话、按学习者的话结束 / 重开。 */
-  private threadControlTools(mainId: string): ToolSpec[] {
-    const thread = async (id: string): Promise<SessionOpened | string> => {
-      const opened = await this.hub.opened(id).catch((e: unknown) => {
-        if (e instanceof NotFoundError) return undefined;
-        throw e;
-      });
-      if (opened?.parent !== mainId || !THREAD_KINDS.has(opened.kind)) {
-        return `本项目里没有这个讨论串：${id}`;
-      }
-      return opened;
-    };
-    const loopRefusal =
-      '一次学习由学习者在学习页里结束（学完了 / 搁着），主对话不替他结束或重开；用 point_to_conversation 给他放个入口。';
+  /** 讨论串的工具（谈方向、找资料、学习对话都有）：读主对话 / 别的讨论串 / 列讨论串、给主对话或别的讨论串发话、改名、结束。 */
+  private threadTools(sessionId: string): ToolSpec[] {
     return [
       {
-        name: 'read_thread',
+        name: 'read_project_chat',
         description:
-          '读本项目某个讨论串里的对话原文（带行号与时间）：学习者问那边谈到哪了、要你接着那边的事说话之前，先读，不凭印象。会话 id 在每轮附着的讨论串清单里。',
+          '读项目主对话的原文（学习者和主对话说的话，带行号与时间）：要知道学习者在主对话里怎么说的、项目怎么来的。',
         input: {
-          session: z.string(),
           from_line: z.number().int().optional(),
           to_line: z.number().int().optional(),
         },
         run: async (a) => {
-          const t = await thread(a.session as string);
-          if (typeof t === 'string') return err(t);
-          const from = (a.from_line as number | undefined) ?? 1;
-          const to = (a.to_line as number | undefined) ?? Number.MAX_SAFE_INTEGER;
-          const recs = (await this.hub.records(t.sessionId)).filter(
-            (r) =>
-              r.line >= from &&
-              r.line <= to &&
-              (r.record.type === 'user_message' || r.record.type === 'assistant_message'),
+          const mainId = await this.projectOf(sessionId);
+          if (mainId === undefined) return err('找不到这个对话所属的项目');
+          return ok(
+            await this.transcriptOf(
+              mainId,
+              a.from_line as number | undefined,
+              a.to_line as number | undefined,
+            ),
           );
-          return ok(renderTranscript(recs) || '（这一段没有对话）');
+        },
+      },
+      this.readThreadTool(sessionId),
+      this.listThreadsTool(sessionId),
+      {
+        name: 'message_coordinator',
+        description:
+          '给主对话发话（学习者看不到）：学习者要做的是另一件事、要另开一个讨论串时用（如学到一半要先补别的），附学习者原话的行号；这边照样开着。发完跟学习者说一句。不用来报进度：你在这里说的话主对话读得到。',
+        input: {
+          text: z.string(),
+          learner_lines: z
+            .array(z.number().int())
+            .optional()
+            .describe('学习者在这个对话里那几句话的行号'),
+        },
+        run: async (a) => {
+          const mainId = await this.projectOf(sessionId);
+          if (mainId === undefined) return err('找不到这个对话所属的项目');
+          const cited = await this.citeLearner(
+            sessionId,
+            (a.learner_lines as number[] | undefined) ?? [],
+          );
+          if (typeof cited === 'string') return err(cited);
+          await this.hub.message(mainId, {
+            from: sessionId,
+            text: (a.text as string).trim(),
+            cited,
+          });
+          return ok('已发给主对话。');
         },
       },
       {
         name: 'message_thread',
         description:
-          '学习者在主对话里说的话是给某个已有讨论串的（接着那边谈、补一句要求、改个说法）时调用：把话转过去，那边接着跑，跑完把它回的那句交给你。学习者的原话用 learner_lines 指行号，程序原样附上，你不用转述；text 只写你要补的一句（为什么转、要那边做什么）。讨论串已结束的会重新打开。导航不交互，不能传话。只在学习者明确指向那个讨论串时转：点了它的名字或标题、引用了那边的话，或说的是那边刚交回的东西且只有一个对得上；话题相近不算，当新的事处理。',
+          '给本项目另一个讨论串发话（学习者看不到）：只在两边的活互相依赖时用。要转学习者的话，附他原话的行号，不转述。它回的话会作为一条消息送回这里。',
         input: {
-          session: z.string().describe('讨论串的会话 id'),
-          learner_lines: z
-            .array(z.number().int())
-            .min(1)
-            .describe('学习者在主对话里那几句话的行号'),
-          text: z.string().describe('你补的一句：为什么转过去、要那边做什么'),
+          thread: z.string(),
+          text: z.string(),
+          learner_lines: z.array(z.number().int()).optional(),
         },
         run: async (a) => {
-          const t = await thread(a.session as string);
+          const mainId = await this.projectOf(sessionId);
+          if (mainId === undefined) return err('找不到这个对话所属的项目');
+          const t = await this.threadOf(mainId, a.thread as string);
           if (typeof t === 'string') return err(t);
-          if (t.kind === 'nav')
-            return err('导航不交互；学习者要改下一步，带上他的话再调用 plan_next。');
-          const recs = await this.hub.records(t.sessionId);
-          if (t.kind === 'loop') {
-            if (t.screens !== true) return err(OLD_LOOP);
-            if (recs.some((r) => r.record.type === 'loop_ended')) {
-              return err('这次学习已经结束了；要接着学，学习者回项目说下一步，导航会安排接着学。');
-            }
-            if (foldLoop(recs).shelved !== undefined) {
-              return err(
-                '这次学习停着；学习者点进去说句话就接上，用 point_to_conversation 给他放个入口。',
-              );
-            }
-          }
-          const main = await this.hub.records(mainId);
-          const quoted: string[] = [];
-          for (const line of a.learner_lines as number[]) {
-            const r = main.find((x) => x.line === line)?.record;
-            if (r?.type !== 'user_message') return err(`主对话第 ${String(line)} 行不是学习者的话`);
-            quoted.push(`[主对话第 ${String(line)} 行] ${r.text}`);
-          }
-          if (REOPENABLE_KINDS.has(t.kind) && threadEnded(recs)) {
-            await this.hub.record(t.sessionId, {
-              type: 'thread_reopened',
-              at: this.iso(),
-              by: 'main',
-              reason: '主对话转来学习者的话',
-            });
-          }
-          const { line, done } = await this.hub.send(t.sessionId, {
-            role: 'program',
-            text: [
-              '学习者在项目主对话里说了下面的话，主对话转到这里（原话由程序照抄）：',
-              ...quoted,
-              `主对话补一句：${(a.text as string).trim()}`,
-              '接着这边的事回应学习者；他会在这里看到你的回答。',
-            ].join('\n'),
-          });
-          await this.hub.record(mainId, {
-            type: 'conversation_pointer',
-            at: this.iso(),
-            sessionId: t.sessionId,
-          });
-          await done;
-          const reply = (await this.hub.records(t.sessionId))
-            .filter((r) => r.line > line && r.record.type === 'assistant_message')
-            .at(-1)?.record;
-          const said = reply?.type === 'assistant_message' ? reply.text : '';
-          return ok(
-            said !== ''
-              ? `已转过去，入口放在主对话里。那边回的：${said.length > 600 ? `${said.slice(0, 600)}…` : said}`
-              : '已转过去，入口放在主对话里；那边这一轮没有说话。',
+          if (t.sessionId === sessionId) return err('这就是你自己');
+          const cited = await this.citeLearner(
+            sessionId,
+            (a.learner_lines as number[] | undefined) ?? [],
           );
-        },
-      },
-      {
-        name: 'close_thread',
-        description:
-          '学习者明确说某个讨论串不要了、到此为止时调用：结束它（只是收起，学习者再说话或你调 reopen_thread 就重开）。学习者没明确说不调。一次学习不能这样结束。',
-        input: {
-          session: z.string(),
-          reason: z.string().describe('学习者怎么说的（主对话行号 + 一句）'),
-        },
-        run: async (a) => {
-          const t = await thread(a.session as string);
-          if (typeof t === 'string') return err(t);
-          if (!REOPENABLE_KINDS.has(t.kind))
-            return err(t.kind === 'loop' ? loopRefusal : '导航定了单子就自己结束，不用结束它。');
-          if (threadEnded(await this.hub.records(t.sessionId))) return err('它已经结束了。');
-          await this.hub.record(t.sessionId, {
-            type: 'thread_closed',
-            at: this.iso(),
-            by: 'main',
-            reason: a.reason as string,
+          if (typeof cited === 'string') return err(cited);
+          await this.reopenIfEnded(t, 'main', `${sessionId} 发话`);
+          await this.hub.message(t.sessionId, {
+            from: sessionId,
+            text: (a.text as string).trim(),
+            cited,
           });
-          return ok('已结束（收进已结束）；跟学习者说一句即可。');
+          return ok('已发出。');
         },
       },
-      {
-        name: 'reopen_thread',
-        description:
-          '学习者要接着某个已结束的讨论串（谈方向、找资料、写产出）时调用：重新打开，并用 point_to_conversation 放入口；要把他的话带过去就直接用 message_thread（会自动重开）。一次学习不能重开。',
-        input: {
-          session: z.string(),
-          reason: z.string().describe('学习者怎么说的（主对话行号 + 一句）'),
-        },
-        run: async (a) => {
-          const t = await thread(a.session as string);
-          if (typeof t === 'string') return err(t);
-          if (!REOPENABLE_KINDS.has(t.kind)) {
-            return err(
-              t.kind === 'loop' ? loopRefusal : '导航不能重开；要重新定下一步，调用 plan_next。',
-            );
-          }
-          if (!threadEnded(await this.hub.records(t.sessionId))) return err('它还开着。');
-          await this.hub.record(t.sessionId, {
-            type: 'thread_reopened',
-            at: this.iso(),
-            by: 'main',
-            reason: a.reason as string,
-          });
-          return ok('已重新打开。');
-        },
-      },
+      ...(sessionId.includes('-loop-') || sessionId.includes('-find-')
+        ? []
+        : [this.threadTitleTool(sessionId)]),
+      ...(sessionId.includes('-loop-')
+        ? []
+        : [
+            {
+              name: 'close_thread',
+              description:
+                '这件事做完了、学习者也认可时结束这个对话（只是收起，学习者再说话就重开）。交了东西还在等学习者看的不结束。',
+              input: { reason: z.string() },
+              run: async (a: Record<string, unknown>) => {
+                const opened = await this.hub.opened(sessionId);
+                return this.closeThread(opened, 'self', a.reason as string);
+              },
+            },
+          ]),
     ];
+  }
+
+  /** 读一个讨论串的原文（不是摘要）：主对话与各讨论串共用；删掉的读不到。 */
+  private readThreadTool(selfId: string): ToolSpec {
+    return {
+      name: 'read_thread',
+      description:
+        '读本项目某个讨论串的原文（学习者与那边的话、别的对话发去的话，带行号与时间），不是摘要；会话 id 用 list_threads 查。',
+      input: {
+        thread: z.string(),
+        from_line: z.number().int().optional(),
+        to_line: z.number().int().optional(),
+      },
+      run: async (a) => {
+        const mainId = await this.projectOf(selfId);
+        if (mainId === undefined) return err('找不到这个对话所属的项目');
+        const t = await this.threadOf(mainId, a.thread as string);
+        if (typeof t === 'string') return err(t);
+        return ok(
+          await this.transcriptOf(
+            t.sessionId,
+            a.from_line as number | undefined,
+            a.to_line as number | undefined,
+          ),
+        );
+      },
+    };
+  }
+
+  /** 列本项目的讨论串：会话 id、种类、标题、状态、最后活动（删掉的不列）。 */
+  private listThreadsTool(selfId: string): ToolSpec {
+    return {
+      name: 'list_threads',
+      description:
+        '列出本项目的讨论串：会话 id、种类、标题、状态（等学习者 / 进行中 / 停着 / 已结束）、最后活动时间。',
+      input: {},
+      run: async () => {
+        const mainId = await this.projectOf(selfId);
+        if (mainId === undefined) return err('找不到这个对话所属的项目');
+        const label = { waiting: '等学习者', running: '进行中', paused: '停着', ended: '已结束' };
+        const rows = this.hub
+          .listSessions()
+          .filter((s) => s.parent === mainId && THREAD_KINDS.has(s.kind))
+          .sort((x, y) => (y.lastAt ?? y.openedAt).localeCompare(x.lastAt ?? x.openedAt))
+          .map(
+            (s) =>
+              `- ${s.sessionId}（${CONVERSATION_KIND_LABELS[s.kind]}）「${s.title}」${label[threadGroup(s)]} · 最后活动 ${localMinute(s.lastAt ?? s.openedAt)}${s.sessionId === selfId ? '（就是你）' : ''}`,
+          );
+        return ok(rows.join('\n') || '还没有讨论串');
+      },
+    };
+  }
+
+  /** 一个会话的对话原文：学习者、模型最后写的话（不含中途碎话）、别的会话发来的话；带行号与时间。 */
+  private async transcriptOf(
+    sessionId: string,
+    from = 1,
+    to = Number.MAX_SAFE_INTEGER,
+  ): Promise<string> {
+    const recs = (await this.hub.records(sessionId)).filter(
+      (r) =>
+        r.line >= from &&
+        r.line <= to &&
+        (r.record.type === 'user_message' ||
+          r.record.type === 'thread_message' ||
+          (r.record.type === 'assistant_message' && r.record.interim !== true)),
+    );
+    return renderTranscript(recs, (id) => this.hub.labelOf(id)) || '（这一段没有对话）';
+  }
+
+  /** 本项目里的一个讨论串；不是就回一句原因。 */
+  private async threadOf(mainId: string, id: string): Promise<SessionOpened | string> {
+    const opened = await this.hub.opened(id.trim()).catch((e: unknown) => {
+      if (e instanceof NotFoundError) return undefined;
+      throw e;
+    });
+    if (opened?.parent !== mainId || !THREAD_KINDS.has(opened.kind) || this.hub.isDeleted(id)) {
+      return `本项目里没有这个讨论串：${id}`;
+    }
+    if (opened.kind === 'loop' && opened.page !== 'stream') return OLD_LOOP;
+    return opened;
+  }
+
+  /** 主对话里学习者那几行原话（程序照抄）；有一行不是学习者的话就回原因。 */
+  private async citeMain(
+    mainId: string,
+    lines: number[],
+  ): Promise<{ session: string; line: number; at: string; text: string }[] | string> {
+    return this.citeLearner(mainId, lines);
+  }
+
+  private async citeLearner(
+    sessionId: string,
+    lines: number[],
+  ): Promise<{ session: string; line: number; at: string; text: string }[] | string> {
+    const recs = await this.hub.records(sessionId);
+    const out: { session: string; line: number; at: string; text: string }[] = [];
+    for (const line of lines) {
+      const r = recs.find((x) => x.line === line)?.record;
+      if (r?.type !== 'user_message') return `第 ${String(line)} 行不是学习者的话`;
+      out.push({ session: sessionId, line, at: r.at, text: r.text });
+    }
+    return out;
+  }
+
+  /** 结束着的讨论串重开（学习对话结束后也能重开，W12 §2）；重开了返回真。 */
+  private async reopenIfEnded(
+    t: SessionOpened,
+    by: 'learner' | 'main',
+    reason: string,
+  ): Promise<boolean> {
+    const recs = await this.hub.records(t.sessionId);
+    const ended = t.kind === 'loop' ? foldLoop(recs).ended !== undefined : threadEnded(recs);
+    if (!ended) return false;
+    await this.hub.record(t.sessionId, { type: 'thread_reopened', at: this.iso(), by, reason });
+    return true;
+  }
+
+  /** 结束一个讨论串：学习对话 = 没学完先搁着（loop_ended，能重开）；别的 = 收起（thread_closed）。 */
+  private async closeThread(
+    t: SessionOpened,
+    by: 'main' | 'self',
+    reason: string,
+  ): Promise<ToolResult> {
+    const recs = await this.hub.records(t.sessionId);
+    if (t.kind === 'loop') {
+      if (foldLoop(recs).ended !== undefined) return err('它已经结束了。');
+      await this.endUnclosed(t.sessionId, reason);
+      return ok('已结束（没学完先搁着，能重开）。');
+    }
+    if (threadEnded(recs)) return err('它已经结束了。');
+    await this.hub.record(t.sessionId, { type: 'thread_closed', at: this.iso(), by, reason });
+    return ok('已结束。');
+  }
+
+  private async setTitle(sessionId: string, raw: string): Promise<ToolResult> {
+    const title = raw.trim();
+    if (title === '') return err('标题不能是空的');
+    if (title.length > 30) return err('标题太长，几个字就好');
+    await this.hub.record(sessionId, { type: 'thread_title', at: this.iso(), title });
+    return ok('标题已改。');
   }
 
   // ───────────── 畅谈对话 ─────────────
@@ -3163,7 +2132,6 @@ export class Studium {
           role: 'program',
           text: `谈方向的对话（${talkId}）交回了：方向目标是“${text}”。`,
         });
-        this.organizeStateLater(`畅谈对话（${talkId}）结束了`, talkId);
         return ok(
           '方向已交回项目，本对话先收起。和学习者简短说一句就好；他要是接着说，对话会重新打开，在这一版上接着谈、谈定再交一次。',
         );
@@ -3183,13 +2151,37 @@ export class Studium {
     return (await this.hub.opened(loopId)).page === 'stream';
   }
 
-  /** 学习对话的工具按学习页的种类：区域图 = 两个命令 + 子代理交组件 + 说给框架；竖流 = 命令 + 页面工具。 */
-  private async loopToolsFor(loopId: string): Promise<ToolSpec[]> {
-    const all = this.loopTools(loopId);
-    if (!(await this.isStream(loopId))) return all;
-    const commands = all.filter((t) => t.name !== ARRANGE_TOOL && t.name !== 'submit_component');
+  /**
+   * 学习对话的工具（W12 §2）：收尾两个命令 + 改自己的标题 + 竖流学习页的页面工具；资料、学过的记录、方向、项目说明、
+   * 教学工具都在沙盒里当只读文件读；中途要先学别的，用讨论串工具里的 message_coordinator 请主对话另开。
+   */
+  private loopTools(loopId: string): ToolSpec[] {
     return [
-      ...commands,
+      {
+        name: 'request_close',
+        description:
+          '你觉得这次可以收了时调用：写下收尾那一句，学习者在界面上确认“学完了”后这次学习结束（结束后能重开，重开再收尾就再写一句）。',
+        input: {
+          summary: z.string().describe('收尾那一句：这次做了什么、停在哪（写法你定）'),
+          reason: z.string().optional().describe('为什么觉得可以收了（可不写）'),
+        },
+        run: async (a) => {
+          const summary = (a.summary as string).trim();
+          if (summary === '') return err('收尾那一句不能是空的');
+          await this.requestClose(loopId, 'model', (a.reason as string | undefined) ?? '', summary);
+          return ok('已记下，等学习者确认“学完了”。');
+        },
+      },
+      {
+        name: 'end_loop_unclosed',
+        description: '学习者明确要结束、而这次没学完时调用：先搁着（之后能重开）。',
+        input: { note: z.string().describe('学习者要结束的话在哪一行、为什么') },
+        run: async (a) => {
+          await this.endUnclosed(loopId, a.note as string);
+          return ok('已结束（没学完，先搁着）。和学习者道别即可。');
+        },
+      },
+      this.threadTitleTool(loopId),
       ...streamTools(
         {
           hub: () => this.hub,
@@ -3203,756 +2195,18 @@ export class Studium {
     ];
   }
 
-  private loopTools(loopId: string): ToolSpec[] {
-    return [
-      {
-        name: 'request_close',
-        description:
-          '你觉得这次可以收了（学习者点了“我觉得懂了”而你也觉得可以，或你和学习者都觉得学完了）时调用：写下收尾那一句，学习者在界面上确认“学完了”后这次学习结束。',
-        input: {
-          summary: z
-            .string()
-            .describe(
-              '收尾那一句：这次做了什么、停在哪（写法你定）。它会进学过的记录，下一次导航把它当指针、回原文核对。',
-            ),
-          reason: z.string().optional().describe('为什么觉得可以收了（可不写）'),
-        },
-        run: async (a) => {
-          const summary = (a.summary as string).trim();
-          if (summary === '') return err('收尾那一句不能是空的');
-          await this.requestClose(loopId, 'model', (a.reason as string | undefined) ?? '', summary);
-          return ok('已记下，等学习者确认“学完了”。');
-        },
-      },
-      {
-        name: 'end_loop_unclosed',
-        description:
-          '学习者明确要结束而这次学习没合上时调用；学习者想先去学别的（另开一次学习）也走它——之后导航会读整段对话安排下一步。',
-        input: { note: z.string().describe('学习者要结束的话在哪一行、为什么') },
-        run: async (a) => {
-          await this.endUnclosed(loopId, a.note as string);
-          return ok('这次学习已按“没合上就结束”处理；下一步由项目那边安排。和学习者道别即可。');
-        },
-      },
-      {
-        name: 'request_branch',
-        description:
-          '这次学习中途发现要先学别的（缺前置、要走一段旁支），已经跟学习者说清依据、学习者同意先去学时调用：请项目另开一次学习（分叉）。这次学习照样开着；那一次学完会通知你，回来接着学。学习者没同意不调。',
-        input: {
-          need: z.string().describe('要先学什么，一句话'),
-          why: z.string().describe('为什么要先学它，一两句'),
-          return_condition: z.string().describe('回到这次学习前要满足什么'),
-          lines: z
-            .array(z.number().int())
-            .min(1)
-            .describe('依据的行号（学习者的话或表现、学习者同意的那句）'),
-        },
-        run: async (a) => {
-          await this.assertActiveLoop(loopId);
-          const recs = await this.hub.records(loopId);
-          const last = recs.at(-1)?.line ?? 0;
-          const lines = a.lines as number[];
-          const bad = lines.filter((l) => l < 1 || l > last);
-          if (bad.length > 0) return err(`第 ${bad.join('、')} 行不在这次学习的记录里`);
-          const need = (a.need as string).trim();
-          if (need === '') return err('need 要写要先学什么');
-          await this.hub.record(loopId, {
-            type: 'branch_requested',
-            at: this.iso(),
-            need,
-            why: (a.why as string).trim(),
-            returnCondition: (a.return_condition as string).trim(),
-            lines,
-          });
-          const opened = await this.hub.opened(loopId);
-          if (opened.parent === undefined) return err('找不到这次学习所属的项目');
-          await this.hub.send(opened.parent, {
-            role: 'program',
-            text: `一次学习「${opened.title}」（${loopId}）请另开一次学习先补一段（学习者已同意）：先学${need}。调用 plan_next，branch_of 填 ${loopId}；定下来后跟学习者说一句先学什么、学完回哪里。`,
-          });
-          return ok(
-            '已转给项目，那边定下来会另开一次学习，学习者从项目里进去。这次学习照样开着；那一次学完会通知你。跟学习者说一句就好。',
-          );
-        },
-      },
-      this.components.submitTool(loopId),
-      this.arrangeTool(),
-    ];
-  }
-
-  /** 讨论串自己起的总结标题（照 Claude 项目的讨论串标题，10-28）：开头起一个，谈的东西变了再改。 */
+  /** 讨论串自己起的标题（照 Claude 项目的讨论串标题）：开头起一个，做的事变了再改。 */
   private threadTitleTool(sessionId: string): ToolSpec {
     return {
       name: 'set_title',
       description:
-        '给这个对话起个标题：第一次回学习者时就起，几个字说清这里在谈什么（学习者在列表里只凭它找回这里）；谈的东西变了再改。不用跟学习者提。',
+        '给这个对话起标题：几个字、动词开头，说清这里在做什么（学习者在列表里只凭它找回这里）；做的事变了再改。不用跟学习者提。',
       input: { title: z.string().describe('几个字，用学习者的说法') },
-      run: async (a) => {
-        const title = (a.title as string).trim();
-        if (title === '') return err('标题不能是空的');
-        if (title.length > 30) return err('标题太长，几个字就好');
-        await this.hub.record(sessionId, { type: 'thread_title', at: this.iso(), title });
-        return ok('标题已改。');
-      },
-    };
-  }
-
-  /**
-   * 主模型“说给框架的话”（会话/学习对话.md §11.3 输出分两个口）：页面怎么变。参数是平常话；
-   * 框架在这一轮说完后照它改布局，调用本身不显示给学习者。块的名字、版本号都不出现。
-   */
-  private arrangeTool(): ToolSpec {
-    return {
-      name: ARRANGE_TOOL,
-      description:
-        '说给框架听：学习者的页面怎么变。页面一直在：放上去的东西留在原位，直到你在 remove 里点名拿掉。这一轮你写的话会放上页面（不说放哪就接在最下面）；一轮的话可以分成几段（parts），每段一句指向，分开的段以后能单独拿掉、拿回或挪位置（例如只留题目、拿掉前面的开场白），不分就只能整段动。每轮先调一次，再写给学习者的话。',
-      input: {
-        parts: z
-          .array(
-            z.object({
-              begins: z.string().describe('这一块开头的几个字，接下来照这几个字原样写'),
-              about: z.string().describe('一句话：这块是什么、和什么有关'),
-            }),
-          )
-          .optional()
-          .describe('这一轮的话要分成几块（以后能单独拿掉、拿回、挪位置）；不分就不填'),
-        about: z.string().optional().describe('不分块时：这一轮的话一句话是什么、和什么有关'),
-        remove: z
-          .array(z.string())
-          .optional()
-          .describe('要从页面上拿掉的块，每条一句极简短的描述，如“开场白”“答完的第 1 问”'),
-        bring_back: z
-          .array(z.string())
-          .optional()
-          .describe(
-            '拿掉过、要再放上页面的旧块，每条一句极简短的描述，如“那道弹簧题”“学习者刚才的推导”；开场与收尾那一句也能拿回，学习者看到的分别是单子和收尾那一句',
-          ),
-        layout: z
-          .string()
-          .optional()
-          .describe(
-            '放哪、挪哪、多大，平常话说和什么有关，如“新讲解放在那道题右边”“波形图占满一行”；位置由框架摆，不说就接在最下面',
-          ),
-      },
-      run: () => ok('记下了。现在写给学习者的话。'),
-    };
-  }
-
-  /** 学习对话的开场：目标 + 单子（+ 阶段验收 / 复习复检 / 接着学）+ 沙盒说明（工单 W4 §5.5）。 */
-  private async loopOpening(t: Ticket, loopId: string): Promise<string> {
-    const revisit = await this.revisitOpening(t);
-    const resume = await this.resumeOpening(t);
-    const sb = await this.sandboxes.forLoop(loopId);
-    return [
-      '这次学习的目标：靠单子里的出发点、沿预期理解把新点合上（把新点接进学习者已有的认识）。',
-      '',
-      ...revisit,
-      ...resume,
-      '单子：',
-      this.describeTicket(t),
-      '',
-      '对资料核的结果：',
-      t.sourceCheck.length > 0
-        ? t.sourceCheck
-            .map(
-              (c) =>
-                `- ${c.claim}${c.at !== undefined ? `（出处：${c.at}）` : ''}${c.modelAdded === true ? '（资料里没有，模型补的）' : ''}`,
-            )
-            .join('\n')
-        : '（没核过）',
-      '',
-      await this.materialsBlock(loopId),
-      '',
-      ...(t.stageCheck === true
-        ? ['这是一次阶段验收：看独立表现，默认不给提示，措辞照常平和。', '']
-        : []),
-      describeSandbox(sb),
-    ].join('\n');
-  }
-
-  /**
-   * 学习位置的依据（会话/学习对话.md §11 学习位置图）：哪些点、此刻在哪、哪些学习者确认学完了。
-   * 画不画、怎么画由模型定；收尾那一句只是指针，扎不扎实以那次原文里学习者自己说的、做的为准。
-   */
-  private async positionBasis(loopId: string): Promise<string> {
-    const ticket = currentTicket(await this.hub.records(loopId));
-    const main = await this.projectOf(loopId);
-    const all = (await this.learned.all()).filter((l) => l.loopId !== loopId);
-    const mine = (
-      await Promise.all(
-        all.map(async (l) => ((await this.projectOf(l.loopId)) === main ? [l] : [])),
-      )
-    ).flat();
-    const confirmed = mine.filter((l) => l.status === '合上');
-    const rest = mine.filter((l) => l.status !== '合上');
-    return [
-      '# 学习位置的依据（框架给的；画不画、怎么画由你定）',
-      '',
-      `此刻在：${ticket !== undefined ? ticket.newPoint : '（缺单子）'}（这次学习，还没学完）`,
-      '',
-      '这次的出发点（来源只是标注，不是证据）：',
-      ...(ticket !== undefined && ticket.startPoints.length > 0
-        ? ticket.startPoints.map((p) => `- ${p.point}（${p.source}）`)
-        : ['（没有）']),
-      '',
-      '学习者确认学完了的（后面是收尾那一句，只是指针；扎不扎实要回那次原文看学习者自己说的、做的）：',
-      ...(confirmed.length > 0
-        ? confirmed.map(
-            (l) =>
-              `- 「${l.title}」${l.loopId}：${l.closing?.summary ?? (l.verdict?.understanding.map((u) => u.text).join('；') || l.ticket.newPoint)}`,
-          )
-        : ['（还没有）']),
-      '',
-      '这个项目里学过但没确认的（进行中 / 没合上）：',
-      ...(rest.length > 0
-        ? rest.map((l) => `- 「${l.title}」${l.loopId}（${l.status}）`)
-        : ['（没有）']),
-    ].join('\n');
-  }
-
-  /**
-   * 接着学的开场（工单 §4.8）：原来那次没合上的学习与它的上层三样；原话行不能当本次证据。
-   * 不是接着学时为空。
-   */
-  private async resumeOpening(t: Ticket): Promise<string[]> {
-    const id = t.resumeOf;
-    if (id === undefined) return [];
-    const orig = await this.learned.one(id);
-    const endLine = (await this.hub.records(id)).find((r) => r.record.type === 'loop_ended')?.line;
-    return [
-      `这是接着以前没合上的那次学习学（原来那次：「${orig.title}」${id}，${orig.openedAt.slice(0, 10)}–${orig.endedAt?.slice(0, 10) ?? ''}）。原来那次的上层：`,
-      `- ${this.learned.parkedLine({ learning: orig, ...(endLine !== undefined ? { endLine } : {}) })}`,
-      `原来那次的行号不能当本次的证据；要看原来那次的对话，读 只读/学过的记录/${id}-对话.md。`,
-      '',
-    ];
-  }
-
-  /**
-   * 复习 / 复检那次学习的开场：回看的是哪次学习（附它的单子与通过的判定：理解 + 证据强度）。
-   * 不是复习 / 复检时为空。核对（revisitProblem）在交卡时已做，这里只写事实。
-   */
-  private async revisitOpening(t: Ticket): Promise<string[]> {
-    const r = t.revisit;
-    if (r === undefined) return [];
-    // 交卡时 revisitProblem 已核过这次学习存在；读不到就是真出错，照抛
-    const one = await this.learned.one(r.ofLoop);
-    const closing = one.closing;
-    const verdict = one.verdict;
-    const strengths = (verdict?.understanding ?? [])
-      .map((u) => `${u.text}（${u.independence}、${u.durability}）`)
-      .join('；');
-    return [
-      `这是一次${r.kind}，不是第一次学这个点：回看的是 ${r.ofLoop}「${one.title}」那次学习${r.verdictLine !== undefined ? `（判定在第 ${String(r.verdictLine)} 行）` : ''}。`,
-      `那次的状态：${one.status}${one.endNote !== undefined ? `（学习者结束时的原话：${one.endNote}）` : ''}`,
-      `那次的单子：新点 ${one.ticket.newPoint}；预期理解 ${one.ticket.clause}`,
-      ...(closing !== undefined
-        ? [
-            `那次的收尾那一句（L${String(closing.line)}，只是指针；学习者会什么以那次原文为准）：${closing.summary}`,
-          ]
-        : []),
-      ...(verdict !== undefined
-        ? [
-            `那次的守卫判定（旧数据）：${verdict.basis}${strengths !== '' ? `；实际表现出的理解：${strengths}` : ''}`,
-          ]
-        : []),
-      ...(closing === undefined && verdict === undefined ? ['那次没有收尾那一句。'] : []),
-      '',
-    ];
-  }
-
-  /** 补前置的 return_to 站不站得住（工单 §4.8）：本项目的一次学习、不是合上的。站不住返回一句话。 */
-  async returnProblem(id: string, mainId: string | undefined): Promise<string | undefined> {
-    const opened = await this.hub.opened(id).catch((e: unknown) => {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
-    });
-    if (opened === undefined || opened.kind !== 'loop') return `return_to 指的 ${id} 不是一次学习`;
-    if (mainId !== undefined && opened.parent !== mainId) {
-      return `return_to 指的 ${id} 不是本项目里的学习`;
-    }
-    const ended = (await this.hub.records(id)).find((r) => r.record.type === 'loop_ended');
-    if (ended?.record.type === 'loop_ended' && ended.record.closed) {
-      return `return_to 指的 ${id} 已经合上了（补前置要回到一次还没合上的学习）`;
-    }
-    return undefined;
-  }
-
-  /** 接着学的 resume_of 站不站得住（工单 §4.8）：本项目、没合上、没有以它 resumeOf 的学习正在进行或已合上。 */
-  async resumeProblem(id: string, mainId: string | undefined): Promise<string | undefined> {
-    const opened = await this.hub.opened(id).catch((e: unknown) => {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
-    });
-    if (opened === undefined || opened.kind !== 'loop') return `resume_of 指的 ${id} 不是一次学习`;
-    if (mainId !== undefined && opened.parent !== mainId) {
-      return `resume_of 指的 ${id} 不是本项目里的学习`;
-    }
-    const ended = (await this.hub.records(id)).find((r) => r.record.type === 'loop_ended');
-    if (ended?.record.type !== 'loop_ended' || ended.record.closed) {
-      return `resume_of 指的 ${id} 不是“没合上”的学习`;
-    }
-    for (const s of this.hub.listSessions().filter((x) => x.kind === 'loop')) {
-      const o = await this.hub.opened(s.sessionId);
-      if (o.resumeOf?.fromLoop !== id) continue;
-      const e = (await this.hub.records(s.sessionId)).find((r) => r.record.type === 'loop_ended');
-      if (e === undefined) return `已经在接着学 ${id} 了（${s.sessionId} 进行中）`;
-      if (e.record.type === 'loop_ended' && e.record.closed) {
-        return `${id} 已经被接着学并合上了（${s.sessionId}）`;
-      }
-    }
-    return undefined;
-  }
-
-  /**
-   * 复习 / 复检的单子指回的那次学习站不站得住（工单 §4.6）：`ofLoop` 是一次已结束的学习（10-31 起只认它，
-   * 不再要判定行）。站不住就返回一句话（交卡时整张卡退回）。
-   */
-  async revisitProblem(ofLoop: string): Promise<string | undefined> {
-    const opened = await this.hub.opened(ofLoop).catch((e: unknown) => {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
-    });
-    if (opened === undefined || opened.kind !== 'loop') {
-      return `revisit 指的 ${ofLoop} 不是一次学习`;
-    }
-    const recs = await this.hub.records(ofLoop);
-    if (!recs.some((r) => r.record.type === 'loop_ended')) {
-      return `revisit 指的 ${ofLoop} 还没结束（复习 / 复检只看已经结束的那次）`;
-    }
-    return undefined;
-  }
-
-  // ───────────── 状态记录（存放处 + 后台整理）─────────────
-
-  /** 排一次状态整理（`docs/设计/会话/后台整理.md`）；force = 守卫重新确认请求，没有新记录也跑。 */
-  organizeStateLater(trigger: string, from?: string, force = false): void {
-    const run = this.stateChain.then(() => this.organizeState(trigger, from, force));
-    // 链上只管排队：这次失败不挡下一次；失败本身由 background 写进核心日志
-    this.stateChain = run.catch(() => undefined);
-    this.background('状态整理', () => run);
-  }
-
-  private async organizeState(trigger: string, from: string | undefined, force: boolean) {
-    const covered = this.o.state.covered();
-    const facts = await this.stateFacts(covered);
-    // 学习者对状态记录提的异议，上次整理之后新来的也算新记录
-    const lastRun = this.o.state.lastRunAt();
-    const fresh = this.o.objections
-      .all()
-      .filter((o) => o.target.kind === 'state' && (lastRun === undefined || o.at > lastRun));
-    // 学习者在界面上对状态记录的确认 / 否认，也算上次整理之后的新记录
-    const freshConfirmations = this.o.state
-      .allConfirmations()
-      .filter((c) => lastRun === undefined || c.at > lastRun);
-    // 学习者给状态记录补的“我的解释”，同样算上次整理之后的新记录
-    const freshExplanations = this.o.state
-      .allExplanations()
-      .filter((e) => lastRun === undefined || e.at > lastRun);
-    // 没有新记录不整理
-    if (
-      facts.newLearnerLines === 0 &&
-      fresh.length === 0 &&
-      freshConfirmations.length === 0 &&
-      freshExplanations.length === 0 &&
-      !force
-    ) {
-      return;
-    }
-    const objections = this.o.objections.all().filter((o) => o.target.kind === 'state');
-    const s = await this.hub.createSession('state', {
-      title: '整理学习者状态',
-      ...(from !== undefined ? { parent: from } : {}),
-    });
-    await this.hub.send(s.sessionId, {
-      role: 'program',
-      text: [
-        `触发原因：${trigger}`,
-        '',
-        this.o.state.describeCurrent(),
-        '',
-        ...(objections.length > 0
-          ? [
-              `学习者对状态记录的异议（自述；不覆盖可观察事实，对不上的两条都留、标冲突）：\n${objections.map((o) => `- ${this.o.objections.describe(o)}`).join('\n')}`,
-              '',
-            ]
-          : []),
-        ...(freshConfirmations.length > 0
-          ? [
-              `学习者在界面上对状态记录的确认 / 否认（确认的来源档升为“已确认”，由程序记；否认的与原记录对不上，两边都留、标冲突）：\n${freshConfirmations.map((c) => `- ${c.recordId} ${c.verdict}${c.note ? `：${c.note}` : ''}`).join('\n')}`,
-              '',
-            ]
-          : []),
-        ...(freshExplanations.length > 0
-          ? [
-              `学习者给状态记录补的解释（自述；原记录没改，也不是对话原话，没有行号可引，所以不为它另写状态记录；体现在当前状态页里，明说“学习者自述”；与可观察事实对不上的两条都留、标冲突）：\n${freshExplanations.map((e) => `- ${e.recordId}：${e.text}`).join('\n')}`,
-              '',
-            ]
-          : []),
-        facts.text,
-      ].join('\n'),
-    });
-    await this.hub.idle(s.sessionId);
-    const failed = (await this.hub.records(s.sessionId)).some(
-      (r) => r.record.type === 'turn_failed',
-    );
-    if (!failed) {
-      await this.o.state.addRun({
-        at: this.iso(),
-        trigger,
-        stateSessionId: s.sessionId,
-        covered: facts.covered,
-      });
-    }
-  }
-
-  /**
-   * 交给状态整理的事实（`docs/设计/会话/后台整理.md`）——时间、间隔、停顿、中断与停下的地方、
-   * 学习者的话（含紧邻的前一句教学作前序事件）。不给模型一侧的沙盒动作、收尾那一句，也不给“合上没有”。
-   */
-  private async stateFacts(covered: Record<string, number>) {
-    const sessions = this.hub
-      .listSessions()
-      .filter((x) => x.kind === 'main' || x.kind === 'talk' || x.kind === 'loop')
-      .sort((a, b) => a.openedAt.localeCompare(b.openedAt));
-    const label = { main: '项目主对话', talk: '谈方向', loop: '一段学习' } as const;
-    const out: string[] = [];
-    const starts: string[] = [];
-    const nextCovered: Record<string, number> = {};
-    let newLearnerLines = 0;
-    for (const x of sessions) {
-      const recs = await this.hub.records(x.sessionId);
-      const last = recs.at(-1)?.line ?? 0;
-      nextCovered[x.sessionId] = last;
-      const since = covered[x.sessionId] ?? 0;
-      const talk = recs.filter(
-        (r) => r.record.type === 'user_message' || r.record.type === 'assistant_message',
-      );
-      const firstLearner = talk.find((r) => r.record.type === 'user_message');
-      if (firstLearner)
-        starts.push(
-          `${localMinute(firstLearner.record.at)}（${label[x.kind as keyof typeof label]}）`,
-        );
-      const fresh = talk.filter((r) => r.line > since);
-      const freshLearner = fresh.filter((r) => r.record.type === 'user_message');
-      newLearnerLines += freshLearner.length;
-      if (freshLearner.length === 0) continue;
-      const kindLabel = label[x.kind as keyof typeof label];
-      const lines: string[] = [];
-      let prev: NumberedRecord | undefined;
-      for (const r of talk) {
-        if (r.record.type === 'user_message' && r.line > since) {
-          // 停顿：与上一条对话之间隔了多久
-          if (prev !== undefined) {
-            const gap = Date.parse(r.record.at) - Date.parse(prev.record.at);
-            if (gap > AWAY_MS) lines.push(`（停了约 ${formatDuration(gap)}）`);
-            if (prev.record.type === 'assistant_message' && prev.line <= since) {
-              lines.push(excerpt(prev));
-            }
-          }
-          lines.push(renderTranscript([r]));
-        } else if (r.record.type === 'assistant_message' && r.line > since) {
-          lines.push(excerpt(r));
-        }
-        prev = r;
-      }
-      const ended = recs.find(
-        (r) => r.record.type === 'loop_ended' || r.record.type === 'talk_ended',
-      );
-      const stopped =
-        ended?.record.type === 'loop_ended' && !ended.record.closed
-          ? `学习者选择先停下（${localMinute(ended.record.at)}）`
-          : ended
-            ? `已结束（${localMinute(ended.record.at)}）`
-            : '还开着';
-      out.push(
-        [
-          `### ${kindLabel} ${x.sessionId}「${x.title}」`,
-          `开始 ${localMinute(x.openedAt)}；最近一条 ${localMinute(recs.at(-1)?.record.at ?? '')}；${stopped}；这次新增学习者的话 ${String(freshLearner.length)} 条`,
-          ...lines,
-        ].join('\n'),
-      );
-    }
-    const text = [
-      `各次开始说话的时间（节奏）：${starts.slice(-10).join('、') || '（无）'}`,
-      '',
-      '上次整理之后的新记录（L 后是该会话正本的行号；教学行只放开头一段，全文用 read_session 查）：',
-      out.join('\n\n') || '（没有新的学习者的话）',
-    ].join('\n');
-    return { text, covered: nextCovered, newLearnerLines };
-  }
-
-  private stateQueryTool(): ToolSpec {
-    return {
-      name: 'query_state',
-      description:
-        '查学习者的非知识状态与条件（状态记录）：先看“当前状态”页；detail 为真时列出全部状态记录（每条标承载读数 / 解释候选、来源、时间范围、依据行号）。解释候选须经一次独立判断才能当行动依据。',
-      input: { detail: z.boolean().optional() },
-      run: (a) => {
-        const rows = this.o.state.allRecords();
-        if (rows.length === 0 && !this.o.state.current()) {
-          return ok('还没有状态记录（按无状态约束）');
-        }
-        const parts = [this.o.state.describeCurrent()];
-        if (a.detail === true || !this.o.state.current()) {
-          parts.push(
-            '',
-            '状态记录：',
-            ...rows.map((r) => this.o.state.describeRecord(r) + this.objectionNotes('state', r.id)),
-          );
-        }
-        return ok(parts.join('\n'));
-      },
-    };
-  }
-
-  /** 状态整理会话的工具：读学习对话（不含沙盒动作与判定）、读自己的底层，只写自己的两层。 */
-  private stateTools(stateId: string): ToolSpec[] {
-    return [
-      this.readSessionTool(),
-      {
-        name: 'read_state_records',
-        description: '读状态记录自己的底层记录（全部）与当前状态页。',
-        input: {},
-        run: () =>
-          ok(
-            [
-              this.o.state.describeCurrent(),
-              '',
-              ...this.o.state
-                .allRecords()
-                .map((r) => this.o.state.describeRecord(r) + this.objectionNotes('state', r.id)),
-            ].join('\n'),
-          ),
-      },
-      {
-        name: 'write_state_record',
-        description:
-          '写一条状态记录（底层，只追加）：一句话、来源、属于承载读数还是解释候选、适用时间范围、指回哪个会话的哪几行。自述须引学习者的行。',
-        input: {
-          text: z.string().describe('一句话；只写可观察行为与学习者的话，不写人格、能力或医学结论'),
-          source: z.enum(['自述', '观察', '推断']),
-          output_type: z.enum(['承载读数', '解释候选']),
-          time_range: z.string().describe('本次会话 / 近期（几号到几号）/ 较稳定的现实约束'),
-          refs: z.array(z.object({ session: z.string(), lines: z.array(z.number().int()) })),
-          after_teaching: z
-            .object({
-              session: z.string().describe('一次学习的会话 id'),
-              line: z.number().int().describe('那次学习里一句教学（assistant_message）的行号'),
-              note: z.string().describe('这条状态出现在那段教学之后'),
-            })
-            .optional()
-            .describe('这条状态出现在某段学习里某句教学之后时填；不确定就不填'),
-        },
-        run: async (a) => {
-          const raw = a.after_teaching as
-            { session?: string; line?: number; note?: string } | undefined;
-          const after = raw === undefined ? undefined : await this.checkAfterTeaching(raw);
-          if (after !== undefined && 'problem' in after) return err(after.problem);
-          const refs = a.refs as { session: string; lines: number[] }[];
-          const source = a.source as '自述' | '观察' | '推断';
-          let learnerRef = false;
-          for (const ref of refs) {
-            const opened = await this.hub.opened(ref.session).catch((e: unknown) => {
-              if (e instanceof NotFoundError) return undefined;
-              throw e;
-            });
-            if (!opened || !['main', 'talk', 'loop'].includes(opened.kind)) {
-              return err(`没有这个对话：${ref.session}`);
-            }
-            const recs = await this.hub.records(ref.session);
-            const talkLines = new Set(
-              recs
-                .filter(
-                  (r) => r.record.type === 'user_message' || r.record.type === 'assistant_message',
-                )
-                .map((r) => r.line),
-            );
-            const bad = ref.lines.filter((l) => !talkLines.has(l));
-            if (bad.length > 0) {
-              return err(`${ref.session} 第 ${bad.join('、')} 行不是对话行，不能当依据`);
-            }
-            const learner = learnerLines(recs);
-            if (ref.lines.some((l) => learner.has(l))) learnerRef = true;
-          }
-          if (source === '自述' && !learnerRef) return err('自述须引至少一行学习者自己的话');
-          await this.o.state.addRecord({
-            id: this.newId('st'),
-            at: this.iso(),
-            text: a.text as string,
-            source,
-            output: a.output_type as '承载读数' | '解释候选',
-            timeRange: a.time_range as string,
-            refs: refs.map((r) => ({ sessionId: r.session, lines: r.lines })),
-            ...(after !== undefined && !('problem' in after)
-              ? {
-                  afterTeaching: {
-                    loopSessionId: after.loopSessionId,
-                    line: after.line,
-                    text: after.text,
-                  },
-                }
-              : {}),
-            stateSessionId: stateId,
-            model: await this.hub.executedModel(stateId),
-          });
-          return ok('已记');
-        },
-      },
-      {
-        name: 'write_current_state',
-        description:
-          '重写“当前状态”页（上层，可随时从底层重算）：现在仍有效的几条（带记录 id，过期的拿掉、自述与观察对不上的两条都留并标冲突）+ 阶段判断及依据的时间跨度。',
-        input: {
-          text: z.string(),
-          stage: z.enum(STAGES),
-          basis_span: z.string().describe('阶段判断依据的时间跨度'),
-        },
-        run: async (a) => {
-          await this.o.state.setCurrent({
-            at: this.iso(),
-            text: a.text as string,
-            stage: a.stage as (typeof STAGES)[number],
-            basisSpan: a.basis_span as string,
-            stateSessionId: stateId,
-            model: await this.hub.executedModel(stateId),
-          });
-          return ok('当前状态页已更新');
-        },
-      },
-    ];
-  }
-
-  // ───────────── 教法记录（后台记录）─────────────
-
-  private readonly strategyTargets = new Map<
-    string,
-    {
-      loopId: string;
-      lines: Set<number>;
-      toolsUsed: string[];
-      toolUses: { name: string; line: number }[];
-      /** 开场列出的“带标注”状态记录；有就必须写自查。 */
-      annotatedStateIds: string[];
-    }
-  >();
-
-  /** 一次学习结束后记“这次教法管不管用”：对话原文 + 收尾那一句（旧数据：守卫判定）+ 教学工具使用记录 + 单子。 */
-  private async recordStrategy(loopId: string): Promise<void> {
-    const opened = await this.hub.opened(loopId);
-    const records = await this.hub.records(loopId);
-    // 学习者改过单子就按改后的记（工单 W6 §4.1：凡“现在的单子”都走 currentTicket）
-    const now = currentTicket(records);
-    const closings = records.flatMap((r) =>
-      r.record.type === 'close_requested' && r.record.summary !== undefined
-        ? [`L${String(r.line)} 学习对话写的：${r.record.summary}`]
-        : r.record.type === 'guard_verdict'
-          ? [
-              `L${String(r.line)}（旧数据·守卫）${r.record.closed ? '合上' : '未合上'}：${r.record.problem ?? r.record.basis}（证据行 ${r.record.lines.join('、') || '无'}）`,
-            ]
-          : [],
-    );
-    const ended = records.find((r) => r.record.type === 'loop_ended');
-    // 用了哪份教学工具由程序从工具调用里读（`docs/设计/记录/教法记录与教学工具.md`），不靠模型自报
-    const toolUses = toolUsesOf(records);
-    const toolsUsed = [...new Set(toolUses.map((u) => u.name))];
-    // 教法记录整理对状态成因的自查：状态记录里有“出现在某段教学之后”标注的，先查自己的教法是不是成因
-    const annotated = this.o.state
-      .allRecords()
-      .filter((r) => r.afterTeaching !== undefined)
-      .slice(-5);
-    const s = await this.hub.createSession('pedagogy', { title: '记教法效果', parent: loopId });
-    this.strategyTargets.set(s.sessionId, {
-      loopId,
-      lines: new Set(records.map((r) => r.line)),
-      toolsUsed,
-      toolUses,
-      annotatedStateIds: annotated.map((r) => r.id),
-    });
-    await this.hub.send(s.sessionId, {
-      role: 'program',
-      text: [
-        `一次学习：${loopId}「${opened.title}」`,
-        `单子：${now !== undefined ? this.describeTicket(now) : '（缺）'}`,
-        `结束：${ended?.record.type === 'loop_ended' ? (ended.record.closed ? '合上（学习者已确认）' : '没合上就结束') : '（缺）'}`,
-        '',
-        `收尾那一句（只是指针，以对话原文为准）：\n${closings.join('\n') || '（没写过）'}`,
-        '',
-        `教学工具使用记录（程序从沙盒动作里记的）：${toolUses.map((u) => `L${String(u.line)} 教学工具:${u.name}`).join('、') || '这次学习没读教学工具，只能从对话原文看用了什么做法'}`,
-        '',
-        ...(annotated.length > 0
-          ? [
-              `状态记录里带“出现在 X 之后”标注的（先自查：自己的教法是不是这些状态的成因，不要直接当作学习者固有的状态；提交时 self_check 里写自查）：\n${annotated.map((r) => this.o.state.describeRecord(r)).join('\n')}`,
-              '',
-            ]
-          : []),
-        '这次学习的对话原文：',
-        renderTranscript(records),
-      ].join('\n'),
-    });
-    await this.hub.idle(s.sessionId);
-    this.strategyTargets.delete(s.sessionId);
-  }
-
-  private strategyTool(pedagogyId: string): ToolSpec {
-    return {
-      name: 'write_strategy_record',
-      description:
-        '写一条个人策略过程记录（这份记录不属于学过的记录）：当时学习者的表现与状态条件、用了哪些做法、之后表现怎么变；引用写这次学习的行号。单次记录不证明因果。',
-      input: {
-        conditions: z.string(),
-        strategies: z.string(),
-        followed_by: z.string(),
-        evidence_lines: z.array(z.number().int()),
-        self_check: z
-          .string()
-          .optional()
-          .describe('开场列了带“出现在 X 之后”标注的状态记录时必填：自查自己的教法是不是成因'),
-      },
-      run: async (a) => {
-        const target = this.strategyTargets.get(pedagogyId);
-        if (!target) return err('找不到要记的那次学习');
-        const selfCheck = typeof a.self_check === 'string' ? a.self_check.trim() : '';
-        if (target.annotatedStateIds.length > 0 && selfCheck === '') {
-          return err(
-            '开场列了带“出现在 X 之后”标注的状态记录：先自查自己的教法是不是成因，写进 self_check 再提交',
-          );
-        }
-        const lines = a.evidence_lines as number[];
-        const bad = lines.filter((l) => !target.lines.has(l));
-        if (bad.length > 0) return err(`第 ${bad.join('、')} 行不在这次学习的记录里`);
-        await this.o.pedagogy.add({
-          id: this.newId('sr'),
-          at: this.iso(),
-          loopSessionId: target.loopId,
-          conditions: a.conditions as string,
-          strategies: a.strategies as string,
-          followedBy: a.followed_by as string,
-          evidenceLines: lines,
-          toolsUsed: target.toolsUsed,
-          ...(target.toolUses.length > 0 ? { toolUses: target.toolUses } : {}),
-          ...(selfCheck !== ''
-            ? { selfCheck: { stateIds: target.annotatedStateIds, note: selfCheck } }
-            : {}),
-          pedagogySessionId: pedagogyId,
-          model: await this.hub.executedModel(pedagogyId),
-        });
-        return ok('已记');
-      },
+      run: (a) => this.setTitle(sessionId, a.title as string),
     };
   }
 
   // ───────────── 共用 ─────────────
-
-  describeTicket(t: Ticket): string {
-    const starts = t.startPoints
-      .map((s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`)
-      .join('；');
-    const cross =
-      t.crossDomain !== undefined
-        ? `；跨领域（${t.crossDomain.kind}）：另一边 ${t.crossDomain.otherPoint}；原问题：${t.crossDomain.problem}`
-        : '';
-    return `新点 ${t.newPoint}；预期理解 ${t.clause}；出发点 ${starts || '（无）'}；路线动作：${t.routeAction}${cross}`;
-  }
 
   /** 这次学习还开着、且不是搁置着（要收口 / 确认合上）。 */
   private async assertActiveLoop(loopId: string): Promise<void> {
@@ -3981,7 +2235,7 @@ export class Studium {
     return `\n（只在本项目能读的 ${String(scope.length)} 份资料里查）`;
   }
 
-  /** 资料清单：每份一行（id、标题、种类、归属、版本、日期、状态、角色），给工具与沙盒目录共用。 */
+  /** 资料清单：每份一行（id、标题、种类、归属、版本、日期、状态、大小、说明），给工具与沙盒目录共用。 */
   async materialLines(ids: string[]): Promise<string[]> {
     const out: string[] = [];
     for (const id of ids) {
@@ -3991,23 +2245,10 @@ export class Studium {
       const kb = Math.max(1, Math.round((await this.o.materials.bodyBytes(id)) / 1024));
       const guide = (await this.o.materials.guide(id))?.replace(/\s+/g, ' ').trim();
       out.push(
-        `- ${id}｜${s.title}｜${s.kind}｜${owner}${s.learned !== undefined ? `·学过的（${s.learned.channel}）` : ''}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.role !== undefined ? `｜${s.role.value}` : ''}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}｜${String(kb)} KB${guide !== undefined && guide !== '' ? `｜说明：${guide.length > 300 ? `${guide.slice(0, 300)}…` : guide}` : ''}`,
+        `- ${id}｜${s.title}｜${s.kind}｜${owner}${s.learned === undefined ? '' : s.learned.channel === '对话记录' ? '·学过的（对话记录：了解学习者用，AI 讲的不作讲解依据）' : `·学过的（${s.learned.channel}）`}｜版本 ${s.version || '—'}｜${s.fetchedAt.slice(0, 10)}｜${s.status}${s.problems !== undefined ? `｜有问题：${s.problems.join('；')}` : ''}｜${String(kb)} KB${guide !== undefined && guide !== '' ? `｜说明：${guide.length > 300 ? `${guide.slice(0, 300)}…` : guide}` : ''}`,
       );
     }
     return out;
-  }
-
-  /**
-   * 开场 / 每轮事实里的资料清单（记录/资料.md「怎么找」11-02）：本会话能读的每份一行带大小；相关的模型整份读，
-   * 大的或只找一句才搜。程序只列清单，不替模型挑。
-   */
-  private async materialsBlock(sessionId: string): Promise<string> {
-    const scope = await this.scopeOf(sessionId);
-    if (scope.length === 0) return '本项目能读的资料：还没有';
-    return [
-      '本项目能读的资料（每份 id｜标题｜种类｜归属｜版本｜日期｜状态｜角色｜正文大小；跟眼下相关的整份读，大的或只找某一句时再搜）：',
-      ...(await this.materialLines(scope)),
-    ].join('\n');
   }
 
   /**
@@ -4026,7 +2267,7 @@ export class Studium {
       {
         name: 'materials_index',
         description:
-          '不给资料 id：列出本项目能读的资料（本项目导入的 PDF、网页、代码仓库、文档等，加上学习者的笔记、别处的学习记录；每份一行：id、标题、种类、归属、版本、日期、状态、角色）；给资料 id：读这份资料的文件清单（有 说明.md 的排第一）。',
+          '不给资料 id：列出本项目能读的资料（本项目导入的 PDF、网页、代码仓库、文档等，加上学习者的笔记、别处的学习记录；每份一行：id、标题、种类、归属、版本、日期、状态、说明）；给资料 id：读这份资料的文件清单（有 说明.md 的排第一）。',
         input: { material: z.string().optional().describe('资料 id') },
         run: async (a) => {
           const material = a.material as string | undefined;
@@ -4114,20 +2355,6 @@ export class Studium {
   }
 }
 
-/** 单子里的一栏：要是文字、去掉空白后不能是空的（改单子的核对）。 */
-function ticketText(label: string, v: unknown): string {
-  if (typeof v !== 'string') throw new BadRequestError(`${label}要写成文字。`);
-  const t = v.trim();
-  if (t === '') throw new BadRequestError(`${label}不能是空的。`);
-  return t;
-}
-
-/** 教学行只取开头一段（状态整理用作紧邻前序事件）。 */
-function excerpt(r: NumberedRecord): string {
-  const t = renderTranscript([r]);
-  return t.length > TEACHING_EXCERPT ? `${t.slice(0, TEACHING_EXCERPT)}…` : t;
-}
-
 function ok(text: string): Promise<ToolResult> {
   return Promise.resolve({ text });
 }
@@ -4154,11 +2381,6 @@ function validDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const t = Date.parse(`${s}T00:00:00Z`);
   return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === s;
-}
-
-/** b 比 a 晚几天（YYYY-MM-DD；b 在 a 之前为负）。 */
-function daysBetween(a: string, b: string): number {
-  return Math.round((Date.parse(`${b}T00:00:00Z`) - Date.parse(`${a}T00:00:00Z`)) / 86_400_000);
 }
 
 /** 比对网址是否同一份：去掉结尾斜杠与 #片段，主机名小写。 */

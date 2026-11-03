@@ -1,6 +1,6 @@
-// 中间的对话页：主对话、谈方向、导航（只看）、写产出、找资料共用一个外壳，
+// 中间的对话页：主对话、谈方向、找资料共用一个外壳；旧数据（导航、写产出、阶段复盘、W10 前的学习对话）在这里只读看。
 // 顶上面包屑（项目名回项目对话）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
-// 学习对话（W10 起按屏幕跑）走 learn/learn-page.tsx；旧版开的学习对话还在这里，按消息流只看（W10 §9 第 1、2 条）。
+// 学习对话走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AssistantRuntimeProvider,
@@ -24,10 +24,10 @@ import {
   type UiMessage,
 } from '../thread-model.ts';
 import { forLearner } from '../learner-text.ts';
+import type { ThreadGroup } from '../../shared/threads.ts';
 import { W } from '../wording.ts';
 import { ReviewBanner } from './longterm/loop-extras.tsx';
 import { currentTicket, EndedBar, OldLoopBar, TicketStrip } from './learn/loop-parts.tsx';
-import { OutputTaskBar } from './outputs/outputs-section.tsx';
 import type { PickedFile } from '../files.ts';
 import { TopBar } from './top-bar.tsx';
 import { UploadResult } from './input/upload-result.tsx';
@@ -41,7 +41,8 @@ export function Conversation(props: {
   projectId: string;
   projectTitle: string;
   titleOf: (id: string) => string | undefined;
-  isReview: (id: string) => boolean;
+  /** 讨论串现在的标题与状态（主对话里的卡片用，W12 §4.1）。 */
+  statusOf: (id: string) => { title: string; group: ThreadGroup } | undefined;
   focus: Focus | undefined;
   headerExtra: ReactNode;
   onError: (e: unknown) => void;
@@ -50,20 +51,32 @@ export function Conversation(props: {
   /** 点面包屑上的项目名（回项目对话）。 */
   onProject: () => void;
 }) {
-  const { sessionId, kind, onError, titleOf, isReview, focus } = props;
+  const { sessionId, kind, onError, titleOf, statusOf, focus } = props;
   const isMain = kind === 'main';
   const [records, setRecords] = useState<NumberedRecord[]>([]);
   const [draft, setDraft] = useState('');
   const [running, setRunning] = useState(false);
+  const [activity, setActivity] = useState<string | undefined>(undefined);
 
   useEffect(() => {
     let alive = true;
     const stop = api.events((e) => {
       if (e.sessionId !== sessionId) return;
-      if (e.type === 'delta') setDraft((d) => d + e.text);
+      if (e.type === 'delta') {
+        setDraft((d) => d + e.text);
+        setActivity(undefined);
+      }
+      // 正在做什么（W12 §4.5）：工具调用之间说的话不上页面，换成这一行（§4.6）
+      if (e.type === 'activity') {
+        setActivity(e.text);
+        setDraft('');
+      }
       if (e.type === 'running') {
         setRunning(e.running);
-        if (!e.running) setDraft('');
+        if (!e.running) {
+          setDraft('');
+          setActivity(undefined);
+        }
       }
       if (e.type === 'record') {
         if (e.record.type === 'assistant_message') setDraft('');
@@ -92,8 +105,8 @@ export function Conversation(props: {
   }, [sessionId, onError]);
 
   const messages = useMemo(
-    () => toUiMessages(records, draft, { running, titleOf, isReview }),
-    [records, draft, running, titleOf, isReview],
+    () => toUiMessages(records, draft, { running, titleOf, statusOf }),
+    [records, draft, running, titleOf, statusOf],
   );
 
   // 从依据面板跳过来：滚到被引用的那句（记录还没读回来时等读回来再滚）
@@ -126,6 +139,12 @@ export function Conversation(props: {
           ...(m.images ? { images: m.images } : {}),
           ...(m.candidates ? { candidates: m.candidates } : {}),
           ...(m.pending ? { pending: m.pending } : {}),
+          ...(m.at !== undefined ? { at: m.at } : {}),
+          ...(m.edited ? { edited: m.edited } : {}),
+          ...(m.reaction !== undefined ? { reaction: m.reaction } : {}),
+          ...(m.editable ? { editable: m.editable } : {}),
+          ...(m.card ? { card: m.card } : {}),
+          ...(m.id === 'draft' && activity !== undefined ? { activity } : {}),
         },
       },
       ...(m.role === 'assistant'
@@ -152,29 +171,26 @@ export function Conversation(props: {
   const review = kind === 'talk' ? reviewWindow(records) : undefined;
   const ended =
     kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
-  // 导航会话只给学习者看它怎么想的，不交互（会话/导航.md「会话形态」）；页面编辑员也只看
-  const watchOnly = kind === 'nav' || kind === 'editor';
-  // 主对话不放按钮：要下一步、复盘这些都在对话里说（10-29）
-  const footer = watchOnly ? undefined : kind === 'main' ? undefined : kind === 'output' ? (
-    <OutputTaskBar sessionId={sessionId} projectId={props.projectId} />
-  ) : kind === 'find' ? undefined : kind === 'talk' ? (
-    ended ? (
-      <EndedBar
-        text={review !== undefined ? W.reviewEnded : W.talkDone}
+  // 旧数据只看：导航、页面编辑员、写产出、阶段复盘（W12 撤掉）
+  const watchOnly =
+    kind === 'nav' || kind === 'editor' || kind === 'output' || review !== undefined;
+  // 主对话不放按钮：要下一步、复盘这些都在对话里说（10-29）；旧的阶段复盘只看，不放底栏
+  const footer =
+    watchOnly || kind === 'main' || kind === 'find' ? undefined : kind === 'talk' ? (
+      ended ? (
+        <EndedBar text={W.talkDone} onBack={props.onBackToMain} />
+      ) : undefined
+    ) : (
+      // 旧版开的学习对话：只看，留“搁着”（W10 §9 第 1 条）
+      <OldLoopBar
+        sessionId={sessionId}
+        records={records}
+        onError={onError}
         onBack={props.onBackToMain}
+        projectId={props.projectId}
+        projectTitle={props.projectTitle}
       />
-    ) : undefined
-  ) : (
-    // 旧版开的学习对话：只看，留“搁着”（W10 §9 第 1 条）
-    <OldLoopBar
-      sessionId={sessionId}
-      records={records}
-      onError={onError}
-      onBack={props.onBackToMain}
-      projectId={props.projectId}
-      projectTitle={props.projectTitle}
-    />
-  );
+    );
   const header = (
     <div className="shrink-0">
       <TopBar
@@ -211,16 +227,21 @@ export function Conversation(props: {
             ? review !== undefined
               ? W.reviewWelcome
               : '我们聊聊你想学什么。'
-            : kind === 'output'
-              ? W.outputChatWelcome
-              : kind === 'find'
-                ? W.findWelcome
-                : '马上开始…'
+            : kind === 'find'
+              ? W.findWelcome
+              : '马上开始…'
       }
       footer={footer}
       // 谈方向谈定只是收起：输入框留着，学习者再说话就重开（10-28）
-      disabled={(ended && kind !== 'talk') || watchOnly || kind === 'loop'}
-      placeholder={running ? '可以随时插话…' : '回复…'}
+      disabled={watchOnly || kind === 'loop'}
+      placeholder={running ? '可以接着说（这一轮说完再交给它）…' : '回复…'}
+      running={running}
+      onStop={async () => {
+        await api.stop(sessionId);
+      }}
+      onEditLast={async (text) => {
+        await api.editLast(sessionId, text);
+      }}
       onSend={async (text, images) => {
         await api.send(sessionId, text, images);
       }}

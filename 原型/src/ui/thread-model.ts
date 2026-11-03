@@ -1,15 +1,16 @@
 // 正本记录 → 界面上的消息列表与对话状态。纯函数，单测覆盖。
 // 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示，收尾、结束等只显示一句结果。
-// 模型用了什么工具、调工具前的短旁白、导航与阶段复盘的入口、“记下了方向 / 改了项目说明”这类小字都不显示（10-29）。
+// 模型用了什么工具、工具调用之间说的话（W12 §4.6 中途碎话）、别的对话发来的话（学习者看不到）都不显示。
+// 一个讨论串在主对话里只有一张卡片，标题与状态跟着它现在的样子（W12 §4.1）。
 import type {
-  ChoiceCard,
   FindCandidate,
   NumberedRecord,
   ReviewWindow,
   RevisitKind,
 } from '../shared/records.ts';
 import { closeStatus } from '../shared/closing.ts';
-import { threadEnded } from '../shared/threads.ts';
+import { foldLoop } from '../shared/loop-flags.ts';
+import { threadEnded, type ThreadGroup } from '../shared/threads.ts';
 import { judgementLine, W } from './wording.ts';
 import { WP } from './wording-page.ts';
 import { WT } from './wording-tools.ts';
@@ -20,6 +21,16 @@ export interface UiMessage {
   text: string;
   /** 这条消息起始的正本行号，引用跳转用。 */
   line: number;
+  /** 什么时候说的（鼠标移上去时左下角显示，W12 §4.2）。 */
+  at?: string;
+  /** 改过（学习者停下后改的那句、主对话改了自己上一条）：显示的是改后的。 */
+  edited?: true;
+  /** 主对话对这句回了一个表情（W12 §3.2）。 */
+  reaction?: string;
+  /** 学习者停下之后能改这一句、重新生成（W12 §4.4）。 */
+  editable?: true;
+  /** 讨论串卡片（W12 §4.1）：点开去那边；标题与状态现取。 */
+  card?: { sessionId: string; title: string; group?: ThreadGroup };
   /** 同一轮多段回复合成一条时，合进来的全部行号（含 line）。 */
   lines?: number[];
   failed?: boolean;
@@ -37,26 +48,6 @@ export interface UiMessage {
   pending?: true;
 }
 
-/** 调工具前的旁白最长多少字算“短”（再长就当正文照常显示）。 */
-const NARRATION_MAX = 120;
-/** 这些记录夹在旁白与工具调用之间也不算打断。 */
-const QUIET = new Set(['model_raw', 'model_used', 'model_session', 'turn_context']);
-const TOOLISH = new Set(['tool_call', 'sandbox_action', 'task_opened']);
-
-/** 哪几行助手文字只是调工具前的短旁白（给程序的过程说明，不算回答，不显示）：紧跟着就是工具调用、沙盒动作或开任务。 */
-function narrationLines(records: NumberedRecord[]): Set<number> {
-  const out = new Set<number>();
-  records.forEach(({ line, record: r }, i) => {
-    if (r.type !== 'assistant_message' || r.text.trim().length > NARRATION_MAX) return;
-    for (const next of records.slice(i + 1)) {
-      if (QUIET.has(next.record.type)) continue;
-      if (TOOLISH.has(next.record.type)) out.add(line);
-      return;
-    }
-  });
-  return out;
-}
-
 /** 找资料的候选清单：清单所在行、各份候选；存过了带勾了哪些、存成了哪些资料。 */
 export interface CandidatesView {
   line: number;
@@ -69,8 +60,45 @@ export interface UiContext {
   running?: boolean;
   /** 会话名（回到某个对话的入口用）。 */
   titleOf?: (sessionId: string) => string | undefined;
-  /** 这个对话是阶段复盘吗（复盘不显示入口）。 */
-  isReview?: (sessionId: string) => boolean;
+  /** 讨论串现在的标题与状态（卡片用；删掉的给空，卡片就不显示）。 */
+  statusOf?: (sessionId: string) => { title: string; group: ThreadGroup } | undefined;
+}
+
+/**
+ * 学习者改过的那句（W12 §4.4）：被改的行 → 改后的文字；改前那句之后、改的那一行之前的回答不再显示。
+ * 主对话改了自己上一条：被改的行 → 改后的文字。
+ */
+function editsOf(records: NumberedRecord[]): {
+  text: Map<number, string>;
+  hidden: Set<number>;
+} {
+  const text = new Map<number, string>();
+  const hidden = new Set<number>();
+  for (const { line, record: r } of records) {
+    if (r.type !== 'message_edited') continue;
+    text.set(r.line, r.text);
+    if (r.by === 'learner') {
+      for (const x of records) if (x.line > r.line && x.line < line) hidden.add(x.line);
+    }
+  }
+  return { text, hidden };
+}
+
+/** 学习者最后那句能不能改（W12 §4.4）：停下了、之后没有完整的回答、也没在跑。 */
+export function lastEditable(records: NumberedRecord[], running: boolean): number | undefined {
+  if (running) return undefined;
+  let lastUser: number | undefined;
+  let stopped = false;
+  let answered = false;
+  for (const { line, record: r } of records) {
+    if (r.type === 'user_message' || (r.type === 'message_edited' && r.by === 'learner')) {
+      lastUser = r.type === 'user_message' ? line : r.line;
+      stopped = false;
+      answered = false;
+    } else if (r.type === 'turn_stopped') stopped = true;
+    else if (r.type === 'assistant_message' && r.interim !== true && !stopped) answered = true;
+  }
+  return lastUser !== undefined && stopped && !answered ? lastUser : undefined;
 }
 
 export function toUiMessages(
@@ -80,13 +108,32 @@ export function toUiMessages(
 ): UiMessage[] {
   const out: UiMessage[] = [];
   const push = (m: UiMessage) => out.push(m);
-  const cards = new Map<string, ChoiceCard>();
   const picks = new Map<number, { picked: number[]; materials: string[] }>();
+  const reactions = new Map<number, string>();
   for (const { record: r } of records) {
     if (r.type === 'candidates_picked')
       picks.set(r.forLine, { picked: r.picked, materials: r.materials });
+    if (r.type === 'message_reaction') reactions.set(r.line, r.emoji);
   }
-  const narration = narrationLines(records);
+  const edits = editsOf(records);
+  const editable = lastEditable(records, ctx.running === true);
+  /** 已经放过卡片的讨论串：一条讨论串在主对话里只有一张卡片（W12 §4.1）。 */
+  const carded = new Set<string>();
+  const card = (line: number, sessionId: string, fallback: string) => {
+    if (carded.has(sessionId)) return;
+    carded.add(sessionId);
+    const status = ctx.statusOf?.(sessionId);
+    // 删掉的讨论串（列表里没有了）不放卡片；没有状态函数时（单测）照旧放
+    if (ctx.statusOf !== undefined && status === undefined) return;
+    const title = status?.title ?? ctx.titleOf?.(sessionId) ?? fallback;
+    push({
+      id: `l${String(line)}`,
+      role: 'system',
+      text: title,
+      line,
+      card: { sessionId, title, ...(status !== undefined ? { group: status.group } : {}) },
+    });
+  };
   /** 去掉“在收尾”那行：收尾那一句到了、学习结束了、又申请了一次，或之后又有人说话（学习对话觉得还差、直接回了话）。 */
   const dropPending = () => {
     const waiting = out.findIndex((m) => m.pending === true);
@@ -94,6 +141,7 @@ export function toUiMessages(
   };
   for (const { line, record: r } of records) {
     const id = `l${String(line)}`;
+    if (edits.hidden.has(line)) continue;
     switch (r.type) {
       case 'close_requested':
         dropPending();
@@ -115,8 +163,12 @@ export function toUiMessages(
         push({
           id,
           role: 'user',
-          text: r.text,
+          text: edits.text.get(line) ?? r.text,
           line,
+          at: r.at,
+          ...(edits.text.has(line) ? { edited: true as const } : {}),
+          ...(reactions.has(line) ? { reaction: reactions.get(line) ?? '' } : {}),
+          ...(editable === line ? { editable: true as const } : {}),
           ...(r.objection !== undefined
             ? { objection: { toLine: r.objection.toLine, label: W.objectionTag } }
             : {}),
@@ -127,12 +179,13 @@ export function toUiMessages(
         break;
       case 'assistant_message':
       case 'turn_failed': {
-        if (r.type === 'assistant_message' && narration.has(line)) break;
+        // 工具调用之间说的话（W12 §4.6）只作“正在做什么”的依据，不显示
+        if (r.type === 'assistant_message' && r.interim === true) break;
         // 学习对话回了话、没写收尾那一句（觉得还差）：不再显示“在收尾”
         dropPending();
         const text =
           r.type === 'assistant_message'
-            ? r.text
+            ? (edits.text.get(line) ?? r.text)
             : r.notice !== undefined
               ? `（这次回复没完成：${r.notice}；可以再发一次）`
               : '（这次回复没完成，可以再发一次）';
@@ -141,7 +194,16 @@ export function toUiMessages(
         if (prev?.role === 'assistant' && prev.failed !== true) {
           prev.text += `\n\n${text}`;
           prev.lines = [...(prev.lines ?? [prev.line]), line];
-        } else push({ id, role: 'assistant', text, line });
+        } else {
+          push({
+            id,
+            role: 'assistant',
+            text,
+            line,
+            at: r.at,
+            ...(edits.text.has(line) ? { edited: true as const } : {}),
+          });
+        }
         if (r.type === 'turn_failed') {
           const last = out.at(-1);
           if (last) last.failed = true;
@@ -171,21 +233,13 @@ export function toUiMessages(
       case 'talk_ended':
         // 方向谈好了只在底栏说一次（界面说明 §2.4）
         break;
-      case 'task_opened': {
-        // 导航（定下一次学什么）与阶段复盘不给入口：主对话的回答就够了
-        if (r.kind === 'nav' || ctx.isReview?.(r.sessionId) === true) break;
-        // 写产出的对话（批 8b）标题是“写：某某”；别的是谈方向的对话
-        const label =
-          r.kind === 'output'
-            ? `一起写：${r.title.replace(/^写：/, '')}`
-            : r.kind === 'find'
-              ? W.findTask
-              : '单独谈谈你想学什么';
-        push({ id, role: 'system', text: label, line, link: { sessionId: r.sessionId, label } });
+      case 'task_opened':
+        // 旧数据：导航不给入口（W12 撤掉；只读看在讨论串之外）
+        if (r.kind === 'nav') break;
+        card(line, r.sessionId, r.title);
         break;
-      }
-      case 'choice_card':
-        cards.set(r.cardId, r);
+      case 'turn_stopped':
+        push({ id, role: 'system', text: WT.stopped, line });
         break;
       case 'find_candidates': {
         const picked = picks.get(line);
@@ -198,23 +252,14 @@ export function toUiMessages(
         });
         break;
       }
-      case 'choice_made': {
-        const title = cards.get(r.cardId)?.options[r.option]?.title;
-        const label = title !== undefined ? `开始学：${title}` : '开始学';
-        push({
-          id,
-          role: 'system',
-          text: label,
-          line,
-          link: { sessionId: r.loopSessionId, label },
-        });
+      case 'choice_made':
+        // 旧数据：导航定了单子、开出的学习
+        card(line, r.loopSessionId, '一次学习');
         break;
-      }
-      case 'conversation_pointer': {
-        const label = `回到：${ctx.titleOf?.(r.sessionId) ?? '之前那段学习'}`;
-        push({ id, role: 'system', text: label, line, link: { sessionId: r.sessionId, label } });
+      case 'conversation_pointer':
+        // 旧数据：回到某个对话的入口（同一讨论串只放一张卡片）
+        card(line, r.sessionId, '之前那段对话');
         break;
-      }
       case 'loop_shelved': {
         const note = learnerShelveNote(r.note);
         push({
@@ -250,8 +295,9 @@ export type LoopState =
 
 /** 学习对话现在在哪一步：进行中（在等收尾那一句时 closeRequested）/ 收尾那一句到了、等学习者确认 / 已结束。 */
 export function loopState(records: NumberedRecord[]): LoopState {
-  const ended = records.findLast((r) => r.record.type === 'loop_ended')?.record;
-  if (ended?.type === 'loop_ended') return { kind: 'ended', closed: ended.closed };
+  // 结束后能重开（W12 §2）：最后一次结束之后没重开过才算结束着
+  const ended = foldLoop(records).ended;
+  if (ended !== undefined) return { kind: 'ended', closed: ended.closed };
   const c = closeStatus(records);
   if (c?.kind === 'ready') {
     return {
@@ -315,6 +361,9 @@ export function loopSide(records: NumberedRecord[]): LoopSide {
         break;
       case 'loop_ended':
         ended = true;
+        break;
+      case 'thread_reopened':
+        ended = false;
         break;
       case 'loop_shelved': {
         const note = learnerShelveNote(r.note);

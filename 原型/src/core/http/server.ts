@@ -5,7 +5,6 @@ import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { timingSafeEqual } from 'node:crypto';
 import type {
-  TicketEditRequest,
   LoopRelationsResponse,
   ShelveRequest,
   ErrorResponse,
@@ -21,15 +20,10 @@ import type {
   LearnedResponse,
   LearningResponse,
   LoopEvidenceResponse,
-  ConfirmationResponse,
   ObjectionResponse,
   ObjectionsResponse,
-  RecordConfirmationRequest,
   ProjectOverviewResponse,
-  RecordObjectionRequest,
   SessionModelResponse,
-  StateResponse,
-  StrategiesResponse,
   VerdictObjectionRequest,
   ListSessionsResponse,
   RecordsResponse,
@@ -47,7 +41,6 @@ import type {
   TocResponse,
   SetMaterialOwnerRequest,
   ImportTextResponse,
-  PickCandidatesRequest,
   ProjectInstructionsRequest,
   ProjectInstructionsResponse,
   RerouteRequest,
@@ -64,10 +57,8 @@ import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { inputsRoute } from './inputs-routes.ts';
 import { longtermRoute } from './longterm-routes.ts';
 import { screenRoute } from './screen-routes.ts';
-import { outputsRoute } from './outputs-routes.ts';
 import { sidebarRoute } from './sidebar-routes.ts';
 import type { SidebarStore } from '../sidebar.ts';
-import type { Outputs } from '../outputs.ts';
 
 export interface ServerOptions {
   hub: Hub;
@@ -78,8 +69,6 @@ export interface ServerOptions {
   sources: Sources;
   /** 输入（批 4）：图片原样保存与转写。 */
   inputs: Inputs;
-  /** 知识产出物（批 8）。 */
-  outputs: Outputs;
   /** 资料的来源说明、状态回看（批 10b）。 */
   cross: CrossServices;
   /** 左栏的界面操作（置顶、从列表删掉、对话改名）。 */
@@ -203,51 +192,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     )
       return;
     if (
-      await outputsRoute(
-        req,
-        res,
-        new URL(req.url ?? '/', 'http://localhost'),
-        parts,
-        method,
-        opts.outputs,
-      )
-    )
-      return;
-    if (
       method === 'GET' &&
       (await readRoute(res, new URL(req.url ?? '/', 'http://localhost'), parts, evidence))
     )
       return;
-    if (method === 'POST' && parts[1] === 'objections' && parts.length === 2) {
-      const body = (await readJson(req)) as Partial<RecordObjectionRequest>;
-      if (body.kind !== 'pedagogy' && body.kind !== 'state') {
-        throw new BadRequest('kind 要是 state 或 pedagogy');
-      }
-      if (typeof body.recordId !== 'string' || typeof body.text !== 'string') {
-        throw new BadRequest('recordId 与 text 要是字符串');
-      }
-      const o = await studium.objectToRecord(body.kind, body.recordId, body.text);
-      send(res, 201, { objection: { ...o, inLoop: false } } satisfies ObjectionResponse);
-      return;
-    }
-    if (
-      method === 'POST' &&
-      parts[1] === 'state' &&
-      parts[2] === 'confirmations' &&
-      parts.length === 3
-    ) {
-      const body = (await readJson(req)) as Partial<RecordConfirmationRequest>;
-      if (typeof body.recordId !== 'string') throw new BadRequest('recordId 要是字符串');
-      if (body.verdict !== 'confirm' && body.verdict !== 'deny') {
-        throw new BadRequest('verdict 要是 confirm 或 deny');
-      }
-      if (body.note !== undefined && typeof body.note !== 'string') {
-        throw new BadRequest('note 要是字符串');
-      }
-      const c = await studium.confirmRecord(body.recordId, body.verdict, body.note);
-      send(res, 201, { confirmation: c } satisfies ConfirmationResponse);
-      return;
-    }
     if (
       parts[1] === 'projects' &&
       parts.length === 6 &&
@@ -487,12 +435,23 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             } satisfies ObjectionResponse);
             return;
           }
-          case 'ticket-edit': {
-            // 学习者改这次学习的单子（工单 W6 §4.1）：合格回改后的整张单子
-            const b = body as Partial<TicketEditRequest>;
-            send(res, 200, await studium.editTicket(id, b));
+          case 'stop':
+            // 学习者在生成中途点了停止（W12 §4.4）
+            await studium.stopTurn(id);
+            send(res, 202, {});
+            return;
+          case 'edit': {
+            // 停下后改自己刚发的那句、重新生成（W12 §4.4）
+            if (typeof body.text !== 'string') throw new BadRequest('text 要是字符串');
+            await studium.editLast(id, body.text);
+            send(res, 202, {});
             return;
           }
+          case 'delete':
+            // 学习者删一个讨论串（W12 §4.3）：删前界面确认过一次
+            await studium.deleteThread(id);
+            send(res, 200, {});
+            return;
           case 'confirm-close':
             await studium.confirmClose(id, note);
             send(res, 202, {});
@@ -512,20 +471,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             await studium.resumeLoop(id);
             send(res, 202, {});
             return;
-          case 'candidates': {
-            // 找资料对话里勾候选、存所选（工单 W9 §4.5）
-            const b = body as Partial<PickCandidatesRequest>;
-            if (
-              typeof b.forLine !== 'number' ||
-              !Array.isArray(b.picked) ||
-              !b.picked.every((x) => typeof x === 'number')
-            ) {
-              throw new BadRequest('forLine 要是数字、picked 要是数字数组');
-            }
-            await studium.pickCandidates(id, b.forLine, b.picked);
-            send(res, 200, {});
-            return;
-          }
         }
       }
     }
@@ -719,11 +664,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, {
         learning: await opts.studium.learned.one(decodeURIComponent(b)),
       } satisfies LearningResponse);
-    } else if (a === 'pedagogy' && b === 'records' && n === 3) {
-      const records = await ev.strategies(q.get('loop') ?? undefined);
-      send(res, 200, { records } satisfies StrategiesResponse);
-    } else if (a === 'state' && b === 'records' && n === 3) {
-      send(res, 200, (await ev.state()) satisfies StateResponse);
     } else if (a === 'objections' && n === 2) {
       // 只认这三种指向；别的回 400，不悄悄给空列表
       const kind = q.get('kind') ?? undefined;

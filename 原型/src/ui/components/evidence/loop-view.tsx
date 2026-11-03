@@ -1,6 +1,6 @@
-// 一段学习的依据：单子（按文字逐行，可改）、改过的几行、收尾那一句（学习对话写的；旧数据是守卫写的收尾记录：
+// 一段学习的依据：旧数据的单子（按文字逐行，只读）与改过的几行、收尾那一句（学习对话写的；旧数据是守卫写的收尾记录：
 // 理解逐条带证据强度、理由、原话、不同看法）、老师的观察记录、用到的教法；没合上的另带结束原话与当时的路线决定。
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import type {
   ClosingView,
   GuardVerdictView,
@@ -9,7 +9,6 @@ import type {
   TicketEditView,
   TicketView,
 } from '../../../shared/protocol.ts';
-import { START_SOURCES } from '../../../shared/records.ts';
 import { api } from '../../api.ts';
 import { useLoad } from '../../hooks/use-load.ts';
 import { usePanel } from '../../panel.ts';
@@ -34,11 +33,7 @@ import {
   Time,
 } from './parts.tsx';
 
-export function LoopView(props: {
-  loopId: string;
-  focusLine?: number | undefined;
-  editTicket?: boolean | undefined;
-}) {
+export function LoopView(props: { loopId: string; focusLine?: number | undefined }) {
   const { loopId, focusLine } = props;
   const r = useLoad(`loop:${loopId}`, () => api.loopEvidence(loopId));
   const panel = usePanel();
@@ -101,15 +96,7 @@ export function LoopView(props: {
         <ModelLine model={loop.model} />
       </div>
 
-      {loop.ticket !== undefined && (
-        <TicketSection
-          loopId={loopId}
-          ticket={loop.ticket}
-          ended={loop.status !== 'in_progress'}
-          startOpen={props.editTicket === true}
-          onSaved={r.reload}
-        />
-      )}
+      {loop.ticket !== undefined && <TicketSection loopId={loopId} ticket={loop.ticket} />}
 
       <Section title={W.judgements}>
         {loop.closings.length === 0 && loop.verdicts.length === 0 && (
@@ -167,44 +154,14 @@ export function LoopView(props: {
   );
 }
 
-/** 单子：逐行显示、改过的几行、可改（学习结束后隐藏表单）。 */
-function TicketSection(props: {
-  loopId: string;
-  ticket: TicketView;
-  ended: boolean;
-  startOpen: boolean;
-  onSaved: () => void;
-}) {
-  const [editing, setEditing] = useState(props.startOpen && !props.ended);
+/** 旧数据：单子逐行显示、改过的几行（W12 撤掉单子，只读看）。 */
+function TicketSection(props: { loopId: string; ticket: TicketView }) {
   return (
     <Section title={W.plan}>
       <Card className="flex flex-col gap-3">
         <TicketRowList rows={ticketRowsOf(props.ticket)} />
         {props.ticket.edits.length > 0 && (
           <Edits loopId={props.loopId} edits={props.ticket.edits} />
-        )}
-        {!props.ended && (
-          <div className="border-t pt-2">
-            {editing ? (
-              <EditForm
-                loopId={props.loopId}
-                ticket={props.ticket}
-                onCancel={() => setEditing(false)}
-                onSaved={() => {
-                  setEditing(false);
-                  props.onSaved();
-                }}
-              />
-            ) : (
-              <button
-                type="button"
-                className="text-primary text-xs hover:underline"
-                onClick={() => setEditing(true)}
-              >
-                {W.ticketEdit}
-              </button>
-            )}
-          </div>
         )}
       </Card>
     </Section>
@@ -242,120 +199,6 @@ function JumpLine(props: { loopId: string; line: number; label: string }) {
     </button>
   );
 }
-
-/** 改这次要学的：要学的、学完应该能、从这些已有的出发。 */
-function EditForm(props: {
-  loopId: string;
-  ticket: TicketView;
-  onCancel: () => void;
-  onSaved: () => void;
-}) {
-  const [newPoint, setNewPoint] = useState(props.ticket.newPoint);
-  const [clause, setClause] = useState(props.ticket.clause);
-  const [starts, setStarts] = useState(
-    props.ticket.startPoints.map((s) => ({
-      point: s.point,
-      source: s.source,
-      ...(s.ref !== undefined ? { ref: s.ref } : {}),
-    })),
-  );
-  const [busy, setBusy] = useState(false);
-  const [error, setError] = useState<string | undefined>();
-  const save = () => {
-    setBusy(true);
-    setError(undefined);
-    api
-      .editTicket(props.loopId, {
-        newPoint,
-        clause,
-        startPoints: starts.filter((s) => s.point.trim() !== ''),
-      })
-      .then(props.onSaved)
-      .catch((e: unknown) => setError(e instanceof Error ? e.message : String(e)))
-      .finally(() => setBusy(false));
-  };
-  return (
-    <div className="flex flex-col gap-3">
-      <div className="text-muted-foreground text-xs">{W.ticketEditTitle}</div>
-      <Field label={W.newPoint}>
-        <input className={INPUT} value={newPoint} onChange={(e) => setNewPoint(e.target.value)} />
-      </Field>
-      <Field label={W.clause}>
-        <input className={INPUT} value={clause} onChange={(e) => setClause(e.target.value)} />
-      </Field>
-      <Field label={W.startPoints}>
-        <span className="flex flex-col gap-2">
-          {starts.map((s, i) => (
-            <span key={i} className="flex flex-wrap items-center gap-2">
-              <input
-                className={INPUT}
-                value={s.point}
-                onChange={(e) =>
-                  setStarts(starts.map((x, j) => (i === j ? { ...x, point: e.target.value } : x)))
-                }
-              />
-              <select
-                className={INPUT}
-                value={s.source}
-                onChange={(e) =>
-                  setStarts(
-                    starts.map((x, j) =>
-                      i === j
-                        ? { ...x, source: e.target.value as (typeof START_SOURCES)[number] }
-                        : x,
-                    ),
-                  )
-                }
-              >
-                {START_SOURCES.map((k) => (
-                  <option key={k} value={k}>
-                    {W.startSource[k]}
-                  </option>
-                ))}
-              </select>
-              <button
-                type="button"
-                className="text-muted-foreground text-xs hover:underline"
-                onClick={() => setStarts(starts.filter((_, j) => j !== i))}
-              >
-                {W.ticketEditRemoveStart}
-              </button>
-            </span>
-          ))}
-          <button
-            type="button"
-            className="text-primary self-start text-xs hover:underline"
-            onClick={() => setStarts([...starts, { point: '', source: '自述' }])}
-          >
-            {W.ticketEditAddStart}
-          </button>
-        </span>
-      </Field>
-      <div className="text-muted-foreground text-xs">{W.ticketEditHint}</div>
-      <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          disabled={busy}
-          className="bg-primary text-primary-foreground rounded-md px-2.5 py-1 text-xs disabled:opacity-60"
-          onClick={save}
-        >
-          {W.ticketEditSave}
-        </button>
-        <button
-          type="button"
-          className="text-muted-foreground text-xs hover:underline"
-          onClick={props.onCancel}
-        >
-          {W.ticketEditCancel}
-        </button>
-        {error !== undefined && <span className="text-destructive text-xs">{error}</span>}
-      </div>
-    </div>
-  );
-}
-
-const INPUT =
-  'rounded-md border bg-transparent px-2 py-1 text-sm outline-none focus:ring-1 focus:ring-ring';
 
 function SourceList(props: { sources: SourceView[] }) {
   const panel = usePanel();

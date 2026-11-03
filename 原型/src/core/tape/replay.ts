@@ -149,6 +149,11 @@ const REMOVED_ACTIONS = new Set<string>([
   'requestCard',
   'choose',
   'outputs.markCandidate',
+  // W12：写产出撤掉
+  'outputs.create',
+  'outputs.save',
+  'outputs.addLiterature',
+  'outputs.openTask',
   'm08review.suggest',
   'm08review.audit',
   'm08review.correct',
@@ -162,13 +167,12 @@ const REMOVED_ACTIONS = new Set<string>([
   'practice.requestSummary',
 ]);
 
-/** 重做一个学习者动作：“longterm.” / “outputs.” 开头的找对应的对象，别的是 Studium 的方法。 */
+/** 重做一个学习者动作：“longterm.” 开头的找对应的对象，别的是 Studium 的方法。 */
 async function perform(app: App, name: ActionName, args: unknown[]): Promise<void> {
   const dot = name.indexOf('.');
   const where = dot < 0 ? '' : name.slice(0, dot);
   const method = name.slice(dot + 1);
-  const target: object =
-    where === 'longterm' ? app.studium.longterm : where === 'outputs' ? app.outputs : app.studium;
+  const target: object = where === 'longterm' ? app.studium.longterm : app.studium;
   const fn = (target as Record<string, unknown>)[method];
   if (typeof fn !== 'function') {
     // 这些动作随知识点编号库一起删了（工单 W1 §4.8）：旧录带回放到这里就停，说清是版本的事
@@ -221,17 +225,6 @@ class ReplayModel implements ModelAdapter {
     const state: ReplayState = { active: false, pending: [], waiting: undefined };
     return {
       send: (input) => this.play(s, spec, state, input),
-      interject: (input) => {
-        if (!state.active) return false;
-        const w = state.waiting;
-        if (w) {
-          state.waiting = undefined;
-          w(input);
-        } else {
-          state.pending.push(input);
-        }
-        return true;
-      },
       close: () => Promise.resolve(),
     };
   }

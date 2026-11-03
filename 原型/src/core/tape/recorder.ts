@@ -48,11 +48,6 @@ export const ACTIONS = [
   'longterm.addReminder',
   'longterm.closeReminder',
   'longterm.startReview',
-  // 批 8：产出物、版本、文献、候选、写产出对话
-  'outputs.create',
-  'outputs.save',
-  'outputs.addLiterature',
-  'outputs.openTask',
   // 批 10b：资料来源说明、状态记录的“我的解释”
   'addSourceNote',
   'addStateExplanation',
@@ -144,8 +139,6 @@ export class Recorder {
     return {
       name: inner.name,
       ...(inner.disclosure !== undefined ? { disclosure: inner.disclosure } : {}),
-      // 图片转写不进录带：它的结果随学习者消息一起记在正本里（回放按那条消息重放）
-      ...(inner.transcriber !== undefined ? { transcriber: inner.transcriber } : {}),
       open: (spec) => this.wrapConversation(inner, spec),
     };
   }
@@ -173,23 +166,7 @@ export class Recorder {
     const conv = inner.open({ ...spec, tools });
     return {
       send: (input) => this.recordTurn(s, conv, input),
-      ...(conv.interject
-        ? {
-            interject: (input: TurnInput) => {
-              const accepted = conv.interject?.(input) === true;
-              if (accepted) {
-                this.write({
-                  t: 'interject',
-                  s,
-                  n: current(),
-                  at: this.at(),
-                  input: this.ids.tokenize(input),
-                });
-              }
-              return accepted;
-            },
-          }
-        : {}),
+      ...(conv.interrupt ? { interrupt: () => conv.interrupt?.() ?? Promise.resolve() } : {}),
       // 子代理在后台的事与模型自己起的一轮原样转交，不进录带（回放不重现它们）
       ...(conv.listen
         ? {

@@ -1,7 +1,7 @@
 // 批 10b 的接口类型：资料的来源说明、跨领域单子的显示、状态回看与学习者解释。
 // protocol.ts 把它们 re-export，界面从 protocol.ts 取。
 import type { CrossKind } from './records-cross.ts';
-import type { MaterialKind, StateRecordView } from './protocol.ts';
+import type { MaterialKind } from './protocol.ts';
 
 // ───────────── 来源可靠性与适用性说明（`docs/设计/记录/资料.md`） ─────────────
 
@@ -79,33 +79,3 @@ export interface CrossDomainView {
 }
 
 // ───────────── 状态回看与学习者解释（`docs/设计/记录/状态记录.md`） ─────────────
-
-export interface StateExplanationView {
-  id: string;
-  at: string;
-  recordId: string;
-  text: string;
-}
-
-export interface StateTimelineEntry {
-  record: StateRecordView;
-  /** 整理出这条记录的那一轮判的阶段；没有对上的整理就没有。 */
-  stage?: string;
-  explanations: StateExplanationView[];
-}
-
-export interface StateTimelineResponse {
-  generatedAt: string;
-  /** 按时间，旧的在前。 */
-  entries: StateTimelineEntry[];
-  /** 每次整理判的阶段（按时间）：回看时用来标出阶段怎么变。 */
-  stages: { at: string; stage: string; basisSpan: string }[];
-}
-
-export interface AddExplanationRequest {
-  text: string;
-}
-
-export interface AddExplanationResponse {
-  explanation: StateExplanationView;
-}

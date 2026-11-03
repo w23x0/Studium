@@ -1,43 +1,17 @@
-// 学习页（会话/学习对话.md §11）：一次学习只有一条上下文，学习者眼前是一份一直在的页面。核心照主模型的布局指令
-// 改布局（区域图），这里照着摆块：宽屏按区域图，窄屏按阅读顺序排成一列；主模型的文字直接显示，组件放各自小窗，
-// 还没做好的先占位。不翻页、不看以前的版本；页面改了就滚到新放上来的那块。一个总的回话处，每块下面也能回。
-// 不放选择题、“我懂了”这类按钮（申请收口的“我觉得懂了”在底栏，01-流程 §4）。
-// 旧版开的学习对话（没有 session_opened.screens）交回消息流只看（W10 §9 第 1、2 条）。
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-  type CSSProperties,
-  type ReactNode,
-} from 'react';
-import { LoaderIcon, ReplyIcon, XIcon } from 'lucide-react';
+// 学习页（会话/学习对话.md §11）：一次学习只有一条上下文，学习者眼前是一份从上往下的页面（竖流，W12 起唯一的学习页，
+// stream-page.tsx）。10-28、10-29 的区域图学习（W12 撤掉）退成只读：文字块按时间排，组件显示最后一版，不按区域摆。
+// 更早的（没有 session_opened.screens）交回消息流只看。
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
-import { InputComposer } from '@/components/input/composer';
 import { MathPreview } from '@/components/input/math-preview';
 import type { NumberedRecord } from '../../../shared/records.ts';
-import type { LearnPageResponse, ResolvedBlock } from '../../../shared/screen.ts';
+import type { OldComponentsResponse } from '../../../shared/screen.ts';
 import { api } from '../../api.ts';
 import { CurrentSessionContext } from '../../panel.ts';
-import { closeLine, failedSinceScreen, justSaid, screenRefreshKey } from '../../screen-model.ts';
-import { loopSide, loopState } from '../../thread-model.ts';
 import { W } from '../../wording.ts';
 import { WP } from '../../wording-page.ts';
-import { LongtermBanner } from '../longterm/loop-extras.tsx';
-import { StageCheckBanner } from '../stage-check.tsx';
 import { TopBar } from '../top-bar.tsx';
 import { ComponentFrame } from './component-frame.tsx';
-import { useLoad } from '../../hooks/use-load.ts';
-import { VerdictBody } from '../evidence/loop-view.tsx';
-import { Loading } from '../evidence/parts.tsx';
-import {
-  CloseLineView,
-  currentTicket,
-  LoopBar,
-  TicketDetails,
-  TicketStrip,
-} from './loop-parts.tsx';
 import { StreamPage } from './stream-page.tsx';
 
 export interface LearnPageProps {
@@ -54,358 +28,147 @@ export interface LearnPageProps {
   oldLoop: ReactNode;
 }
 
-/** 订阅到的这次学习：记录、正在写的字、在不在跑、读完没有。 */
+/** 订阅到的这次学习：记录、正在写的字、在不在跑、正在做什么、读完没有。 */
 export interface LearnStream {
   records: NumberedRecord[];
   draft: string;
   running: boolean;
+  /** 正在做什么（W12 §4.5：程序从工具调用得出的一行）。 */
+  activity: string | undefined;
   loaded: boolean;
 }
 
-/** 按这次学习开时定的学习页种类分：竖流（10-29 #74 试验，stream-page.tsx）或区域图（下面的 GridPage）。 */
+/** 按这次学习开时定的学习页种类分：竖流；区域图（旧数据，只读）；更早的（消息流只看）。 */
 export function LearnPage(props: LearnPageProps) {
   const stream = useStream(props.sessionId, props.onError);
   const opened = stream.records[0]?.record;
-  if (opened?.type === 'session_opened' && opened.page === 'stream') {
-    return <StreamPage {...props} stream={stream} />;
-  }
-  return <GridPage {...props} stream={stream} />;
+  if (opened?.type !== 'session_opened') return null;
+  if (opened.page === 'stream') return <StreamPage {...props} stream={stream} />;
+  if (opened.screens === true) return <OldGridPage {...props} records={stream.records} />;
+  return <>{props.oldLoop}</>;
 }
 
-function GridPage(props: LearnPageProps & { stream: LearnStream }) {
-  const { sessionId, onError, titleOf } = props;
-  const { records, draft, running, loaded } = props.stream;
-  const opened = records[0]?.record;
-  const state = useMemo(() => loopState(records), [records]);
-  const ended = state.kind === 'ended';
-  const live = !ended;
-  const refresh = useMemo(() => screenRefreshKey(records), [records]);
-  const failed = useMemo(() => failedSinceScreen(records), [records]);
-  const [page, setPage] = useState<LearnPageResponse | undefined>(undefined);
-  const [replyTo, setReplyTo] = useState<{ key: string; pointer: string } | undefined>(undefined);
-  const scroller = useRef<HTMLDivElement>(null);
-
-  // 读现在的页面：跟着布局换版、组件换版、子代理开始 / 交回重读（占位换成组件）
+/** 旧的区域图学习（W12 撤掉）只读看：学习者的话、学习对话的话按时间排，组件放在第一次交上那里、显示最后一版。 */
+function OldGridPage(props: LearnPageProps & { records: NumberedRecord[] }) {
+  const { sessionId, records, onError } = props;
+  const [components, setComponents] = useState<OldComponentsResponse['components']>([]);
   useEffect(() => {
     let alive = true;
     api
-      .learnPage(sessionId)
-      .then((p) => {
-        if (alive) setPage(p);
+      .oldComponents(sessionId)
+      .then((r) => {
+        if (alive) setComponents(r.components);
       })
       .catch(onError);
     return () => {
       alive = false;
     };
-  }, [sessionId, refresh, onError]);
-
-  // 页面改了一版：滚到新放上来的第一块（页面一直在，新内容可能在中间，也可能在最下面）
-  // 布局不止一列时页面放宽（一列时保持读文字的宽度）
-  const wide = (page?.columns.trim().split(/\s+/).length ?? 1) > 1;
-  const shownV = page?.v;
-  const firstFresh = page?.fresh.find((n) => page.blocks[n] !== undefined);
-  useEffect(() => {
-    if (shownV === undefined || firstFresh === undefined) return;
-    scroller.current
-      ?.querySelector(`[data-area="${firstFresh}"]`)
-      ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  }, [shownV, firstFresh]);
-
-  const side = useMemo(() => loopSide(records), [records]);
-  const ticket = useMemo(() => currentTicket(records), [records]);
-  const said = useMemo(() => justSaid(records), [records]);
-  const close = useMemo(() => closeLine(records), [records]);
-  const reply = useCallback((b: { key: string; pointer: string }) => {
-    setReplyTo(b);
-    document.querySelector<HTMLTextAreaElement>('[data-testid="learn-composer"] textarea')?.focus();
-  }, []);
-
-  if (loaded && opened?.type === 'session_opened' && opened.screens !== true) {
-    return <>{props.oldLoop}</>;
-  }
-
+  }, [sessionId, onError]);
+  const items = useMemo(() => {
+    const out: { line: number; node: ReactNode }[] = [];
+    for (const { line, record: r } of records) {
+      if (r.type === 'user_message') {
+        out.push({
+          line,
+          node: (
+            <div className="bg-muted ms-auto max-w-[85%] rounded-2xl px-4 py-2.5">
+              <MathPreview text={r.text} />
+            </div>
+          ),
+        });
+      } else if (r.type === 'assistant_message' && r.interim !== true && r.text.trim() !== '') {
+        out.push({ line, node: <PlainMarkdown text={r.text} /> });
+      } else if (r.type === 'close_requested' && r.summary !== undefined) {
+        out.push({
+          line,
+          node: (
+            <div className="bg-muted/50 flex flex-col gap-1.5 rounded-lg px-3 py-2 text-sm">
+              <div className="text-muted-foreground text-xs">{WP.closingBlock}</div>
+              <div className="whitespace-pre-wrap">{r.summary}</div>
+            </div>
+          ),
+        });
+      }
+    }
+    for (const c of components) {
+      out.push({
+        line: c.line,
+        node: (
+          <ComponentFrame
+            loopId={sessionId}
+            component={c.component}
+            version={c.version}
+            blocks={c.blocks}
+            live={false}
+            title={c.pointer}
+            onError={onError}
+          />
+        ),
+      });
+    }
+    return out.sort((a, b) => a.line - b.line);
+  }, [records, components, sessionId, onError]);
   return (
     <CurrentSessionContext.Provider value={sessionId}>
-      <div className="flex h-full min-h-0 flex-col" data-testid="learn-page">
-        <div className="shrink-0">
-          <TopBar
-            crumbs={[
-              {
-                label: props.projectTitle || W.projectHome,
-                onClick: props.onProject,
-                testId: 'crumb-project',
-              },
-              { label: props.title, testId: 'crumb-current' },
-            ]}
-            right={props.headerExtra}
-          />
-          <div className="mx-auto flex w-full max-w-[52rem] flex-col gap-1.5 px-4 pb-2 text-sm empty:hidden">
-            {ticket !== undefined && <TicketStrip ticket={ticket} />}
-            <LongtermBanner
-              side={side}
-              loopId={sessionId}
-              projectId={props.projectId}
-              titleOf={titleOf}
-            />
-            {side.stageCheck === true && <StageCheckBanner />}
-          </div>
-        </div>
-        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
-          <div
-            className={`mx-auto flex w-full flex-col gap-4 px-4 py-4 ${wide ? 'max-w-[76rem]' : 'max-w-[52rem]'}`}
-          >
-            {page !== undefined && Object.keys(page.blocks).length > 0 ? (
-              <PageGrid
-                page={page}
-                loopId={sessionId}
-                live={live}
-                onReply={reply}
-                onError={onError}
-              />
-            ) : (
-              page !== undefined &&
-              draft === '' && <p className="text-muted-foreground">{WP.starting}</p>
-            )}
-            {said.map((m) => (
-              <div key={m.line} className="flex flex-col items-end gap-1" data-testid="just-said">
-                <span className="text-muted-foreground text-xs">{WP.youSaid}</span>
-                <div className="bg-muted max-w-[85%] rounded-2xl px-4 py-2.5">
-                  {m.replyTo !== undefined && (
-                    <div className="text-muted-foreground mb-1 text-xs">
-                      {WP.replyingTo(m.replyTo)}
-                    </div>
-                  )}
-                  <MathPreview text={m.text} />
-                </div>
+      <div className="flex h-full min-h-0 flex-col" data-testid="learn-page" data-page="old-grid">
+        <TopBar
+          crumbs={[
+            {
+              label: props.projectTitle || W.projectHome,
+              onClick: props.onProject,
+              testId: 'crumb-project',
+            },
+            { label: props.title, testId: 'crumb-current' },
+          ]}
+          right={props.headerExtra}
+        />
+        <div className="min-h-0 flex-1 overflow-y-auto">
+          <div className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 py-4">
+            <p className="text-muted-foreground text-sm" data-testid="old-grid-note">
+              {WP.oldGrid}
+            </p>
+            {items.map((x, i) => (
+              <div key={`${String(x.line)}-${String(i)}`} className="min-w-0">
+                {x.node}
               </div>
             ))}
-            <CloseLineView sessionId={sessionId} close={close} />
-            {!running && failed !== undefined && (
-              <p className="text-destructive text-sm" data-testid="learn-failed">
-                {WP.failed(failed.notice)}
-              </p>
-            )}
-            {running && (
-              <div className="border-primary/30 border-s-2 ps-4" data-testid="learn-draft">
-                {draft !== '' ? (
-                  <PlainMarkdown text={draft} streaming />
-                ) : (
-                  <span className="text-muted-foreground flex items-center gap-2 text-sm">
-                    <LoaderIcon className="size-4 animate-spin" />
-                    {WP.writing}
-                  </span>
-                )}
-              </div>
-            )}
           </div>
-        </div>
-        <div className="mx-auto flex w-full max-w-[52rem] shrink-0 flex-col gap-2 px-4 pb-4">
-          <LoopBar
-            sessionId={sessionId}
-            records={records}
-            side={side}
-            running={running}
-            onError={onError}
-            onBack={props.onBackToMain}
-            projectId={props.projectId}
-            projectTitle={props.projectTitle}
-          />
-          {!ended && (
-            <div data-testid="learn-composer" className="flex flex-col gap-1">
-              {replyTo !== undefined && (
-                <div className="text-muted-foreground flex items-center gap-2 px-1 text-xs">
-                  <ReplyIcon className="size-3.5" />
-                  <span className="min-w-0 truncate">{WP.replyingTo(replyTo.pointer)}</span>
-                  <button
-                    type="button"
-                    aria-label={WP.cancel}
-                    className="hover:text-foreground"
-                    onClick={() => setReplyTo(undefined)}
-                  >
-                    <XIcon className="size-3.5" />
-                  </button>
-                </div>
-              )}
-              <InputComposer
-                placeholder={
-                  side.shelved !== undefined
-                    ? W.shelvedPlaceholder
-                    : running
-                      ? '可以随时插话…'
-                      : '回复…'
-                }
-                onSend={async (text, images) => {
-                  await api.send(sessionId, text, images, replyTo);
-                  setReplyTo(undefined);
-                }}
-              />
-            </div>
-          )}
         </div>
       </div>
     </CurrentSessionContext.Provider>
   );
 }
 
-/**
- * 照布局摆块：元素按区域图的阅读顺序输出（窄屏就是一列），宽屏由 styles.css 的 .learn-grid 按区域图摆。
- */
-function PageGrid(props: {
-  page: LearnPageResponse;
-  loopId: string;
-  live: boolean;
-  onReply: (b: { key: string; pointer: string }) => void;
-  onError: (e: unknown) => void;
-}) {
-  const { page } = props;
-  const style = {
-    '--learn-cols': page.columns,
-    '--learn-areas': page.areas.map((r) => `"${r}"`).join(' '),
-  } as CSSProperties;
-  return (
-    <div className="learn-grid" style={style} data-testid="learn-grid">
-      {Object.entries(page.blocks).map(([name, b]) => (
-        <div
-          key={name}
-          data-area={name}
-          className="min-w-0 scroll-mt-4"
-          style={{ '--learn-area': name } as CSSProperties}
-        >
-          <Block
-            b={b}
-            loopId={props.loopId}
-            live={props.live}
-            onReply={props.onReply}
-            onError={props.onError}
-          />
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** 页面上的一块。学习还开着时，每块下面能回话。 */
-function Block(props: {
-  b: ResolvedBlock;
-  loopId: string;
-  live: boolean;
-  onReply: (b: { key: string; pointer: string }) => void;
-  onError: (e: unknown) => void;
-}) {
-  const { b } = props;
-  let body: ReactNode;
-  switch (b.kind) {
-    case 'text':
-      body = <PlainMarkdown text={b.text} />;
-      break;
-    case 'learner':
-      body = (
-        <div className="bg-muted ms-auto max-w-[85%] rounded-2xl px-4 py-2.5">
-          <MathPreview text={b.text} />
-        </div>
-      );
-      break;
-    case 'subagent':
-      body = <p className="text-muted-foreground border-s-2 ps-3 text-sm">{b.text}</p>;
-      break;
-    case 'component':
-      body = (
-        <ComponentFrame
-          loopId={props.loopId}
-          component={b.component}
-          version={b.version}
-          blocks={b.blocks}
-          live={props.live}
-          title={b.pointer}
-          onError={props.onError}
-        />
-      );
-      break;
-    case 'opening':
-      body = (
-        <div className="bg-muted/50 flex flex-col gap-1.5 rounded-lg px-3 py-2">
-          <div className="text-muted-foreground text-xs">{WP.openingBlock}</div>
-          {b.ticket !== undefined && <TicketDetails ticket={b.ticket} opening />}
-        </div>
-      );
-      break;
-    case 'closing':
-      body =
-        b.summary !== undefined ? (
-          <div className="bg-muted/50 flex flex-col gap-1.5 rounded-lg px-3 py-2 text-sm">
-            <div className="text-muted-foreground text-xs">{WP.closingBlock}</div>
-            <div className="whitespace-pre-wrap">{b.summary}</div>
-          </div>
-        ) : (
-          <OldClosingBlock loopId={props.loopId} line={b.line} />
-        );
-      break;
-    case 'pending':
-      body = (
-        <div className="text-muted-foreground flex items-center gap-2 rounded-lg border border-dashed p-4 text-sm">
-          <LoaderIcon className="size-4 shrink-0 animate-spin" />
-          <span>
-            {WP.making}
-            {b.pointer}
-          </span>
-        </div>
-      );
-      break;
-  }
-  return (
-    <div className="group flex min-w-0 flex-col gap-1" data-block={b.key}>
-      {body}
-      {props.live && b.kind !== 'pending' && (
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground flex items-center gap-1 self-start text-xs opacity-60 group-hover:opacity-100"
-          onClick={() => props.onReply({ key: b.key, pointer: b.pointer })}
-        >
-          <ReplyIcon className="size-3" />
-          {WP.replyHere}
-        </button>
-      )}
-    </div>
-  );
-}
-
-/** 旧数据：点名拿回的守卫收尾记录，整理的内容同“看整理的内容”点开那份（依据面板的判定卡里那几项）。 */
-function OldClosingBlock(props: { loopId: string; line: number }) {
-  const r = useLoad(`loop:${props.loopId}`, () => api.loopEvidence(props.loopId));
-  const v = r.data?.loop.verdicts.find((x) => x.line === props.line);
-  return (
-    <div className="bg-muted/50 flex flex-col gap-3 rounded-lg px-3 py-2 text-sm">
-      <div className="text-muted-foreground text-xs">{WP.oldClosingBlock}</div>
-      {v !== undefined ? (
-        <VerdictBody sessionId={props.loopId} verdict={v} />
-      ) : (
-        <Loading error={r.error} />
-      )}
-    </div>
-  );
-}
-
-/** 订阅这次学习的记录、正在写的字、在不在跑（同对话页的外壳，学习页自己一份）。 */
+/** 订阅这次学习的记录、正在写的字、在不在跑、正在做什么（同对话页的外壳，学习页自己一份）。 */
 function useStream(sessionId: string, onError: (e: unknown) => void): LearnStream {
   const [records, setRecords] = useState<NumberedRecord[]>([]);
   const [draft, setDraft] = useState('');
   const [running, setRunning] = useState(false);
+  const [activity, setActivity] = useState<string | undefined>(undefined);
   const [loaded, setLoaded] = useState(false);
-  // 竖流学习页：主模型的一条话记下就已经在页面上了，正在写的那段随之收起
-  const streamPage = useRef(false);
   useEffect(() => {
     let alive = true;
     const stop = api.events((e) => {
       if (e.sessionId !== sessionId) return;
-      if (e.type === 'delta') setDraft((d) => d + e.text);
+      if (e.type === 'delta') {
+        setDraft((d) => d + e.text);
+        setActivity(undefined);
+      }
+      // 正在做什么（W12 §4.5）：工具调用之间说的话不上页面，正在写的那段收起、换成这一行（§4.6）
+      if (e.type === 'activity') {
+        setActivity(e.text);
+        setDraft('');
+      }
       if (e.type === 'running') {
         setRunning(e.running);
-        if (!e.running) setDraft('');
+        if (!e.running) {
+          setDraft('');
+          setActivity(undefined);
+        }
       }
       if (e.type === 'record') {
-        // 页面改好了，正在写的那段就收起（它已经在页面上）
-        if (e.record.type === 'layout' || e.record.type === 'screen') setDraft('');
-        if (e.record.type === 'assistant_message' && streamPage.current) setDraft('');
+        // 这一轮最后写的话记下就已经在页面上了，正在写的那段随之收起
+        if (e.record.type === 'assistant_message') setDraft('');
         setRecords((rs) =>
           rs.some((r) => r.line === e.line) ? rs : [...rs, { line: e.line, record: e.record }],
         );
@@ -415,8 +178,6 @@ function useStream(sessionId: string, onError: (e: unknown) => void): LearnStrea
       .records(sessionId)
       .then((r) => {
         if (!alive) return;
-        const first = r.records[0]?.record;
-        streamPage.current = first?.type === 'session_opened' && first.page === 'stream';
         setRecords((rs) => {
           const byLine = new Map(r.records.map((x) => [x.line, x]));
           for (const x of rs) byLine.set(x.line, x);
@@ -431,5 +192,5 @@ function useStream(sessionId: string, onError: (e: unknown) => void): LearnStrea
       stop();
     };
   }, [sessionId, onError]);
-  return { records, draft, running, loaded };
+  return { records, draft, running, activity, loaded };
 }

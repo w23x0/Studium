@@ -1,7 +1,7 @@
 // 界面上给学习者看的叫法，统一放这里（以后改叫法只改这一处）。
 // 内部词（选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里；
 // wording.test.ts 会查。对照：右边注释是内部叫法，只给写代码的人看。
-import type { LoopStatus, SourceReportKind, StateRecordView } from '../shared/protocol.ts';
+import type { LoopStatus, SourceReportKind } from '../shared/protocol.ts';
 import { WS } from './wording-sidebar.ts';
 
 export const W = {
@@ -30,8 +30,16 @@ export const W = {
     close: '收起讨论串',
     waiting: '等你',
     running: '进行中',
+    paused: '停着',
     ended: '已结束',
     empty: '还没开过。谈方向、学习、找资料都会在这里列一条。',
+    more: '更多',
+    delete: '删除',
+    deleteTitle: '删掉这个讨论串？',
+    deleteHint: (title: string) =>
+      `删掉「${title}」后它不再显示，之后的对话也读不到它；它找来的资料、谈定的方向留着。删了不能撤销。`,
+    deleteGo: '删掉',
+    cancel: '算了',
     tagGuarded: '等你点“学完了”',
     tagCandidates: '等你勾',
     tagClosed: '学完',
@@ -414,7 +422,7 @@ export const W = {
     观察: '观察到的',
     推断: '推测的',
     已确认: '你确认过的',
-  } satisfies Record<StateRecordView['sourceLevel'], string>,
+  },
   sourceWas: (s: string) => `原本是“${s}”`,
   stateConfirm: '对，是这样',
   stateDeny: '不对',
@@ -427,62 +435,6 @@ export const W = {
   afterTeachingGo: '看那一轮',
 
   // ── 我的产出：自己写的笔记整理、推导、小论文、方法比较（批 8b） ──
-  outputs: '我的产出', // 知识产出物
-  outputsHint: '你自己写的东西。每次保存都留一版，可以回看、对比、回到旧的一版。',
-  outputsEmpty: '还没有：可以自己新建一份，也可以在项目对话里说想写什么，一起写。',
-  outputNew: '新建一份',
-  outputNewCancel: '算了',
-  outputTitle: '标题',
-  outputTitlePlaceholder: '比如：平均速度和瞬时速度',
-  outputKind: '类型',
-  outputFirst: '第一版（可以先不写）',
-  outputFirstPlaceholder: '可以用 Markdown 和公式（$…$）',
-  outputComparisonLater: '方法比较建好后，在右边的表里填：每行一个方法，每列一个比较的方面。',
-  outputCreate: '建好',
-  outputCreating: '正在建…',
-  outputNeedTitle: '要写个标题。',
-  versionN: (n: number) => `第 ${String(n)} 版`,
-  noVersionYet: '还没有内容',
-  author: { 学习者: '你写的', 模型协助: '老师协助写的' } as const,
-  writingChats: '一起写的对话',
-  // 产出物页
-  outputTabs: {
-    text: '正文',
-    versions: '版本',
-    literature: '相关文献',
-    general: '可能对别人也有用',
-  } as const,
-  outputEdit: '编辑',
-  outputEditTable: '改表',
-  outputWriteWithTeacher: '和老师一起写',
-  outputWriteHint:
-    '开一段对话，老师看得到这份的最新版，帮你写、帮你加书里的出处；存下的版本会标“老师协助写的”。',
-  outputWriteBrief: '这次想写或想改什么（可不填）',
-  outputWriteGo: '开始',
-  outputWriteOpening: '正在开…',
-  outputViewing: (n: number) => `你在看第 ${String(n)} 版，不是最新的。`,
-  outputSeeLatest: '看最新版',
-  outputRestore: '回到这一版',
-  outputRestoreHint: '把这一版的内容再存成最新的一版；中间的版本都还在。',
-  outputRestoreNote: (n: number) => `回到第 ${String(n)} 版`,
-  outputChangeNote: '这一版改了什么',
-  outputNotePlaceholder: '一句话，可不填',
-  outputSave: '存为新的一版',
-  outputSaving: '正在存…',
-  outputCancelEdit: '先不存',
-  outputDraftKept: '上次没存的稿子还在，接着改吧。',
-  outputDiscardDraft: '丢掉稿子，从最新版重来',
-  outputStale: '有更新的版本，先看看再存。你写的稿子留着，回来能接着改。',
-  outputStaleBase: (base: number, latest: number) =>
-    `你的稿子是在第 ${String(base)} 版上改的，现在最新是第 ${String(latest)} 版。先看看最新版，再决定怎么存。`,
-  outputStaleSeen: '看过了，在最新版上存',
-  outputEmptyText: '正文不能空。',
-  outputPreview: '预览',
-  outputWriteMode: '写',
-  outputEditorHint:
-    '可以用 Markdown 和公式（$…$）。正文里引用书里的原文，会显示成可以点开的小标签；和老师一起写时，老师会帮你加。',
-  outputNoNote: '没写改了什么',
-  outputGone: '找不到这份了。',
   refsCount: (n: number) => `引用了 ${String(n)} 处`,
   refsBad: (n: number) => `${String(n)} 处对不上`,
   refsBadHint: '对不上的引用显示成灰色；点开或悬停能看到原因。',
@@ -549,10 +501,6 @@ export const W = {
   litProblem: '资料里对不上了：',
   litWholeBookLine: '整本书',
   // 写产出的对话
-  outputChatWelcome: '我们一起写。说说这次想写或改哪里。',
-  outputChatOn: '在写',
-  outputChatOpen: '看产出物',
-  outputChatUnbound: '没找到这段对话在写哪一份。',
 
   // ── 跨段学习的长期功能：今天该做的、提醒、复习 / 复检、接着学、阶段复盘、我学会的现状（批 6） ──
   today: '今天该做的',

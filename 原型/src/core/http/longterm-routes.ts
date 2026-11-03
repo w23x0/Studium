@@ -1,14 +1,10 @@
-// 长期功能的接口：提醒与“今天该做的”、路线偏差、接着学、阶段复盘。
+// 长期功能的接口：提醒与“今天该做的”（路线偏差、阶段复盘 W12 撤掉）。
 // 认出路径就回答并返回真；BadRequestError 由 server.ts 按 400 回。
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type {
   AddReminderRequest,
   CloseReminderRequest,
   RemindersResponse,
-  ReviewRequest,
-  ReviewResponse,
-  ReviewsResponse,
-  RouteDeviationsResponse,
   TodayView,
 } from '../../shared/protocol.ts';
 import { REMINDER_KINDS } from '../../shared/records-longterm.ts';
@@ -28,13 +24,6 @@ export async function longtermRoute(
   const n = parts.length;
 
   if (a !== 'projects' || b === undefined) return false;
-  if (c === 'deviations' && n === 4 && method === 'GET') {
-    send(res, 200, {
-      mainSessionId: b,
-      deviations: await studium.routeDeviations(b),
-    } satisfies RouteDeviationsResponse);
-    return true;
-  }
   if (c === 'today' && n === 4 && method === 'GET') {
     send(res, 200, (await lt.todayView(b)) satisfies TodayView);
     return true;
@@ -92,23 +81,6 @@ export async function longtermRoute(
       send(res, 200, { reminder });
       return true;
     }
-  }
-  if (c === 'review' && n === 4 && method === 'POST') {
-    const body = (await readJson(req)) as Partial<ReviewRequest>;
-    if (body.since !== undefined && typeof body.since !== 'string') {
-      throw new BadRequestError('since 要是 YYYY-MM-DD 字符串');
-    }
-    const r = await lt.startReview(b, body.since !== undefined ? { since: body.since } : {});
-    send(res, 201, {
-      reviewSessionId: r.sessionId,
-      since: r.since,
-      until: r.until,
-    } satisfies ReviewResponse);
-    return true;
-  }
-  if (c === 'reviews' && n === 4 && method === 'GET') {
-    send(res, 200, { reviews: await lt.reviews(b) } satisfies ReviewsResponse);
-    return true;
   }
   return false;
 }

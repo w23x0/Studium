@@ -18,8 +18,6 @@ import {
 import {
   modelText,
   type ConversationSpec,
-  type ImageData,
-  type ImageTranscriber,
   type ModelAdapter,
   type ModelConversation,
   type ModelDisclosure,
@@ -55,14 +53,16 @@ export interface ClaudeAgentSdkOptions {
   cwd?: string;
 }
 
-/**
- * 由 spec 与选项算出 SDK 的 options（纯函数，不调模型；单测覆盖）。
- * 没有 `spec.sandbox` 时保持原样：内置工具全关、只挂我们的进程内 MCP 工具。
- * 有沙盒时打开六个通用工具，cwd 落到工作区，只读目录经 additionalDirectories 与沙盒的 allowRead 给出，
- * 每次工具调用再经 `canUseTool` 按沙盒卡一道（记录/读写权限.md「执行方式」）。
- */
-/** 进程内工具一次调用的上限：30 分钟（一次导航连检索在真模型上要几分钟）。 */
+/** 进程内工具一次调用的上限：30 分钟（导入会话交 MinerU 转一份大 PDF 要十几分钟）。 */
 const TOOL_TIMEOUT_MS = 30 * 60 * 1000;
+
+/**
+ * 由 spec 与选项算出 SDK 的 options（纯函数，不调模型）。
+ * 没有 `spec.sandbox` 时：内置工具全关、只挂我们的进程内 MCP 工具（要联网的再放联网搜索与网页抓取）。
+ * 有沙盒时打开六个通用工具，cwd 落到工作区，只读目录经 additionalDirectories 与沙盒的 allowRead 给出，
+ * 每次工具调用再经 `canUseTool` 按沙盒卡一道（记录/读写权限.md「执行方式」）。学习对话沙盒与联网同时有
+ * （W12 §2）：联网只给模型的两个内置工具，沙盒里的命令照旧不联网。
+ */
 
 export function sdkOptionsFor(
   spec: ConversationSpec,
@@ -72,8 +72,8 @@ export function sdkOptionsFor(
 ): Options {
   const server = createSdkMcpServer({
     name: SERVER,
-    // 我们的工具里有整段跑完一个会话的（plan_next 跑完导航、retrieve 跑完检索子代理），常超过一分钟；
-    // 不跟环境变量 MCP_TOOL_TIMEOUT 走——它设成 60 秒时模型拿到超时会再调一次，开出重复的导航
+    // 我们的工具里有跑得久的（导入会话的 mineru、组件试跑）；不跟环境变量 MCP_TOOL_TIMEOUT 走——
+    // 它设成 60 秒时模型拿到超时会再调一次
     timeout: TOOL_TIMEOUT_MS,
     tools: spec.tools.map((t) =>
       tool(t.name, t.description, t.input, async (args) => {
@@ -84,8 +84,6 @@ export function sdkOptionsFor(
   });
   const key = spec.profile ?? spec.session?.kind;
   const profile = key !== undefined ? o.profiles?.[key] : undefined;
-  // 主模型派的子代理：模型与强度按 profiles 的 subagent 一项（会话/页面子代理.md「模型」单独配）
-  const subProfile = o.profiles?.subagent;
   const model = profile?.model ?? o.model;
   const effort = profile?.effort ?? o.effort;
   const sb = spec.sandbox;
@@ -99,42 +97,19 @@ export function sdkOptionsFor(
       : sb.commands === false
         ? SANDBOX_TOOLS.filter((t) => t !== 'Bash')
         : SANDBOX_TOOLS;
-  // 只放联网搜索与网页抓取两个内置工具；没有会话同时带沙盒与 webSearch（工单 W5 §4.6）
+  // 联网只放搜索与网页抓取两个内置工具（W12 §2：学习对话可与沙盒同时有）
   const webTools = spec.webSearch === true ? ['WebSearch', 'WebFetch'] : [];
-  // 子代理：框架自带的 Agent（派）与 SendMessage（续同一个）；子代理只拿自己那几样工具（会话/页面子代理.md）
-  const subs = sb !== undefined ? (spec.subagents ?? []) : [];
-  const agentTools = subs.length > 0 ? ['Agent', 'SendMessage'] : [];
+  const subs: SubagentSpec[] = [];
   return {
     systemPrompt: spec.systemPrompt,
-    tools: [...builtins, ...webTools, ...agentTools],
-    ...(subs.length > 0
-      ? {
-          agents: Object.fromEntries(
-            subs.map((a) => [
-              a.name,
-              {
-                description: a.description,
-                prompt: a.prompt,
-                tools: [...a.builtins, ...a.ownTools.map((t) => `mcp__${SERVER}__${t}`)],
-                background: true,
-                ...(subProfile?.model !== undefined ? { model: subProfile.model } : {}),
-                ...(subProfile?.effort !== undefined ? { effort: subProfile.effort } : {}),
-              },
-            ]),
-          ),
-        }
-      : {}),
+    tools: [...builtins, ...webTools],
     settingSources: [],
     mcpServers: { [SERVER]: server },
-    // 子代理专用的工具不预先放行：每次都经 canUseTool 看是不是子代理在调
-    allowedTools: [
-      ...spec.tools
-        .filter((t) => !subs.some((a) => a.ownTools.includes(t.name)))
-        .map((t) => `mcp__${SERVER}__${t.name}`),
-      ...webTools,
-    ],
+    allowedTools: [...spec.tools.map((t) => `mcp__${SERVER}__${t.name}`), ...webTools],
     strictMcpConfig: true,
     includePartialMessages: true,
+    // 思考概要（W12 §7.2）：只存进 model_raw、导出上下文时看，界面不显示、不进别的会话
+    thinking: { type: 'adaptive', display: 'summarized' },
     ...(spec.resumeToken !== undefined ? { resume: spec.resumeToken } : {}),
     ...(spec.fork === true && spec.resumeToken !== undefined ? { forkSession: true } : {}),
     ...(spec.ephemeral === true ? { persistSession: false } : {}),
@@ -148,14 +123,12 @@ export function sdkOptionsFor(
             ...(sb.cwd !== undefined && sb.cwd !== sb.workdir ? [sb.workdir] : []),
           ],
           permissionMode: 'default' as const,
-          canUseTool: sandboxPermission(sb, subs, taskOfCall),
+          canUseTool: sandboxPermission(sb, subs, taskOfCall, spec.webSearch === true),
           hooks: {
             PreToolUse: [
               // 工作目录与 additionalDirectories 里的读，框架可能不问 canUseTool 就放行；挡掉的位置（存密钥处、
               // 数据目录）在调用前的钩子上再按同一套判断卡一道（W11 §5）
               { matcher: 'Read|Glob|Grep', hooks: [readGate(sb, subs)] },
-              // 派子代理不经 canUseTool（框架自己放行），同一套判断挂在调用前的钩子上
-              ...(subs.length > 0 ? [{ matcher: 'Agent|Task', hooks: [agentGate(sb, subs)] }] : []),
             ],
           },
           sandbox: {
@@ -207,6 +180,8 @@ export function sandboxPermission(
   sb: SandboxSpec,
   subs: SubagentSpec[] = [],
   taskOfCall?: (toolUseId: string) => string | undefined,
+  /** 这个会话放开了联网搜索与网页抓取（W12 §2 学习对话）。 */
+  web = false,
 ): CanUseTool {
   return (toolName, input, opts): Promise<PermissionResult> =>
     Promise.resolve(
@@ -219,6 +194,7 @@ export function sandboxPermission(
         // task_id），不假设 SDK 的 agentID 就是 task_id；认不出（消息还没到）才退回 agentID。
         // 10-27 真模型核过一次（0.3.293，4 次调用）：两者相同，按调用认的都认得出
         opts.agentID === undefined ? undefined : (taskOfCall?.(opts.toolUseID) ?? opts.agentID),
+        web,
       ),
     );
 }
@@ -248,29 +224,6 @@ function readGate(sb: SandboxSpec, subs: SubagentSpec[]): HookCallback {
   };
 }
 
-/** 派子代理前的钩子：和 canUseTool 同一套判断，拦下时把原因交回给模型。 */
-function agentGate(sb: SandboxSpec, subs: SubagentSpec[]): HookCallback {
-  return (input) => {
-    if (input.hook_event_name !== 'PreToolUse') return Promise.resolve({});
-    const toolInput =
-      typeof input.tool_input === 'object' && input.tool_input !== null
-        ? (input.tool_input as Record<string, unknown>)
-        : {};
-    const r = decide(sb, subs, input.tool_name, toolInput, input.agent_id);
-    return Promise.resolve(
-      r.behavior === 'deny'
-        ? {
-            hookSpecificOutput: {
-              hookEventName: 'PreToolUse' as const,
-              permissionDecision: 'deny' as const,
-              permissionDecisionReason: r.message,
-            },
-          }
-        : {},
-    );
-  };
-}
-
 function decide(
   sb: SandboxSpec,
   subs: SubagentSpec[],
@@ -278,6 +231,8 @@ function decide(
   input: Record<string, unknown>,
   /** 子代理做的：它这件活的编号（task_id）；主模型做的为 undefined。 */
   agentId?: string,
+  /** 放开了联网搜索与网页抓取。 */
+  web = false,
 ): PermissionResult {
   const bySubagent = agentId !== undefined;
   const own = new Set(subs.flatMap((a) => a.ownTools.map((t) => `mcp__${SERVER}__${t}`)));
@@ -354,6 +309,9 @@ function decide(
     }
     case 'SendMessage':
       return subs.length > 0 && !bySubagent ? allow(input) : deny(`这个工具不给用：${toolName}`);
+    case 'WebSearch':
+    case 'WebFetch':
+      return web && !bySubagent ? allow(input) : deny(`这个工具不给用：${toolName}`);
     default:
       return deny(`这个工具不给用：${toolName}`);
   }
@@ -461,10 +419,8 @@ const OUR_SECRETS = /^(MINERU_TOKEN|STUDIUM_TOKEN|DEEPSEEK_API_KEY|OPENAI_API_KE
 export class ClaudeAgentSdkModel implements ModelAdapter {
   readonly name = 'claude-agent-sdk';
   readonly disclosure: ModelDisclosure;
-  readonly transcriber: ImageTranscriber;
 
   constructor(private readonly options: ClaudeAgentSdkOptions = {}) {
-    this.transcriber = new SdkTranscriber(options);
     this.disclosure = {
       service: 'Anthropic 的 Claude',
       route: '经本机的 Claude 订阅（Claude Agent SDK）',
@@ -523,6 +479,10 @@ class SdkConversation implements ModelConversation {
   private current: Channel | undefined;
   /** 已交给 SDK、还没见它答到的输入（按 uuid）。 */
   private readonly pending: string[] = [];
+  /** SDK 的 query（中断用）。 */
+  private query_: { interrupt(): Promise<unknown> } | undefined;
+  /** 学习者点了停止：这一轮的结果按停下收尾。 */
+  private stopping = false;
   /** 本轮里 SDK 已标出答到了哪些输入（老版本不标）。 */
   private stamped = false;
   /** 本轮主模型每次回话的用量（按 message id；同一次回话会拆成几条 SDK 消息）。 */
@@ -563,6 +523,7 @@ class SdkConversation implements ModelConversation {
         return parent !== undefined ? this.taskOf.get(parent) : undefined;
       }),
     });
+    this.query_ = q;
     this.close_ = () => {
       q.close();
     };
@@ -570,29 +531,42 @@ class SdkConversation implements ModelConversation {
     void this.pump(this.output);
   }
 
-  private push(input: TurnInput, priority?: 'next'): void {
+  private push(input: TurnInput): void {
     const uuid = randomUUID();
     this.pending.push(uuid);
     this.input.push({
       type: 'user',
       message: {
         role: 'user',
-        content: modelText(input),
+        // 学习者附的图原样送（W12 §5.6）：先图后字
+        content:
+          input.images !== undefined && input.images.length > 0
+            ? [
+                ...input.images.map((im) => ({
+                  type: 'image' as const,
+                  source: {
+                    type: 'base64' as const,
+                    media_type: im.mime,
+                    data: im.data.toString('base64'),
+                  },
+                })),
+                { type: 'text' as const, text: modelText(input) },
+              ]
+            : modelText(input),
       },
       parent_tool_use_id: null,
       uuid,
-      ...(priority !== undefined ? { priority } : {}),
     });
   }
 
   /**
-   * 中途插话：按流式输入交给 SDK，priority 'next' = 在本轮下一个停顿处并进来（04「实现时要守的」）。
-   * 不确定：priority 各值的确切行为 SDK 类型里没写，待本机真模型确认。
+   * 学习者点了停止（W12 §4.4）：交 SDK 中断这一轮；SDK 随后交回这一轮的结果，按停下收尾（不记成失败），
+   * 同一个对话之后接着用。
    */
-  interject(input: TurnInput): boolean {
-    if (this.current === undefined || this.current.done) return false;
-    this.push(input, 'next');
-    return true;
+  async interrupt(): Promise<void> {
+    if (this.current === undefined || this.query_ === undefined) return;
+    this.stopping = true;
+    await this.query_.interrupt();
   }
 
   async *send(input: TurnInput): AsyncGenerator<ModelEvent> {
@@ -636,13 +610,16 @@ class SdkConversation implements ModelConversation {
     if (ev.kind === 'result') {
       if (this.current === undefined) return;
       if (!this.stamped) this.pending.shift();
-      if (this.pending.length > 0) {
-        // 还有插话没并进本轮：SDK 会接着为它另跑一轮，读到它的结果再收尾
+      const stopped = this.stopping;
+      this.stopping = false;
+      if (this.pending.length > 0 && !stopped) {
+        // 还有交过去没答到的输入：SDK 会接着为它另跑一轮，读到它的结果再收尾
         if (ev.failed) this.current.push(turnError(ev));
         this.stamped = false;
         return;
       }
-      this.finishTurn(ev.failed ? turnError(ev) : { kind: 'turn_end' });
+      if (stopped) this.pending.splice(0);
+      this.finishTurn(ev.failed && !stopped ? turnError(ev) : { kind: 'turn_end' });
       return;
     }
     const sideOnly =
@@ -743,6 +720,10 @@ class SdkConversation implements ModelConversation {
       for (const b of blocks(msg.message.content)) {
         if (b.type === 'tool_use' && typeof b.id === 'string' && typeof b.name === 'string') {
           this.toolUses.set(b.id, { name: b.name, input: b.input ?? {} });
+          // 正在做什么（W12 §4.5）：主模型开始调一个工具
+          if (msg.type === 'assistant' && parent === null) {
+            out.push({ kind: 'activity', tool: b.name, input: b.input ?? {} });
+          }
           if (msg.parent_tool_use_id !== null) this.callParent.set(b.id, msg.parent_tool_use_id);
           const prompt = b.input?.prompt;
           if ((b.name === 'Agent' || b.name === 'Task') && typeof prompt === 'string') {
@@ -858,82 +839,6 @@ async function drainQuietly(events: AsyncIterable<ModelEvent>): Promise<void> {
   const it = events[Symbol.asyncIterator]();
   while (!(await it.next()).done) {
     /* 只读完，不用 */
-  }
-}
-
-/**
- * 图片转写：一问一答（图片 + 一句请求），不给工具、不留会话文件、不续接。
- * 用全局默认模型（转写不是会话类，不走 profiles）；实际执行的模型从 SDK 报的消息里取。
- */
-class SdkTranscriber implements ImageTranscriber {
-  readonly model?: string;
-
-  constructor(private readonly options: ClaudeAgentSdkOptions) {
-    if (options.model !== undefined) this.model = options.model;
-  }
-
-  async transcribe(
-    image: ImageData,
-    instructions: string,
-  ): Promise<{ text: string; model?: string }> {
-    const input = new AsyncQueue<SDKUserMessage>();
-    input.push({
-      type: 'user',
-      message: {
-        role: 'user',
-        content: [
-          {
-            type: 'image',
-            source: { type: 'base64', media_type: image.mime, data: image.data.toString('base64') },
-          },
-          { type: 'text', text: '请转写这张图片。' },
-        ],
-      },
-      parent_tool_use_id: null,
-      uuid: randomUUID(),
-    });
-    const q = query({
-      prompt: input,
-      options: {
-        systemPrompt: instructions,
-        tools: [],
-        settingSources: [],
-        strictMcpConfig: true,
-        maxTurns: 1,
-        persistSession: false,
-        ...(this.options.model !== undefined ? { model: this.options.model } : {}),
-        ...(this.options.cwd !== undefined ? { cwd: this.options.cwd } : {}),
-        env: cleanEnv(),
-      },
-    });
-    let model: string | undefined;
-    const texts: string[] = [];
-    try {
-      for await (const msg of q) {
-        const reported =
-          msg.type === 'system' && msg.subtype === 'init'
-            ? msg.model
-            : msg.type === 'assistant'
-              ? msg.message.model
-              : undefined;
-        if (reported !== undefined && reported !== '') model = reported;
-        if (msg.type === 'assistant') {
-          for (const b of msg.message.content) if (b.type === 'text') texts.push(b.text);
-        }
-        if (msg.type === 'result') {
-          if (msg.subtype !== 'success' || msg.is_error) {
-            throw new Error(`Agent SDK 转写失败：${msg.subtype}`);
-          }
-          break;
-        }
-      }
-    } finally {
-      input.end();
-      q.close();
-    }
-    const text = texts.join('').trim();
-    if (text === '') throw new Error('Agent SDK 转写没有给出文字');
-    return { text, ...(model !== undefined ? { model } : {}) };
   }
 }
 

@@ -1,71 +1,69 @@
-// 竖流学习页（10-29 #74 试验，与区域图并存）：主模型一个人管页面。页面从正本放一遍算出来（shared/stream-page.ts），
-// 从上往下一列：开场、主模型的话、学习者的话、主模型写的组件。学习者上次说话之后主模型新放、改过、挪过、拿回的块标出来。
-// 学习者选中页面上一段文字（或点组件上方的名字）再说话，输入框上方出现引用条，发送时带上；块下面不挂回话处。
+// 竖流学习页（W12 起唯一的学习页）：学习对话一个人管页面。页面从正本放一遍算出来（shared/stream-page.ts），
+// 从上往下一列：学习对话每轮最后写的话、学习者的话、学习对话写的组件。组件可以嵌在文字中间（`[[组件:名字]]`，W12 §5.1）；
+// 改过的文字、换过版的组件一直标着“改过 / 第 N 版”，点开能看以前的样子（§4.7）。鼠标移到一块上左下角显示时间（§4.2）。
+// 学习者选中页面上一段文字（或点组件上方的名字）再说话，输入框上方出现引用条，发送时带上。生成中途能停，停下后能改刚发的
+// 那句（§4.4）；在做什么由程序从工具调用得出一行（§4.5）。学习结束后照样能说话，说了就重开（§2）。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { LoaderIcon, QuoteIcon, XIcon } from 'lucide-react';
+import { HistoryIcon, LoaderIcon, PencilIcon, QuoteIcon, XIcon } from 'lucide-react';
 import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
 import { InputComposer } from '@/components/input/composer';
 import { MathPreview } from '@/components/input/math-preview';
 import type { MessageQuote, NumberedRecord } from '../../../shared/records.ts';
-import {
-  freshMark,
-  replayStream,
-  type StreamBlock,
-  type StreamMark,
-} from '../../../shared/stream-page.ts';
+import { inlineParts, replayStream, type StreamBlock } from '../../../shared/stream-page.ts';
+import { localMinute } from '../../../shared/time.ts';
 import { api } from '../../api.ts';
 import { CurrentSessionContext } from '../../panel.ts';
 import { closeLine } from '../../screen-model.ts';
-import { loopSide, loopState } from '../../thread-model.ts';
+import { lastEditable, loopSide, loopState } from '../../thread-model.ts';
 import { W } from '../../wording.ts';
 import { WP } from '../../wording-page.ts';
-import { LongtermBanner } from '../longterm/loop-extras.tsx';
-import { StageCheckBanner } from '../stage-check.tsx';
+import { WT } from '../../wording-tools.ts';
 import { TopBar } from '../top-bar.tsx';
 import { ComponentFrame } from './component-frame.tsx';
 import type { LearnPageProps, LearnStream } from './learn-page.tsx';
-import {
-  CloseLineView,
-  currentTicket,
-  LoopBar,
-  TicketDetails,
-  TicketStrip,
-} from './loop-parts.tsx';
+import { CloseLineView, LoopBar } from './loop-parts.tsx';
 
 export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
-  const { sessionId, onError, titleOf } = props;
-  const { records, draft, running } = props.stream;
+  const { sessionId, onError } = props;
+  const { records, draft, running, activity } = props.stream;
   const state = useMemo(() => loopState(records), [records]);
   const ended = state.kind === 'ended';
-  const live = !ended;
   const page = useMemo(() => replayStream(records), [records]);
-  const marks = useMemo(
-    () => new Map(page.on.map((b) => [b.id, freshMark(records, b)] as const)),
-    [page, records],
+  const atOf = useMemo(() => new Map(records.map((r) => [r.line, r.record.at])), [records]);
+  const components = useMemo(
+    () =>
+      new Map(
+        [...page.on, ...page.off]
+          .filter((b) => b.kind === 'component' && b.name !== undefined)
+          .map((b) => [b.name ?? '', b]),
+      ),
+    [page],
   );
   const failed = useMemo(() => failedSinceText(records), [records]);
   const side = useMemo(() => loopSide(records), [records]);
-  const ticket = useMemo(() => currentTicket(records), [records]);
   const close = useMemo(() => closeLine(records), [records]);
+  const editable = useMemo(() => lastEditable(records, running), [records, running]);
   const [quote, setQuote] = useState<MessageQuote | undefined>(undefined);
   const scroller = useRef<HTMLDivElement>(null);
 
-  // 主模型动了页面：滚到这次动过的第一块（新内容可能在中间，也可能在最下面）
-  const firstMarked = page.on.find((b) => marks.get(b.id) !== undefined);
-  const markKey =
-    firstMarked !== undefined ? `${firstMarked.id}@${String(firstMarked.touched.line)}` : '';
+  // 学习对话动了页面：滚到这次动过的那块（新内容可能在中间，也可能在最下面）
+  const lastTouched = page.on.reduce<StreamBlock | undefined>(
+    (m, b) => (m === undefined || b.touched.line > m.touched.line ? b : m),
+    undefined,
+  );
+  const touchKey =
+    lastTouched !== undefined ? `${lastTouched.id}@${String(lastTouched.touched.line)}` : '';
   useEffect(() => {
-    if (markKey === '') return;
-    const id = markKey.slice(0, markKey.lastIndexOf('@'));
+    if (touchKey === '') return;
+    const id = touchKey.slice(0, touchKey.lastIndexOf('@'));
     scroller.current
       ?.querySelector(`[data-block="${CSS.escape(id)}"]`)
       ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
-  }, [markKey]);
+  }, [touchKey]);
 
   // 选中页面上一段文字：记成“第几行里的这段”（出自哪块由块上的 data-line 认）。听选区变化而不是松开鼠标：
   // 手机上长按选字不出 mouseup。点进输入框、发送后清掉选区时选区是空的，引用条照旧留着（有 × 可去掉）
   useEffect(() => {
-    if (!live) return;
     const onSelect = () => {
       const sel = window.getSelection();
       const text = sel?.toString().trim() ?? '';
@@ -77,9 +75,13 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
     };
     document.addEventListener('selectionchange', onSelect);
     return () => document.removeEventListener('selectionchange', onSelect);
-  }, [live]);
+  }, []);
   const focusComposer = () =>
     document.querySelector<HTMLTextAreaElement>('[data-testid="learn-composer"] textarea')?.focus();
+  const pick = (name: string) => {
+    setQuote({ component: name });
+    focusComposer();
+  };
 
   return (
     <CurrentSessionContext.Provider value={sessionId}>
@@ -96,39 +98,31 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
             ]}
             right={props.headerExtra}
           />
-          <div className="mx-auto flex w-full max-w-[52rem] flex-col gap-1.5 px-4 pb-2 text-sm empty:hidden">
-            {ticket !== undefined && <TicketStrip ticket={ticket} />}
-            <LongtermBanner
-              side={side}
-              loopId={sessionId}
-              projectId={props.projectId}
-              titleOf={titleOf}
-            />
-            {side.stageCheck === true && <StageCheckBanner />}
-          </div>
         </div>
         <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
           <div
             className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 py-4"
             data-testid="learn-stream"
           >
-            {page.on.length === 0 && draft === '' && (
+            {page.on.length === 0 && draft === '' && !running && (
               <p className="text-muted-foreground">{WP.starting}</p>
             )}
-            {page.on.map((b) => (
-              <StreamBlockView
-                key={b.id}
-                b={b}
-                mark={marks.get(b.id)}
-                loopId={sessionId}
-                live={live}
-                onPickComponent={(name) => {
-                  setQuote({ component: name });
-                  focusComposer();
-                }}
-                onError={onError}
-              />
-            ))}
+            {page.on
+              .filter((b) => b.inline !== true)
+              .map((b) => (
+                <StreamBlockView
+                  key={b.id}
+                  b={b}
+                  at={atOf.get(b.line)}
+                  components={components}
+                  loopId={sessionId}
+                  live={!ended}
+                  editable={b.kind === 'learner' && editable === b.line}
+                  onPickComponent={pick}
+                  onEdit={(text) => api.editLast(sessionId, text)}
+                  onError={onError}
+                />
+              ))}
             <CloseLineView sessionId={sessionId} close={close} />
             {!running && failed !== undefined && (
               <p className="text-destructive text-sm" data-testid="learn-failed">
@@ -140,9 +134,12 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
                 {draft !== '' ? (
                   <PlainMarkdown text={draft} streaming />
                 ) : (
-                  <span className="text-muted-foreground flex items-center gap-2 text-sm">
+                  <span
+                    className="text-muted-foreground flex items-center gap-2 text-sm"
+                    data-testid="learn-activity"
+                  >
                     <LoaderIcon className="size-4 animate-spin" />
-                    {WP.writing}
+                    {activity ?? WT.writing}
                   </span>
                 )}
               </div>
@@ -160,45 +157,49 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
             projectId={props.projectId}
             projectTitle={props.projectTitle}
           />
-          {!ended && (
-            <div data-testid="learn-composer" className="flex flex-col gap-1">
-              {quote !== undefined && (
-                <div
-                  className="text-muted-foreground flex items-center gap-2 px-1 text-xs"
-                  data-testid="learn-quote"
+          <div data-testid="learn-composer" className="flex flex-col gap-1">
+            {quote !== undefined && (
+              <div
+                className="text-muted-foreground flex items-center gap-2 px-1 text-xs"
+                data-testid="learn-quote"
+              >
+                <QuoteIcon className="size-3.5 shrink-0" />
+                <span className="min-w-0 truncate">
+                  {quote.component !== undefined
+                    ? WP.quotingComponent(quote.component)
+                    : WP.quoting(short(quote.text ?? ''))}
+                </span>
+                <button
+                  type="button"
+                  aria-label={WP.cancel}
+                  className="hover:text-foreground"
+                  onClick={() => setQuote(undefined)}
                 >
-                  <QuoteIcon className="size-3.5 shrink-0" />
-                  <span className="min-w-0 truncate">
-                    {quote.component !== undefined
-                      ? WP.quotingComponent(quote.component)
-                      : WP.quoting(short(quote.text ?? ''))}
-                  </span>
-                  <button
-                    type="button"
-                    aria-label={WP.cancel}
-                    className="hover:text-foreground"
-                    onClick={() => setQuote(undefined)}
-                  >
-                    <XIcon className="size-3.5" />
-                  </button>
-                </div>
-              )}
-              <InputComposer
-                placeholder={
-                  side.shelved !== undefined
+                  <XIcon className="size-3.5" />
+                </button>
+              </div>
+            )}
+            <InputComposer
+              placeholder={
+                ended
+                  ? WP.reopenPlaceholder
+                  : side.shelved !== undefined
                     ? W.shelvedPlaceholder
                     : running
-                      ? '可以随时插话…'
+                      ? '可以接着说（这一轮说完再交给它）…'
                       : '回复…（可先选中页面上一段）'
-                }
-                onSend={async (text, images) => {
-                  await api.send(sessionId, text, images, undefined, quote);
-                  setQuote(undefined);
-                  window.getSelection()?.removeAllRanges();
-                }}
-              />
-            </div>
-          )}
+              }
+              running={running}
+              onStop={async () => {
+                await api.stop(sessionId);
+              }}
+              onSend={async (text, images) => {
+                await api.send(sessionId, text, images, undefined, quote);
+                setQuote(undefined);
+                window.getSelection()?.removeAllRanges();
+              }}
+            />
+          </div>
         </div>
       </div>
     </CurrentSessionContext.Provider>
@@ -208,65 +209,115 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
 /** 页面上的一块；data-line = 它出自正本哪一行（选中文字时认块用）。 */
 function StreamBlockView(props: {
   b: StreamBlock;
-  mark: StreamMark | undefined;
+  at: string | undefined;
+  components: Map<string, StreamBlock>;
   loopId: string;
   live: boolean;
+  editable: boolean;
   onPickComponent: (name: string) => void;
+  onEdit: (text: string) => Promise<unknown>;
   onError: (e: unknown) => void;
 }) {
-  const { b, mark } = props;
+  const { b } = props;
+  const [old, setOld] = useState<number | undefined>(undefined);
+  const [editing, setEditing] = useState<string | undefined>(undefined);
+  const history = b.history ?? [];
+  const shown = old !== undefined ? (history[old] ?? b.text) : b.text;
   let body: ReactNode;
   switch (b.kind) {
     case 'text':
-      body = <PlainMarkdown text={b.text} />;
+      body = (
+        <div className="flex flex-col gap-3">
+          {inlineParts(shown).map((p, i) =>
+            p.kind === 'text' ? (
+              <PlainMarkdown key={i} text={p.text} />
+            ) : (
+              <InlineComponent
+                key={i}
+                name={p.name}
+                block={props.components.get(p.name)}
+                loopId={props.loopId}
+                live={props.live}
+                onPick={props.onPickComponent}
+                onError={props.onError}
+              />
+            ),
+          )}
+        </div>
+      );
       break;
     case 'learner':
-      body = (
-        <div className="bg-muted ms-auto flex max-w-[85%] flex-col gap-1 rounded-2xl px-4 py-2.5">
-          {b.op !== undefined && (
-            <span className="text-muted-foreground text-xs">{WP.onComponent(b.op)}</span>
-          )}
-          {b.quote !== undefined && (
-            <span className="text-muted-foreground border-s-2 ps-2 text-xs">
-              {b.quote.component !== undefined
-                ? WP.componentName(b.quote.component)
-                : WP.quotedLine(short(b.quote.text ?? ''))}
-            </span>
-          )}
-          <MathPreview text={b.text} />
-        </div>
-      );
-      break;
-    case 'opening':
-      body = (
-        <div className="bg-muted/50 flex flex-col gap-1.5 rounded-lg px-3 py-2">
-          <div className="text-muted-foreground text-xs">{WP.openingBlock}</div>
-          {b.ticket !== undefined && <TicketDetails ticket={b.ticket} opening />}
-        </div>
-      );
+      body =
+        editing !== undefined ? (
+          <div className="ms-auto flex w-full max-w-[85%] flex-col gap-1.5" data-testid="edit-last">
+            <textarea
+              value={editing}
+              rows={Math.min(8, Math.max(2, editing.split('\n').length))}
+              className="bg-card focus:border-foreground/30 w-full rounded-xl border px-3 py-2 outline-none"
+              onChange={(e) => setEditing(e.target.value)}
+            />
+            <div className="flex justify-end gap-2 text-xs">
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => setEditing(undefined)}
+              >
+                {WT.editCancel}
+              </button>
+              <button
+                type="button"
+                className="text-primary disabled:opacity-50"
+                disabled={editing.trim() === ''}
+                onClick={() => {
+                  props
+                    .onEdit(editing)
+                    .then(() => setEditing(undefined))
+                    .catch(props.onError);
+                }}
+              >
+                {WT.editSave}
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="ms-auto flex max-w-[85%] flex-col items-end gap-1">
+            <div className="bg-muted flex flex-col gap-1 rounded-2xl px-4 py-2.5">
+              {b.op !== undefined && (
+                <span className="text-muted-foreground text-xs">{WP.onComponent(b.op)}</span>
+              )}
+              {b.quote !== undefined && (
+                <span className="text-muted-foreground border-s-2 ps-2 text-xs">
+                  {b.quote.component !== undefined
+                    ? WP.componentName(b.quote.component)
+                    : WP.quotedLine(short(b.quote.text ?? ''))}
+                </span>
+              )}
+              <MathPreview text={b.text} />
+            </div>
+            {props.editable && (
+              <button
+                type="button"
+                data-testid="edit-last-open"
+                className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+                onClick={() => setEditing(b.text)}
+              >
+                <PencilIcon className="size-3" />
+                {WT.edit}
+              </button>
+            )}
+          </div>
+        );
       break;
     case 'component':
       body = (
-        <div className="flex flex-col gap-1">
-          <button
-            type="button"
-            title={WP.pickComponent}
-            disabled={!props.live}
-            className="text-muted-foreground hover:text-foreground self-start text-xs disabled:hover:text-inherit"
-            onClick={() => props.onPickComponent(b.name ?? '')}
-          >
-            {WP.componentName(b.name ?? '')}
-          </button>
-          <ComponentFrame
-            loopId={props.loopId}
-            component={b.name ?? ''}
-            version={b.version ?? 1}
-            blocks={[{ id: 'b1', html: b.text }]}
-            live={props.live}
-            title={b.name ?? ''}
-            onError={props.onError}
-          />
-        </div>
+        <InlineComponent
+          name={b.name ?? ''}
+          block={b}
+          loopId={props.loopId}
+          live={props.live}
+          onPick={props.onPickComponent}
+          onError={props.onError}
+        />
       );
       break;
   }
@@ -274,18 +325,121 @@ function StreamBlockView(props: {
     <div
       data-block={b.id}
       data-line={b.kind === 'component' ? undefined : b.line}
-      data-mark={mark}
-      className={`relative min-w-0 scroll-mt-4 transition-colors ${
-        mark !== undefined ? 'border-primary/50 -ms-3 border-s-2 ps-[10px]' : ''
-      }`}
+      className="group/block relative flex min-w-0 scroll-mt-4 flex-col gap-1"
     >
-      {mark !== undefined && (
-        <span className="text-primary/80 absolute -top-3.5 end-0 text-[10px]">
-          {WP.marks[mark]}
+      {body}
+      <div className="flex items-center gap-2 text-[0.7rem]">
+        {props.at !== undefined && (
+          <span
+            data-testid="block-time"
+            className="text-muted-foreground opacity-0 transition-opacity group-hover/block:opacity-100"
+          >
+            {localMinute(props.at)}
+            {b.edited === true ? ` · ${WT.edited}` : ''}
+          </span>
+        )}
+        {b.kind === 'text' && history.length > 0 && (
+          <Versions
+            label={WP.editedMark}
+            count={history.length + 1}
+            shown={old === undefined ? history.length : old}
+            onShow={(i) => setOld(i === history.length ? undefined : i)}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** 组件（单独一块，或嵌在文字里）：上方名字（点一下 = 就这个组件说话）与“第 N 版”，能点开看旧版（W12 §4.7）。 */
+function InlineComponent(props: {
+  name: string;
+  block: StreamBlock | undefined;
+  loopId: string;
+  live: boolean;
+  onPick: (name: string) => void;
+  onError: (e: unknown) => void;
+}) {
+  const [old, setOld] = useState<number | undefined>(undefined);
+  const b = props.block;
+  if (b === undefined) {
+    return <p className="text-muted-foreground text-xs">{WP.componentMissing(props.name)}</p>;
+  }
+  const history = b.history ?? [];
+  const version = old !== undefined ? old + 1 : (b.version ?? 1);
+  const html = old !== undefined ? (history[old] ?? b.text) : b.text;
+  return (
+    <div className="flex flex-col gap-1" data-testid="stream-component">
+      <div className="flex items-center gap-2 text-xs">
+        <button
+          type="button"
+          title={WP.pickComponent}
+          disabled={!props.live}
+          className="text-muted-foreground hover:text-foreground disabled:hover:text-inherit"
+          onClick={() => props.onPick(props.name)}
+        >
+          {WP.componentName(props.name)}
+        </button>
+        {history.length > 0 && (
+          <Versions
+            label={WP.versionMark(b.version ?? 1)}
+            count={history.length + 1}
+            shown={old === undefined ? history.length : old}
+            onShow={(i) => setOld(i === history.length ? undefined : i)}
+          />
+        )}
+      </div>
+      <ComponentFrame
+        loopId={props.loopId}
+        component={props.name}
+        version={version}
+        blocks={[{ id: 'b1', html }]}
+        live={props.live && old === undefined}
+        title={props.name}
+        onError={props.onError}
+      />
+    </div>
+  );
+}
+
+/** 改动标记（常驻，W12 §4.7）：点开列出各版，点哪版看哪版；最后一版是现在的。 */
+function Versions(props: {
+  label: string;
+  count: number;
+  shown: number;
+  onShow: (i: number) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  return (
+    <span className="relative inline-flex items-center gap-1" data-testid="version-mark">
+      <button
+        type="button"
+        className="text-primary/80 hover:text-primary flex items-center gap-1"
+        onClick={() => setOpen((x) => !x)}
+      >
+        <HistoryIcon className="size-3" />
+        {props.label}
+      </button>
+      {open && (
+        <span className="flex items-center gap-1">
+          {Array.from({ length: props.count }, (_, i) => (
+            <button
+              key={i}
+              type="button"
+              data-testid="version-pick"
+              className={
+                i === props.shown
+                  ? 'bg-primary/10 text-primary rounded px-1'
+                  : 'text-muted-foreground hover:text-foreground rounded px-1'
+              }
+              onClick={() => props.onShow(i)}
+            >
+              {i === props.count - 1 ? WP.versionNow : WP.versionN(i + 1)}
+            </button>
+          ))}
         </span>
       )}
-      {body}
-    </div>
+    </span>
   );
 }
 
@@ -294,10 +448,12 @@ function short(text: string): string {
   return t.length > 60 ? `${t.slice(0, 40)}……${t.slice(-12)}` : t;
 }
 
-/** 主模型最后一次写话之后没跑成的那一轮（界面上说一句，不进页面）。 */
+/** 学习对话最后一次写话之后没跑成的那一轮（界面上说一句，不进页面）。 */
 function failedSinceText(records: NumberedRecord[]): { notice?: string } | undefined {
   let last = 0;
-  for (const { line, record: r } of records) if (r.type === 'assistant_message') last = line;
+  for (const { line, record: r } of records) {
+    if (r.type === 'assistant_message' && r.interim !== true) last = line;
+  }
   const f = records
     .flatMap(({ line, record: r }) => (line > last && r.type === 'turn_failed' ? [r] : []))
     .at(-1);

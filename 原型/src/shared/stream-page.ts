@@ -1,8 +1,9 @@
-// 竖流学习页（10-29 #74 试验，与区域图并存）：主模型一个人管页面。页面不另存，从正本放一遍算出来——
-// 开场在最上面，主模型的每条话、学习者的每句话按时间接在最下面；主模型调页面工具（改、拿掉、挪、拿回、交组件）
-// 成功的那次 tool_call 照做。核心（工具）与界面都用这里的纯函数，算出来的一样。
-// 改法照 Claude Code 的 Edit：按一段原文替换，原文在页面上必须唯一。
-import type { MessageQuote, NumberedRecord, Ticket } from './records.ts';
+// 竖流学习页（10-29 #74 起；W12 起是唯一的学习页）：学习对话一个人管页面。页面不另存，从正本放一遍算出来——
+// 学习对话每一轮最后写的话、学习者的每句话按时间接在最下面（工具调用之间说的话不上，W12 §4.6）；学习对话调页面工具
+// （改、拿掉、挪、拿回、交组件）成功的那次 tool_call 照做。核心（工具）与界面都用这里的纯函数，算出来的一样。
+// 改法照 Claude Code 的 Edit：按一段原文替换，原文在页面上必须唯一。改过的文字、换过版的组件留着以前的样子（W12 §4.7）；
+// 文字里单独一行写 `[[组件:名字]]` 的，组件嵌在那里（W12 §5.1）。
+import type { MessageQuote, NumberedRecord } from './records.ts';
 
 /** 页面工具的名字（英文，接口只认英文）。 */
 export const STREAM_TOOLS = {
@@ -24,10 +25,13 @@ const OPS = new Set<string>([
 
 export type StreamMark = 'new' | 'edited' | 'moved' | 'back';
 
+/** 文字里嵌组件的那一行：`[[组件:名字]]`（W12 §5.1）。 */
+export const INLINE_COMPONENT = /^\s*\[\[组件[:：]\s*(.+?)\s*\]\]\s*$/;
+
 export interface StreamBlock {
-  /** 程序里认块用（t12 主模型的话、u12 学习者、o3 开场、c:名字 组件），不进主模型上下文。 */
+  /** 程序里认块用（t12 学习对话的话、u12 学习者、c:名字 组件），不进模型上下文。 */
   id: string;
-  kind: 'text' | 'learner' | 'opening' | 'component';
+  kind: 'text' | 'learner' | 'component';
   /** 出自正本哪一行（组件 = 第一次交它的那行）。 */
   line: number;
   /** 正文：主模型的话（改过的是改后的）、学习者的话；组件 = 它的 HTML。 */
@@ -38,8 +42,12 @@ export interface StreamBlock {
   /** 学习者：选中了页面上哪处再说的；或这句是在组件上的操作（组件名）。 */
   quote?: MessageQuote;
   op?: string;
-  /** 开场：那时的单子。 */
-  ticket?: Ticket;
+  /** 以前的样子（W12 §4.7）：文字改过的改前各版、组件的前几版 HTML，早的在前。 */
+  history?: string[];
+  /** 组件嵌在页面上某段文字里（那段写了 `[[组件:名字]]`）：不再单独占一块。 */
+  inline?: true;
+  /** 学习者停下后改过这一句（W12 §4.4）。 */
+  edited?: true;
   /** 最后一次被放上、改、挪、拿回是哪一行、怎么动的。 */
   touched: { line: number; how: StreamMark };
 }
@@ -54,28 +62,27 @@ export interface StreamPage {
 /** 从正本算现在的页面；until = 只算到这一行之前（不含）。 */
 export function replayStream(records: NumberedRecord[], until = Infinity): StreamPage {
   let page: StreamPage = { on: [], off: [] };
-  let opening = false;
-  const ticket =
-    records[0]?.record.type === 'session_opened' ? records[0].record.ticket : undefined;
   for (const { line, record: r } of records) {
     if (line >= until) break;
     const add = (b: Omit<StreamBlock, 'touched'>) => {
       page = { ...page, on: [...page.on, { ...b, touched: { line, how: 'new' } }] };
     };
     switch (r.type) {
-      case 'program_fact':
-        // 开场 = 开学习时程序交的第一条事实；上页面只显示单子，程序写给模型的别的不上
-        if (!opening) {
-          opening = true;
-          add({
-            id: `o${String(line)}`,
-            kind: 'opening',
-            line,
-            text: ticket !== undefined ? `这次学习的单子：${ticket.newPoint}` : '这次学习的开场',
-            ...(ticket !== undefined ? { ticket } : {}),
-          });
-        }
+      case 'message_edited': {
+        // 学习者停下后改了刚发的那句（W12 §4.4）：页面上只显示改后的；改前那句之后的回答不再显示
+        if (r.by !== 'learner') break;
+        const from = r.line;
+        const keep = (b: StreamBlock) => !(b.kind === 'text' && b.line > from && b.line < line);
+        page = {
+          on: page.on
+            .filter(keep)
+            .map((b) =>
+              b.id === `u${String(from)}` ? { ...b, text: r.text, edited: true as const } : b,
+            ),
+          off: page.off.filter(keep),
+        };
         break;
+      }
       case 'user_message':
         add({
           id: `u${String(line)}`,
@@ -92,7 +99,10 @@ export function replayStream(records: NumberedRecord[], until = Infinity): Strea
         }
         break;
       case 'assistant_message':
-        if (r.text.trim() !== '') add({ id: `t${String(line)}`, kind: 'text', line, text: r.text });
+        // 工具调用之间说的话不上页面（W12 §4.6）
+        if (r.interim !== true && r.text.trim() !== '') {
+          add({ id: `t${String(line)}`, kind: 'text', line, text: r.text });
+        }
         break;
       case 'tool_call':
         if (!r.isError && OPS.has(r.name)) {
@@ -104,16 +114,46 @@ export function replayStream(records: NumberedRecord[], until = Infinity): Strea
         break;
     }
   }
-  return page;
+  return markInline(page);
 }
 
-/** 学习者最后一次说话之后动过的块要标出来（到他下次说话为止）。 */
-export function freshMark(records: NumberedRecord[], b: StreamBlock): StreamMark | undefined {
-  let lastSaid = 0;
-  for (const { line, record: r } of records) if (r.type === 'user_message') lastSaid = line;
-  // 学习者还没说过话（刚开场）时整页都是新的，不标；开场块不标
-  if (lastSaid === 0 || b.kind === 'opening') return undefined;
-  return b.touched.line > lastSaid ? b.touched.how : undefined;
+/** 页面上文字里嵌了哪些组件（`[[组件:名字]]`）：那些组件标 inline，不再单独占一块。 */
+function markInline(page: StreamPage): StreamPage {
+  const named = new Set<string>();
+  for (const b of page.on) {
+    if (b.kind !== 'text') continue;
+    for (const l of b.text.split('\n')) {
+      const m = INLINE_COMPONENT.exec(l);
+      if (m?.[1] !== undefined) named.add(m[1]);
+    }
+  }
+  if (named.size === 0) return page;
+  const mark = (b: StreamBlock): StreamBlock =>
+    b.kind === 'component' && b.name !== undefined && named.has(b.name)
+      ? { ...b, inline: true }
+      : b;
+  return { on: page.on.map(mark), off: page.off.map(mark) };
+}
+
+/** 一段文字拆成文字段与嵌进来的组件（按 `[[组件:名字]]` 那一行拆）。 */
+export function inlineParts(
+  text: string,
+): ({ kind: 'text'; text: string } | { kind: 'component'; name: string })[] {
+  const out: ({ kind: 'text'; text: string } | { kind: 'component'; name: string })[] = [];
+  let buf: string[] = [];
+  const flush = () => {
+    if (buf.join('\n').trim() !== '') out.push({ kind: 'text', text: buf.join('\n') });
+    buf = [];
+  };
+  for (const l of text.split('\n')) {
+    const m = INLINE_COMPONENT.exec(l);
+    if (m?.[1] !== undefined) {
+      flush();
+      out.push({ kind: 'component', name: m[1] });
+    } else buf.push(l);
+  }
+  flush();
+  return out;
 }
 
 /**
@@ -172,6 +212,8 @@ export function applyStreamOp(
         text: html,
         name,
         version,
+        // 前几版留着（W12 §4.7：第 N 版，能点开看旧版）
+        ...(was !== undefined ? { history: [...(was.history ?? []), was.text] } : {}),
         touched: { line, how: was === undefined ? 'new' : 'edited' },
       };
       const after = s('after');
@@ -225,7 +267,15 @@ function edit(
     }
     const text = b.text.split(old).join(neu);
     if (text.trim() === '') off.push(b);
-    else on.push({ ...b, text, touched: { line, how: 'edited' } });
+    else {
+      // 改过的留着改前的样子（W12 §4.7）
+      on.push({
+        ...b,
+        text,
+        history: [...(b.history ?? []), b.text],
+        touched: { line, how: 'edited' },
+      });
+    }
   }
   return { on, off };
 }
@@ -288,10 +338,8 @@ export function streamPageText(
         return b.op !== undefined
           ? `[第 ${String(b.line)} 行 · 学习者在组件「${b.op}」上]`
           : `[第 ${String(b.line)} 行 · 学习者${quoteHead(b.quote)}]`;
-      case 'opening':
-        return `[第 ${String(b.line)} 行 · 开场]`;
       case 'component':
-        return `[组件「${b.name ?? ''}」· 第 ${String(b.version ?? 1)} 版]`;
+        return `[组件「${b.name ?? ''}」· 第 ${String(b.version ?? 1)} 版${b.inline === true ? ' · 嵌在文字里' : ''}]`;
     }
   };
   const comp = opts.component ?? ((html: string) => `（HTML ${String(html.length)} 字符）`);

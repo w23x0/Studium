@@ -222,9 +222,29 @@ export class Materials {
       owner: req.owner ?? { kind: 'project', projects: [mainId] },
       importedFrom: mainId,
       ...(req.learned !== undefined ? { learned: req.learned } : {}),
+      ...(req.classify !== undefined ? { classify: req.classify } : {}),
     };
     await this.write(dir, src);
     this.run(dir, src, req);
+    return src;
+  }
+
+  /**
+   * 导入会话判完一份上传归哪边、归谁（W12 §1.6）：改“学过的”标记与归属、去掉待判，按新标记重放纯文字（对话记录
+   * 要转逐条 md、加开头那句）。导入会话照旧开着，接着处理。
+   */
+  async reclassify(
+    id: string,
+    learned: MaterialSource['learned'] | undefined,
+    owner: MaterialOwner,
+  ): Promise<MaterialSource> {
+    const e = await this.require(id);
+    const src: MaterialSource = { ...e.src, owner };
+    if (learned === undefined) delete src.learned;
+    else src.learned = learned;
+    delete src.classify;
+    await this.write(e.dir, src);
+    await this.copyText(e.dir, src);
     return src;
   }
 
@@ -291,18 +311,6 @@ export class Materials {
     await this.write(e.dir, src);
     this.run(e.dir, src, { kind: src.kind, origin: src.origin, title: src.title });
     return src;
-  }
-
-  /** 模型判断的角色（主资料 / 参考资料）写进 source.json；同值不重写。 */
-  async setRole(id: string, value: '主资料' | '参考资料', sessionId: string): Promise<boolean> {
-    const e = await this.entry(id);
-    if (e === undefined) return false;
-    if (e.src.role?.value === value) return true;
-    await this.write(e.dir, {
-      ...e.src,
-      role: { value, by: 'model', at: this.now().toISOString(), sessionId },
-    });
-    return true;
   }
 
   // ───────────── 导入会话（W11 §4，试验）用 ─────────────
@@ -403,7 +411,7 @@ export class Materials {
     const head = [
       `# 资料：${e.src.title}`,
       '',
-      `种类 ${e.src.kind} · 归属 ${owner}${e.src.learned !== undefined ? ` · 学过的（${e.src.learned.channel}）` : ''} · 版本 ${e.src.version || '—'} · 日期 ${e.src.fetchedAt.slice(0, 10)} · 状态 ${e.src.status}${e.src.role !== undefined ? ` · ${e.src.role.value}` : ''}`,
+      `种类 ${e.src.kind} · 归属 ${owner}${e.src.learned !== undefined ? ` · 学过的（${e.src.learned.channel}）` : ''} · 版本 ${e.src.version || '—'} · 日期 ${e.src.fetchedAt.slice(0, 10)} · 状态 ${e.src.status}`,
       `来源：${e.src.origin}`,
       ...(e.src.problems !== undefined ? [`有问题：${e.src.problems.join('；')}`] : []),
       '',
@@ -515,7 +523,21 @@ export class Materials {
     return walk(await this.bodyDir(id));
   }
 
-  /** 导入会话写的 说明.md（学过的那段总结；没有 = undefined），清单里带它的开头。 */
+  /**
+   * 找资料对话给一份网上找来的写的说明（W12 §6.3：讲什么、可信度、和官方说法哪里不一致）：写进工作层的 说明.md，
+   * 原件层照旧原样。by = 写它的会话。
+   */
+  async writeNote(id: string, note: string, by: string): Promise<void> {
+    const body = await this.bodyDir(id);
+    await mkdir(body, { recursive: true });
+    await writeFile(
+      join(body, GUIDE_FILE),
+      `# 说明（找资料对话 ${by} 写的，不是原文）\n\n${note.trim()}\n`,
+      'utf8',
+    );
+  }
+
+  /** 说明.md（导入会话写的学过的那段总结、找资料对话写的说明；没有 = undefined），清单里带它的开头。 */
   async guide(id: string): Promise<string | undefined> {
     try {
       return await readFile(join(await this.bodyDir(id), GUIDE_FILE), 'utf8');
@@ -727,7 +749,6 @@ export class Materials {
    */
   private async importLocal(dir: string, src: MaterialSource): Promise<void> {
     const original = join(dir, ORIGINAL_DIR);
-    const body = join(dir, BODY_DIR);
     if (!(await exists(original))) {
       const st = await stat(src.origin);
       await mkdir(original, { recursive: true });
@@ -736,6 +757,65 @@ export class Materials {
         filter: (p) => !p.split(/[/\\]/).some((seg) => seg === '.git'),
       });
     }
+    const { all, version, skipped, others, converter } = await this.copyText(dir, src);
+    const problems = skipped.length > 0 ? [`转不了，原件里留着：${skipped.join('、')}`] : [];
+    if (all.length === skipped.length) {
+      return this.write(dir, {
+        ...src,
+        version,
+        status: '失败',
+        problems: ['没有能读的内容', ...problems],
+      });
+    }
+    // 学过的（笔记、别处的对话记录）都交导入会话写一段总结（说明.md），清单里带着，别的会话据此决定读不读原文（11-02）；
+    // 上传时归哪边拿不准的也交导入会话判（W12 §1.6）
+    if (others.length === 0 && src.learned === undefined && src.classify === undefined) {
+      return this.write(dir, {
+        ...src,
+        version,
+        converter,
+        status: '可用',
+        ...(problems.length > 0 ? { problems } : {}),
+      });
+    }
+    // 交导入会话：状态保持“处理中”，会话交回后改（W11 §4）
+    await this.write(dir, {
+      ...src,
+      version,
+      // 只为写总结 / 判归哪边的记 summary：被打断时文字照样能读，不算失败
+      converter: others.length === 0 ? 'summary' : 'import-session',
+      ...(problems.length > 0 ? { problems } : {}),
+    });
+    if (this.importer === undefined) {
+      const cur = (await this.entry(src.id))?.src ?? src;
+      return this.write(dir, {
+        ...cur,
+        status: '失败',
+        problems: [
+          ...problems,
+          '要交导入会话处理（不是纯文字的文件 / 学过的要写总结），但没接上模型',
+        ],
+      });
+    }
+    await this.importer(src.id, others);
+  }
+
+  /**
+   * 原件里的纯文字按同一相对路径放进 `正文/`（字幕转 md，对话记录的对话导出转逐条 md 并加开头那句）；
+   * 返回原件清单、整份指纹、转不了的、不是纯文字的（交导入会话）与用的转换。
+   */
+  private async copyText(
+    dir: string,
+    src: MaterialSource,
+  ): Promise<{
+    all: string[];
+    version: string;
+    skipped: string[];
+    others: string[];
+    converter: string;
+  }> {
+    const original = join(dir, ORIGINAL_DIR);
+    const body = join(dir, BODY_DIR);
     const all = await allFiles(original);
     const version = await hashTree(original, all);
     const chat = src.learned?.channel === '对话记录';
@@ -761,7 +841,7 @@ export class Materials {
         name = `${f.slice(0, -ext.length)}.md`;
         text = subtitleToMarkdown(raw);
         converter = 'srt';
-      } else if (ext === '.json' && chat) {
+      } else if ((ext === '.json' || ext === '.jsonl') && chat) {
         name = `${f.slice(0, -ext.length)}.md`;
         text = chatExportToMarkdown(raw, src.title);
         converter = 'chat-export';
@@ -770,45 +850,7 @@ export class Materials {
       await mkdir(dirname(join(body, name)), { recursive: true });
       await writeFile(join(body, name), text, 'utf8');
     }
-    const problems = skipped.length > 0 ? [`转不了，原件里留着：${skipped.join('、')}`] : [];
-    if (all.length === skipped.length) {
-      return this.write(dir, {
-        ...src,
-        version,
-        status: '失败',
-        problems: ['没有能读的内容', ...problems],
-      });
-    }
-    // 学过的（笔记、别处的对话记录）都交导入会话写一段总结（说明.md），清单里带着，别的会话据此决定读不读原文（11-02）
-    if (others.length === 0 && src.learned === undefined) {
-      return this.write(dir, {
-        ...src,
-        version,
-        converter,
-        status: '可用',
-        ...(problems.length > 0 ? { problems } : {}),
-      });
-    }
-    // 交导入会话：状态保持“处理中”，会话交回后改（W11 §4）
-    await this.write(dir, {
-      ...src,
-      version,
-      // 只为写总结的记 summary：被打断时文字照样能读，不算失败
-      converter: others.length === 0 ? 'summary' : 'import-session',
-      ...(problems.length > 0 ? { problems } : {}),
-    });
-    if (this.importer === undefined) {
-      const cur = (await this.entry(src.id))?.src ?? src;
-      return this.write(dir, {
-        ...cur,
-        status: '失败',
-        problems: [
-          ...problems,
-          '要交导入会话处理（不是纯文字的文件 / 学过的要写总结），但没接上模型',
-        ],
-      });
-    }
-    await this.importer(src.id, others);
+    return { all, version, skipped, others, converter };
   }
 
   /**
