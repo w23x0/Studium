@@ -33,7 +33,7 @@ export interface SessionSummary {
 /**
  * 派生层记下的对话状态（只记事实，不分组）：
  * guarded 收尾那一句到了（旧数据：守卫交回）、等学习者点“学完了” · closed / unclosed 学习合上 / 没合上就结束 · shelved 学习停着 ·
- * candidates 找资料交回候选、等学习者勾 · ended 谈方向谈定、找资料勾完、导航定了单子。
+ * candidates 旧数据：找资料交回候选、等学习者勾 · ended 谈方向谈定、讨论串结束（旧数据还有找资料勾完、写产出与阶段复盘）。
  */
 export type SessionMark = 'guarded' | 'closed' | 'unclosed' | 'shelved' | 'candidates' | 'ended';
 
@@ -342,22 +342,6 @@ export interface ProjectOverview {
   load: LoopLoad;
 }
 
-/** 学习之间的关系（从哪来）。 */
-export interface LoopRelationView {
-  loopSessionId: string;
-  title: string;
-  /** 从哪来：选择卡 / 接着以前那次学习。 */
-  origin:
-    { kind: 'card'; cardId: string } | { kind: 'resume'; fromLoop: string } | { kind: 'unknown' };
-  status: LoopStatus;
-  shelved?: boolean;
-}
-
-export interface LoopRelationsResponse {
-  mainSessionId: string;
-  relations: LoopRelationView[];
-}
-
 export interface ShelveRequest {
   note?: string;
 }
@@ -399,13 +383,13 @@ export interface DisclosureResponse {
   adapter: string;
   /** 会送出去的内容。 */
   sends: string[];
-  /** 会联网搜索的会话种类与说明（畅谈、导航；来自程序实际放开的名单）。 */
+  /** 会联网搜索的会话种类与说明（来自程序实际放开的名单）。 */
   webSearch?: {
     sessions: { kind: ConversationKind; label: string }[];
     note?: string;
   };
   /**
-   * 各类会话（加学习对话派的子代理、学习页的框架小模型）配的模型与强度；
+   * 各类会话配的模型与强度；
    * model 为空 = 没单独指定（用服务默认，实际执行的模型记在每条记录里）。
    */
   sessions: {
@@ -415,7 +399,7 @@ export interface DisclosureResponse {
     effort: string | null;
   }[];
   note: string;
-  /** 输入（图片转写、语音）各送往哪里（批 4）。 */
+  /** 输入（图片、语音）各送往哪里（批 4）。 */
   inputs: InputDisclosure[];
 }
 
@@ -769,7 +753,7 @@ export interface ProjectMaterialView {
 export interface ProjectMaterialsResponse {
   mainSessionId: string;
   materials: ProjectMaterialView[];
-  /** 恒为 true：学习 / 导航 / 检索只在本项目能读的资料里查（按归属；别的项目的读不到）。 */
+  /** 恒为 true：各对话只在本项目能读的资料里查（按归属；别的项目的读不到）。 */
   restricted: boolean;
   deadline?: string;
   deadlineNote?: string;

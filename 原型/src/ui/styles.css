@@ -109,25 +109,6 @@
   }
 }
 
-/* 学习页的布局（会话/学习对话.md §11）：宽屏照区域图摆；窄屏按区域图的阅读顺序排成一列（元素本来就按这个顺序输出）。 */
-.learn-grid {
-  display: flex;
-  flex-direction: column;
-  gap: 1.25rem;
-}
-@media (min-width: 768px) {
-  .learn-grid {
-    display: grid;
-    grid-template-columns: var(--learn-cols);
-    grid-template-areas: var(--learn-areas);
-    gap: 1.25rem 1.75rem;
-    align-items: start;
-  }
-  .learn-grid > [data-area] {
-    grid-area: var(--learn-area);
-  }
-}
-
 /* 独立公式太长时在自己那一块里左右滑动，不撑破页面（手机上常见）；上下留白，积分上下限这类高出行框的不被裁掉 */
 .katex-display {
   overflow-x: auto;

@@ -59,7 +59,7 @@ function toPosix(p: string): string {
  * 按这里解析的路径才和框架实际读写的是同一处，再按读写范围判（主对话的相对路径会落进被挡的数据目录）。
  */
 export function baseDir(sb: SandboxSpec): string {
-  return sb.cwd ?? sb.workdir;
+  return sb.workdir;
 }
 
 /** 虚拟 / 相对 / 绝对路径 → 绝对路径（`..` 规范化）。 */

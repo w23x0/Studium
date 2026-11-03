@@ -123,7 +123,7 @@ export function Conversation(props: {
 
   const runtime = useExternalStoreRuntime<UiMessage>({
     messages,
-    // 不把“模型在答”告诉输入框：答到一半也能接着说（中途插话），“正在答”由最后一条占位显示
+    // 不把“模型在答”告诉输入框：答到一半也能接着说（排到这一轮之后），“正在答”由最后一条占位显示
     isRunning: false,
     convertMessage: (m): ThreadMessageLike => ({
       id: m.id,

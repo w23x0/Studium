@@ -149,7 +149,12 @@ const REMOVED_ACTIONS = new Set<string>([
   'requestCard',
   'choose',
   'outputs.markCandidate',
-  // W12：写产出撤掉
+  // W12：写产出、状态 / 教法记录、勾候选、阶段复盘撤掉
+  'objectToRecord',
+  'confirmRecord',
+  'pickCandidates',
+  'longterm.startReview',
+  'addStateExplanation',
   'outputs.create',
   'outputs.save',
   'outputs.addLiterature',

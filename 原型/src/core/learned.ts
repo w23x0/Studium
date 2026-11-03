@@ -107,7 +107,11 @@ export class Learned {
    * 归属；资料删了或改成只归别的项目就不给，W11）；畅谈的照给（学过的按人）。
    */
   async imports(project?: string): Promise<Import[]> {
-    const all = await this.allImports();
+    // 谈方向时说的、而那条谈方向被学习者删了的，不再给（W12 §4.3）
+    const hub = this.o.hub();
+    const all = (await this.allImports()).filter(
+      (x) => !('session' in x.ref) || !hub.isDeleted(x.ref.session),
+    );
     if (project === undefined) return all;
     const out: Import[] = [];
     for (const x of all) {
@@ -270,8 +274,8 @@ export class Learned {
     loopId: string,
     records: NumberedRecord[],
   ): Promise<Learning['routeDecision']> {
-    const ended = records.find((r) => r.record.type === 'loop_ended')?.record;
-    if (ended?.type !== 'loop_ended') return undefined;
+    const ended = foldLoop(records).ended;
+    if (ended === undefined) return undefined;
     const opened = await this.o.hub().opened(loopId);
     if (opened.parent === undefined) return undefined;
     const main = await this.o.hub().records(opened.parent);
@@ -292,8 +296,8 @@ export class Learned {
     for (const s of hub.listSessions().filter((x) => x.kind === 'loop')) {
       const opened = await hub.opened(s.sessionId);
       if (opened.resumeOf === undefined) continue;
-      const ended = (await hub.records(s.sessionId)).find((r) => r.record.type === 'loop_ended');
-      if (ended?.record.type === 'loop_ended' && ended.record.closed) {
+      const ended = foldLoop(await hub.records(s.sessionId)).ended;
+      if (ended?.closed === true) {
         resumedClosed.add(opened.resumeOf.fromLoop);
       }
     }
@@ -301,12 +305,19 @@ export class Learned {
     for (const l of learnings) {
       if (l.status !== '没合上') continue;
       if (resumedClosed.has(l.loopId)) continue;
-      const madeUp = everything.some(
-        (x) =>
-          x.status === '合上' && x.ticket.newPoint === l.ticket.newPoint && x.openedAt > l.openedAt,
-      );
+      // 新点文字相同的后来合上了（W12 起新开的学习没有单子、新点是空的，不拿空的比）
+      const madeUp =
+        l.ticket.newPoint !== '' &&
+        everything.some(
+          (x) =>
+            x.status === '合上' &&
+            x.ticket.newPoint === l.ticket.newPoint &&
+            x.openedAt > l.openedAt,
+        );
       if (madeUp) continue;
-      const ended = (await hub.records(l.loopId)).find((r) => r.record.type === 'loop_ended');
+      const recs = await hub.records(l.loopId);
+      const last = foldLoop(recs).ended;
+      const ended = recs.find((r) => r.record === last);
       out.push({ learning: l, ...(ended !== undefined ? { endLine: ended.line } : {}) });
     }
     return out;

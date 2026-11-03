@@ -613,8 +613,6 @@ export class Hub {
           type: 'sandbox_action',
           at: this.iso(),
           actor: 'model',
-          ...(ev.agent !== undefined ? { agent: ev.agent } : {}),
-          ...(ev.task !== undefined ? { task: ev.task } : {}),
           op: ev.action.op,
           ...(ev.action.path !== undefined ? { path: ev.action.path } : {}),
           ...(ev.action.command !== undefined ? { command: ev.action.command } : {}),
@@ -645,29 +643,6 @@ export class Hub {
           reason: ev.reason,
           ...(ev.notice !== undefined ? { notice: ev.notice } : {}),
         });
-        break;
-      case 'subagent':
-        await this.flushPending(sessionId, live, true);
-        await this.append(
-          sessionId,
-          ev.phase === 'started'
-            ? {
-                type: 'subagent_started',
-                at: this.iso(),
-                agent: ev.agent,
-                taskId: ev.taskId,
-                ...(ev.description !== undefined ? { description: ev.description } : {}),
-                ...(ev.brief !== undefined ? { brief: ev.brief } : {}),
-              }
-            : {
-                type: 'subagent_result',
-                at: this.iso(),
-                agent: ev.agent,
-                taskId: ev.taskId,
-                status: ev.status ?? 'completed',
-                text: ev.text ?? '',
-              },
-        );
         break;
       case 'usage':
         await this.append(sessionId, {

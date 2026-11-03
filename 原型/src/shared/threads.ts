@@ -1,4 +1,4 @@
-// 讨论串（一个项目开出去的任务对话）的分组与“现在结束没有”：界面的讨论串栏与主对话每轮附上的讨论串清单共用这一处。
+// 讨论串（一个项目开出去的任务对话）的分组与“现在结束没有”：界面的讨论串栏、主对话里的卡片与 list_threads 共用这一处。
 // 想调“什么算结束、什么算等你”，只改 GROUP_OF。
 import type { SessionMark, SessionSummary } from './protocol.ts';
 import type { ConversationKind, LogRecord } from './records.ts';

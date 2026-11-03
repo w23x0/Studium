@@ -22,7 +22,7 @@ export interface ToolSpec {
 
 /**
  * 一个会话的沙盒：能读写哪些数据、能否联网，由程序在执行环境里写死（记录/读写权限.md「执行方式」）。
- * 学习对话与导航派出的检索子代理用它；模型看到的是虚拟路径（`笔记.md`、`只读/学过的记录/…`）。
+ * 学习对话与导入会话用它；模型看到的是虚拟路径（`笔记.md`、`只读/学过的记录/…`）。
  */
 export interface SandboxSpec {
   /** 模型可写的工作区（绝对路径）。 */
@@ -33,39 +33,8 @@ export interface SandboxSpec {
   network: boolean;
   /** 默认 true：给跑命令（Bash）。 */
   commands?: boolean;
-  /**
-   * SDK 子进程的工作目录（续接按它找会话文件）；不给 = workdir。主对话要保持数据目录，旧的主对话才接得上
-   * （W11 §5）；这时命令行的可写范围仍只有 workdir。
-   */
-  cwd?: string;
   /** 挡掉不让读的（绝对路径；在只读区里也挡）：存密钥的位置、数据目录等（W11 §5）。工作区除外。 */
   denyRead?: string[];
-}
-
-/**
- * 旧：主模型可以派的一个子代理（框架自带的子代理机制；W12 撤掉区域图学习页后没有会话再派，类型留给适配器的权限判断）。默认在后台跑，做完交回一段话，
- * 按时间接在主模型上下文后面。只能写 `writable` 下面、只能读 `writable` 与 `readable`，不给跑命令。
- * 模型与强度不在这里写死：适配器按 profiles 的 `subagent` 一项配（会话/页面子代理.md「模型」单独配）。
- */
-export interface SubagentSpec {
-  /** 派它时用的名字（只用字母、数字、下划线、连字符）。 */
-  name: string;
-  /** 什么时候派它（给主模型看）。 */
-  description: string;
-  /** 它自己的系统提示。 */
-  prompt: string;
-  /** 它能用的框架自带工具（如 Read / Edit / Write / Glob）。 */
-  builtins: string[];
-  /** 只有它能用的、我们的工具名（主模型不能调）；工具本身放在 ConversationSpec.tools 里。 */
-  ownTools: string[];
-  /** 它能写的目录（绝对路径，须在工作区里）；主模型不能写这里。 */
-  writable: string;
-  /** 它还能读的（绝对路径，目录或单个文件）；不给 = 只读得到 `writable`。 */
-  readable?: string[];
-  /** 某件活另外能读的（按这件活的编号，如派它画学习位置图时给位置依据）。 */
-  readableFor?: (task: string | undefined) => string[];
-  /** 它还在做上一件（主模型这时再派一个同名的会被拦下，叫它等或用 SendMessage 接着说）；不给 = 不限个数。 */
-  busy?: () => boolean;
 }
 
 export interface ConversationSpec {
@@ -92,10 +61,6 @@ export interface ConversationSpec {
 /** 沙盒里的一个动作，程序当场记（不靠模型自报）。`content` 只有写类动作填。 */
 export interface SandboxActionEvent {
   kind: 'sandbox_action';
-  /** 子代理做的：它的名字（主模型自己做的不填）。 */
-  agent?: string;
-  /** 子代理做的：它这件活的编号（同 SubagentEvent.taskId）。 */
-  task?: string;
   action: {
     op: 'read' | 'write' | 'run' | 'search' | 'other';
     /** 虚拟路径（工作区里的相对工作区；只读的 `只读/<name>/…`）。 */
@@ -124,22 +89,6 @@ export interface TurnInput {
   images?: ImageData[];
 }
 
-/** 子代理开始 / 做完（程序当场记）。 */
-export interface SubagentEvent {
-  kind: 'subagent';
-  phase: 'started' | 'done';
-  agent: string;
-  taskId: string;
-  /** 开始时：主模型派它时的一句说明。 */
-  description?: string;
-  /** 开始时：主模型派它时给的交代原文。 */
-  brief?: string;
-  /** 做完时：completed / failed / stopped。 */
-  status?: string;
-  /** 做完时：它交回的那段话。 */
-  text?: string;
-}
-
 export type ModelEvent =
   /** 流式增量文字，只给界面显示，不进正本。 */
   | { kind: 'text_delta'; text: string }
@@ -153,7 +102,6 @@ export type ModelEvent =
   | { kind: 'model'; name: string }
   /** 沙盒里的一个动作（读 / 写 / 跑命令……），程序当场记进正本。 */
   | SandboxActionEvent
-  | SubagentEvent
   /** 主模型开始调一个工具（W12 §4.5 正在做什么）：工具名与参数，只给界面显示一行，不进正本。 */
   | { kind: 'activity'; tool: string; input: Record<string, unknown> }
   /** 一轮跑完时主模型上下文多大（最后一次回话的 input + 缓存读 + 缓存写）与这一轮输出了多少（token）。 */
@@ -172,8 +120,8 @@ export interface ModelConversation {
    */
   interrupt?(): Promise<void>;
   /**
-   * 接住不是 send() 引起的事（子代理在后台跑）：`side` 是不属于主模型某一轮的事件（子代理的动作、
-   * 开始 / 做完）；`unprompted` 是模型自己起的一轮（子代理做完、主模型空着时框架自己接着跑一轮），
+   * 接住不是 send() 引起的事：`side` 是不属于哪一轮的事件（续接凭据、模型名、用量）；`unprompted` 是
+   * 模型自己起的一轮（主模型空着时框架自己接着跑一轮），
    * 交来这一轮的事件流，直到 turn_end 或 turn_error。适配器不支持就不实现。
    */
   listen?(handlers: {

@@ -28,7 +28,6 @@ import type {
   UploadsResponse,
   ProjectInstructionsResponse,
   ImportTextResponse,
-  LoopRelationsResponse,
   AddReminderRequest,
   LearnedResponse,
   LearningResponse,
@@ -123,8 +122,6 @@ export const api = {
   // ── 学到一半：先放一放、恢复 ──
   resume: (loopId: string) =>
     call<object>(`/sessions/${loopId}/resume`, { method: 'POST', body: '{}' }),
-  loopRelations: (mainId: string) =>
-    call<LoopRelationsResponse>(`/projects/${mainId}/loop-relations`),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
   /** 旧的区域图学习只读看：每个组件最后一版。 */
   oldComponents: (loopId: string) => call<OldComponentsResponse>(`/sessions/${loopId}/screens`),
@@ -177,7 +174,7 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ token }),
     }),
-  // ── 输入：图片原样上传、转写 ──
+  // ── 输入：图片原样上传 ──
   uploadImage: async (blob: Blob, name?: string, derivedFrom?: string) => {
     const res = await fetch(`/api/attachments?${qs({ name, derivedFrom })}`, {
       method: 'POST',

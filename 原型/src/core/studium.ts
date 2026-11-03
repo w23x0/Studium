@@ -65,7 +65,7 @@ const IMPORT_TIMEOUT_MS = 60 * 60 * 1000;
 
 export interface StudiumOptions {
   prompts: Record<ConversationKind, string>;
-  /** 项目资料区（工单 W8）：读原文、建资料、角色、正文目录。 */
+  /** 项目资料区（工单 W8）：读原文、建资料、正文目录。 */
   materials: Materials;
   /** 数据目录（学过的记录的导入存放处在其下）。 */
   dataDir: string;
@@ -206,7 +206,7 @@ export class Studium {
 
   private readonly idListeners = new Set<(prefix: string, id: string) => void>();
 
-  /** 程序生成的编号（选择卡、状态记录 / 教法记录等）；录带按生成顺序给它们稳定记号。 */
+  /** 程序生成的编号（试跑、异议等）；录带按生成顺序给它们稳定记号。 */
   private newId(prefix: string): string {
     const id = `${prefix}-${randomBytes(4).toString('hex')}`;
     for (const fn of this.idListeners) fn(prefix, id);
@@ -293,14 +293,14 @@ export class Studium {
             this.listLearnedTool(sessionId, true),
             this.readImportTool(sessionId),
             this.settleGoalTool(sessionId),
-            ...this.threadTools(sessionId),
+            ...this.threadTools(sessionId, 'talk'),
             await this.askProjectTool(sessionId),
           ];
         case 'loop':
           // 学习对话在沙盒里跑（只读资料与记录、可写工作区），自己读、自己定这次的边界（W12 §2）
           return [
             ...this.loopTools(sessionId),
-            ...this.threadTools(sessionId),
+            ...this.threadTools(sessionId, 'loop'),
             await this.askProjectTool(sessionId),
           ];
         case 'find':
@@ -308,7 +308,7 @@ export class Studium {
             ...this.readTools(sessionId),
             this.listLearnedTool(sessionId),
             ...this.findTools(sessionId),
-            ...this.threadTools(sessionId),
+            ...this.threadTools(sessionId, 'find'),
           ];
         case 'import':
           return this.importTools(sessionId);
@@ -622,7 +622,7 @@ export class Studium {
 
   // ───────────── 问别的项目的主对话（W11 §6，试验） ─────────────
 
-  /** 学习对话、导航、畅谈、主对话用：读不到别的项目的资料时，直接问那个项目的主对话。 */
+  /** 学习对话、谈方向、主对话用：读不到别的项目的资料时，直接问那个项目的主对话。 */
   private async askProjectTool(sessionId: string): Promise<ToolSpec> {
     const own = await this.projectOf(sessionId);
     const others = (await this.listProjects()).filter((p) => p.mainSessionId !== own);
@@ -769,7 +769,7 @@ export class Studium {
 
   /**
    * 项目资料的视图（记录/资料.md「浏览」）：本项目能读的全部（本项目的 + 学习者的），每份带种类 / 归属 / 版本 /
-   * 日期 / 处理状态 / 模型判断的角色。
+   * 日期 / 处理状态。
    */
   /** 设置里的 MinerU 密钥入口（临时）。 */
   mineruTokenSet(): Promise<boolean> {
@@ -986,34 +986,13 @@ export class Studium {
     return this.instructions(mainId);
   }
 
-  /** 开场里的项目说明一段（主对话、畅谈、导航、找资料用；后台整理不给）。 */
+  /** 项目说明一段（谈方向、找资料开场时程序附上）。 */
   private async instructionsBlock(mainId: string): Promise<string> {
     const t = (await this.instructions(mainId)).text;
     return `项目说明（学习者明确的长期要求；与学习者当场说的冲突时以当场为准）：${t !== '' ? `\n${t}` : '还没写'}`;
   }
 
-  // ───────────── 找资料（`docs/设计/会话/找资料.md`；工单 W9 §4.5） ─────────────
-
-  /** 找资料对话的开场：学习者那句话、方向说明、项目说明、本项目已有资料。 */
-  private async findOpening(mainId: string, request: string, line: number): Promise<string> {
-    const records = await this.hub.records(mainId);
-    const goal = currentGoal(records);
-    const rows: string[] = [];
-    for (const src of await this.o.materials.ofProject(mainId)) {
-      rows.push(
-        `- ${src.id}｜${src.title}｜${src.kind}｜${src.origin.startsWith('/') ? '本机文件' : src.origin}`,
-      );
-    }
-    return [
-      `学习者在主对话里说（主对话第 ${String(line)} 行）：${request}`,
-      '',
-      goal !== undefined ? describeGoal(goal.goal) : '方向目标：还没有',
-      '',
-      await this.instructionsBlock(mainId),
-      '',
-      `本项目能读的资料（id｜标题｜种类｜来源）：\n${rows.join('\n') || '（还没有）'}`,
-    ].join('\n');
-  }
+  // ───────────── 找资料（`docs/设计/会话/找资料.md`；W12 §4.8 起自己定存哪些、直接存） ─────────────
 
   /**
    * 找资料对话的工具（W12 §4.8）：自己定存哪些、直接存，每份在工作层写一张说明（§6.3）；学习者说不要就删
@@ -1550,7 +1529,7 @@ export class Studium {
             ? '主对话'
             : record.type === 'program_fact'
               ? '程序'
-              : record.type === 'thread_message'
+              : record.type === 'thread_message' && !this.hub.isDeleted(record.from)
                 ? `${this.hub.labelOf(record.from)}发来`
                 : undefined;
       if (who === undefined || !('text' in record)) continue;
@@ -1750,7 +1729,7 @@ export class Studium {
   // ───────────── 讨论串之间（W12 §3.3，照 Claude 讨论串的工具） ─────────────
 
   /** 讨论串的工具（谈方向、找资料、学习对话都有）：读主对话 / 别的讨论串 / 列讨论串、给主对话或别的讨论串发话、改名、结束。 */
-  private threadTools(sessionId: string): ToolSpec[] {
+  private threadTools(sessionId: string, kind: 'talk' | 'loop' | 'find'): ToolSpec[] {
     return [
       {
         name: 'read_project_chat',
@@ -1830,10 +1809,8 @@ export class Studium {
           return ok('已发出。');
         },
       },
-      ...(sessionId.includes('-loop-') || sessionId.includes('-find-')
-        ? []
-        : [this.threadTitleTool(sessionId)]),
-      ...(sessionId.includes('-loop-')
+      ...(kind === 'loop' || kind === 'find' ? [] : [this.threadTitleTool(sessionId)]),
+      ...(kind === 'loop'
         ? []
         : [
             {
@@ -1912,7 +1889,8 @@ export class Studium {
         r.line >= from &&
         r.line <= to &&
         (r.record.type === 'user_message' ||
-          r.record.type === 'thread_message' ||
+          // 删掉的讨论串发来的话读不到（W12 §4.3）
+          (r.record.type === 'thread_message' && !this.hub.isDeleted(r.record.from)) ||
           (r.record.type === 'assistant_message' && r.record.interim !== true)),
     );
     return renderTranscript(recs, (id) => this.hub.labelOf(id)) || '（这一段没有对话）';
@@ -2145,12 +2123,7 @@ export class Studium {
 
   // ───────────── 学习对话 ─────────────
 
-  /**
-   * 学习对话的工具：两个命令（工单 W4 §5.5）+ 子代理交组件用的 submit_component（只给子代理）+ 说给框架的口
-   * arrange_screen（W10）。资料、学过的记录、状态、教法记录与教学工具都在沙盒里当只读文件读；工作区是模型自己的
-   * 草稿（沙盒动作，程序当场记）；组件用框架自带的派子代理做（会话/页面子代理.md）。
-   */
-  /** 这次学习用竖流学习页（10-29 #74）。 */
+  /** 这次学习用竖流学习页（W12 起新开的都是；更早的旧数据只读）。 */
   async isStream(loopId: string): Promise<boolean> {
     return (await this.hub.opened(loopId)).page === 'stream';
   }
@@ -2230,8 +2203,10 @@ export class Studium {
   private async assertOpenLoop(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
     if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
-    const ended = (await this.hub.records(loopId)).some((r) => r.record.type === 'loop_ended');
-    if (ended) throw new BadRequestError('这部分已经结束了。');
+    // 结束后能重开（W12 §2）：看最后一次结束之后有没有重开过
+    if (foldLoop(await this.hub.records(loopId)).ended !== undefined) {
+      throw new BadRequestError('这部分已经结束了。');
+    }
   }
 
   /** 资料范围的说明，接在工具结果后面。 */

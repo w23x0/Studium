@@ -9,7 +9,6 @@ import {
   type DisclosureRowKind,
   type GoalView,
   type LoopLoad,
-  type LoopRelationView,
   type ClosingView,
   type GuardVerdictView,
   type LoopBrief,
@@ -85,7 +84,8 @@ export class Evidence {
     if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
     const recs = await this.d.hub.records(loopId);
     const flags = foldLoop(recs);
-    const ended = recs.find((r) => r.record.type === 'loop_ended');
+    // 现在结束着的那次（重开过的看最后一次，W12 §2）
+    const ended = recs.find((r) => r.record === flags.ended);
     const now = currentTicket(recs);
     // 没合上那次的上层之一：导航读那次完整对话出下一张卡时写的路线决定
     const unclosedDecision =
@@ -186,37 +186,6 @@ export class Evidence {
       if (e instanceof NotFoundError) return undefined;
       throw e;
     }
-  }
-
-  /** 项目下一次学习之间的关系：每次从哪来（选择卡 / 接着以前那次学习）。 */
-  async loopRelations(mainId: string): Promise<LoopRelationView[]> {
-    const main = await this.d.hub.opened(mainId);
-    if (main.kind !== 'main') throw new BadRequestError('这不是一个项目。');
-    const mainRecs = await this.d.hub.records(mainId);
-    const out: LoopRelationView[] = [];
-    for (const l of this.d.hub
-      .listSessions()
-      .filter((s) => s.kind === 'loop' && s.parent === mainId)) {
-      const opened = await this.d.hub.opened(l.sessionId);
-      const recs = await this.d.hub.records(l.sessionId);
-      const flags = foldLoop(recs);
-      const made = mainRecs.find(
-        (r) => r.record.type === 'choice_made' && r.record.loopSessionId === l.sessionId,
-      )?.record;
-      out.push({
-        loopSessionId: l.sessionId,
-        title: opened.title,
-        origin:
-          opened.resumeOf !== undefined
-            ? { kind: 'resume', fromLoop: opened.resumeOf.fromLoop }
-            : made?.type === 'choice_made'
-              ? { kind: 'card', cardId: made.cardId }
-              : { kind: 'unknown' },
-        status: statusOf(recs),
-        ...(flags.shelved !== undefined ? { shelved: true } : {}),
-      });
-    }
-    return out;
   }
 
   private loopObjections(loopId: string, recs: NumberedRecord[]): ObjectionView[] {
@@ -524,9 +493,9 @@ export class Evidence {
   private async brief(loopId: string): Promise<LoopBrief> {
     const opened = await this.d.hub.opened(loopId);
     const recs = await this.d.hub.records(loopId);
-    const ended = recs.find((r) => r.record.type === 'loop_ended');
-    const verdict = recs.filter((r) => r.record.type === 'guard_verdict').at(-1);
     const flags = foldLoop(recs);
+    const ended = recs.find((r) => r.record === flags.ended);
+    const verdict = recs.filter((r) => r.record.type === 'guard_verdict').at(-1);
     return {
       sessionId: loopId,
       title: opened.title,
@@ -588,14 +557,12 @@ export class Evidence {
       adapter: this.d.hub.modelName,
       sends: [
         '你在对话里说的话和发的文字',
-        '对话里用到的教材原文片段（模型读到的小节）',
-        '你的学习记录：我会什么、我的状态、教法记录（相关的对话会读到）',
-        '你对这些记录提的异议',
-        '你的产出物（笔记、推导、论文、方法比较）的当前版本和你的修改（在“写产出”对话里会读到）',
-        '你加的图片（只在转写时送去；对话里只送转写出的文字）',
-        '畅谈、导航、找资料对话里模型拟的联网搜索词与要打开的网址',
-        '学习页上的文字块和你在组件上的操作（学习对话派的子代理、摆屏幕的小模型会读到）',
-        '你上传的文本文件的文件名和开头一段（归资料还是学过的拿不准时，送去判一次）',
+        '你附的图片（原样随消息送去；太大的先在浏览器里缩小一份）',
+        '对话里用到的资料原文（模型读到的文件、小节）',
+        '你的学习记录：以前每次学习的对话原文、收尾那一句、项目说明、方向（学习对话、谈方向、找资料会读到）',
+        '你在学习页组件上的操作（学习对话会读到）',
+        '谈方向、找资料、学习对话里模型拟的联网搜索词与要打开的网址',
+        '你上传、导入的东西（导入处理会读原件，判它归资料还是你学过的、归谁，并写成文字）',
       ],
       webSearch: {
         sessions: this.d.webSearchKinds().map((kind) => ({
@@ -637,8 +604,8 @@ function quotesOf(recs: NumberedRecord[], lines: number[]): QuoteView[] {
 }
 
 function statusOf(recs: NumberedRecord[]): LoopStatus {
-  const ended = recs.map((r) => r.record).find((r) => r.type === 'loop_ended');
-  if (ended?.type !== 'loop_ended') return 'in_progress';
+  const ended = foldLoop(recs).ended;
+  if (ended === undefined) return 'in_progress';
   return ended.closed ? 'closed' : 'unclosed';
 }
 

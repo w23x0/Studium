@@ -244,6 +244,7 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
   );
   const [editing, setEditing] = useState<string | undefined>(undefined);
   const [busy, setBusy] = useState(false);
+  const [editError, setEditError] = useState<string | undefined>(undefined);
   return (
     <MessagePrimitive.Root
       data-role="user"
@@ -277,10 +278,11 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
               onClick={() => {
                 if (onEditLast === undefined) return;
                 setBusy(true);
+                setEditError(undefined);
                 onEditLast(editing)
                   .then(() => setEditing(undefined))
                   .catch((e: unknown) => {
-                    console.error('改那句失败：', e);
+                    setEditError(e instanceof Error ? e.message : String(e));
                   })
                   .finally(() => setBusy(false));
               }}
@@ -288,6 +290,7 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
               {WT.editSave}
             </button>
           </div>
+          {editError !== undefined && <p className="text-destructive text-xs">{editError}</p>}
         </div>
       ) : (
         <div
@@ -443,7 +446,7 @@ interface UiLink {
 
 /**
  * 自己发了消息就滚到底；看历史时（离底部远）来了新内容不打扰。
- * assistant-ui 的自动滚动认“正在运行”，而我们不把运行状态告诉它（为了能中途插话），所以这里补一手。
+ * assistant-ui 的自动滚动认“正在运行”，而我们不把运行状态告诉它（生成中途也能接着打字），所以这里补一手。
  */
 function useStickToBottom() {
   const ref = useRef<HTMLDivElement>(null);

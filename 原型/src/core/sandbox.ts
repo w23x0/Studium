@@ -3,7 +3,7 @@
 // W12 §3.2 起主对话不再读本机（没有沙盒）。
 // 设计：会话/学习对话.md §2；记录/读写权限.md「执行方式」「权限表」。
 import { readdirSync, realpathSync } from 'node:fs';
-import { mkdir, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, rm, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -52,7 +52,7 @@ const WHAT: Record<string, string> = {
   '本次对话.md': '本次学习的对话原文，带行号（压缩后按行号读回）',
   '项目说明.md': '学习者写给这个项目的长期要求（项目说明）；与学习者当场说的冲突时以当场说的为准',
   '方向.md': '这个项目谈定的方向（学成后能做什么、每块为什么学），带日期',
-  附图: '学习者附过的图片原件（消息里写了是哪张）',
+  附图: '学习者在这次学习里附过的图片原件（消息里写了是哪张）',
   [MATERIAL_INDEX_NAME]:
     '本项目能读的资料的目录（本项目的 + 学习者的笔记等）：每份一行（id、标题、种类、归属、版本、日期、状态、说明）；引用写 资料id/文件:行号',
 };
@@ -104,7 +104,7 @@ export class Sandboxes {
     return join(this.o.dataDir, 'sandbox', sessionId);
   }
 
-  /** 学习对话的工作区（子代理的组件在 `组件/` 下，W10）。 */
+  /** 学习对话的工作区（它自己的草稿）。 */
   workdir(loopId: string): string {
     return join(this.root(loopId), '工作区');
   }
@@ -172,7 +172,7 @@ export class Sandboxes {
         { name: '本次对话.md', path: join(this.root(loopId), '只读', '本次对话.md') },
         { name: '项目说明.md', path: join(this.root(loopId), '只读', '项目说明.md') },
         { name: '方向.md', path: join(this.root(loopId), '只读', '方向.md') },
-        { name: '附图', path: this.o.imagesDir },
+        { name: '附图', path: join(this.root(loopId), '只读', '附图') },
       ],
       network: false,
       denyRead: this.denyRead(false),
@@ -191,8 +191,12 @@ export class Sandboxes {
       join(readOnly, '学过的记录'),
       await this.learnedFiles(loopId, await this.o.projectOf(loopId)),
     );
-    await mkdir(this.o.imagesDir, { recursive: true });
-    await writeFile(join(readOnly, '本次对话.md'), renderTranscript(records), 'utf8');
+    await this.copyImages(join(readOnly, '附图'), records);
+    await writeFile(
+      join(readOnly, '本次对话.md'),
+      renderTranscript(records.filter((r) => this.visible(r))),
+      'utf8',
+    );
     const goal = await this.o.goalText(loopId);
     await writeFile(
       join(readOnly, '方向.md'),
@@ -334,7 +338,7 @@ export class Sandboxes {
 
   /** 一次学习的下层：对话原文（按行号排）。 */
   private async transcriptText(loopId: string): Promise<string> {
-    const records = await this.o.hub().records(loopId);
+    const records = (await this.o.hub().records(loopId)).filter((r) => this.visible(r));
     const rows = records.flatMap((r) => {
       const one = lowerLine(r);
       return one === undefined ? [] : [{ line: r.line, text: one }];
@@ -376,8 +380,37 @@ export class Sandboxes {
     return `- ${at}：${session} 第 ${lines.join('、')} 行${said !== '' ? `（原话：${said}）` : ''}（未验证）`;
   }
 
+  /** 这次学习里学习者附过的图（原图与送给模型的副本）拷进只读区（只拷还没有的；别的对话的图不给）。 */
+  private async copyImages(dir: string, records: NumberedRecord[]): Promise<void> {
+    await mkdir(dir, { recursive: true });
+    const ids = new Set(
+      records.flatMap(({ record: r }) =>
+        r.type === 'user_message'
+          ? (r.images ?? []).flatMap((i) => [
+              i.attachmentId,
+              ...(i.sentAs !== undefined ? [i.sentAs] : []),
+            ])
+          : [],
+      ),
+    );
+    if (ids.size === 0) return;
+    const have = new Set(await readdir(dir));
+    for (const name of await readdir(this.o.imagesDir)) {
+      const id = name.slice(0, name.lastIndexOf('.'));
+      if (ids.has(id) && !have.has(name))
+        await copyFile(join(this.o.imagesDir, name), join(dir, name));
+    }
+  }
+
+  /** 删掉的讨论串发来的话不进沙盒（W12 §4.3）。 */
+  private visible(r: NumberedRecord): boolean {
+    return !(r.record.type === 'thread_message' && this.o.deleted(r.record.from));
+  }
+
   private async lineOf(sessionId: string, type: 'loop_ended'): Promise<number | undefined> {
-    return (await this.o.hub().records(sessionId)).find((r) => r.record.type === type)?.line;
+    // 最后一次（结束后能重开，W12 §2）
+    return (await this.o.hub().records(sessionId)).filter((r) => r.record.type === type).at(-1)
+      ?.line;
   }
 }
 

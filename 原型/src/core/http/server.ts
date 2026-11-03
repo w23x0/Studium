@@ -5,7 +5,6 @@ import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { timingSafeEqual } from 'node:crypto';
 import type {
-  LoopRelationsResponse,
   ShelveRequest,
   ErrorResponse,
   ListProjectsResponse,
@@ -67,7 +66,7 @@ export interface ServerOptions {
   evidence: Evidence;
   /** 原文与出处（批 2a）：资料浏览、检索、原件页面、教材出处、资料报错。 */
   sources: Sources;
-  /** 输入（批 4）：图片原样保存与转写。 */
+  /** 输入（批 4）：图片原样保存。 */
   inputs: Inputs;
   /** 资料的来源说明、状态回看（批 10b）。 */
   cross: CrossServices;
@@ -377,7 +376,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         const note = typeof body.note === 'string' ? body.note : '学习者在界面上点了按钮';
         switch (action) {
           case 'messages': {
-            // 附了图：转写文字带来源标注并进消息（inputs.ts）；没附图就是原来的纯文字
+            // 附了图：记原图（与送给模型的缩小副本），图片原样随消息送给模型（W12 §5.6）
             const m = opts.inputs.compose(body.text, body.images);
             // 学习页：在某一块下面回的（W10，会话/学习对话.md §11.3 学习者回话）
             const r = body.replyTo as { key?: unknown; pointer?: unknown } | undefined;
@@ -624,11 +623,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, { loop: await ev.loop(b) } satisfies LoopEvidenceResponse);
     } else if (a === 'cards' && n === 3 && b !== undefined) {
       send(res, 200, { card: await ev.card(b) } satisfies CardResponse);
-    } else if (a === 'projects' && c === 'loop-relations' && n === 4 && b !== undefined) {
-      send(res, 200, {
-        mainSessionId: b,
-        relations: await ev.loopRelations(b),
-      } satisfies LoopRelationsResponse);
     } else if (a === 'projects' && c === 'overview' && n === 4 && b !== undefined) {
       // 批 6：项目概览带“今天该做的”，没合上的那次带谁在接着学
       const overview = await ev.overview(b);
@@ -665,10 +659,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         learning: await opts.studium.learned.one(decodeURIComponent(b)),
       } satisfies LearningResponse);
     } else if (a === 'objections' && n === 2) {
-      // 只认这三种指向；别的回 400，不悄悄给空列表
+      // 只认对守卫判定的异议（对状态记录 / 教法记录的随它们 W12 撤掉）；别的回 400，不悄悄给空列表
       const kind = q.get('kind') ?? undefined;
-      if (kind !== undefined && !['guard_verdict', 'pedagogy', 'state'].includes(kind)) {
-        throw new BadRequest('kind 要是 guard_verdict、state 或 pedagogy');
+      if (kind !== undefined && kind !== 'guard_verdict') {
+        throw new BadRequest('kind 要是 guard_verdict');
       }
       const objections = ev.objections(kind, q.get('record') ?? undefined);
       send(res, 200, { objections } satisfies ObjectionsResponse);

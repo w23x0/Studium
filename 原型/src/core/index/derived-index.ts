@@ -8,7 +8,7 @@ import { sessionFrom } from '../hub.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 9;
+const SCHEMA_VERSION = 10;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -262,12 +262,13 @@ function fromOf(o: SessionOpened): [string | null, string | null] {
 function searchableText(r: LogRecord): string {
   switch (r.type) {
     case 'user_message':
-    case 'assistant_message':
     case 'program_fact':
     case 'project_goal':
-    case 'thread_message':
     case 'message_edited':
       return r.text;
+    // 工具调用之间说的话（W12 §4.6）不搜；别的会话发来的话学习者看不到、发话的讨论串可能被删（§4.3），也不搜
+    case 'assistant_message':
+      return r.interim === true ? '' : r.text;
     // 沙盒动作只在写文件时有内容（读 / 跑命令没有）
     case 'sandbox_action':
       return r.content ?? '';
