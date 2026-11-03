@@ -1,4 +1,4 @@
-// 与核心通话：口令从地址栏 ?token= 取一次，存进 sessionStorage。
+// 与核心通话：口令从地址栏 ?token= 取一次，存进 localStorage（每台设备带一次口令，关页面也不丢）。
 import type {
   DisclosureResponse,
   LoopEvidenceResponse,
@@ -77,11 +77,20 @@ import type {
 function token(): string {
   const fromUrl = new URLSearchParams(location.search).get('token');
   if (fromUrl !== null) {
-    sessionStorage.setItem('studium-token', fromUrl);
+    try {
+      localStorage.setItem('studium-token', fromUrl);
+    } catch {
+      // 存不了（隐私窗口等）就只在这一页里有效
+    }
     history.replaceState(null, '', location.pathname + location.hash);
     return fromUrl;
   }
-  return sessionStorage.getItem('studium-token') ?? '';
+  try {
+    // 旧版存在 sessionStorage：同一标签页里升级后不用重新带口令
+    return localStorage.getItem('studium-token') ?? sessionStorage.getItem('studium-token') ?? '';
+  } catch {
+    return '';
+  }
 }
 
 const TOKEN = token();
