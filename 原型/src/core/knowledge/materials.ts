@@ -523,21 +523,7 @@ export class Materials {
     return walk(await this.bodyDir(id));
   }
 
-  /**
-   * 找资料对话给一份网上找来的写的说明（W12 §6.3：讲什么、可信度、和官方说法哪里不一致）：写进工作层的 说明.md，
-   * 原件层照旧原样。by = 写它的会话。
-   */
-  async writeNote(id: string, note: string, by: string): Promise<void> {
-    const body = await this.bodyDir(id);
-    await mkdir(body, { recursive: true });
-    await writeFile(
-      join(body, GUIDE_FILE),
-      `# 说明（找资料对话 ${by} 写的，不是原文）\n\n${note.trim()}\n`,
-      'utf8',
-    );
-  }
-
-  /** 说明.md（导入会话写的学过的那段总结、找资料对话写的说明；没有 = undefined），清单里带它的开头。 */
+  /** 说明.md（导入会话写的学过的那段总结；旧数据里还有找资料对话写的说明；没有 = undefined），清单里带它的开头。 */
   async guide(id: string): Promise<string | undefined> {
     try {
       return await readFile(join(await this.bodyDir(id), GUIDE_FILE), 'utf8');

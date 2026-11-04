@@ -1,9 +1,9 @@
 // 竖流学习页（W12 起唯一的学习页）：学习对话一个人管页面。页面从正本放一遍算出来（shared/stream-page.ts），
 // 从上往下一列：学习对话每轮最后写的话、学习者的话、学习对话写的组件。组件可以嵌在文字中间（`[[组件:名字]]`，W12 §5.1）；
-// 改过的文字、换过版的组件一直标着“改过 / 第 N 版”，点开能看以前的样子（§4.7）。鼠标移到一块上左下角显示时间（§4.2）。
+// 改过的文字原地标出改了什么（11-04：删掉的划线、新加的接在后面并在左边标一道，`text-changes.ts`），换过版的组件一直标着“第 N 版”，都能点开看以前的样子（§4.7）。鼠标移到一块上左下角显示时间（§4.2）。
 // 学习者选中页面上一段文字（或点组件上方的名字）再说话，输入框上方出现引用条，发送时带上。生成中途能停，停下后能改刚发的
 // 那句（§4.4）；在做什么由程序从工具调用得出一行（§4.5）。学习结束后照样能说话，说了就重开（§2）。
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { HistoryIcon, LoaderIcon, PencilIcon, QuoteIcon, XIcon } from 'lucide-react';
 import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
 import { InputComposer } from '@/components/input/composer';
@@ -15,6 +15,7 @@ import { api } from '../../api.ts';
 import { CurrentSessionContext } from '../../panel.ts';
 import { closeLine } from '../../screen-model.ts';
 import { lastEditable, loopSide, loopState } from '../../thread-model.ts';
+import { textChanges } from '../../text-changes.ts';
 import { W } from '../../wording.ts';
 import { WP } from '../../wording-page.ts';
 import { WT } from '../../wording-tools.ts';
@@ -225,27 +226,56 @@ function StreamBlockView(props: {
   const shown = old !== undefined ? (history[old] ?? b.text) : b.text;
   let body: ReactNode;
   switch (b.kind) {
-    case 'text':
+    case 'text': {
+      const parts = (text: string, gone: boolean) =>
+        inlineParts(text).map((p, i) =>
+          p.kind === 'text' ? (
+            <PlainMarkdown key={i} text={p.text} />
+          ) : gone ? (
+            <p key={i}>{WP.componentName(p.name)}</p>
+          ) : (
+            <InlineComponent
+              key={i}
+              name={p.name}
+              block={props.components.get(p.name)}
+              loopId={props.loopId}
+              live={props.live}
+              onPick={props.onPickComponent}
+              onError={props.onError}
+            />
+          ),
+        );
+      // 改过的文字：从第一版到现在，删掉的划线、新加的接在后面并在左边标一道（看以前的版本时照原样显示）
+      const first = history[0];
       body = (
         <div className="flex flex-col gap-3">
-          {inlineParts(shown).map((p, i) =>
-            p.kind === 'text' ? (
-              <PlainMarkdown key={i} text={p.text} />
-            ) : (
-              <InlineComponent
-                key={i}
-                name={p.name}
-                block={props.components.get(p.name)}
-                loopId={props.loopId}
-                live={props.live}
-                onPick={props.onPickComponent}
-                onError={props.onError}
-              />
-            ),
-          )}
+          {old === undefined && first !== undefined
+            ? textChanges(first, b.text).map((c, i) =>
+                c.kind === 'same' ? (
+                  <Fragment key={i}>{parts(c.text, false)}</Fragment>
+                ) : c.kind === 'del' ? (
+                  <div
+                    key={i}
+                    data-testid="text-removed"
+                    className="text-muted-foreground flex flex-col gap-3 line-through"
+                  >
+                    {parts(c.text, true)}
+                  </div>
+                ) : (
+                  <div
+                    key={i}
+                    data-testid="text-added"
+                    className="border-primary/40 flex flex-col gap-3 border-s-2 ps-3"
+                  >
+                    {parts(c.text, false)}
+                  </div>
+                ),
+              )
+            : parts(shown, false)}
         </div>
       );
       break;
+    }
     case 'learner':
       body =
         editing !== undefined ? (

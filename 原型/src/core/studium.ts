@@ -252,8 +252,8 @@ export class Studium {
             this.mainPreface(sessionId, inputLine, fresh),
         }
       : {}),
-    // 谈方向、找资料、学习对话可联网搜索（W12 §2：学习对话放开，沙盒照旧不联网）
-    ...(kind === 'talk' || kind === 'find' || kind === 'loop' ? { webSearch: true } : {}),
+    // 谈方向、学习对话可联网搜索（W12 §2：学习对话放开，沙盒照旧不联网）
+    ...(kind === 'talk' || kind === 'loop' ? { webSearch: true } : {}),
     ...(kind === 'loop'
       ? {
           systemPromptFor: () =>
@@ -293,17 +293,10 @@ export class Studium {
             ...this.threadTools(sessionId, 'loop'),
             await this.askProjectTool(sessionId),
           ];
-        case 'find':
-          return [
-            ...this.readTools(sessionId),
-            this.listLearnedTool(sessionId),
-            ...this.findTools(sessionId),
-            ...this.threadTools(sessionId, 'find'),
-          ];
         case 'import':
           return this.importTools(sessionId);
         default:
-          // 旧数据：守卫、导航、检索子代理、状态整理、教法记录整理、写产出、页面编辑员都不再开（W12 §1）
+          // 旧数据：守卫、导航、检索子代理、状态整理、教法记录整理、写产出、页面编辑员都不再开（W12 §1）；找资料 11-04 收起（docs/暂缓设计/找资料.md）
           return [];
       }
     },
@@ -982,78 +975,6 @@ export class Studium {
     return `项目说明（学习者明确的长期要求；与学习者当场说的冲突时以当场为准）：${t !== '' ? `\n${t}` : '还没写'}`;
   }
 
-  // ───────────── 找资料（`docs/设计/会话/找资料.md`；W12 §4.8 起自己定存哪些、直接存） ─────────────
-
-  /**
-   * 找资料对话的工具（W12 §4.8）：自己定存哪些、直接存，每份在工作层写一张说明（§6.3）；学习者说不要就删
-   * （资料标删，只追加）。
-   */
-  private findTools(findId: string): ToolSpec[] {
-    return [
-      {
-        name: 'save_material',
-        description:
-          '把一份网上找到的原文存进本项目资料（程序联网抓取、转成文字放进原件层；同一网址已在本项目就不再存）。note 是这份的说明，写进它的工作层，别的对话读资料时先看到：讲什么、可信度（谁写的、什么性质的来源）、和官方 / 主流说法哪里不一致（没发现就写没发现）。',
-        input: {
-          url: z.string().describe('http(s) 网址'),
-          title: z.string(),
-          note: z.string().describe('说明：讲什么、可信度、和官方说法哪里不一致'),
-        },
-        run: async (a) => {
-          const mainId = await this.projectOf(findId);
-          if (mainId === undefined) return err('找不到这个对话所属的项目');
-          let u: URL;
-          try {
-            u = new URL((a.url as string).trim());
-          } catch {
-            return err('网址不对');
-          }
-          if (u.protocol !== 'http:' && u.protocol !== 'https:') return err('不是 http(s) 网址');
-          const already = (await this.o.materials.ofProject(mainId)).find(
-            (s) => normalUrl(s.origin) === normalUrl(u.href),
-          );
-          if (already !== undefined) {
-            return ok(`本项目已有这份：${already.id}《${already.title}》，没再存。`);
-          }
-          const title = (a.title as string).trim() || u.hostname;
-          let src: MaterialSource;
-          try {
-            src = await this.newMaterial(mainId, { kind: 'search', origin: u.href, title });
-          } catch (e) {
-            if (e instanceof BadRequestError) return err(e.message);
-            throw e;
-          }
-          const note = (a.note as string).trim();
-          if (note !== '') await this.o.materials.writeNote(src.id, note, findId);
-          return ok(
-            `已存：${src.id}《${title}》（正在抓取转换，几秒到几分钟）。学习者说不要再用 remove_material 删。`,
-          );
-        },
-      },
-      {
-        name: 'remove_material',
-        description:
-          '学习者说某份资料不要时调用：从本项目资料里删掉（资料标删，原件留着，以前引用过的照旧能定位）。',
-        input: {
-          material: z.string().describe('资料 id'),
-          reason: z.string().describe('学习者怎么说的（行号 + 一句）'),
-        },
-        run: async (a) => {
-          const mainId = await this.projectOf(findId);
-          if (mainId === undefined) return err('找不到这个对话所属的项目');
-          try {
-            await this.removeMaterial(mainId, (a.material as string).trim());
-          } catch (e) {
-            if (e instanceof BadRequestError) return err(e.message);
-            throw e;
-          }
-          return ok('已删。');
-        },
-      },
-      this.threadTitleTool(findId),
-    ];
-  }
-
   /** 去掉资料（一次几份）：本项目读不到的名字跳过。 */
   async changeMaterials(
     mainId: string,
@@ -1140,7 +1061,7 @@ export class Studium {
   ): Promise<void> {
     const opened = await this.hub.opened(sessionId);
     if (opened.kind === 'loop' && opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
-    if (!['main', 'talk', 'loop', 'find'].includes(opened.kind)) {
+    if (!['main', 'talk', 'loop'].includes(opened.kind)) {
       throw new BadRequestError('这段对话只能看，不能再说话。');
     }
     const meta = {
@@ -1528,9 +1449,9 @@ export class Studium {
       {
         name: 'start_thread',
         description:
-          '开一个讨论串，把一件事交给它：kind = loop（学习：讲解、练习、读资料一起学）/ talk（谈方向：学成后能做什么、学到什么程度）/ find（联网找资料、存进本项目）。instructions 是给它的交代：只写它需要、自己读不到的项目背景；学习者的话有两种读法时写一句你的理解；不替它定学什么、不加学习者没要求的要求。学习者的原话用 learner_lines 指行号，程序照抄附上。',
+          '开一个讨论串，把一件事交给它：kind = loop（学习：讲解、练习、读资料一起学，能联网查）/ talk（谈方向：学成后能做什么、学到什么程度）。instructions 是给它的交代：只写它需要、自己读不到的项目背景；学习者的话有两种读法时写一句你的理解；不替它定学什么、不加学习者没要求的要求。学习者的原话用 learner_lines 指行号，程序照抄附上。',
         input: {
-          kind: z.enum(['loop', 'talk', 'find']),
+          kind: z.enum(['loop', 'talk']),
           title: z.string().describe('几个字，动词开头，学习者在列表里凭它找回来'),
           instructions: z.string(),
           learner_lines: z
@@ -1539,7 +1460,7 @@ export class Studium {
             .describe('学习者在主对话里那几句话的行号'),
         },
         run: async (a) => {
-          const kind = a.kind as 'loop' | 'talk' | 'find';
+          const kind = a.kind as 'loop' | 'talk';
           const title = (a.title as string).trim();
           if (title === '') return err('title 不能是空的');
           const cited = await this.citeMain(mainId, a.learner_lines as number[]);
@@ -1558,7 +1479,7 @@ export class Studium {
             title,
             anchorLine: cited.at(-1)?.line ?? 0,
           });
-          // 程序附上它自己一开始就该知道的：学习对话 = 只读区有什么；谈方向、找资料 = 项目说明
+          // 程序附上它自己一开始就该知道的：学习对话 = 只读区有什么；谈方向 = 项目说明
           const facts = `\n\n（程序附）${
             kind === 'loop'
               ? describeSandbox(await this.sandboxes.forLoop(s.sessionId))
@@ -1571,7 +1492,7 @@ export class Studium {
             reply: true,
           });
           return ok(
-            `已开：${s.sessionId}「${title}」，入口卡片在主对话里。${kind === 'find' ? '它自己定存哪些、直接存进项目资料，学习者说不要再删。' : ''}跟学习者说一句就好；那边做完或有事会自己说，要看进展用 read_thread。`,
+            `已开：${s.sessionId}「${title}」，入口卡片在主对话里。跟学习者说一句就好；那边做完或有事会自己说，要看进展用 read_thread。`,
           );
         },
       },
@@ -1708,8 +1629,8 @@ export class Studium {
 
   // ───────────── 讨论串之间（W12 §3.3，照 Claude 讨论串的工具） ─────────────
 
-  /** 讨论串的工具（谈方向、找资料、学习对话都有）：读主对话 / 别的讨论串 / 列讨论串、给主对话或别的讨论串发话、改名、结束。 */
-  private threadTools(sessionId: string, kind: 'talk' | 'loop' | 'find'): ToolSpec[] {
+  /** 讨论串的工具（谈方向、学习对话都有）：读主对话 / 别的讨论串 / 列讨论串、给主对话或别的讨论串发话、改名、结束。 */
+  private threadTools(sessionId: string, kind: 'talk' | 'loop'): ToolSpec[] {
     return [
       {
         name: 'read_project_chat',
@@ -1789,7 +1710,7 @@ export class Studium {
           return ok('已发出。');
         },
       },
-      ...(kind === 'loop' || kind === 'find' ? [] : [this.threadTitleTool(sessionId)]),
+      ...(kind === 'loop' ? [] : [this.threadTitleTool(sessionId)]),
       ...(kind === 'loop'
         ? []
         : [
@@ -2340,15 +2261,4 @@ function validDate(s: string): boolean {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) return false;
   const t = Date.parse(`${s}T00:00:00Z`);
   return !Number.isNaN(t) && new Date(t).toISOString().slice(0, 10) === s;
-}
-
-/** 比对网址是否同一份：去掉结尾斜杠与 #片段，主机名小写。 */
-function normalUrl(u: string): string {
-  try {
-    const x = new URL(u.trim());
-    x.hash = '';
-    return x.href.replace(/\/+$/, '');
-  } catch {
-    return u.trim();
-  }
 }

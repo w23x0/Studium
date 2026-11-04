@@ -20,7 +20,7 @@ export const W = {
     running: '进行中',
     paused: '停着',
     ended: '已结束',
-    empty: '还没开过。谈方向、学习、找资料都会在这里列一条。',
+    empty: '还没开过。谈方向、学习都会在这里列一条。',
     more: '更多',
     delete: '删除',
     deleteTitle: '删掉这个讨论串？',

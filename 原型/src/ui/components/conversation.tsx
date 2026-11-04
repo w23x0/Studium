@@ -1,4 +1,4 @@
-// 中间的对话页：主对话、谈方向、找资料共用一个外壳；旧数据（导航、写产出、阶段复盘、W10 前的学习对话）在这里只读看。
+// 中间的对话页：主对话、谈方向共用一个外壳；旧数据（导航、写产出、阶段复盘、找资料、W10 前的学习对话）在这里只读看。
 // 顶上面包屑（项目名回项目对话）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
 // 学习对话走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -171,12 +171,16 @@ export function Conversation(props: {
   const review = kind === 'talk' ? reviewWindow(records) : undefined;
   const ended =
     kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
-  // 旧数据只看：导航、页面编辑员、写产出、阶段复盘（W12 撤掉）
+  // 旧数据只看：导航、页面编辑员、写产出、阶段复盘（W12 撤掉）、找资料（11-04 收起）
   const watchOnly =
-    kind === 'nav' || kind === 'editor' || kind === 'output' || review !== undefined;
+    kind === 'nav' ||
+    kind === 'editor' ||
+    kind === 'output' ||
+    kind === 'find' ||
+    review !== undefined;
   // 主对话不放按钮：要下一步、复盘这些都在对话里说（10-29）；旧的阶段复盘只看，不放底栏
   const footer =
-    watchOnly || kind === 'main' || kind === 'find' ? undefined : kind === 'talk' ? (
+    watchOnly || kind === 'main' ? undefined : kind === 'talk' ? (
       ended ? (
         <EndedBar text={W.talkDone} onBack={props.onBackToMain} />
       ) : undefined

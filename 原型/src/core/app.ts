@@ -61,14 +61,18 @@ const RETIRED_PROMPT_KINDS: readonly ConversationKind[] = [
   'state',
   'pedagogy',
   'output',
+  'find',
   'editor',
 ];
 
 export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
+  // 项目里各对话管哪一份（11-04）：主对话、学习对话、谈方向的提示词用 {{项目}} 接同一段，分工只写一处
+  const project = (await readFile(join(here, 'prompts/project.md'), 'utf8')).trim();
   const entries = await Promise.all(
     KINDS.map(async (k) => {
       if (RETIRED_PROMPT_KINDS.includes(k)) return [k, ''] as const;
-      return [k, await readFile(join(here, `prompts/${k}.md`), 'utf8')] as const;
+      const text = await readFile(join(here, `prompts/${k}.md`), 'utf8');
+      return [k, text.replaceAll('{{项目}}', project)] as const;
     }),
   );
   return Object.fromEntries(entries) as Record<ConversationKind, string>;
