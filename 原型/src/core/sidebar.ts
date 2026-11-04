@@ -10,7 +10,10 @@ import type {
 import { appendJsonl, readJsonl } from './knowledge/jsonl.ts';
 import { BadRequestError } from './studium.ts';
 
-/** 左栏里出现的对话种类（后台的判断、整理会话不列）。 */
+/**
+ * 左栏里能置顶 / 藏起来 / 改名的对话种类（后台的判断、整理会话不列）；`output` 是旧数据（写产出 W12 撤掉），
+ * 旧会话照旧能操作。界面 `sidebar-model.ts` 的 LISTED 另含 `find` `nav`：两边不一致，放不放开等真用再定（11-04 收尾清理没动）。
+ */
 const LISTED: readonly SessionSummary['kind'][] = ['main', 'talk', 'loop', 'output'];
 const MAX_TITLE = 100;
 

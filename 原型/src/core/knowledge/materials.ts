@@ -44,7 +44,7 @@ import {
 
 const run = promisify(execFile);
 
-/** 读原文的接口（原文、出处、原件页面、来源说明、产出共用）。 */
+/** 读原文的接口（原文、出处、原件页面、来源说明共用）。 */
 export type SourceReader = Pick<
   Materials,
   | 'ids'

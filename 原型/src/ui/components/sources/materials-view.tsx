@@ -33,20 +33,20 @@ function SearchBox(props: {
   const panel = usePanel();
   const scope = useProjectScope();
   const [q, setQ] = useState(props.q ?? '');
-  const [inBook, setInBook] = useState(props.material !== undefined);
+  const [inMaterial, setInMaterial] = useState(props.material !== undefined);
   const [all, setAll] = useState(props.all === true);
   const go = (wantAll: boolean) => {
     if (q.trim() === '') return;
     const t = {
       kind: 'search' as const,
       q: q.trim(),
-      ...(inBook && props.material !== undefined ? { material: props.material } : {}),
+      ...(inMaterial && props.material !== undefined ? { material: props.material } : {}),
       ...(wantAll && scope !== undefined ? { all: true } : {}),
     };
     if (props.replace === true) panel.replace(t);
     else panel.show(t);
   };
-  const oneBook = inBook && props.material !== undefined;
+  const oneMaterial = inMaterial && props.material !== undefined;
   return (
     <form
       className="flex flex-col gap-1.5"
@@ -70,11 +70,15 @@ function SearchBox(props: {
       </div>
       {props.material !== undefined && (
         <label className="text-muted-foreground flex items-center gap-1.5 self-start text-xs">
-          <input type="checkbox" checked={inBook} onChange={(e) => setInBook(e.target.checked)} />
+          <input
+            type="checkbox"
+            checked={inMaterial}
+            onChange={(e) => setInMaterial(e.target.checked)}
+          />
           {W.searchInBook}
         </label>
       )}
-      {!oneBook && (
+      {!oneMaterial && (
         <div className="text-muted-foreground flex flex-wrap items-center gap-x-3 gap-y-1 text-xs">
           <span data-testid="search-scope">
             {scope !== undefined && !all ? W.searchScopeProject(scope) : W.searchScopeAll}

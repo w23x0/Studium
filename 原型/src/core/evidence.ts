@@ -7,16 +7,11 @@ import {
   type CardView,
   type DisclosureResponse,
   type DisclosureRowKind,
-  type GoalView,
-  type LoopLoad,
   type ClosingView,
   type GuardVerdictView,
-  type LoopBrief,
   type LoopEvidence,
   type LoopStatus,
   type ObjectionView,
-  type PointRef,
-  type ProjectOverview,
   type QuoteView,
   type RouteDecisionView,
   type SourceView,
@@ -29,22 +24,20 @@ import {
   type ConversationKind,
   type LearnerObjection,
   type NumberedRecord,
-  type ProjectGoal,
   type RouteDecision,
   type Ticket,
 } from '../shared/records.ts';
-import { currentGoal } from './goal.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import type { Learned } from './learned.ts';
 import { locate } from './locate.ts';
 import { currentTicket } from './ticket.ts';
 
-import { foldLoop, LOAD_HEAVY, PARKING_PILE } from '../shared/loop-flags.ts';
+import { foldLoop } from '../shared/loop-flags.ts';
 import type { Objections } from './knowledge/objections.ts';
 import type { Inputs } from './inputs.ts';
 import type { Sources } from './sources.ts';
 import { toolUsesOf, type TeachingTools } from './teaching-tools.ts';
-import { BadRequestError, foldDeadline } from './studium.ts';
+import { BadRequestError } from './studium.ts';
 
 /** 旧数据里才有的会话类（页面编辑员 10-26、守卫 10-31，导航、检索、后台整理、写产出 W12 起不再开）：不列进外发披露的模型表。 */
 const RETIRED_KINDS: ConversationKind[] = [
@@ -59,13 +52,11 @@ const RETIRED_KINDS: ConversationKind[] = [
 
 export interface EvidenceDeps {
   hub: Hub;
-  /** 学过的记录（按层读；项目概览的积压数从这里取）。 */
+  /** 学过的记录（资料出处里外部导入的原文从这里取）。 */
   learned: Learned;
   objections: Objections;
   /** 回查资料里的出处（批 2a）。 */
   sources: Sources;
-  /** 本项目能读的资料几份（按归属，W11）。 */
-  materialCount: (mainId: string) => Promise<number>;
   /** 图片转写、语音送往哪里（批 4）；不给就不列。 */
   inputs?: Inputs;
   /** 教学工具（批 7）。 */
@@ -93,6 +84,10 @@ export class Evidence {
         ? await this.loopRouteDecision(recs, opened.parent)
         : undefined;
     const objections = this.loopObjections(loopId, recs);
+    const resumedBy =
+      ended?.record.type === 'loop_ended' && !ended.record.closed && opened.parent !== undefined
+        ? await this.resumedBy(opened.parent, loopId)
+        : [];
     // 收尾那一句（10-31 起）：带 summary 的 close_requested；前面最近一次学习者点“我觉得懂了”的一并带上
     const closings: ClosingView[] = [];
     let learnerAsked: number | undefined;
@@ -168,6 +163,7 @@ export class Evidence {
         : {}),
       ...(now !== undefined ? { ticket: await this.ticketView(now, this.editViews(recs)) } : {}),
       ...(unclosedDecision !== undefined ? { routeDecision: unclosedDecision } : {}),
+      ...(resumedBy.length > 0 ? { resumedBy } : {}),
       model: await this.d.hub.modelInfo(loopId),
       closings,
       verdicts,
@@ -179,13 +175,19 @@ export class Evidence {
     };
   }
 
-  private async titleOf(sessionId: string): Promise<string | undefined> {
-    try {
-      return (await this.d.hub.opened(sessionId)).title;
-    } catch (e) {
-      if (e instanceof NotFoundError) return undefined;
-      throw e;
+  /** 旧数据：没合上的那次被哪些新学习接着学（W12 前导航开的“接着学”，`session_opened.resumeOf`）。 */
+  private async resumedBy(
+    mainId: string,
+    loopId: string,
+  ): Promise<{ loopSessionId: string; title: string }[]> {
+    const out = [];
+    for (const s of this.d.hub
+      .listSessions()
+      .filter((x) => x.kind === 'loop' && x.parent === mainId)) {
+      if ((await this.d.hub.opened(s.sessionId)).resumeOf?.fromLoop !== loopId) continue;
+      out.push({ loopSessionId: s.sessionId, title: s.title });
     }
+    return out;
   }
 
   private loopObjections(loopId: string, recs: NumberedRecord[]): ObjectionView[] {
@@ -439,91 +441,6 @@ export class Evidence {
     };
   }
 
-  // ───────────── 项目页 ─────────────
-
-  async overview(mainId: string): Promise<ProjectOverview> {
-    const main = await this.d.hub.opened(mainId);
-    if (main.kind !== 'main') throw new BadRequestError('这不是一个项目。');
-    const mainRecs = await this.d.hub.records(mainId);
-    const goal = currentGoal(mainRecs);
-    const title = mainRecs
-      .map((r) => r.record)
-      .filter((r) => r.type === 'project_title')
-      .at(-1);
-    const mainLog = mainRecs.map((r) => r.record);
-    const dl = foldDeadline(mainLog);
-    const groups: ProjectOverview['groups'] = {
-      inProgress: [],
-      closed: [],
-      unclosed: [],
-    };
-    for (const l of this.d.hub
-      .listSessions()
-      .filter((s) => s.kind === 'loop' && s.parent === mainId)) {
-      const brief = await this.brief(l.sessionId);
-      if (brief.status === 'in_progress') {
-        // 搁置的单列一组，不混在“进行中”里；没有就不出现这一项
-        if (brief.shelved !== undefined) (groups.shelved ??= []).push(brief);
-        else groups.inProgress.push(brief);
-      } else if (brief.status === 'closed') groups.closed.push(brief);
-      else groups.unclosed.push(brief);
-    }
-    // 积压（停车场）：没合上、还没补上的那些次（学过的记录同一套取数）
-    const parked = (await this.d.learned.parked(mainId)).length;
-    const load: LoopLoad = {
-      inProgress: groups.inProgress.length,
-      shelved: groups.shelved?.length ?? 0,
-      parked,
-      unfinished: groups.inProgress.length + (groups.shelved?.length ?? 0),
-      heavy: groups.inProgress.length + (groups.shelved?.length ?? 0) >= LOAD_HEAVY,
-      parkingPile: parked >= PARKING_PILE,
-    };
-    return {
-      mainSessionId: mainId,
-      title: title?.type === 'project_title' ? title.title : main.title,
-      ...(goal !== undefined ? { goal: goal.goal.text, goalView: goalViewOf(goal) } : {}),
-      ...(dl.deadline !== undefined ? { deadline: dl.deadline } : {}),
-      ...(dl.note !== undefined ? { deadlineNote: dl.note } : {}),
-      materialCount: await this.d.materialCount(mainId),
-      groups,
-      load,
-    };
-  }
-
-  private async brief(loopId: string): Promise<LoopBrief> {
-    const opened = await this.d.hub.opened(loopId);
-    const recs = await this.d.hub.records(loopId);
-    const flags = foldLoop(recs);
-    const ended = recs.find((r) => r.record === flags.ended);
-    const verdict = recs.filter((r) => r.record.type === 'guard_verdict').at(-1);
-    return {
-      sessionId: loopId,
-      title: opened.title,
-      openedAt: opened.at,
-      ...(flags.shelved !== undefined
-        ? { shelved: { at: flags.shelved.at, note: flags.shelved.note } }
-        : {}),
-      ...(opened.resumeOf !== undefined
-        ? {
-            resumeOf: {
-              loopSessionId: opened.resumeOf.fromLoop,
-              ...(await this.titleOf(opened.resumeOf.fromLoop).then((t) =>
-                t !== undefined ? { title: t } : {},
-              )),
-            },
-          }
-        : {}),
-      ...(opened.ticket?.revisit !== undefined ? { revisit: opened.ticket.revisit.kind } : {}),
-      ...(opened.ticket?.stageCheck === true ? { stageCheck: true } : {}),
-      ...(ended !== undefined ? { endedAt: ended.record.at } : {}),
-      status: statusOf(recs),
-      ...(opened.ticket !== undefined ? { newPoint: this.pointRef(opened.ticket.newPoint) } : {}),
-      ...(verdict?.record.type === 'guard_verdict'
-        ? { lastVerdict: { closed: verdict.record.closed, line: verdict.line } }
-        : {}),
-    };
-  }
-
   /** 异议存放处里的全部异议（可按种类、记录 id 过滤）。 */
   objections(kind?: string, recordId?: string): ObjectionView[] {
     return this.d.objections
@@ -533,11 +450,6 @@ export class Evidence {
         (o) => recordId === undefined || ('recordId' in o.target && o.target.recordId === recordId),
       )
       .map(storedView);
-  }
-
-  /** 单子里的一个点：不再查知识点库，名字就等于它自己（工单 §4.5）。 */
-  private pointRef(id: string): PointRef {
-    return { id, name: id };
   }
 
   // ───────────── 外发披露 ─────────────
@@ -611,21 +523,6 @@ function statusOf(recs: NumberedRecord[]): LoopStatus {
 
 function storedView(o: LearnerObjection): ObjectionView {
   return { ...o, inLoop: false };
-}
-
-/** 方向目标记录 → 完整形状（旧记录只有一句话时就只有 line / at / text）。 */
-function goalViewOf(x: { line: number; goal: ProjectGoal }): GoalView {
-  const g = x.goal;
-  return {
-    line: x.line,
-    at: g.at,
-    text: g.text,
-    ...(g.title !== undefined ? { title: g.title } : {}),
-    ...(g.abilities !== undefined ? { abilities: g.abilities } : {}),
-    ...(g.orderHint !== undefined ? { orderHint: g.orderHint } : {}),
-    ...(g.deadline !== undefined ? { deadline: g.deadline } : {}),
-    ...(g.provisional === true ? { provisional: true as const } : {}),
-  };
 }
 
 function unknownSource(raw: string): SourceView {

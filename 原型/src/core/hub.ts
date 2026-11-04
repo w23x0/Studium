@@ -899,21 +899,13 @@ export function activityText(
 }
 
 function summary(o: SessionOpened): SessionSummary {
-  const from = sessionFrom(o);
   return {
     sessionId: o.sessionId,
     kind: o.kind,
     title: o.title,
     openedAt: o.at,
     ...(o.parent !== undefined ? { parent: o.parent } : {}),
-    ...(from !== undefined ? { from } : {}),
   };
-}
-
-/** 学习对话的来历：接着哪段没学完的学的；不是返回空。 */
-export function sessionFrom(o: SessionOpened): SessionSummary['from'] {
-  if (o.resumeOf !== undefined) return { kind: 'resume', loop: o.resumeOf.fromLoop };
-  return undefined;
 }
 
 function stamp(d: Date): string {

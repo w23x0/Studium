@@ -2,11 +2,6 @@
 // 结束 = 最后一条 loop_ended 之后没有 thread_reopened。
 import type { LoopEnded, LoopShelved, NumberedRecord } from './records.ts';
 
-/** 没收尾的学习（进行中 + 搁置）到这个数就提示别再开新的（实现细节，可调）。 */
-export const LOAD_HEAVY = 3;
-/** 停车场积压到这个数提示降载、优先收尾（实现细节，可调）。 */
-export const PARKING_PILE = 3;
-
 export interface LoopFlags {
   /** 现在是结束着的：最后一次结束（重开过又结束 = 后一次）。 */
   ended?: LoopEnded;

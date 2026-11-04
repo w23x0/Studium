@@ -14,18 +14,12 @@ export const THREAD_KINDS: ReadonlySet<ConversationKind> = new Set<ConversationK
   'output',
 ]);
 
-/** 能结束后再重开的种类（W12 §2 起学习对话也能重开）。 */
-export const REOPENABLE_KINDS: ReadonlySet<ConversationKind> = new Set<ConversationKind>([
-  'talk',
-  'find',
-  'loop',
-]);
-
 /** 记号 → 分组；没有记号 = 进行中。 */
 export const GROUP_OF: Record<SessionMark, ThreadGroup> = {
-  guarded: 'waiting', // 收尾那一句到了，等学习者点“学完了”或再补一句
+  // 记号名 guarded 是守卫时期留下的、值不改：现在 = 收尾那一句到了，等学习者点“学完了”或再补一句（与守卫无关）
+  guarded: 'waiting',
   candidates: 'waiting', // 旧数据：找资料交回候选，等学习者勾
-  shelved: 'paused', // 学习停着：没结束，点开说句话就接上
+  shelved: 'paused', // 旧数据：搁置着的学习，没结束，点开说句话就接上
   closed: 'ended',
   unclosed: 'ended', // 没合上就结束 = 设计里的“搁着”
   ended: 'ended',

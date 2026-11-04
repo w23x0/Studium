@@ -26,23 +26,6 @@ export interface ReviewWindow {
   until: string;
 }
 
-/**
- * 阶段复盘交回时，核心往主对话里记的那条程序事实（交给主对话的模型）。界面认出它，在主对话里显示交回的那一句。
- * 核心写、界面认用同一处定义。
- */
-export function reviewReturnedFact(reviewSessionId: string, summary: string): string {
-  return `阶段复盘的对话（${reviewSessionId}）交回了：${summary}`;
-}
-
-/** 认出 reviewReturnedFact 写的那条事实；不是就返回空。 */
-export function parseReviewReturned(
-  text: string,
-): { reviewSessionId: string; summary: string } | undefined {
-  const m = /^阶段复盘的对话（([A-Za-z0-9_-]+)）交回了：([\s\S]*)$/.exec(text);
-  if (m?.[1] === undefined || m[2] === undefined) return undefined;
-  return { reviewSessionId: m[1], summary: m[2] };
-}
-
 export const REMINDER_KINDS = ['recheck', 'resume', 'deadline', 'review', 'other'] as const;
 export type ReminderKind = (typeof REMINDER_KINDS)[number];
 

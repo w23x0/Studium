@@ -59,17 +59,21 @@ const WHAT: Record<string, string> = {
 
 /** 开场里的沙盒说明：只列只读区有什么（虚拟路径 + 是什么）；资料一份份的看 资料/目录.md。 */
 export function describeSandbox(sb: SandboxSpec): string {
-  const books = sb.readOnly.filter((e) => e.name.startsWith('资料/') && e.name !== MATERIAL_INDEX);
+  const materialDirs = sb.readOnly.filter(
+    (e) => e.name.startsWith('资料/') && e.name !== MATERIAL_INDEX,
+  );
   return [
     '只读区（当前目录是你的工作区，可写）：',
     ...sb.readOnly
       .filter((e) => WHAT[e.name] !== undefined)
       .map((e) => `- 只读/${e.name} —— ${WHAT[e.name] ?? ''}`),
-    ...(books.length > 0
-      ? [`- 只读/资料/<资料id>/ —— 本项目能读的资料正文（按原目录），共 ${String(books.length)} 份`]
+    ...(materialDirs.length > 0
+      ? [
+          `- 只读/资料/<资料id>/ —— 本项目能读的资料正文（按原目录），共 ${String(materialDirs.length)} 份`,
+        ]
       : []),
     // 缺料要写明，不中止（记录/读写权限.md「缺料与冲突」）
-    ...(books.length === 0 ? ['（这次没有可用的资料：缺资料依据）'] : []),
+    ...(materialDirs.length === 0 ? ['（这次没有可用的资料：缺资料依据）'] : []),
   ].join('\n');
 }
 
@@ -167,7 +171,7 @@ export class Sandboxes {
     return {
       workdir,
       readOnly: [
-        ...(await this.bookEntries(loopId)),
+        ...(await this.materialEntries(loopId)),
         ...this.dirEntries(loopId, [TEACHING_TOOLS_DIR, '学过的记录']),
         { name: '本次对话.md', path: join(this.root(loopId), '只读', '本次对话.md') },
         { name: '项目说明.md', path: join(this.root(loopId), '只读', '项目说明.md') },
@@ -217,7 +221,7 @@ export class Sandboxes {
    * 本项目能读的每份能用的资料一项（按归属：学习者的 + 本项目的；学过的笔记也在这里按原目录挂）：
    * `资料/<资料 id>` → 它的正文目录；外加程序渲染的 `资料/目录.md`。
    */
-  private async bookEntries(sessionId: string): Promise<{ name: string; path: string }[]> {
+  private async materialEntries(sessionId: string): Promise<{ name: string; path: string }[]> {
     const ids = await this.o.scopeOf(sessionId);
     const index = join(this.root(sessionId), '只读', '资料目录.md');
     await mkdir(dirname(index), { recursive: true });
@@ -313,7 +317,7 @@ export class Sandboxes {
     if (l.routeDecision !== undefined) {
       const main = (await this.o.hub().opened(l.loopId)).parent ?? '项目主对话';
       lines.push(
-        `- 当时的路线决定（${main}:L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（理由：${l.routeDecision.reason}）`,
+        `- 旧数据·当时的路线决定（${main}:L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（理由：${l.routeDecision.reason}）`,
       );
     }
     if (l.closing !== undefined) {

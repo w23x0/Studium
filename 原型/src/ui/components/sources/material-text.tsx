@@ -5,7 +5,7 @@ import { useMemo } from 'react';
 import { cn } from '@/lib/utils';
 import { boldPieces, lineStyle, mathPieces } from '../../source-model.ts';
 
-export function BookText(props: { text: string; className?: string }) {
+export function MaterialText(props: { text: string; className?: string }) {
   // 标题自成一段（原文按空行分段）：段首是 # 就按标题显示
   const s = lineStyle(props.text);
   return (

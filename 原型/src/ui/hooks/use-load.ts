@@ -1,18 +1,14 @@
-// 读一份只读视图；相关的记录写进来时（判断、结束、出选项、写记录……）自动重读。
+// 读一份只读视图；相关的记录写进来时（收尾、结束、讨论串变化……）自动重读。
 import { useEffect, useState } from 'react';
 import type { ServerEvent } from '../../shared/protocol.ts';
 import { api } from '../api.ts';
 
-/** 这些记录写进来时，依据面板与项目页上的内容可能变了。 */
+/** 这些记录写进来时，依据面板与学过的记录上的内容可能变了（只列现在还会写进来的种类）。 */
 const RELOAD_ON = new Set([
   'session_opened',
-  'ticket_edited',
-  'guard_verdict',
   'close_requested',
   'loop_ended',
   'after_loop_step',
-  'choice_card',
-  'choice_made',
   'project_goal',
   'project_title',
   'project_material',
@@ -21,33 +17,21 @@ const RELOAD_ON = new Set([
   // 沙盒动作：读了教学工具时，依据面板的“这次用过的教学工具”要重读
   'sandbox_action',
   'user_message',
-  // 学到一半（批 5）：先放一放 / 接着学
-  'loop_shelved',
+  // 学到一半：接着学（旧数据里搁置着的）
   'loop_resumed',
-  // 跨段学习的长期功能（批 6）：提醒加上 / 办掉；复盘交回、开出复盘
-  'reminder_added',
-  'reminder_closed',
+  // 谈方向结束、讨论串结束 / 重开 / 改名 / 开出
   'talk_ended',
   'thread_closed',
   'thread_reopened',
   'thread_title',
   'task_opened',
-  // 导入入口与项目页（工单 W9）：分流、改判；项目说明；找资料的候选与存所选
+  // 上传分流、改判；项目说明
   'upload_routed',
   'project_instructions',
-  'find_candidates',
-  'candidates_picked',
 ]);
 
 function relevant(e: ServerEvent): boolean {
   return e.type === 'record' && RELOAD_ON.has(e.record.type);
-}
-
-const localBumps = new Set<() => void>();
-
-/** 界面自己写了不进正本记录的东西（如存产出物、登记文献）：让读着的视图都重读一次。 */
-export function bumpLive(): void {
-  for (const f of [...localBumps]) f();
 }
 
 /** 相关记录到来时变一次的计数（攒半秒，避免一串记录连着重读）。 */
@@ -60,11 +44,8 @@ export function useLiveTick(): number {
       if (timer !== undefined) clearTimeout(timer);
       timer = setTimeout(() => setTick((t) => t + 1), 500);
     });
-    const bump = () => setTick((t) => t + 1);
-    localBumps.add(bump);
     return () => {
       if (timer !== undefined) clearTimeout(timer);
-      localBumps.delete(bump);
       stop();
     };
   }, []);

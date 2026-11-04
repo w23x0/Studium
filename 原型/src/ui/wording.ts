@@ -1,28 +1,16 @@
 // 界面上给学习者看的叫法，统一放这里（以后改叫法只改这一处）。
-// 内部词（选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里；
-// wording.test.ts 会查。对照：右边注释是内部叫法，只给写代码的人看。
+// 内部词（选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里（没有自动检查，改时自己留意）。
+// 对照：右边注释是内部叫法，只给写代码的人看。
 import type { LoopStatus, SourceReportKind } from '../shared/protocol.ts';
 import { WS } from './wording-sidebar.ts';
 
 export const W = {
   /** 左栏、全部项目页、账号菜单与设置的叫法在 wording-sidebar.ts。 */
   sidebar: WS,
-  // ── 项目页 ──
+  // ── 项目 ──
   projectHome: '项目页', // 项目页（Overview）
   projectChat: '项目对话', // 主对话
-  goalMissing: '还没谈定。在项目对话里说说你想学什么。',
-  backToChat: '进项目对话',
   backToMain: '回项目对话',
-  groups: {
-    inProgress: '在学',
-    closed: '学完',
-    unclosed: '搁着', // 没合上（停车场）
-  },
-  groupHints: {
-    unclosed: '没学完就先结束的；下次要下一步时会一起考虑',
-  },
-  learnEmpty: '还没有学过。',
-  closedMore: (n: number) => `全部 ${String(n)} 次`,
   /** 讨论串：项目对话右边一栏，列这个项目开出去的任务对话。 */
   threads: {
     title: '讨论串',
@@ -45,8 +33,6 @@ export const W = {
     tagClosed: '学完',
   },
 
-  // ── 下一步 ──
-
   // ── 依据面板 ──
   panelClose: '关上',
   panelLoopTitle: '这次学习',
@@ -59,27 +45,27 @@ export const W = {
   closingShort: '在收尾…',
   moreActions: '更多',
   endLater: '搁着，以后再学', // 没合上就结束
-  endLaterHint: '没学完就先结束这次；下次要下一步时会一起考虑。',
+  endLaterHint: '没学完就先结束这次；以后的学习对话能读到这次的原文。',
   confirmBar: '收尾那一句写好了。还想补一句就接着说；不补就点“学完了”。',
   confirmMore: '再补一句',
   confirmGo: '学完了',
   loopDone: '这部分学完了。',
-  unclosedDone: '搁着了，下次要下一步时会一起考虑。',
+  unclosedDone: '搁着了；以后的学习对话能读到这次的原文。',
   talkDone: '方向记好了。还想改就接着说，会重新打开。',
   talkIntro: '在这里说清想学到什么程度；谈定后方向会记进项目。',
   talkFrom: '从你在项目对话里说的这句开始：',
+  // 旧数据：导航会话只读看
   navIntro: '导航自己跑完，这里只看它怎么想的。',
   navResult: '下一次学',
   navStart: '开始学',
   navWhy: '为什么：',
   panelBack: '返回',
-  loopBasis: '这次学习的记录', // 学习依据
-  loopBasisShort: '看记录',
   status: {
     in_progress: '在学',
     closed: '学完了',
     unclosed: '搁着',
   } satisfies Record<LoopStatus, string>,
+  // 旧数据：单子
   plan: '这次学什么', // 开场单子
   newPoint: '要学的', // 新点
   clause: '学完应该能', // 预期理解
@@ -104,7 +90,6 @@ export const W = {
   seeClosingSaid: '在记录里看',
   reason: '总的来说',
   problem: '没整理成的原因',
-  quotedWords: '依据的原话',
   askedBy: (by: 'model' | 'learner') =>
     by === 'learner' ? '你说“我觉得懂了”' : '老师提出可以看看',
   jumpTo: '在对话里看',
@@ -129,13 +114,6 @@ export const W = {
 
   // ── 记录 ──
   learned: '我学会的',
-  myState: '我的状态', // 状态记录
-  timeRange: '时间范围',
-  teaching: '对我用过的教法', // 教法记录（与下面的“教学方法库”分开叫）
-  conditions: '当时的情况',
-  followedBy: '之后怎样',
-  toolsUsed: '用到的教学工具',
-
   // ── 出处种类 ──
   sourceKind: {
     loop_line: '之前对话里的话',
@@ -207,20 +185,15 @@ export const W = {
     其他: '其他',
   } satisfies Record<SourceReportKind, string>,
   reportPlaceholder: '说说哪里不对，正确的应该是什么…',
-  reportSent: '记下了。书本身不会被改，这条会留着等以后修正。',
+  reportSent: '记下了。资料原件不会被改，这条会留着等以后修正。',
   reported: '你报过的错',
 
   // ── 输入框：图片 / 拍照、语音、公式（批 4） ──
-  disclosureInputs: '输入方式送往哪里', // 外发披露里的图片转写、语音
+  disclosureInputs: '输入方式送往哪里', // 外发披露里的图片、语音
   addImage: '添加图片',
   takePhoto: '拍照',
-  imageNotice:
-    '图片会送去自动转写成文字（送往哪里见“内容送往哪里”）；对话里只发文字，原图存在本机。',
   dropHere: '松开，把图片加进来',
   notImage: '只能加图片（PNG、JPEG、GIF、WebP）。',
-  uploading: '正在上传…',
-  transcript: '图里的内容（自动转写，发送前可以改）',
-  retry: '再试一次',
   removeImage: '移除这张图',
   viewImage: '看大图',
   imageAlt: (n: number) => `图片 ${String(n)}`,
@@ -246,24 +219,9 @@ export const W = {
   send: '发送',
   close: '关上',
 
-  // ── 资料范围（批 3b）：项目资料、期限 ──
-  materials: '项目资料', // 本项目的资料
-  materialsHint: '学习时查资料、排下一步，只在本项目的资料里查',
-  materialsAll: '还没有资料：拖文件进来，或点“添加”。学习时只在本项目的资料里查。',
-  materialMissing: '资料目录里找不到了',
+  // ── 资料范围 ──
   inProject: '项目资料', // 资料列表里的标记
-  deadline: '期限',
-  deadlineNone: '没设期限',
-  deadlineSet: '设期限',
-  deadlineChange: '改',
-  deadlineClear: '清掉',
-  deadlineNotePlaceholder: '备注（可不填），比如为什么是这天',
-  deadlineSave: '保存',
-  deadlineCancel: '算了',
-  daysLeft: (n: number) =>
-    n > 0 ? `还剩 ${String(n)} 天` : n === 0 ? '就是今天' : `已过 ${String(-n)} 天`,
-
-  // ── 资料的来源说明、状态回看（批 10b） ──
+  // ── 资料的来源说明（批 10b） ──
   sourceNote: '这份资料的说明',
   sourceNoteHint: '只是已知的情况，不是打分；还没写的就是还没人说明。',
   noteField: {
@@ -288,14 +246,12 @@ export const W = {
   noteSave: '记下',
   noteEarlier: '以前补过的',
   noteAdded: '只会追加，旧的留着。',
-  stageSteps: '阶段怎么变的',
-
   // ── 资料检索的范围 ──
   searchScopeProject: (n: number) => `在项目资料里搜（${String(n)} 份）`,
   searchScopeAll: '在全部资料里搜',
   searchAll: '查全部资料',
 
-  // ── 单子：按文字显示、学习者可改（W6） ──
+  // ── 旧数据：单子按文字显示（W6；W12 起没有单子） ──
   ticketRevisit: '回头看',
   revisitLine: (kind: string) => `回看以前那次（${kind}）`,
   ticketReturnTo: '学完回到',
@@ -307,7 +263,7 @@ export const W = {
   ticketEditSee: '看那一行',
   ticketEditedFields: (fields: string) => `改了：${fields || '（没变）'}`,
 
-  // ── 判定里的实际理解与证据强度（W6） ──
+  // ── 旧数据：守卫判定里的实际理解与证据强度（W6） ──
   understanding: '学到的样子',
   understandingHint: '收尾整理时记下的：你实际表现出的理解，以及当时是怎么做出来的。',
   independence: {
@@ -321,7 +277,7 @@ export const W = {
     含延迟: '隔一段时间也行',
   } as const,
 
-  // ── 路线决定（W6） ──
+  // ── 旧数据：路线决定（W6） ──
   routeDecision: '这次怎么定的',
   routeDecisionSuperseded: '后来改了路线',
   routeDecisionBasis: '依据',
@@ -340,14 +296,7 @@ export const W = {
     对话记录: '你在别处跟 AI 学的',
   } as const,
 
-  // ── 方向目标按块显示（W6） ──
-  goalTitle: '这个方向',
-  goalAbility: '学成后能',
-  goalOrderHint: '大概的顺序',
-  goalProvisional: '这一版',
-  goalText: '要学成什么',
-  goalConfirmedReason: (reason: string) => `你确认时说的：${reason}`,
-  provisionalGoal: '临时的，谈过方向后会换成你确认的',
+  // ── 没学完结束时说的 ──
   unclosedLine: '停下时说的',
 
   // ── 外发披露：会联网搜索的对话（W6） ──
@@ -358,7 +307,6 @@ export const W = {
   unverified: '未验证',
 
   // ── 学到一半：停着的（旧数据） ──
-  thatPart: '那一段',
   shelvedBar: '这次停着，点“接着学”或说句话就能接上。',
   shelvedPlaceholder: '说句话也会接着学…',
   resume: '接着学',
@@ -367,208 +315,38 @@ export const W = {
   resumedLine: '接着学。',
   shelvedNote: '停下时说的',
   shelvedBadge: '停着',
-  loadHeavy: (n: number) =>
-    `同时开着的有点多（${String(n)} 段没学完）。先把手上的学完或搁着，再开新的。`,
-  loadPile: (n: number) => `没学完的攒了 ${String(n)} 段，先收一收：挑一段接着学。`,
-  // 学习之间的关系（从哪来）
-  relations: '学习之间的来龙去脉',
-  relationsHint: '每段学习从哪来、接着的是哪一段',
-  originCard: '导航定的下一次学习',
 
-  // ── 教法：老师可以取用的教学方法、每轮的教法强度、状态确认（批 7） ──
-  toolsUsedHere: '这次学习用到的教法',
-  toolsUsedHint: '老师按需取用的。',
+  // ── 学习对话读过的教学工具（做法参考） ──
+  toolsUsedHere: '这次读过的做法参考',
+  toolsUsedHint: '学习对话按需读的。',
   toolsUsedNone: '这次没取用过。',
   toolTimes: (n: number) => `${String(n)} 次`,
-  // 阶段验收（练习整块删了以后只留说明）
+  // 旧数据：阶段验收（练习整块删了以后只留说明）
   stageCheck: '阶段验收',
   stageCheckHint: '看你自己能做到哪；默认不给提示',
-  // 我的状态：来源与确认
-  sourceLevel: {
-    自述: '你自己说的',
-    观察: '观察到的',
-    推断: '推测的',
-    已确认: '你确认过的',
-  },
-  afterTeachingGo: '看那一轮',
 
-  // ── 我的产出：自己写的笔记整理、推导、小论文、方法比较（批 8b） ──
-  refsCount: (n: number) => `引用了 ${String(n)} 处`,
-  refsBad: (n: number) => `${String(n)} 处对不上`,
-  refsBadHint: '对不上的引用显示成灰色；点开或悬停能看到原因。',
-  // 方法比较
-  cmpProblems: {
-    dims: '至少要有一个比较的方面；每一列都要写名字，不能重名。',
-    methods: '至少要两个方法才能比。',
-    names: '每个方法都要有名字，不能重名。',
-    boundary: (name: string) => `「${name}」还没写适用边界。`,
-  },
-  // 版本
-  versionsHint: '每次保存都是新的一版，旧的不会被改掉。勾两版可以对比。',
-  compare: '对比',
-  comparePick: '勾两版来对比',
-  compareOf: (a: number, b: number) => `第 ${String(a)} 版 → 第 ${String(b)} 版`,
-  diffStat: (added: number, removed: number) =>
-    `多了 ${String(added)} 行，少了 ${String(removed)} 行`,
-  diffSkip: (n: number) => `…… ${String(n)} 行没变`,
-  refsAdded: '新加的引用',
-  refsRemoved: '去掉的引用',
-  refsNoChange: '引用没有变。',
-  noDiff: '两版正文一样。',
-  closeCompare: '收起对比',
-  textLength: (n: number) => `${String(n)} 字`,
-  viewVersion: '看这一版',
-  latestBadge: '最新',
-  writtenInChat: '在哪段对话里写的',
-  // 相关文献
-  litRelationKind: '关系类型（可不选）',
-  // 写产出的对话
-
-  // ── 跨段学习的长期功能：今天该做的、提醒、复习 / 复检、接着学、阶段复盘、我学会的现状（批 6） ──
-  today: '今天该做的',
-  todayHint: '到期的提醒、快到的期限、该回头看看的时候',
-  todayDo: '去做',
-  todayDone: '做完了',
-  todaySkip: '跳过',
-  todayLater: '今天先不',
-  todayDoing: '正在开…',
-  overdue: (n: number) => (n > 0 ? `过了 ${String(n)} 天` : '今天到期'),
-  deadlineNear: (n: number) =>
-    n > 0 ? `离期限还有 ${String(n)} 天` : n === 0 ? '期限就是今天' : `期限已过 ${String(-n)} 天`,
-  // 提醒
-  reminders: '提醒',
-  reminderKind: {
-    recheck: '复检',
-    resume: '接着学',
-    deadline: '期限',
-    review: '复盘',
-    other: '提醒',
-  } as const,
-  reminderBy: { nav: '安排学习时记的', learner: '你加的' } as const,
-  reminderAdd: '加一条提醒',
-  reminderWhat: '做什么',
-  reminderWhatKind: {
-    recheck: '复检以前学过的一块',
-    resume: '接着一段没学完的',
-    deadline: '为期限做准备',
-    other: '别的事',
-  } as const,
-  reminderPickPoint: '复检哪一块（写一句话）',
-  reminderPickLoop: '哪一段',
-  reminderPick: '选一个',
-  reminderNoLoops: '没有没学完的。',
-  reminderWhen: '什么时候',
-  reminderOnDate: '某一天',
-  reminderBeforeDeadline: '期限前几天',
-  reminderDaysBefore: '天',
-  reminderNoDeadline: '项目没设期限，只能选日期。',
-  reminderText: '提醒自己的一句话',
-  reminderTextRecheck: (name: string) => `复检「${name}」，看看还记不记得`,
-  reminderTextResume: (title: string) => `接着学「${title}」`,
-  reminderTextDeadline: '期限快到了，看看还差什么',
-  reminderSave: '加上',
-  reminderCancel: '算了',
-  reminderDismiss: '不要了',
-  reminderNeedText: '要写一句做什么。',
-  reminderNeedPick: '要选是哪一个。',
-  reminderNeedDate: '要选日期。',
-  remindersClosed: (n: number) => `已办 / 已跳过的（${String(n)}）`,
-  reminderOutcome: { done: '已办', dismissed: '已跳过' } as const,
-  reminderClosedBy: { learner: '你标的', program: '学的时候顺手办掉的' } as const,
+  // ── 旧数据：复习 / 复检、接着学、阶段复盘（批 6；W12 随导航撤掉，旧记录照旧显示） ──
   // 复习 / 复检
   revisitKind: { 复习: '复习', 复检: '复检' } as const,
   revisitHint: {
     复习: '把以前学过的再过一遍',
     复检: '看看以前学会的还在不在',
   } as const,
-  revisitBanner: {
-    复习: '这次是复习：把以前学过的再过一遍。',
-    复检: '这次是复检：看看以前学会的还在不在。不是从头学，答不上来也没关系，正好知道哪里要补。',
-  } as const,
   // 接着没学完的学
   resumedByLine: (title: string) => `已接着在《${title}》学`,
-  resumedByBefore: '已接着在',
-  resumedByAfter: '学',
   // 阶段复盘
-  review: '阶段复盘',
   reviewBanner: (since: string, until: string) => `复盘：回头看 ${since} 到 ${until} 学的`,
   reviewWelcome: '我们回头看看这段时间学得怎么样。',
-  // 路线偏差（现算的三类，只说事实）
-  seeThatLearning: '看那段学习',
 
-  // ── 项目页三页签与导入入口（工单 W9） ──
-  tabs: { learn: '学习', materials: '资料', memory: '记着什么' } as const,
-  settings: '项目设置',
-  settingsName: '项目名',
-  settingsSave: '保存',
-  add: '添加',
-  addFile: '文件',
-  addFolder: '文件夹',
-  addLink: '网页链接',
-  addRepo: '代码仓库',
-  addFromProject: '从别的项目拿',
-  linkPlaceholder: 'https://…',
-  repoPlaceholder: 'https://github.com/… 或 git 地址',
-  repoCommit: '固定到哪次提交（可不填）',
-  addGo: '加进来',
-  dropFiles: '松开就加进本项目',
-  dropHint: '可以把文件、整个文件夹拖到这一页',
+  // ── 上传与分流（工单 W9、W11） ──
   filesUploading: (n: number) => `正在传 ${String(n)} 个文件…`,
-  tooManyFiles: (n: number, max: number) =>
-    `一次最多 ${String(max)} 个文件，这次是 ${String(n)} 个；分几次传`,
-  uploadsTitle: '刚加进来的',
-  uploadsHint:
-    '每份先分一下：讲知识的当资料；你自己的笔记、在别处跟 AI 学的对话当学过的。分错了点一下改。',
   routedTo: { 资料: '资料', 学过的: '学过的' } as const,
-  routedBy: { model: '自动分的', learner: '你改的' } as const,
   rerouteTo: (to: string) => `改成${to}`,
   ownerIs: (o: string) => `归${o}`,
   ownerTo: (o: string) => `改归${o}`,
   ownerHint: '归学习者 = 所有项目都能读；归项目 = 只给这个项目读',
-  materialStatus: { 处理中: '处理中', 可用: '能用', 部分可用: '部分能用', 失败: '失败' } as const,
-  materialProblems: (n: number) => `${String(n)} 处问题`,
-  materialRetry: '重试',
-  materialDelete: '删掉',
-  materialRole: '老师判断的角色',
-  materialKind: {
-    pdf: 'PDF',
-    web: '网页',
-    subtitle: '字幕',
-    repo: '代码仓库',
-    search: '联网查来',
-    md: '文字',
-    file: '文件',
-    book: '书',
-    note: '笔记',
-  } as const,
-  myImports: '在别处学过的（导入）',
-  myImportsHint: '你的笔记、在别处跟 AI 学的对话。只当你自述的经历，不算在这里学会了。',
-  importView: '看看',
-  importHide: '收起',
-  importDelete: '删掉',
   filesSent: (n: number) => `收下了 ${String(n)} 份`,
-  // 记着什么
-  memoryHint: '这里摊开系统记着的、关于这个项目和你的事；不对的地方可以改或提出来。',
-  instructions: '项目说明',
-  instructionsEmpty:
-    '还没写。写给这个项目的长期要求（用什么系统、什么时候有空、讲题希望怎样），每次对话都会带上；也可以在项目对话里说“记住……”。',
-  instructionsEdit: '改',
-  instructionsSave: '保存',
-  instructionsCancel: '算了',
-  instructionsCount: (n: number, max: number) => `${String(n)} / ${String(max)} 字`,
-  instructionsTooLong: (max: number) => `超过 ${String(max)} 字了，删掉一些再存`,
-  instructionsHistory: '改过的版本',
-  instructionsBy: { learner: '你改的', main: '项目对话里代写的' } as const,
-  memoryGoal: '方向',
-  memoryLearned: '学过的',
-  memoryLearnedLine: (closed: number, open: number, parked: number) =>
-    `学完 ${String(closed)} 次 · 在学 ${String(open)} 次 · 搁着 ${String(parked)} 次`,
-  memoryState: '你的状态',
-  memoryStateEmpty: '还没整理过。学过几次后，这里会记下观察到的时间、精力这类情况，只作参考。',
-  notRight: '这里不对',
-  openDetail: '看详细',
-  memoryMore: '还能看：',
-  // 找资料
+  // 找资料（旧数据：候选清单）
   findWelcome: '正在找资料…',
   candidatesTitle: '找到的候选',
   candidatesSaved: '已存',

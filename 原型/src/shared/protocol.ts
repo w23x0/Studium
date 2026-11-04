@@ -9,10 +9,8 @@ import type {
   SourceReportKind,
   Understanding,
 } from './records.ts';
-import type { TodayView } from './protocol-longterm.ts';
 import type { Import } from './protocol-learned.ts';
 
-export type * from './protocol-longterm.ts';
 export type * from './protocol-learned.ts';
 export * from './protocol-cross.ts';
 
@@ -24,9 +22,7 @@ export interface SessionSummary {
   /** 最近一条记录的时间（派生层算的；左栏“最近”按它排）。 */
   lastAt?: string;
   parent?: string;
-  /** 学习对话的来历：接着哪段没学完的学的（resume）。 */
-  from?: { kind: 'resume'; loop: string };
-  /** 这条对话最近一条“状态记录”说到哪了；没有 = 还在进行。讨论串怎么分组由界面按它定。 */
+  /** 派生层记下的这条对话现在的状态记号；没有 = 还在进行。讨论串怎么分组由界面按它定。 */
   mark?: SessionMark;
 }
 
@@ -34,6 +30,8 @@ export interface SessionSummary {
  * 派生层记下的对话状态（只记事实，不分组）：
  * guarded 收尾那一句到了（旧数据：守卫交回）、等学习者点“学完了” · closed / unclosed 学习合上 / 没合上就结束 · shelved 学习停着 ·
  * candidates 旧数据：找资料交回候选、等学习者勾 · ended 谈方向谈定、讨论串结束（旧数据还有找资料勾完、写产出与阶段复盘）。
+ * `guarded` 这个名字是守卫时期留下的（存在派生索引的 mark 列里，值不改）：现在表示“收尾那一句到了、等学习者确认”，与守卫无关。
+ * `shelved` 只来自旧数据的搁置（11-04 起界面与模型都不再触发）。
  */
 export type SessionMark = 'guarded' | 'closed' | 'unclosed' | 'shelved' | 'candidates' | 'ended';
 
@@ -94,12 +92,6 @@ export function modelInfoOf(stored: string): ModelInfo {
     known: false,
     note: '没取到实际执行的模型；这里显示的是适配器名，不代表真正跑的是哪个模型。',
   };
-}
-
-/** 单子里引用的一个点：不再查知识点库，`name` 就等于 `id`。 */
-export interface PointRef {
-  id: string;
-  name: string;
 }
 
 /** 依据视图里的一次改动：改前、改后、时间（工单 W6 §4.2）。 */
@@ -262,96 +254,12 @@ export interface LoopEvidence {
   objections: ObjectionView[];
   /** 搁置着（可恢复）；与 status 无关：搁置的那次 status 仍是 in_progress。 */
   shelved?: { at: string; note: string };
-}
-
-export interface LoopBrief {
-  sessionId: string;
-  title: string;
-  openedAt: string;
-  endedAt?: string;
-  status: LoopStatus;
-  newPoint?: PointRef;
-  /** 旧数据：最近一次守卫判定（10-31 起不再产生）。 */
-  lastVerdict?: { closed: boolean; line: number };
-  /** 搁置着（status 仍是 in_progress）。 */
-  shelved?: { at: string; note: string };
-  /** 是接着一次没合上的学习学的（批 6）。 */
-  resumeOf?: { loopSessionId: string; title?: string };
-  /** 没合上的那次：有哪些续接它的新学习（批 6）。 */
-  resumedBy?: { loopSessionId: string; title?: string; status: LoopStatus }[];
-  /** 这次是复习 / 复检（批 6）。 */
-  revisit?: '复习' | '复检';
-  /** 这次是阶段验收（批 9）。 */
-  stageCheck?: boolean;
-}
-
-/** 没收尾的学习数（负荷预算与任务限流；只提示、不硬拦）。 */
-export interface LoopLoad {
-  /** 进行中（不含搁置）。 */
-  inProgress: number;
-  shelved: number;
-  /** 停车场里还没补上的（没合上就结束、以后没接着它合上、也没有新点相同的一次合上）。 */
-  parked: number;
-  /** 进行中 + 搁置。 */
-  unfinished: number;
-  /** 没收尾的学习不少了，该提示别再开新的。 */
-  heavy: boolean;
-  /** 停车场堆积了，该降载、优先收尾。 */
-  parkingPile: boolean;
-}
-
-/**
- * 方向目标的完整形状（记录/方向目标.md「内容」）：`line` = 那条记录在项目对话里的行号。
- * 旧记录只有一句话时就只有 `line at text`；`provisional` 只在临时版为真。
- */
-export interface GoalView {
-  line: number;
-  at: string;
-  text: string;
-  title?: string;
-  abilities?: { ability: string; reason: string; confirmedReason?: string }[];
-  orderHint?: string;
-  deadline?: string;
-  provisional?: true;
-}
-
-/** 项目页：本项目下的学习按状态分组。 */
-export interface ProjectOverview {
-  mainSessionId: string;
-  title: string;
-  goal?: string;
-  /** 当前方向目标的完整形状（最后一条为准）；还没有方向目标就不带。 */
-  goalView?: GoalView;
-  /** 期限（YYYY-MM-DD）与备注；没记就没有。 */
-  deadline?: string;
-  deadlineNote?: string;
-  /** 本项目能读几份资料（按归属：本项目的 + 学习者的；0 = 缺资料依据）。 */
-  materialCount?: number;
-  /** 今天该做的：到期的提醒、期限临近、该做阶段复盘了（批 6）。 */
-  today?: TodayView;
-  groups: {
-    /** 进行中。 */
-    inProgress: LoopBrief[];
-    /** 合上。 */
-    closed: LoopBrief[];
-    /** 没合上（停车场）。 */
-    unclosed: LoopBrief[];
-    /** 搁置着的那几次（可恢复）。没有就没有这一项。 */
-    shelved?: LoopBrief[];
-  };
-  load: LoopLoad;
-}
-
-export interface ShelveRequest {
-  note?: string;
+  /** 旧数据（W12 前）：没合上的那次被哪些新学习接着学（导航开的“接着学”）。 */
+  resumedBy?: { loopSessionId: string; title: string }[];
 }
 
 export interface LoopEvidenceResponse {
   loop: LoopEvidence;
-}
-
-export interface ProjectOverviewResponse {
-  overview: ProjectOverview;
 }
 
 /** 对守卫判定提异议：line = 判定在那次学习正本里的行号。 */
@@ -615,7 +523,7 @@ export type ServerEvent =
   | { type: 'running'; sessionId: string; running: boolean }
   /** 正在做什么（W12 §4.5）：程序从当前的工具调用得出的一行，不显示内容。 */
   | { type: 'activity'; sessionId: string; text: string }
-  /** 组件的新一版先在学习者浏览器的隐藏小窗里试跑（会话/页面子代理.md「怎么改」）；sessionId = 学习对话。 */
+  /** 学习对话交上的组件新一版先在学习者浏览器的隐藏小窗里试跑；sessionId = 学习对话。 */
   | {
       type: 'page_trial';
       sessionId: string;

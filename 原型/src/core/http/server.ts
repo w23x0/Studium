@@ -5,7 +5,6 @@ import { dirname, extname, join, normalize } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { timingSafeEqual } from 'node:crypto';
 import type {
-  ShelveRequest,
   ErrorResponse,
   ListProjectsResponse,
   ProjectResponse,
@@ -21,7 +20,6 @@ import type {
   LoopEvidenceResponse,
   ObjectionResponse,
   ObjectionsResponse,
-  ProjectOverviewResponse,
   SessionModelResponse,
   VerdictObjectionRequest,
   ListSessionsResponse,
@@ -54,7 +52,6 @@ import { BadRequestError, type Studium } from '../studium.ts';
 import { InputError, type Inputs } from '../inputs.ts';
 import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { inputsRoute } from './inputs-routes.ts';
-import { longtermRoute } from './longterm-routes.ts';
 import { screenRoute } from './screen-routes.ts';
 import { sidebarRoute } from './sidebar-routes.ts';
 import type { SidebarStore } from '../sidebar.ts';
@@ -176,17 +173,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         parts,
         method,
         opts.inputs,
-      )
-    )
-      return;
-    if (
-      await longtermRoute(
-        req,
-        res,
-        new URL(req.url ?? '/', 'http://localhost'),
-        parts,
-        method,
-        studium,
       )
     )
       return;
@@ -459,13 +445,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             await studium.endUnclosed(id, note);
             send(res, 202, {});
             return;
-          case 'shelve': {
-            const b = body as Partial<ShelveRequest>;
-            const why = typeof b.note === 'string' && b.note.trim() !== '' ? b.note : note;
-            await studium.shelveLoop(id, why);
-            send(res, 202, {});
-            return;
-          }
           case 'resume':
             await studium.resumeLoop(id);
             send(res, 202, {});
@@ -623,21 +602,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, { loop: await ev.loop(b) } satisfies LoopEvidenceResponse);
     } else if (a === 'cards' && n === 3 && b !== undefined) {
       send(res, 200, { card: await ev.card(b) } satisfies CardResponse);
-    } else if (a === 'projects' && c === 'overview' && n === 4 && b !== undefined) {
-      // 批 6：项目概览带“今天该做的”，没合上的那次带谁在接着学
-      const overview = await ev.overview(b);
-      overview.today = await opts.studium.longterm.todayView(b);
-      for (const brief of overview.groups.unclosed) {
-        const by = await opts.studium.longterm.resumedBy(b, brief.sessionId);
-        if (by.length > 0) {
-          brief.resumedBy = by.map((x) => ({
-            loopSessionId: x.loopSessionId,
-            title: x.title,
-            status: !x.ended ? 'in_progress' : x.closed === true ? 'closed' : 'unclosed',
-          }));
-        }
-      }
-      send(res, 200, { overview } satisfies ProjectOverviewResponse);
     } else if (a === 'learned' && n === 2) {
       // 学过的记录：不给 project 就是全部（按人，不按项目划界）
       send(

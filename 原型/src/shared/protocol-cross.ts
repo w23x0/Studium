@@ -1,6 +1,5 @@
-// 批 10b 的接口类型：资料的来源说明、跨领域单子的显示、状态回看与学习者解释。
+// 批 10b 的接口类型：资料的来源说明（跨领域单子的显示、状态回看随 W12 撤掉）。
 // protocol.ts 把它们 re-export，界面从 protocol.ts 取。
-import type { CrossKind } from './records-cross.ts';
 import type { MaterialKind } from './protocol.ts';
 
 // ───────────── 来源可靠性与适用性说明（`docs/设计/记录/资料.md`） ─────────────
@@ -68,14 +67,3 @@ export interface AddSourceNoteRequest {
   field: SourceNoteField;
   text: string;
 }
-
-// ───────────── 跨领域学习：单子的显示 ─────────────
-
-export interface CrossDomainView {
-  kind: CrossKind;
-  /** 另一边的点，一句话。 */
-  otherPoint: string;
-  problem: string;
-}
-
-// ───────────── 状态回看与学习者解释（`docs/设计/记录/状态记录.md`） ─────────────

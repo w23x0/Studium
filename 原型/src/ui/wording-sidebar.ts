@@ -1,4 +1,4 @@
-// 左栏、全部项目页、账号菜单与设置在界面上的叫法。wording.ts 的 W.sidebar 指向这里（wording.test.ts 一起查内部词）。
+// 左栏、全部项目页、账号菜单与设置在界面上的叫法。wording.ts 的 W.sidebar 指向这里（内部词的规矩同 wording.ts）。
 // 右边注释是内部叫法，只给写代码的人看。
 
 export const WS = {
@@ -24,14 +24,6 @@ export const WS = {
   pinned: '置顶',
   recents: '最近',
   noRecents: '还没有项目。',
-  /** 最近里各种对话的叫法（主对话的那条用项目对话）。 */
-  chatKind: {
-    talk: '谈话',
-    loop: '学习',
-    output: '写产出',
-    nav: '下一步',
-    find: '找资料',
-  } as const,
   lastActive: '最近活动',
   // ── ⋯ 菜单 ──
   more: '更多',

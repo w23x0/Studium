@@ -267,8 +267,8 @@ export class Learned {
   }
 
   /**
-   * 没合上那次的路线决定：那次结束之后、项目主对话里导航作出的第一条路线决定（导航下次定下一步时读它写的）。
-   * 找不到就不给这一栏。
+   * 旧数据（W12 前）：没合上那次的路线决定——那次结束之后、项目主对话里导航作出的第一条路线决定。
+   * W12 起导航撤掉、不再产生；找不到就不给这一栏。
    */
   private async routeDecisionOf(
     loopId: string,
@@ -285,60 +285,6 @@ export class Learned {
   }
 
   /**
-   * 停车场：没合上、还没补上的那些学习（导航开场、项目概览、复盘用），带结束原话所在行号。
-   * 一条不算积压 = 有一次以它为 `resumeOf` 的学习已合上，或之后有过一次新点文字相同的合上。
-   */
-  async parked(project: string): Promise<ParkedLearning[]> {
-    const learnings = (await this.list(project)).learnings;
-    const everything = await this.all();
-    const hub = this.o.hub();
-    const resumedClosed = new Set<string>();
-    for (const s of hub.listSessions().filter((x) => x.kind === 'loop')) {
-      const opened = await hub.opened(s.sessionId);
-      if (opened.resumeOf === undefined) continue;
-      const ended = foldLoop(await hub.records(s.sessionId)).ended;
-      if (ended?.closed === true) {
-        resumedClosed.add(opened.resumeOf.fromLoop);
-      }
-    }
-    const out: ParkedLearning[] = [];
-    for (const l of learnings) {
-      if (l.status !== '没合上') continue;
-      if (resumedClosed.has(l.loopId)) continue;
-      // 新点文字相同的后来合上了（W12 起新开的学习没有单子、新点是空的，不拿空的比）
-      const madeUp =
-        l.ticket.newPoint !== '' &&
-        everything.some(
-          (x) =>
-            x.status === '合上' &&
-            x.ticket.newPoint === l.ticket.newPoint &&
-            x.openedAt > l.openedAt,
-        );
-      if (madeUp) continue;
-      const recs = await hub.records(l.loopId);
-      const last = foldLoop(recs).ended;
-      const ended = recs.find((r) => r.record === last);
-      out.push({ learning: l, ...(ended !== undefined ? { endLine: ended.line } : {}) });
-    }
-    return out;
-  }
-
-  /** 停车场里的一条：没合上那次的「上层」（单子 + 结束原话带行号 + 当时的路线决定）。 */
-  parkedLine(p: ParkedLearning): string {
-    const l = p.learning;
-    const parts = [`${l.loopId}「${l.title}」：${ticketText(l.ticket)}`];
-    parts.push(
-      `结束原话${p.endLine !== undefined ? `（L${String(p.endLine)}）` : ''}：${l.endNote ?? ''}`,
-    );
-    if (l.routeDecision !== undefined) {
-      parts.push(
-        `当时的路线决定（L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（${l.routeDecision.reason}）`,
-      );
-    }
-    return parts.join('；');
-  }
-
-  /**
    * 一条外部导入一行：畅谈 = 会话与行号；笔记 / 对话记录 = 标题 + 沙盒里的位置（只读/学过的记录/外部导入/<id>.md
    * 是拼成一份的；按原目录读在 只读/资料/<资料 id>/）。
    */
@@ -348,12 +294,14 @@ export class Learned {
       : `${x.id} ${x.channel}《${x.title ?? x.id}》：外部导入/${x.id}.md（原目录：资料 ${x.ref.material}）`;
   }
 
-  /** 一次学习一行（导航开场、复盘、主对话的 list_learned 用）：上层 + 中层（记录/学过的记录.md「分层」）。 */
+  /** 一次学习一行（主对话的 list_learned 用）：收尾那一句、结束原话；旧数据（W12 前）另带单子、守卫判定、路线决定。 */
   line(l: Learning): string {
     const start = l.openedAt.slice(0, 10);
     const span = l.endedAt !== undefined ? `${start}–${l.endedAt.slice(0, 10)}` : start;
     const t = ticketText(l.ticket);
-    const parts = [`${l.loopId}「${l.title}」${l.status}，${span}${t !== '' ? `：${t}` : ''}`];
+    const parts = [
+      `${l.loopId}「${l.title}」${l.status}，${span}${t !== '' ? `：单子（旧数据）${t}` : ''}`,
+    ];
     if (l.closing !== undefined) {
       parts.push(`收尾那一句 L${String(l.closing.line)}：${l.closing.summary}`);
     }
@@ -370,22 +318,15 @@ export class Learned {
     if (l.endNote !== undefined) parts.push(`结束原话：${l.endNote}`);
     if (l.routeDecision !== undefined) {
       parts.push(
-        `当时的路线决定（L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（${l.routeDecision.reason}）`,
+        `旧数据·当时的路线决定（L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（${l.routeDecision.reason}）`,
       );
     }
     return parts.join('；');
   }
 }
 
-/** 停车场里的一条：没合上那次的「上层」（记录/单子与路线.md「没合上那次的上层」）。 */
-export interface ParkedLearning {
-  learning: Learning;
-  /** 结束原话（loop_ended）在那次学习正本里的行号。 */
-  endLine?: number;
-}
-
-/** 单子的一句话：新点 + 预期理解 + 出发点各注来源（W12 起新开的学习没有单子：空串）。 */
-export function ticketText(t: Ticket): string {
+/** 旧数据（W12 前）单子的一句话：新点 + 预期理解 + 出发点各注来源（W12 起新开的学习没有单子：空串）。 */
+function ticketText(t: Ticket): string {
   if (t.newPoint === '' && t.clause === '' && t.startPoints.length === 0) return '';
   const starts = t.startPoints
     .map((s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`)

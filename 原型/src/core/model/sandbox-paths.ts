@@ -8,11 +8,6 @@ import type { SandboxSpec } from './port.ts';
 /** 只读区在虚拟路径里的前缀。 */
 const READ_ONLY = '只读';
 
-/** 这个只读条目是不是单个文件（以 `.md` 结尾的是文件，其余是目录）。 */
-export function isReadOnlyFile(name: string): boolean {
-  return name.endsWith('.md');
-}
-
 /** abs 在 dir 之内（含 dir 本身）。 */
 function within(dir: string, abs: string): boolean {
   const rel = relative(dir, abs);

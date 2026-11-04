@@ -14,9 +14,9 @@ export type * from './records-longterm.ts';
 export type * from './records-cross.ts';
 
 /**
- * main 主对话 · talk 畅谈对话 · loop 一次学习的对话 · guard 旧数据：守卫（10-31 起不再开）· nav 出选择卡（导航）
- * · retrieve 检索子代理（导航派的）· state 整理学习者状态 · pedagogy 记教法效果 · output 写产出对话
- * · find 找资料（联网列候选，学习者勾了才存）· editor 旧数据：10-26 的页面编辑员（不再开；W10 起学习对话派的子代理不是会话）
+ * main 主对话 · talk 谈方向 · loop 一次学习的对话 · find 找资料（联网找、自己定存哪些、直接存，W12）· import 导入处理
+ * · 旧数据（不再开）：guard 守卫（10-31）· editor 页面编辑员（10-26）· nav 导航 · retrieve 检索子代理 · state 整理学习者状态
+ * · pedagogy 记教法效果 · output 写产出（这六种 W12 起）
  */
 export const CONVERSATION_KINDS = [
   'main',
@@ -82,8 +82,8 @@ export interface SessionOpened {
    */
   screens?: true;
   /**
-   * 学习页用哪种（10-29 #74 试验）：'stream' = 竖流，主模型一个人管（页面从正本放一遍算出来，src/shared/stream-page.ts）；
-   * 没有 = 区域图（主模型 + 子代理 + 框架小模型）。开学习时按设置定，之后不变。
+   * 学习页用哪种：'stream' = 竖流，学习对话一个人管（页面从正本放一遍算出来，src/shared/stream-page.ts）；W12 起新开的都是。
+   * 没有 = 旧数据：区域图（10-28、10-29，主模型 + 子代理 + 框架小模型）或更早的消息流，只读。
    */
   page?: 'stream';
 }

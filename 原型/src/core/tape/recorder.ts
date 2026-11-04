@@ -15,10 +15,7 @@ import type {
 import type { Studium } from '../studium.ts';
 import { IdTokens } from './ids.ts';
 
-/**
- * 学习者经界面做的动作：回放时按顺序重做。不带点的是 Studium 的方法；“longterm.” 是 studium.longterm 的、
- * “outputs.” 是知识产出物的（本地服务拿到的都是录带包过的那一份）。
- */
+/** 学习者经界面做的动作（Studium 的方法）：回放时按顺序重做（本地服务拿到的是录带包过的那一份）。 */
 export const ACTIONS = [
   'createProject',
   'learnerSays',
@@ -38,12 +35,8 @@ export const ACTIONS = [
   'reroute',
   'removeImport',
   'setInstructions',
-  // 批 5：搁置、恢复
-  'shelveLoop',
+  // 批 5：恢复搁置的学习
   'resumeLoop',
-  // 批 6：提醒
-  'longterm.addReminder',
-  'longterm.closeReminder',
   // 批 10b：资料来源说明
   'addSourceNote',
   // 左栏：项目改名（置顶、从列表删掉、对话改名只记在 ui/sidebar.jsonl，不进正本，不录）
@@ -191,27 +184,15 @@ export class Recorder {
     }
   }
 
-  /** 给本地服务用的 Studium：学习者动作先记进录带再照常执行（studium.longterm 的动作同样）。 */
+  /** 给本地服务用的 Studium：方法名在 ACTIONS 里的学习者动作先记进录带再照常执行。 */
   wrapStudium(studium: Studium): Studium {
-    const longterm = this.wrap(studium.longterm, 'longterm.');
-    return this.wrap(studium, '', (prop) => (prop === 'longterm' ? longterm : undefined));
-  }
-
-  /** 给本地服务用的其他对象（产出物、笔记）：名字前缀 + 方法名在 ACTIONS 里的，先记再执行。 */
-  wrap<T extends object>(
-    target: T,
-    prefix: string,
-    override: (prop: string | symbol) => unknown = () => undefined,
-  ): T {
     const actions: readonly string[] = ACTIONS;
-    return new Proxy(target, {
+    return new Proxy(studium, {
       get: (t, prop, receiver) => {
-        const replaced = override(prop);
-        if (replaced !== undefined) return replaced;
         const value: unknown = Reflect.get(t, prop, receiver);
         if (typeof value !== 'function') return value;
         const fn = value as (...a: unknown[]) => unknown;
-        const name = typeof prop === 'string' ? `${prefix}${prop}` : '';
+        const name = typeof prop === 'string' ? prop : '';
         if (!actions.includes(name)) return fn.bind(t);
         return (...args: unknown[]) => {
           const seq = ++this.seq;

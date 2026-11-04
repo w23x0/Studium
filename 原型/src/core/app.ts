@@ -153,7 +153,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     sources,
     inputs,
     teaching,
-    materialCount: async (mainId) => (await materials.ofProject(mainId)).length,
     webSearchKinds: () => studium.webSearchKinds(),
   });
   const server = await startServer({

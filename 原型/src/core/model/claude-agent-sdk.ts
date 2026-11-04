@@ -675,44 +675,6 @@ async function drainQuietly(events: AsyncIterable<ModelEvent>): Promise<void> {
   }
 }
 
-export interface ModelCapability {
-  /** 传给 SDK 的模型名（含 default、sonnet 这类别名）。 */
-  value: string;
-  /** 别名实际指向的模型。 */
-  resolved?: string;
-  /** 这个模型支持的思考强度；空 = 不支持强度参数。 */
-  efforts: string[];
-}
-
-/**
- * 列出本机订阅可用的模型与各自支持的思考强度，不调模型。SDK 遇到模型不支持的强度会悄悄降级，
- * 评测用它核对按会话类配的强度会不会被接受。
- */
-export async function listModelCapabilities(cwd?: string): Promise<ModelCapability[]> {
-  const input = new AsyncQueue<SDKUserMessage>();
-  const q = query({
-    prompt: input,
-    options: {
-      tools: [],
-      settingSources: [],
-      strictMcpConfig: true,
-      env: cleanEnv(),
-      ...(cwd !== undefined ? { cwd } : {}),
-    },
-  });
-  try {
-    const models = await q.supportedModels();
-    return models.map((m) => ({
-      value: m.value,
-      ...(m.resolvedModel !== undefined ? { resolved: m.resolvedModel } : {}),
-      efforts: m.supportedEffortLevels ?? [],
-    }));
-  } finally {
-    input.end();
-    q.close();
-  }
-}
-
 function turnError(ev: { reason: string; notice?: string }): ModelEvent {
   return {
     kind: 'turn_error',

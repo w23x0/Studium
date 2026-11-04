@@ -149,11 +149,14 @@ const REMOVED_ACTIONS = new Set<string>([
   'requestCard',
   'choose',
   'outputs.markCandidate',
-  // W12：写产出、状态 / 教法记录、勾候选、阶段复盘撤掉
+  // W12：写产出、状态 / 教法记录、勾候选、阶段复盘撤掉；收尾清理（11-04）删了没人触发的提醒与搁置
   'objectToRecord',
   'confirmRecord',
   'pickCandidates',
   'longterm.startReview',
+  'longterm.addReminder',
+  'longterm.closeReminder',
+  'shelveLoop',
   'addStateExplanation',
   'outputs.create',
   'outputs.save',
@@ -172,13 +175,10 @@ const REMOVED_ACTIONS = new Set<string>([
   'practice.requestSummary',
 ]);
 
-/** 重做一个学习者动作：“longterm.” 开头的找对应的对象，别的是 Studium 的方法。 */
+/** 重做一个学习者动作（Studium 的方法；带点的是旧录带里已撤掉的对象的动作）。 */
 async function perform(app: App, name: ActionName, args: unknown[]): Promise<void> {
-  const dot = name.indexOf('.');
-  const where = dot < 0 ? '' : name.slice(0, dot);
-  const method = name.slice(dot + 1);
-  const target: object = where === 'longterm' ? app.studium.longterm : app.studium;
-  const fn = (target as Record<string, unknown>)[method];
+  const target: object = app.studium;
+  const fn = name.includes('.') ? undefined : (target as Record<string, unknown>)[name];
   if (typeof fn !== 'function') {
     // 这些动作随知识点编号库一起删了（工单 W1 §4.8）：旧录带回放到这里就停，说清是版本的事
     if (REMOVED_ACTIONS.has(name)) throw new Error(`录带版本过旧：${name} 这个动作已经没有了`);

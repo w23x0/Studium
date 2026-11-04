@@ -25,7 +25,7 @@ import { usePanel } from '../../panel.ts';
 import { cropBox, overlaps, paragraphs, reportsFor, type Paragraph } from '../../source-model.ts';
 import { W } from '../../wording.ts';
 import { Badge, Card, Loading, Time } from '../evidence/parts.tsx';
-import { BookText } from './book-text.tsx';
+import { MaterialText } from './material-text.tsx';
 import { OriginalPage } from './original-page.tsx';
 
 type Span = { from: number; to: number };
@@ -253,7 +253,7 @@ function TextBody(props: {
               >
                 {p.from}
               </span>
-              <BookText text={p.text} className="min-w-0 flex-1 text-[0.95rem]" />
+              <MaterialText text={p.text} className="min-w-0 flex-1 text-[0.95rem]" />
             </div>
             <div
               className={cn(

@@ -1,7 +1,6 @@
 // 对话底部与顶部的几样：没学完就停下的那段底部（回项目；旧数据里有接着学的给入口）；旧的阶段复盘对话顶部的时间段。
 // （复习 / 复检、接着学的说明随导航 W12 撤掉。）
 import { HistoryIcon } from 'lucide-react';
-import type { LoopBrief, ProjectOverview } from '../../../shared/protocol.ts';
 import type { ReviewWindow } from '../../../shared/records.ts';
 import { Button } from '@/components/ui/button';
 import { api } from '../../api.ts';
@@ -18,19 +17,19 @@ export function UnclosedEndBar(props: {
   onBack: () => void;
   onError: (e: unknown) => void;
 }) {
-  const r = useLoad(`overview:${props.projectId}`, () => api.overview(props.projectId));
+  // 旧数据（W12 前）：导航开过“接着学”的，给去最后那段的入口
+  const r = useLoad(`loop:${props.loopId}`, () => api.loopEvidence(props.loopId));
   const open = useOpenSession();
-  const brief = r.data !== undefined ? findLoop(r.data.overview, props.loopId) : undefined;
-  const next = brief?.resumedBy?.at(-1);
+  const next = r.data?.loop.resumedBy?.at(-1);
   return (
     <div className="text-muted-foreground flex flex-wrap items-center justify-center gap-3 text-sm">
       {W.unclosedDone}
       <Button size="sm" onClick={props.onBack}>
         {W.backToMain}
       </Button>
-      {brief !== undefined && next !== undefined && (
+      {next !== undefined && (
         <Button variant="ghost" size="sm" onClick={() => open(next.loopSessionId)}>
-          {W.resumedByLine(next.title ?? W.thatPart)}
+          {W.resumedByLine(next.title)}
         </Button>
       )}
     </div>
@@ -49,13 +48,5 @@ export function ReviewBanner(props: { window: ReviewWindow }) {
         {W.reviewBanner(dayOf(props.window.since), dayOf(props.window.until))}
       </div>
     </div>
-  );
-}
-
-/** 项目里一段学习的概要（各分组里找）。 */
-function findLoop(o: ProjectOverview, id: string): LoopBrief | undefined {
-  const g = o.groups;
-  return [...g.inProgress, ...g.closed, ...g.unclosed, ...(g.shelved ?? [])].find(
-    (l) => l.sessionId === id,
   );
 }

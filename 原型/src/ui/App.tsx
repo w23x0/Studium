@@ -418,7 +418,7 @@ export function App() {
               )}
             </div>
           </ProjectContext.Provider>
-          {/* 组件的新一版先在这里看不见地试跑（会话/页面子代理.md「怎么改」） */}
+          {/* 学习对话交上的组件新一版先在这里看不见地试跑，报错交回给它 */}
           <PageTrials />
         </PanelContext.Provider>
       </OpenSessionContext.Provider>

@@ -1,4 +1,4 @@
-// 长期功能界面用的纯转换：日期。
+// 旧数据（阶段复盘）界面用的纯转换：日期。
 
 /** 记录时间 → 本地日期 YYYY-MM-DD（已是日期的原样给）。 */
 export function dayOf(at: string): string {
@@ -7,11 +7,4 @@ export function dayOf(at: string): string {
   if (Number.isNaN(d.getTime())) return at;
   const p = (n: number) => String(n).padStart(2, '0');
   return `${String(d.getFullYear())}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
-}
-
-/** 日期加几天（YYYY-MM-DD，按日历日算）。 */
-export function addDays(date: string, days: number): string {
-  const t = Date.parse(`${date}T00:00:00Z`);
-  if (Number.isNaN(t)) return date;
-  return new Date(t + days * 86_400_000).toISOString().slice(0, 10);
 }

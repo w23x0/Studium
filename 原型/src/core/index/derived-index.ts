@@ -4,7 +4,6 @@ import { DatabaseSync } from 'node:sqlite';
 import { rmSync } from 'node:fs';
 import type { SessionMark, SessionSummary } from '../../shared/protocol.ts';
 import type { LogRecord, NumberedRecord, SessionOpened } from '../../shared/records.ts';
-import { sessionFrom } from '../hub.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
@@ -107,7 +106,7 @@ export class DerivedIndex {
   listSessions(): SessionSummary[] {
     const rows = this.db
       .prepare(
-        `SELECT s.session_id, s.kind, s.title, s.parent, s.from_kind, s.from_loop, s.opened_at, s.last_at, s.mark
+        `SELECT s.session_id, s.kind, s.title, s.parent, s.opened_at, s.last_at, s.mark
          FROM sessions s
          WHERE s.withdrawn = 0 AND s.session_id NOT IN (SELECT session_id FROM deleted)
          ORDER BY s.opened_at DESC`,
@@ -117,8 +116,6 @@ export class DerivedIndex {
       kind: SessionSummary['kind'];
       title: string;
       parent: string | null;
-      from_kind: 'resume' | null;
-      from_loop: string | null;
       opened_at: string;
       last_at: string | null;
       mark: SessionMark | null;
@@ -130,9 +127,6 @@ export class DerivedIndex {
       openedAt: r.opened_at,
       ...(r.last_at !== null ? { lastAt: r.last_at } : {}),
       ...(r.parent !== null ? { parent: r.parent } : {}),
-      ...(r.from_kind !== null && r.from_loop !== null
-        ? { from: { kind: r.from_kind, loop: r.from_loop } }
-        : {}),
       ...(r.mark !== null ? { mark: r.mark } : {}),
     }));
   }
@@ -232,7 +226,8 @@ function markOf(r: LogRecord): SessionMark | null | undefined {
       // 旧数据：守卫写好收尾记录，等学习者确认
       return 'guarded';
     case 'close_requested':
-      // 收尾那一句到了（10-31 起，学习对话写的）= 等学习者确认；学习者点“我觉得懂了”那条 = 还在学
+      // 收尾那一句到了（10-31 起，学习对话写的）= 等学习者确认；学习者点“我觉得懂了”那条 = 还在学。
+      // 记号名 guarded 是守卫时期的旧名，存进索引的值不改，意思已与守卫无关
       return r.summary !== undefined && r.summary.trim() !== '' ? 'guarded' : null;
     case 'loop_ended':
       return r.closed ? 'closed' : 'unclosed';
@@ -253,10 +248,12 @@ function markOf(r: LogRecord): SessionMark | null | undefined {
   }
 }
 
-/** 学习对话的来历（分叉 / 接着学），给会话列表用。 */
+/**
+ * 旧数据：学习对话接着哪段没学完的学的（W12 前导航开的“接着学”）。界面已不读这两列；照旧写，
+ * 是为了不改表结构、不为此升索引版本（`from_kind` `from_loop`）。
+ */
 function fromOf(o: SessionOpened): [string | null, string | null] {
-  const f = sessionFrom(o);
-  return f !== undefined ? [f.kind, f.loop] : [null, null];
+  return o.resumeOf !== undefined ? ['resume', o.resumeOf.fromLoop] : [null, null];
 }
 
 function searchableText(r: LogRecord): string {

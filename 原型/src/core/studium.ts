@@ -32,7 +32,6 @@ import {
 import type { Crosslinks } from './crosslinks.ts';
 import { currentGoal, describeGoal, goalText } from './goal.ts';
 import { Learned } from './learned.ts';
-import { LongTerm } from './longterm.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { foldLoop } from '../shared/loop-flags.ts';
 import { MaterialError, Materials } from './knowledge/materials.ts';
@@ -87,13 +86,10 @@ export interface StudiumOptions {
 export class Studium {
   private hubRef: Hub | undefined;
   private readonly now: () => Date;
-  /** 后台跑着的清单（合上之后、导入会话……），回放与测试用来等它们跑完。 */
+  /** 后台跑着的事（结束后告诉主对话、导入会话……），回放用来等它们跑完。 */
   private readonly tasks = new Set<Promise<unknown>>();
   /** 超时被停掉的导入会话（W11 §4）：之后它的工具一律不算数。 */
   private readonly stoppedImports = new Set<string>();
-
-  /** 长期功能：提醒与今天该做的。 */
-  readonly longterm: LongTerm;
 
   /** 学过的记录（按层读每次学习）与外部导入存放处。 */
   readonly learned: Learned;
@@ -189,12 +185,6 @@ export class Studium {
         await this.hub.record(mainId, { type: 'upload_routed', at: this.iso(), ...r });
       },
       records: async (mainId) => (await this.hub.records(mainId)).map((r) => r.record),
-    });
-    this.longterm = new LongTerm({
-      hub: () => this.hub,
-      now: () => this.now(),
-      iso: () => this.iso(),
-      newId: (prefix) => this.newId(prefix),
     });
     // 原件里有不是纯文字的：交导入会话（W11 §4）
     o.materials.setImporter((id, files) => this.startImport(id, files));
@@ -1215,7 +1205,7 @@ export class Studium {
     }
   }
 
-  /** 收尾那一句到了之后，学习者确认结束 → 合上之后的清单。 */
+  /** 收尾那一句到了之后，学习者确认结束 → 告诉主对话一句。 */
   async confirmClose(loopId: string, note: string): Promise<void> {
     await this.assertActiveLoop(loopId);
     // 最后一次收口要有收尾那一句（旧数据：守卫写好的收尾记录也算）
@@ -1231,7 +1221,7 @@ export class Studium {
       closed: true,
       note,
     });
-    this.background('合上之后的清单', () => this.afterLoop(loopId, true));
+    this.background('学完后告诉主对话', () => this.afterLoop(loopId, true));
   }
 
   /** 学习者要结束、没合上：先搁着（W12 §2 起能重开）。 */
@@ -1243,22 +1233,12 @@ export class Studium {
       closed: false,
       note,
     });
-    this.background('没合上之后的清单', () => this.afterLoop(loopId, false));
+    this.background('没学完结束后告诉主对话', () => this.afterLoop(loopId, false));
   }
 
   // ───────────── 搁置与恢复（一次学习自己的状态）─────────────
 
-  /** 学习者把一次学习搁置（可恢复；与“结束（没合上）”不同）。 */
-  async shelveLoop(loopId: string, note: string): Promise<void> {
-    const opened = await this.hub.opened(loopId);
-    if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
-    const flags = foldLoop(await this.hub.records(loopId));
-    if (flags.ended !== undefined) throw new BadRequestError('这次学习已经结束了。');
-    if (flags.shelved !== undefined) throw new BadRequestError('这次学习已经搁置着了。');
-    await this.hub.record(loopId, { type: 'loop_shelved', at: this.iso(), note });
-  }
-
-  /** 学习者点“接着学”，恢复搁置的那次学习。 */
+  /** 学习者点“接着学”，恢复搁置的那次学习（旧数据：搁置 `loop_shelved` 现在界面与模型都不再触发）。 */
   resumeLoop(loopId: string): Promise<void> {
     return this.resumeShelved(loopId, 'button');
   }
@@ -1323,7 +1303,7 @@ export class Studium {
     };
   }
 
-  // ───────────── 清单 ─────────────
+  // ───────────── 一次学习结束之后 ─────────────
 
   /**
    * 一次学习结束（合上 / 没合上）：告诉主对话一句（带收尾那一句）。不自动开下一次，不再跑后台整理（W12 §1.2）。
@@ -1343,7 +1323,7 @@ export class Studium {
           : `${title}（${loopId}）没学完就结束了，先搁着（能重开）。`,
       });
     } catch (err) {
-      console.error(`一次学习（${loopId}）结束后的清单失败：`, err);
+      console.error(`一次学习（${loopId}）结束后告诉主对话失败：`, err);
       await this.hub.record(loopId, {
         type: 'after_loop_step',
         at: this.iso(),
@@ -1472,7 +1452,7 @@ export class Studium {
     return {
       name: 'list_learned',
       description:
-        '列出这个项目里学过的记录：方向目标；每次学习一行（合上的带收尾那一句——只是指针，学习者会什么以那次原文为准；没合上的带结束原话与当时的路线决定），以及外部导入（未验证）。',
+        '列出这个项目里学过的记录：方向目标；每次学习一行（合上的带收尾那一句——只是指针，学习者会什么以那次原文为准；没合上的带结束原话；W12 前的旧学习另带标着“旧数据”的单子、路线决定），以及外部导入（未验证）。',
       input: {},
       run: async () => {
         const mainId = await this.projectOf(sessionId);

@@ -3,7 +3,6 @@ import type {
   DisclosureResponse,
   LoopEvidenceResponse,
   ObjectionResponse,
-  ProjectOverviewResponse,
   SessionModelResponse,
   ListProjectsResponse,
   ListSessionsResponse,
@@ -28,12 +27,8 @@ import type {
   UploadsResponse,
   ProjectInstructionsResponse,
   ImportTextResponse,
-  AddReminderRequest,
   LearnedResponse,
   LearningResponse,
-  ReminderView,
-  RemindersResponse,
-  TodayView,
   SourceNoteField,
   SourceNoteResponse,
   SourceNotesResponse,
@@ -188,9 +183,8 @@ export const api = {
   /** 原图地址（给 <img src>）。 */
   imageUrl: (attachmentId: string) => withToken(`/api/attachments/${attachmentId}`),
   // ── 依据可见 ──
-  overview: (mainId: string) => call<ProjectOverviewResponse>(`/projects/${mainId}/overview`),
   loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),
-  // ── 批 10b：来源说明、状态回看 ──
+  // ── 资料的来源说明、外发披露、会话用的模型、对旧守卫判定的异议 ──
   sourceNotes: () => call<SourceNotesResponse>('/sources/source-notes'),
   sourceNote: (material: string) =>
     call<SourceNoteResponse>(`/sources/source-notes?${qs({ material })}`),
@@ -206,7 +200,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ line, text }),
     }),
-  // ── 教法（批 7）：教学工具、对状态的确认 / 否认 ──
   // ── 原文与出处 ──
   /** 各项目的资料；给了项目就标出哪些是这个项目的。 */
   materialList: (project?: string) =>
@@ -300,25 +293,10 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ text }),
     }),
-  // ── 长期功能（批 6） ──
-  /** 学过的记录：按层读每次学习（上层单子 / 中层判定）与外部导入。 */
+  // ── 学过的记录 ──
+  /** 学过的记录：按层读每次学习（收尾那一句；旧数据另有单子、守卫判定）与外部导入。 */
   learned: (project?: string) => call<LearnedResponse>(`/learned?${qs({ project })}`),
   learning: (loopId: string) => call<LearningResponse>(`/learned/${encodeURIComponent(loopId)}`),
-  today: (projectId: string) => call<TodayView>(`/projects/${projectId}/today`),
-  reminders: (projectId: string, open?: boolean) =>
-    call<RemindersResponse>(
-      `/projects/${projectId}/reminders?${qs({ open: open === true ? 1 : undefined })}`,
-    ),
-  addReminder: (projectId: string, req: AddReminderRequest) =>
-    call<{ reminder: ReminderView }>(`/projects/${projectId}/reminders`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
-  closeReminder: (projectId: string, id: string, outcome: 'done' | 'dismissed') =>
-    call<{ reminder: ReminderView }>(`/projects/${projectId}/reminders/${id}`, {
-      method: 'POST',
-      body: JSON.stringify({ outcome }),
-    }),
   /** 订阅事件：整页共用一条事件连接（浏览器对同一地址的长连接数有限），最后一个退订时关掉。 */
   events(onEvent: (e: ServerEvent) => void): () => void {
     listeners.add(onEvent);
