@@ -101,20 +101,6 @@ function speech(
   }
 }
 
-/** 行号是不是学习者自己说的话或在组件 / 旧页面上做的事（引用学习者的证据只认这种行）。 */
-export function learnerLines(records: NumberedRecord[]): Set<number> {
-  return new Set(
-    records
-      .filter(
-        (r) =>
-          r.record.type === 'user_message' ||
-          r.record.type === 'component_action' ||
-          r.record.type === 'page_actions',
-      )
-      .map((r) => r.line),
-  );
-}
-
 /** 旧数据：10-26 活页面上的动作各一句（块编号不进上下文，只说做了什么）。 */
 function describeActions(actions: PageAction[]): string {
   return actions

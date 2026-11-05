@@ -23,7 +23,6 @@ import {
   type LogRecord,
   type NumberedRecord,
   type ResumeOrigin,
-  type ReviewWindow,
   type SessionOpened,
   type Ticket,
 } from '../shared/records.ts';
@@ -60,7 +59,7 @@ export interface KindConfig {
    * inputLine = 这条输入在正本里的行号。
    */
   preface?(sessionId: string, inputLine: number, fresh: boolean): Promise<string>;
-  /** 为真时放开模型服务自带的联网搜索与网页抓取（谈方向、找资料、学习对话）。 */
+  /** 为真时放开模型服务自带的联网搜索与网页抓取（学习对话）。 */
   webSearch?: boolean;
   /**
    * 为真时按时间线交给模型：每条前面带行号与时间，不包“程序事实”标记，每条自己说清是什么
@@ -185,7 +184,6 @@ export class Hub {
       ticket?: Ticket;
       anchorLine?: number;
       resumeOf?: ResumeOrigin;
-      review?: ReviewWindow;
       /** 学习对话按屏幕跑（W10）。 */
       screens?: true;
       /** 学习页用竖流（10-29 #74 起；W12 起是唯一的学习页）。 */
@@ -206,7 +204,6 @@ export class Hub {
       ...(meta.ticket !== undefined ? { ticket: meta.ticket } : {}),
       ...(meta.anchorLine !== undefined ? { anchorLine: meta.anchorLine } : {}),
       ...(meta.resumeOf !== undefined ? { resumeOf: meta.resumeOf } : {}),
-      ...(meta.review !== undefined ? { review: meta.review } : {}),
       ...(meta.screens === true ? { screens: true as const } : {}),
       ...(meta.page !== undefined ? { page: meta.page } : {}),
     };
@@ -914,7 +911,6 @@ export function activityText(
     case 'start_thread':
       return '正在开新的对话';
     case 'read_thread':
-    case 'read_project_chat':
     case 'list_threads':
     case 'list_learned':
       return '正在读对话记录';

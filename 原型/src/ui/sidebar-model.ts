@@ -10,7 +10,6 @@ export interface ProjectItem {
   kind: 'project';
   id: string;
   title: string;
-  goal?: string;
   /** 项目里任何一条对话最近的活动时间。 */
   lastAt: string;
 }
@@ -118,7 +117,6 @@ export function buildSidebar(input: {
       kind: 'project' as const,
       id: p.mainSessionId,
       title: p.title,
-      ...(p.goal !== undefined ? { goal: p.goal } : {}),
       lastAt: projectLast.get(p.mainSessionId) ?? '',
     }))
     .sort((a, b) => b.lastAt.localeCompare(a.lastAt));

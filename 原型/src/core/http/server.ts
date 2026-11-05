@@ -9,8 +9,6 @@ import type {
   ListProjectsResponse,
   ProjectResponse,
   CardResponse,
-  ProjectDeadlineRequest,
-  ProjectDeadlineResponse,
   ProjectMaterialsRequest,
   AddMaterialRequest,
   ProjectMaterialsResponse,
@@ -295,29 +293,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           res,
           200,
           (await studium.changeMaterials(mainId, body)) satisfies ProjectMaterialsResponse,
-        );
-        return;
-      }
-      if (parts[3] === 'deadline' && method === 'GET') {
-        send(res, 200, (await studium.deadlineView(mainId)) satisfies ProjectDeadlineResponse);
-        return;
-      }
-      if (parts[3] === 'deadline' && method === 'POST') {
-        const body = (await readJson(req)) as Partial<ProjectDeadlineRequest>;
-        if (body.deadline !== null && typeof body.deadline !== 'string') {
-          throw new BadRequest('deadline 要是 YYYY-MM-DD 字符串，或 null 清掉');
-        }
-        if (body.note !== undefined && typeof body.note !== 'string') {
-          throw new BadRequest('note 要是字符串');
-        }
-        send(
-          res,
-          200,
-          (await studium.setDeadline(
-            mainId,
-            body.deadline,
-            body.note,
-          )) satisfies ProjectDeadlineResponse,
         );
         return;
       }

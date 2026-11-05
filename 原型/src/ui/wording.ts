@@ -23,12 +23,12 @@ export const W = {
     running: '进行中',
     paused: '停着',
     ended: '已结束',
-    empty: '还没开过。谈方向、学习都会在这里列一条。',
+    empty: '还没开过。每次学习都会在这里列一条。',
     more: '更多',
     delete: '删除',
     deleteTitle: '删掉这个讨论串？',
     deleteHint: (title: string) =>
-      `删掉「${title}」后它不再显示，之后的对话也读不到它；它找来的资料、谈定的方向留着。删了不能撤销。`,
+      `删掉「${title}」后它不再显示，之后的对话也读不到它。删了不能撤销。`,
     deleteGo: '删掉',
     cancel: '算了',
     tagGuarded: '等你点“学完了”',
@@ -49,9 +49,6 @@ export const W = {
   confirmGo: '学完了',
   loopDone: '这部分学完了。',
   unclosedDone: '搁着了；以后的学习对话能读到这次的原文。',
-  talkDone: '方向记好了。还想改就接着说，会重新打开。',
-  talkIntro: '在这里说清想学到什么程度；谈定后方向会记进项目。',
-  talkFrom: '从你在项目对话里说的这句开始：',
   // 旧数据：导航会话只读看
   navIntro: '导航自己跑完，这里只看它怎么想的。',
   navResult: '下一次学',
@@ -323,7 +320,7 @@ export const W = {
   stageCheck: '阶段验收',
   stageCheckHint: '看你自己能做到哪；默认不给提示',
 
-  // ── 旧数据：复习 / 复检、接着学、阶段复盘（批 6；W12 随导航撤掉，旧记录照旧显示） ──
+  // ── 旧数据：复习 / 复检、接着学（批 6；W12 随导航撤掉，旧记录照旧显示） ──
   // 复习 / 复检
   revisitKind: { 复习: '复习', 复检: '复检' } as const,
   revisitHint: {
@@ -332,9 +329,6 @@ export const W = {
   } as const,
   // 接着没学完的学
   resumedByLine: (title: string) => `已接着在《${title}》学`,
-  // 阶段复盘
-  reviewBanner: (since: string, until: string) => `复盘：回头看 ${since} 到 ${until} 学的`,
-  reviewWelcome: '我们回头看看这段时间学得怎么样。',
 
   // ── 上传与分流（工单 W9、W11） ──
   filesUploading: (n: number) => `正在传 ${String(n)} 个文件…`,

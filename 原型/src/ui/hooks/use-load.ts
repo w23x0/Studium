@@ -9,18 +9,15 @@ const RELOAD_ON = new Set([
   'close_requested',
   'loop_ended',
   'after_loop_step',
-  'project_goal',
   'project_title',
   'project_material',
-  'project_deadline',
   'tool_call',
   // 沙盒动作：读了教学工具时，依据面板的“这次用过的教学工具”要重读
   'sandbox_action',
   'user_message',
   // 学到一半：接着学（旧数据里搁置着的）
   'loop_resumed',
-  // 谈方向结束、讨论串结束 / 重开 / 改名 / 开出
-  'talk_ended',
+  // 讨论串结束 / 重开 / 改名 / 开出
   'thread_closed',
   'thread_reopened',
   'thread_title',

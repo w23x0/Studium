@@ -1,4 +1,4 @@
-// 中间的对话页：主对话、谈方向共用一个外壳；旧数据（导航、写产出、阶段复盘、找资料、W10 前的学习对话）在这里只读看。
+// 中间的对话页：主对话的外壳；旧数据（谈方向、导航、写产出、阶段复盘、找资料、W10 前的学习对话）在这里只读看。
 // 顶上面包屑（项目名回项目对话）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
 // 学习对话走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
@@ -17,18 +17,11 @@ import { api } from '../api.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { useOpenSession } from '../open-session.ts';
 import { CurrentSessionContext, HighlightContext, type Focus } from '../panel.ts';
-import {
-  loopState,
-  reviewWindow,
-  talkEnded,
-  toUiMessages,
-  type UiMessage,
-} from '../thread-model.ts';
+import { toUiMessages, type UiMessage } from '../thread-model.ts';
 import { forLearner } from '../learner-text.ts';
 import type { ThreadGroup } from '../../shared/threads.ts';
 import { W } from '../wording.ts';
-import { ReviewBanner } from './longterm/loop-extras.tsx';
-import { currentTicket, EndedBar, OldLoopBar, TicketStrip } from './learn/loop-parts.tsx';
+import { currentTicket, OldLoopBar, TicketStrip } from './learn/loop-parts.tsx';
 import type { PickedFile } from '../files.ts';
 import { TopBar } from './top-bar.tsx';
 import { UploadResult } from './input/upload-result.tsx';
@@ -36,7 +29,7 @@ import { UploadResult } from './input/upload-result.tsx';
 export function Conversation(props: {
   sessionId: string;
   kind: SessionSummary['kind'];
-  /** 开出这个对话的那个对话（谈方向、导航 → 主对话）。 */
+  /** 开出这个对话的那个对话（旧数据：导航 → 主对话）。 */
   parent: string | undefined;
   title: string;
   projectId: string;
@@ -169,23 +162,12 @@ export function Conversation(props: {
     () => (kind === 'loop' ? currentTicket(records) : undefined),
     [kind, records],
   );
-  const review = kind === 'talk' ? reviewWindow(records) : undefined;
-  const ended =
-    kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
-  // 旧数据只看：导航、页面编辑员、写产出、阶段复盘（W12 撤掉）、找资料（11-04 收起）
+  // 旧数据只看：导航、页面编辑员、写产出、阶段复盘（W12 撤掉）、找资料（11-04 收起）、谈方向（W20 起不再开）
   const watchOnly =
-    kind === 'nav' ||
-    kind === 'editor' ||
-    kind === 'output' ||
-    kind === 'find' ||
-    review !== undefined;
-  // 主对话不放按钮：要下一步、复盘这些都在对话里说（10-29）；旧的阶段复盘只看，不放底栏
+    kind === 'nav' || kind === 'editor' || kind === 'output' || kind === 'find' || kind === 'talk';
+  // 主对话不放按钮：要下一步、复盘这些都在对话里说（10-29）
   const footer =
-    watchOnly || kind === 'main' ? undefined : kind === 'talk' ? (
-      ended ? (
-        <EndedBar text={W.talkDone} onBack={props.onBackToMain} />
-      ) : undefined
-    ) : (
+    watchOnly || kind === 'main' ? undefined : (
       // 旧版开的学习对话：只看，留“搁着”（W10 §9 第 1 条）
       <OldLoopBar
         sessionId={sessionId}
@@ -214,30 +196,15 @@ export function Conversation(props: {
           {ticket !== undefined && <TicketStrip ticket={ticket} />}
         </div>
       )}
-      {kind === 'talk' && review === undefined && (
-        <TalkIntro parent={props.parent} sessionId={sessionId} />
-      )}
       {kind === 'nav' && <NavIntro parent={props.parent} navId={sessionId} />}
-      {review !== undefined && <ReviewBanner window={review} />}
     </div>
   );
 
   const thread = (
     <Thread
       header={header}
-      welcome={
-        isMain
-          ? W.mainWelcome
-          : kind === 'talk'
-            ? review !== undefined
-              ? W.reviewWelcome
-              : '我们聊聊你想学什么。'
-            : kind === 'find'
-              ? W.findWelcome
-              : '马上开始…'
-      }
+      welcome={isMain ? W.mainWelcome : kind === 'find' ? W.findWelcome : '马上开始…'}
       footer={footer}
-      // 谈方向谈定只是收起：输入框留着，学习者再说话就重开（10-28）
       disabled={watchOnly || kind === 'loop'}
       placeholder={running ? '可以接着说（这一轮说完再交给它）…' : '回复…'}
       running={running}
@@ -273,34 +240,10 @@ export function Conversation(props: {
 
 const NO_LINES: readonly number[] = [];
 
-/** 开出这个对话的那个对话的记录（谈方向、导航要回看主对话里的东西）。 */
+/** 开出这个对话的那个对话的记录（旧数据：导航要回看主对话里的东西）。 */
 function useParentRecords(parent: string | undefined) {
   return useLoad(`records:${parent ?? ''}`, () =>
     parent !== undefined ? api.records(parent) : Promise.resolve({ records: [], running: false }),
-  );
-}
-
-/** 谈方向顶部：这一页做什么 + 从你在项目对话里说的哪句开始（界面说明 §2.4）。 */
-function TalkIntro(props: { parent: string | undefined; sessionId: string }) {
-  const r = useParentRecords(props.parent);
-  const opened = r.data?.records.find(
-    (x) => x.record.type === 'task_opened' && x.record.sessionId === props.sessionId,
-  )?.record;
-  const anchor = opened?.type === 'task_opened' ? opened.anchorLine : undefined;
-  const said = r.data?.records.find((x) => x.line === anchor)?.record;
-  return (
-    <div
-      data-testid="talk-intro"
-      className="text-muted-foreground mx-auto flex w-full max-w-[46rem] flex-col gap-0.5 px-4 pb-2 text-sm"
-    >
-      <span>{W.talkIntro}</span>
-      {said?.type === 'user_message' && (
-        <span className="line-clamp-2">
-          {W.talkFrom}
-          <span className="text-foreground">“{said.text}”</span>
-        </span>
-      )}
-    </div>
   );
 }
 

@@ -23,7 +23,6 @@ import type {
   UploadAttachmentResponse,
   ProjectMaterialsResponse,
   ProjectMaterialsRequest,
-  ProjectDeadlineResponse,
   UploadsResponse,
   ProjectInstructionsResponse,
   ImportTextResponse,
@@ -222,19 +221,13 @@ export const api = {
     call<SourceReportsResponse>(`/sources/reports?${qs({ material, file })}`),
   report: (req: SourceReportRequest) =>
     call<SourceReportResponse>('/sources/reports', { method: 'POST', body: JSON.stringify(req) }),
-  // ── 资料范围：项目资料、期限 ──
+  // ── 资料范围：项目资料 ──
   materials: (projectId: string) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`),
   changeMaterials: (projectId: string, req: ProjectMaterialsRequest) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`, {
       method: 'POST',
       body: JSON.stringify(req),
-    }),
-  deadline: (projectId: string) => call<ProjectDeadlineResponse>(`/projects/${projectId}/deadline`),
-  setDeadline: (projectId: string, deadline: string | null, note?: string) =>
-    call<ProjectDeadlineResponse>(`/projects/${projectId}/deadline`, {
-      method: 'POST',
-      body: JSON.stringify(note !== undefined ? { deadline, note } : { deadline }),
     }),
   // ── 导入入口（工单 W9、W11）：上传、改判、改归属、重试、删、外部导入、项目说明 ──
   /** 上传一批文件（文件夹按相对路径传）；核心收下后分流，回这次每份分到了哪。 */

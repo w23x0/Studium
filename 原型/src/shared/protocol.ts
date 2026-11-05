@@ -29,7 +29,7 @@ export interface SessionSummary {
 /**
  * 派生层记下的对话状态（只记事实，不分组）：
  * guarded 收尾那一句到了（旧数据：守卫交回）、等学习者点“学完了” · closed / unclosed 学习合上 / 没合上就结束 · shelved 学习停着 ·
- * candidates 旧数据：找资料交回候选、等学习者勾 · ended 谈方向谈定、讨论串结束（旧数据还有找资料勾完、写产出与阶段复盘）。
+ * candidates 旧数据：找资料交回候选、等学习者勾 · ended 讨论串结束（旧数据：谈方向谈定或 W20 起不再开、找资料勾完、写产出与阶段复盘）。
  * `guarded` 这个名字是守卫时期留下的（存在派生索引的 mark 列里，值不改）：现在表示“收尾那一句到了、等学习者确认”，与守卫无关。
  * `shelved` 只来自旧数据的搁置（11-04 起界面与模型都不再触发）。
  */
@@ -42,10 +42,6 @@ export interface ProjectResponse {
 export interface ProjectSummary {
   mainSessionId: string;
   title: string;
-  /** 主对话里最近谈定的方向目标。 */
-  goal?: string;
-  /** 期限（YYYY-MM-DD）；没记就没有。 */
-  deadline?: string;
 }
 
 export interface ListProjectsResponse {
@@ -663,27 +659,11 @@ export interface ProjectMaterialsResponse {
   materials: ProjectMaterialView[];
   /** 恒为 true：各对话只在本项目能读的资料里查（按归属；别的项目的读不到）。 */
   restricted: boolean;
-  deadline?: string;
-  deadlineNote?: string;
 }
 
 export interface ProjectMaterialsRequest {
   /** 要去掉的资料 id。 */
   remove?: string[];
-}
-
-export interface ProjectDeadlineRequest {
-  /** YYYY-MM-DD；null = 清掉期限。 */
-  deadline: string | null;
-  note?: string;
-}
-
-export interface ProjectDeadlineResponse {
-  mainSessionId: string;
-  deadline?: string;
-  deadlineNote?: string;
-  /** 离期限还有几天（负数 = 已过）。 */
-  daysLeft?: number;
 }
 
 // ───────────── 导入入口与项目页（工单 W9） ─────────────

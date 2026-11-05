@@ -7,7 +7,11 @@ import type { LogRecord, NumberedRecord, SessionOpened } from '../../shared/reco
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-const SCHEMA_VERSION = 10;
+// 11：谈方向（W20 起不再开）在讨论串里一律算已结束
+const SCHEMA_VERSION = 11;
+
+/** 不再开、只读看的讨论串种类：写产出（W12 起，含阶段复盘那种谈方向）、谈方向（W20 起）；在讨论串里一律算已结束。 */
+const RETIRED_THREAD_KINDS: ReadonlySet<string> = new Set(['output', 'talk']);
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -64,8 +68,8 @@ export class DerivedIndex {
           record.at,
           record.at,
         );
-      // 旧数据：写产出、阶段复盘 W12 起撤掉，只读看，在讨论串里算已结束
-      if (record.kind === 'output' || record.review !== undefined) {
+      // 旧数据：写产出、阶段复盘 W12 起撤掉，谈方向 W20 起不再开，只读看，在讨论串里算已结束
+      if (RETIRED_THREAD_KINDS.has(record.kind)) {
         this.db.prepare("UPDATE sessions SET mark = 'ended' WHERE session_id = ?").run(sessionId);
       }
     } else if (record.type === 'session_withdrawn') {
@@ -84,7 +88,8 @@ export class DerivedIndex {
         .run(record.title, record.at, sessionId);
     } else {
       const mark = markOf(record);
-      if (mark !== undefined) {
+      // 只读的旧种类不跟着结束 / 重开记录变（旧的谈方向重开过也算已结束）
+      if (mark !== undefined && !this.retired(sessionId)) {
         this.db
           .prepare('UPDATE sessions SET mark = ?, last_at = ? WHERE session_id = ?')
           .run(mark, record.at, sessionId);
@@ -97,6 +102,13 @@ export class DerivedIndex {
         'INSERT OR REPLACE INTO records (session_id, line, type, at, text) VALUES (?, ?, ?, ?, ?)',
       )
       .run(sessionId, line, record.type, record.at, searchableText(record));
+  }
+
+  /** 这个会话是不是只读的旧种类（RETIRED_THREAD_KINDS）。 */
+  private retired(sessionId: string): boolean {
+    const row = this.db.prepare('SELECT kind FROM sessions WHERE session_id = ?').get(sessionId) as
+      { kind: string } | undefined;
+    return row !== undefined && RETIRED_THREAD_KINDS.has(row.kind);
   }
 
   private touch(sessionId: string, at: string): void {

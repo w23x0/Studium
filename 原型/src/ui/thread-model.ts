@@ -2,15 +2,10 @@
 // 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示，收尾、结束等只显示一句结果。
 // 模型用了什么工具、工具调用之间说的话（W12 §4.6 中途碎话）、别的对话发来的话（学习者看不到）都不显示。
 // 一个讨论串在主对话里只有一张卡片，标题与状态跟着它现在的样子（W12 §4.1）。
-import type {
-  FindCandidate,
-  NumberedRecord,
-  ReviewWindow,
-  RevisitKind,
-} from '../shared/records.ts';
+import type { FindCandidate, NumberedRecord, RevisitKind } from '../shared/records.ts';
 import { closeStatus } from '../shared/closing.ts';
 import { foldLoop } from '../shared/loop-flags.ts';
-import { threadEnded, type ThreadGroup } from '../shared/threads.ts';
+import type { ThreadGroup } from '../shared/threads.ts';
 import { judgementLine, W } from './wording.ts';
 import { WP } from './wording-page.ts';
 import { WT } from './wording-tools.ts';
@@ -38,7 +33,7 @@ export interface UiMessage {
   verdict?: { closed: boolean; said?: true };
   /** 学习者对某次判断提的不同看法（原话照记）。 */
   objection?: { toLine: number; label: string };
-  /** 去另一个对话的入口（谈方向、开始学的任务、回到某个对话）。 */
+  /** 去另一个对话的入口（开始学的任务、回到某个对话；旧数据里有谈方向）。 */
   link?: { sessionId: string; label: string };
   /** 学习者随这句话附的图片（原图 id），对话里显示缩略图、可点开。 */
   images?: string[];
@@ -231,7 +226,7 @@ export function toUiMessages(
         push({ id, role: 'system', text: W.ticketEdited, line });
         break;
       case 'talk_ended':
-        // 方向谈好了只在底栏说一次（界面说明 §2.4）
+        // 旧数据：方向谈好了（W20 起不再有），对话里不另起一行
         break;
       case 'task_opened':
         // 旧数据：导航不给入口（W12 撤掉；只读看在讨论串之外）
@@ -308,17 +303,6 @@ export function loopState(records: NumberedRecord[]): LoopState {
     };
   }
   return { kind: 'open' };
-}
-
-/** 阶段复盘的对话：回看的时间窗口（开头那行记的）；谈方向的对话没有。 */
-export function reviewWindow(records: NumberedRecord[]): ReviewWindow | undefined {
-  const first = records[0]?.record;
-  return first?.type === 'session_opened' ? first.review : undefined;
-}
-
-/** 畅谈对话现在算不算交回了（交回后学习者又接着说就重开，以最后一条为准）。 */
-export function talkEnded(records: NumberedRecord[]): boolean {
-  return threadEnded(records);
 }
 
 /** 旧数据：以前界面上点“先放一放”没写原因时发的备注（这个按钮已去掉，读旧记录时仍要认出来）。 */

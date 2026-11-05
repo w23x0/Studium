@@ -3,7 +3,7 @@
 // 让进上下文的东西干净、规整，模型用通用工具自己查）。导入会话：只读原件、工作区就是那份资料的正文。
 // W12 §3.2 起主对话不再读本机（没有沙盒）。
 // 设计：会话/学习对话.md §2；记录/读写权限.md「执行方式」「权限表」。
-import { readdirSync, realpathSync } from 'node:fs';
+import { existsSync, readdirSync, realpathSync } from 'node:fs';
 import { copyFile, lstat, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
@@ -44,9 +44,11 @@ const RO = {
   self: '本次对话.md',
   learned: '学过的记录',
   main: '主对话.md',
+  /** 旧数据：W20 前单开的谈方向对话（有才放）。 */
   talks: '谈方向',
   notes: '跨次记录.md',
   instructions: '项目说明.md',
+  /** 旧数据：W20 前谈方向定下的方向（有才放）。 */
   goal: '方向.md',
   materials: '资料',
   images: '附图',
@@ -56,35 +58,54 @@ const RO = {
 /** 资料目录在 只读/资料/ 下的文件名。 */
 const MATERIAL_INDEX = '目录.md';
 
-/** 对话原文的格式（renderTranscript 的写法），只读区说明里写一句事实（W16）。 */
-const TRANSCRIPT_FORMAT =
-  "对话原文（本次对话、以往的学习、主对话、谈方向）每条以 `L行号 谁（年-月-日 时:分）：` 开头，一条有多行时续行缩进 6 个空格；行号就是引用地址（引用写 会话id:L行号）。谁 = 学习者 / 教学 / 主对话 / 谈方向 / 程序 / 某某发来、回话。学习者自己说的、做的只在 `学习者（` 开头的行（例：只看他说过的话，grep '学习者（' 文件；多行的话只出第一行）；`整理（` 开头的是学习对话对他某一行话的整理，不是原话。";
+/** 对话原文的格式（renderTranscript 的写法），只读区说明里写一句事实（W16）；有旧的谈方向对话才提它。 */
+function transcriptFormat(oldTalks: boolean): string {
+  const talk = oldTalks ? '、旧的谈方向' : '';
+  return `对话原文（本次对话、以往的学习、主对话${talk}）每条以 \`L行号 谁（年-月-日 时:分）：\` 开头，一条有多行时续行缩进 6 个空格；行号就是引用地址（引用写 会话id:L行号）。谁 = 学习者 / 教学 / 主对话${oldTalks ? ' / 谈方向' : ''} / 程序 / 某某发来、回话。学习者自己说的、做的只在 \`学习者（\` 开头的行（例：只看他说过的话，grep '学习者（' 文件；多行的话只出第一行）；\`整理（\` 开头的是学习对话对他某一行话的整理，不是原话。`;
+}
 
-/** 开场里的沙盒说明（同 只读/说明.md）：只读区每一项是什么、对话原文的格式。 */
+/** 只读区里有没有旧数据的两项（W20 前单开的谈方向对话、谈定的方向）；新项目都没有。 */
+interface OldItems {
+  talks: boolean;
+  goal: boolean;
+}
+
+/** 开场里的沙盒说明（同 只读/说明.md）：只读区每一项是什么、对话原文的格式。forLoop 先刷新过只读区，按实际摆法写。 */
 export function describeSandbox(sb: SandboxSpec): string {
   const root = sb.readOnly.find((e) => e.name === '')?.path ?? '只读';
   const materials = sb.readOnly.filter((e) => e.name.startsWith(`${RO.materials}/`)).length;
-  return guideText(root, materials);
+  return guideText(root, materials, {
+    talks: existsSync(join(root, RO.talks)),
+    goal: existsSync(join(root, RO.goal)),
+  });
 }
 
-function guideText(root: string, materials: number): string {
+function guideText(root: string, materials: number, old: OldItems): string {
   return [
     `只读区：程序准备的，每轮刷新，写不进去。当前目录是你的工作区（可写，你自己的草稿）；只读区在工作区里就是 只读/（完整路径 ${root}），下面的路径都从 只读/ 起。`,
     `- 只读/${RO.guide} —— 这份说明`,
     `- 只读/${RO.self} —— 本次学习的对话原文（上下文压缩后按行号读回）`,
     `- 只读/${RO.learned}/ —— 以往的学习，按项目分目录，一次学习一个文件 <学习 id>-<标题>.md：头上是项目、状态、开始与最后活动时间、收尾那一句，下面是整份对话原文；那次用过的组件最新一版在同目录的 <学习 id>-组件/（原文里写作 [[组件:名字]]）。索引.md 按项目列全部（本项目在最后），带最后活动时间、距今多久。外部导入.md 与 外部导入/ 是学习者在别处学过的（笔记、和别的 AI 的对话），未验证`,
     `- 只读/${RO.main} —— 本项目主对话的原文`,
-    `- 只读/${RO.talks}/ —— 本项目谈方向的对话原文，一次一个文件（学习者想拿这个做什么、要学到什么程度）`,
+    ...(old.talks
+      ? [
+          `- 只读/${RO.talks}/ —— 旧记录：以前单开的谈方向对话原文，一次一个文件（学习者想拿这个做什么、要学到什么程度）`,
+        ]
+      : []),
     `- 只读/${RO.notes} —— 本项目各次学习学到哪、学习者说过的长期的话，带编号与出处（和第一条消息末尾附的是同一份）`,
     `- 只读/${RO.instructions} —— 学习者写给这个项目的长期要求；与当场说的冲突时以当场说的为准`,
-    `- 只读/${RO.goal} —— 这个项目谈定的方向（学成后能做什么、每块为什么学），带日期`,
+    ...(old.goal
+      ? [
+          `- 只读/${RO.goal} —— 旧记录：以前谈方向时定下的方向（学成后能做什么、每块为什么学），带日期`,
+        ]
+      : []),
     materials > 0
       ? `- 只读/${RO.materials}/ —— 本项目能读的资料，共 ${String(materials)} 份：${MATERIAL_INDEX} 每份一行；正文在 只读/${RO.materials}/<资料id>/，按原目录`
       : `- 只读/${RO.materials}/ —— 这次没有可用的资料（缺资料依据）`,
     `- 只读/${RO.images}/ —— 学习者在这次学习里附过的图片原件（消息里写了是哪张）`,
     `- 只读/${RO.tools}/ —— 教学工具：可选的做法参考，某个情形下用得上才拿来用`,
     '',
-    TRANSCRIPT_FORMAT,
+    transcriptFormat(old.talks),
   ].join('\n');
 }
 
@@ -112,8 +133,8 @@ export interface SandboxDeps {
   scopeOf: (sessionId: string) => Promise<string[]>;
   /** 所属项目的项目说明（没写 = 空串）；后台整理不经这里拿（工单 W9 §4.6）。 */
   instructionsOf: (sessionId: string) => Promise<string>;
-  /** 方向（项目谈定的方向目标，没有 = 空串）。 */
-  goalText: (sessionId: string) => Promise<string>;
+  /** 旧数据：W20 前谈方向定下的方向（没有 = 空串；新项目都没有）。 */
+  oldGoal: (sessionId: string) => Promise<string>;
   /** 跨次记录的清单（W13；不属于项目 = 空串）。 */
   notesOf: (sessionId: string) => Promise<string>;
   /** 一次学习里每个组件的最新一版（W16；名字 = 原文里 [[组件:名字]] 的名字）。 */
@@ -222,8 +243,8 @@ export class Sandboxes {
   }
 
   /**
-   * 每轮发给模型之前重写只读区（说明、本次对话、学过的记录、主对话、谈方向、方向、项目说明、跨次记录、资料目录、
-   * 教学工具、附图）。
+   * 每轮发给模型之前重写只读区（说明、本次对话、学过的记录、主对话、项目说明、跨次记录、资料目录、教学工具、附图；
+   * 旧数据有才放：谈方向、方向）。
    */
   async refreshLoop(loopId: string): Promise<void> {
     const ro = this.readOnlyRoot(loopId);
@@ -243,13 +264,13 @@ export class Sandboxes {
     await this.copyImages(join(ro, RO.images), records);
     await writeFile(join(ro, RO.self), this.render(records, '教学'), 'utf8');
     await writeFile(join(ro, RO.main), await this.mainChatText(project), 'utf8');
-    await writeDir(join(ro, RO.talks), await this.talkFiles(project));
-    const goal = await this.o.goalText(loopId);
-    await writeFile(
-      join(ro, RO.goal),
-      `# 方向\n\n${goal !== '' ? goal : '（还没谈定）'}\n`,
-      'utf8',
-    );
+    // 旧数据（W20 前单开的谈方向）：有才放，没有就拿掉（W20 前的只读区里可能留着空的）
+    const talks = await this.talkFiles(project);
+    if (talks.length > 0) await writeDir(join(ro, RO.talks), talks);
+    else await rm(join(ro, RO.talks), { recursive: true, force: true });
+    const goal = await this.o.oldGoal(loopId);
+    if (goal !== '') await writeFile(join(ro, RO.goal), `# 方向（旧记录）\n\n${goal}\n`, 'utf8');
+    else await rm(join(ro, RO.goal), { force: true });
     const instructions = await this.o.instructionsOf(loopId);
     await writeFile(
       join(ro, RO.instructions),
@@ -263,7 +284,11 @@ export class Sandboxes {
       'utf8',
     );
     const materials = await this.writeMaterials(loopId, join(ro, RO.materials));
-    await writeFile(join(ro, RO.guide), `${guideText(ro, materials)}\n`, 'utf8');
+    await writeFile(
+      join(ro, RO.guide),
+      `${guideText(ro, materials, { talks: talks.length > 0, goal: goal !== '' })}\n`,
+      'utf8',
+    );
   }
 
   /** 一次学习在只读区里的文件（`学过的记录/<项目>/<学习 id>-<标题>.md`）；删了的、不是学习的给 undefined。 */
@@ -501,7 +526,7 @@ export class Sandboxes {
     return `# 主对话「${title ?? ''}」${project}\n\n## 对话原文（引用写 ${project}:L行号）\n\n${text !== '' ? text : '（还没有对话）'}\n`;
   }
 
-  /** 只读/谈方向/：本项目每次谈方向一个文件（头 + 原文）。 */
+  /** 只读/谈方向/（旧数据）：本项目 W20 前每次谈方向一个文件（头 + 原文）。 */
   private async talkFiles(project: string | undefined): Promise<{ name: string; text: string }[]> {
     if (project === undefined) return [];
     const talks = this.o
@@ -525,7 +550,7 @@ export class Sandboxes {
     if (imports.length === 0) return '# 外部导入\n\n（暂无）';
     const rows = await Promise.all(imports.map((x) => this.importText(x)));
     return [
-      '# 外部导入（学习者在别处学过的：畅谈里说的、笔记、和别的 AI 的对话）',
+      '# 外部导入（学习者在别处学过的：笔记、和别的 AI 的对话；旧记录里还有以前谈方向时他说自己会的）',
       '',
       '未验证：可以怀疑，学习里的证据优先，不算“已合上过”。笔记与对话记录的全文接成一份在 外部导入/<id>.md（每个文件前标 <!-- 文件：相对路径 -->），原目录在 只读/资料/<资料 id>/；对话记录里只有学习者说的、做的算他的，AI 讲的未经核对。',
       '',

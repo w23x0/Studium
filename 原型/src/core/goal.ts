@@ -1,6 +1,7 @@
-// 方向目标的读与写（工单 W5 §4.2）。当前值 = 主对话里最后一条 project_goal；
-// 旧形状只有 text 的照样合法，新形状多 abilities 等字段。只读、不缓存。
-import type { GoalAbility, NumberedRecord, ProjectGoal } from '../shared/records.ts';
+// 方向目标的读（旧数据）：W20 起不再单开谈方向、不再写 project_goal；以前谈定的照旧读得到。
+// 当前值 = 主对话里最后一条 project_goal；旧形状只有 text 的照样合法，新形状多 abilities 等字段。只读、不缓存。
+import type { NumberedRecord, ProjectGoal } from '../shared/records.ts';
+import { localMinute } from '../shared/time.ts';
 
 /** 主对话里最后一条 project_goal；没有就 undefined。 */
 export function currentGoal(
@@ -13,14 +14,9 @@ export function currentGoal(
   return undefined;
 }
 
-/** 各块能力用“；”连起来，存进旧字段 text。 */
-export function goalText(abilities: GoalAbility[]): string {
-  return abilities.map((a) => a.ability.trim()).join('；');
-}
-
 /**
- * 给模型看的完整方向目标：第一行照 W3 格式 `方向目标：<text>`（临时版行尾加“（临时）”），
- * 有 abilities 时接名称、每块能力 / 理由 / 确认理由、顺序参考。不写期限（各开场已有期限行）。
+ * 给模型看的旧方向目标：第一行 `方向目标：<text>`（临时版行尾加“（临时）”），有 abilities 时接名称、
+ * 每块能力 / 理由 / 确认理由、顺序参考。
  */
 export function describeGoal(g: ProjectGoal): string {
   const lines = [`方向目标：${g.text}${g.provisional === true ? '（临时）' : ''}`];
@@ -36,4 +32,9 @@ export function describeGoal(g: ProjectGoal): string {
     if (g.orderHint !== undefined) lines.push(`顺序参考（只作参考）：${g.orderHint}`);
   }
   return lines.join('\n');
+}
+
+/** 给模型看的一段（主对话的 list_learned、学习对话只读区的 方向.md）：标明是旧记录、哪天谈定的。 */
+export function oldGoalBlock(g: ProjectGoal): string {
+  return `以前单开谈方向时定下的方向（旧记录，谈定于 ${localMinute(g.at)}；之后学习者的想法看跨次记录和对话原文）：\n${describeGoal(g)}`;
 }
