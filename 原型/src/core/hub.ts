@@ -203,6 +203,11 @@ export class Hub {
     return this.opts.index.isDeleted(sessionId);
   }
 
+  /** 有某种记录的会话（跨次记录现算用，W13）；删掉的讨论串不算。 */
+  sessionsWith(type: LogRecord['type']): string[] {
+    return this.opts.index.sessionsWith(type);
+  }
+
   search(text: string): ReturnType<DerivedIndex['search']> {
     return this.opts.index.search(text);
   }
@@ -893,6 +898,10 @@ export function activityText(
       return '正在读资料';
     case 'save_material':
       return '正在存资料';
+    case 'note_down':
+      return '正在记一笔';
+    case 'read_notes':
+      return '正在读记录';
     default:
       return '正在用工具';
   }

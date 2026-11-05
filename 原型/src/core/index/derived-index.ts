@@ -150,6 +150,17 @@ export class DerivedIndex {
     return row?.at ?? undefined;
   }
 
+  /** 有某种记录的会话（跨次记录现算时只读这些会话的正本，W13）；收掉的、学习者删掉的不算。 */
+  sessionsWith(type: LogRecord['type']): string[] {
+    const rows = this.db
+      .prepare(
+        `SELECT DISTINCT r.session_id FROM records r JOIN sessions s ON s.session_id = r.session_id
+         WHERE r.type = ? AND s.withdrawn = 0 AND r.session_id NOT IN (SELECT session_id FROM deleted)`,
+      )
+      .all(type) as { session_id: string }[];
+    return rows.map((r) => r.session_id);
+  }
+
   /** 第一版检索：子串匹配（04「中文检索」先 grep）；删掉的讨论串不搜。 */
   search(text: string, limit = 50): { sessionId: string; line: number; text: string }[] {
     const rows = this.db

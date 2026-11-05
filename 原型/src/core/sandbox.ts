@@ -52,6 +52,8 @@ const WHAT: Record<string, string> = {
   '本次对话.md': '本次学习的对话原文，带行号（压缩后按行号读回）',
   '项目说明.md': '学习者写给这个项目的长期要求（项目说明）；与学习者当场说的冲突时以当场说的为准',
   '方向.md': '这个项目谈定的方向（学成后能做什么、每块为什么学），带日期',
+  '跨次记录.md':
+    '跨次记录：本项目各次学习学到哪、学习者说过的长期的话，带编号与出处（每轮刷新；和第一条消息末尾附的是同一份）',
   附图: '学习者在这次学习里附过的图片原件（消息里写了是哪张）',
   [MATERIAL_INDEX_NAME]:
     '本项目能读的资料的目录（本项目的 + 学习者的笔记等）：每份一行（id、标题、种类、归属、版本、日期、状态、说明）；引用写 资料id/文件:行号',
@@ -92,6 +94,8 @@ export interface SandboxDeps {
   instructionsOf: (sessionId: string) => Promise<string>;
   /** 方向（项目谈定的方向目标，没有 = 空串）。 */
   goalText: (sessionId: string) => Promise<string>;
+  /** 跨次记录的清单（W13；不属于项目 = 空串）。 */
+  notesOf: (sessionId: string) => Promise<string>;
   /** 附图原件所在的目录（W12 §5.6）。 */
   imagesDir: string;
   /** 会话所属的项目（主对话 id）；外部导入按它过滤（指向的资料本项目读得到才给，W11）。 */
@@ -176,6 +180,7 @@ export class Sandboxes {
         { name: '本次对话.md', path: join(this.root(loopId), '只读', '本次对话.md') },
         { name: '项目说明.md', path: join(this.root(loopId), '只读', '项目说明.md') },
         { name: '方向.md', path: join(this.root(loopId), '只读', '方向.md') },
+        { name: '跨次记录.md', path: join(this.root(loopId), '只读', '跨次记录.md') },
         { name: '附图', path: join(this.root(loopId), '只读', '附图') },
       ],
       network: false,
@@ -183,7 +188,7 @@ export class Sandboxes {
     };
   }
 
-  /** 每轮发给模型之前刷新只读的渲染（本次对话、学过的记录、方向、项目说明、教学工具）。 */
+  /** 每轮发给模型之前刷新只读的渲染（本次对话、学过的记录、方向、项目说明、跨次记录、教学工具）。 */
   async refreshLoop(loopId: string): Promise<void> {
     const readOnly = join(this.root(loopId), '只读');
     await writeDir(
@@ -211,6 +216,12 @@ export class Sandboxes {
     await writeFile(
       join(readOnly, '项目说明.md'),
       `# 项目说明（学习者明确的长期要求；与当场说的冲突以当场为准）\n\n${instructions !== '' ? instructions : '（学习者还没写）'}\n`,
+      'utf8',
+    );
+    const notes = await this.o.notesOf(loopId);
+    await writeFile(
+      join(readOnly, '跨次记录.md'),
+      `${notes !== '' ? notes : '# 跨次记录\n\n（这个对话不属于项目）'}\n`,
       'utf8',
     );
   }
