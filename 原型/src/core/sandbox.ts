@@ -351,8 +351,8 @@ export class Sandboxes {
     return lines.join('\n');
   }
 
-  /** 一次学习的下层：对话原文（按行号排）。 */
-  private async transcriptText(loopId: string): Promise<string> {
+  /** 一次学习的下层：对话原文（按行号排；与 只读/学过的记录/<id>-对话.md 同一份，W14 开场也附它）。 */
+  async transcriptText(loopId: string): Promise<string> {
     const records = (await this.o.hub().records(loopId)).filter((r) => this.visible(r));
     const rows = records.flatMap((r) => {
       const one = lowerLine(r);

@@ -1,4 +1,4 @@
-// 左栏底部的账号：弹出菜单——外观（跟系统 / 浅色 / 深色）、语言（现在只有中文）。
+// 左栏底部的账号：弹出菜单——额度（W14 §3，打开时问一次）、外观（跟系统 / 浅色 / 深色）、语言（现在只有中文）。
 // MinerU 密钥：临时入口，填了写进 书库处理/.env（PDF 导入要用）。没做的（退出登录）不摆出来。
 import { useEffect, useState } from 'react';
 import { ChevronsUpDownIcon, GlobeIcon, KeyRoundIcon, SunMoonIcon } from 'lucide-react';
@@ -13,6 +13,7 @@ import {
   MenuTrigger,
 } from '@/components/ui/menu';
 import { cn } from '@/lib/utils';
+import { QuotaMenuRow } from '../usage/quota.tsx';
 import { api } from '../../api.ts';
 import { useTheme, type Theme } from '../../theme.ts';
 import { W } from '../../wording.ts';
@@ -71,6 +72,7 @@ export function AccountMenu(props: { collapsed: boolean }) {
           )}
         </MenuTrigger>
         <MenuContent side="top" align="start" className="min-w-52">
+          <QuotaMenuRow />
           <MenuSubmenu>
             <MenuSubmenuTrigger data-testid="theme-menu">
               <SunMoonIcon />

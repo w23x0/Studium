@@ -35,6 +35,7 @@ import type {
   MineruTokenBody,
 } from '../shared/protocol.ts';
 import type { MessageQuote } from '../shared/records.ts';
+import type { QuotaResponse, UsageResponse } from '../shared/usage.ts';
 import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
 import type { PageTrialResult } from '../shared/page.ts';
 import type {
@@ -92,6 +93,9 @@ let source: EventSource | undefined;
 
 export const api = {
   listSessions: () => call<ListSessionsResponse>('/sessions'),
+  // ── 额度与使用情况（W14） ──
+  quota: () => call<QuotaResponse>('/quota'),
+  usage: (projectId: string) => call<UsageResponse>(`/projects/${projectId}/usage`),
   projects: () => call<ListProjectsResponse>('/projects'),
   createProject: (title?: string) =>
     call<ProjectResponse>('/projects', {

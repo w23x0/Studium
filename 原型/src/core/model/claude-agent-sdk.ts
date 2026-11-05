@@ -12,7 +12,9 @@ import {
   type HookCallback,
   type Options,
   type PermissionResult,
+  type Query,
   type SDKMessage,
+  type SDKRateLimitInfo,
   type SDKUserMessage,
 } from '@anthropic-ai/claude-agent-sdk';
 import {
@@ -22,10 +24,12 @@ import {
   type ModelConversation,
   type ModelDisclosure,
   type ModelEvent,
+  type QuotaSnapshot,
   type SandboxActionEvent,
   type SandboxSpec,
   type TurnInput,
 } from './port.ts';
+import type { QuotaWindow } from '../../shared/usage.ts';
 import type { Effort, Profiles } from './profiles.ts';
 import {
   baseDir,
@@ -354,9 +358,134 @@ export class ClaudeAgentSdkModel implements ModelAdapter {
     };
   }
 
+  /** 订阅额度（W14 §3）：只放内存；活着的对话登记在 live 里，问额度时挑最近起的那个问。 */
+  private readonly quotaStore = new QuotaStore();
+  private readonly live = new Set<SdkConversation>();
+
   open(spec: ConversationSpec): ModelConversation {
-    return new SdkConversation(spec, this.options);
+    return new SdkConversation(spec, this.options, { live: this.live, quota: this.quotaStore });
   }
+
+  async quota(): Promise<QuotaSnapshot | undefined> {
+    const conv = [...this.live].at(-1);
+    if (conv !== undefined) {
+      // SDK 标明的实验接口（可能改名或撤掉）：失败只记一句，交回上次拿到的值，不影响别的功能
+      try {
+        const r = await withTimeout(conv.askUsage(), QUOTA_TIMEOUT_MS);
+        if (r !== undefined) this.quotaStore.fromUsage(r);
+      } catch (e) {
+        console.error('问订阅额度失败（实验接口）：', e);
+      }
+    }
+    return this.quotaStore.snapshot();
+  }
+}
+
+const QUOTA_TIMEOUT_MS = 10_000;
+
+function withTimeout<T>(p: Promise<T>, ms: number): Promise<T> {
+  let timer: NodeJS.Timeout | undefined;
+  const t = new Promise<never>((_, reject) => {
+    timer = setTimeout(() => reject(new Error(`${String(ms)} 毫秒没回`)), ms);
+  });
+  return Promise.race([p, t]).finally(() => clearTimeout(timer));
+}
+
+type UsageAnswer = Awaited<
+  ReturnType<Query['usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET']>
+>;
+
+/** 订阅额度各窗口的最后一次值（两个来源更新同一份：问 usage 的回答、流里的 rate_limit_event）。 */
+class QuotaStore {
+  private readonly windows = new Map<string, QuotaWindow>();
+  private at: string | undefined;
+
+  snapshot(): QuotaSnapshot | undefined {
+    if (this.at === undefined) return undefined;
+    return { windows: [...this.windows.values()].sort(byWindow), at: this.at };
+  }
+
+  /** 来源一：usage 接口的 rate_limits（utilization 注释写明 0–100）。整份换掉：没返回的窗口不显示。 */
+  fromUsage(r: UsageAnswer): void {
+    this.windows.clear();
+    this.at = new Date().toISOString();
+    const rl = r.rate_limits_available ? r.rate_limits : null;
+    if (rl === null) return;
+    const fixed: [
+      string,
+      string,
+      { utilization: number | null; resets_at: string | null } | null | undefined,
+    ][] = [
+      ['five_hour', '5 小时', rl.five_hour],
+      ['seven_day', '7 天', rl.seven_day],
+      ['seven_day_opus', '7 天 Opus', rl.seven_day_opus],
+      ['seven_day_sonnet', '7 天 Sonnet', rl.seven_day_sonnet],
+    ];
+    for (const [key, label, w] of fixed) {
+      if (w?.utilization === null || w?.utilization === undefined) continue;
+      this.set({ key, label, percent: w.utilization, resetsAt: w.resets_at ?? undefined });
+    }
+    for (const m of rl.model_scoped ?? []) {
+      if (m.utilization === null) continue;
+      this.set({
+        key: `model:${m.display_name}`,
+        label: `7 天 ${m.display_name}`,
+        percent: m.utilization,
+        resetsAt: m.resets_at ?? undefined,
+      });
+    }
+  }
+
+  /**
+   * 来源二：流里的 rate_limit_event。类型没写 utilization 的范围，单位按来源一的值判断（见下）；
+   * resetsAt 是数：小于 1e12 当作秒。只更新这一个窗口。
+   */
+  fromEvent(info: SDKRateLimitInfo): void {
+    const key = info.rateLimitType;
+    const label = key === undefined ? undefined : EVENT_LABELS[key];
+    if (key === undefined || label === undefined || info.utilization === undefined) return;
+    // 单位按来源一（注释写明 0–100）上次给这个窗口的值判断：比例×100 与原值哪个离它近用哪个；
+    // 来源一还没给过这个窗口就不用这条的百分比（0–1 这段两种单位分不开，猜错会把 1% 显示成 100%）
+    const prev = this.windows.get(key)?.percent;
+    if (prev === undefined) return;
+    const u =
+      Math.abs(info.utilization * 100 - prev) < Math.abs(info.utilization - prev)
+        ? info.utilization * 100
+        : info.utilization;
+    const resets =
+      info.resetsAt === undefined
+        ? undefined
+        : new Date(info.resetsAt < 1e12 ? info.resetsAt * 1000 : info.resetsAt).toISOString();
+    this.set({ key, label, percent: u, resetsAt: resets });
+    this.at = new Date().toISOString();
+  }
+
+  private set(w: {
+    key: string;
+    label: string;
+    percent: number;
+    resetsAt: string | undefined;
+  }): void {
+    this.windows.set(w.key, {
+      key: w.key,
+      label: w.label,
+      percent: w.percent,
+      ...(w.resetsAt !== undefined ? { resetsAt: w.resetsAt } : {}),
+    });
+  }
+}
+
+const EVENT_LABELS: Partial<Record<NonNullable<SDKRateLimitInfo['rateLimitType']>, string>> = {
+  five_hour: '5 小时',
+  seven_day: '7 天',
+  seven_day_opus: '7 天 Opus',
+  seven_day_sonnet: '7 天 Sonnet',
+};
+
+/** 5 小时在前，再 7 天，再按模型的。 */
+function byWindow(a: QuotaWindow, b: QuotaWindow): number {
+  const rank = (w: QuotaWindow) => (w.key === 'five_hour' ? 0 : w.key === 'seven_day' ? 1 : 2);
+  return rank(a) - rank(b) || a.label.localeCompare(b.label);
 }
 
 /** 一轮的事件流：边收边交（send() 与模型自己起的一轮都用它）。 */
@@ -401,8 +530,8 @@ class SdkConversation implements ModelConversation {
   private reportedModel: string | undefined;
   /** 正在跑的那一轮（send() 的或模型自己起的）；没有 = 主模型空着。 */
   private current: Channel | undefined;
-  /** SDK 的 query（中断用）。 */
-  private query_: { interrupt(): Promise<unknown> } | undefined;
+  /** SDK 的 query（中断、问额度用）。 */
+  private query_: Query | undefined;
   /** 学习者点了停止：这一轮的结果按停下收尾。 */
   private stopping = false;
   /** 本轮主模型每次回话的用量（按 message id；同一次回话会拆成几条 SDK 消息）。 */
@@ -416,8 +545,17 @@ class SdkConversation implements ModelConversation {
   constructor(
     private readonly spec: ConversationSpec,
     private readonly options: ClaudeAgentSdkOptions,
+    private readonly owner: { live: Set<SdkConversation>; quota: QuotaStore },
   ) {
     this.sessionId = spec.resumeToken;
+  }
+
+  /** 问一次订阅额度（W14 §3 来源一）；进程还没起 = undefined。 */
+  async askUsage(): Promise<UsageAnswer | undefined> {
+    if (this.query_ === undefined) return undefined;
+    return this.query_.usage_EXPERIMENTAL_MAY_CHANGE_DO_NOT_RELY_ON_THIS_API_YET({
+      skipBehaviors: true,
+    });
   }
 
   listen(handlers: Parameters<NonNullable<ModelConversation['listen']>>[0]): void {
@@ -431,6 +569,7 @@ class SdkConversation implements ModelConversation {
       options: sdkOptionsFor(this.spec, this.options),
     });
     this.query_ = q;
+    this.owner.live.add(this);
     this.close_ = () => {
       q.close();
     };
@@ -492,6 +631,7 @@ class SdkConversation implements ModelConversation {
       try {
         next = await output.next();
       } catch (e) {
+        this.owner.live.delete(this);
         this.finishTurn({
           kind: 'turn_error',
           reason: `Agent SDK 出错：${e instanceof Error ? e.message : String(e)}`,
@@ -499,6 +639,7 @@ class SdkConversation implements ModelConversation {
         return;
       }
       if (next.done === true) {
+        this.owner.live.delete(this);
         this.finishTurn({ kind: 'turn_error', reason: 'Agent SDK 提前结束了对话' });
         return;
       }
@@ -552,6 +693,11 @@ class SdkConversation implements ModelConversation {
     if (sid !== undefined && sid !== this.sessionId) {
       this.sessionId = sid;
       out.push({ kind: 'session', token: sid });
+    }
+    if (msg.type === 'rate_limit_event') {
+      // 额度（W14 §3 来源二）：只更新内存里的那份，不进这一轮
+      this.owner.quota.fromEvent(msg.rate_limit_info);
+      return out;
     }
     if (msg.type === 'system') {
       const m = msg as { subtype: string; model?: string } & Record<string, unknown>;
@@ -661,6 +807,7 @@ class SdkConversation implements ModelConversation {
   }
 
   close(): Promise<void> {
+    this.owner.live.delete(this);
     this.input.end();
     this.close_?.();
     return Promise.resolve();

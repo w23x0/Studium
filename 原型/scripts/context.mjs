@@ -201,6 +201,8 @@ for (const { line, r } of records) {
         `[第 ${line} 行 · ${localMinute(r.at)} · ${r.from} ${r.reply ? '回话' : '发来'}]`,
         r.text,
         ...cited,
+        // W14 §1.2：程序附给模型、不算对话原文的内容，接在最后（与 hub.ts message() 一致）
+        ...(r.attached ? [`\n（程序附）${r.attached}`] : []),
       ].join('\n');
       block(
         'input program',

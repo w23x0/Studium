@@ -985,6 +985,27 @@ export class Studium {
     return this.instructions(mainId);
   }
 
+  /**
+   * 学习对话开场附的上一次（W14 §1.1）：本项目、不含本次、没删的学习里最后活动最新的那次，状态不限；整份原文，
+   * 与只读区 学过的记录/<id>-对话.md 同一份。一次都没有 = 空串（不附）。
+   */
+  private async lastLearningBlock(mainId: string, self: string): Promise<string> {
+    const last = this.hub
+      .listSessions()
+      .filter(
+        (s) =>
+          s.kind === 'loop' &&
+          s.parent === mainId &&
+          s.sessionId !== self &&
+          !this.hub.isDeleted(s.sessionId),
+      )
+      .map((s) => ({ s, at: s.lastAt ?? s.openedAt }))
+      .sort((a, b) => b.at.localeCompare(a.at))[0]?.s;
+    if (last === undefined) return '';
+    const text = await this.sandboxes.transcriptText(last.sessionId);
+    return `# 本项目最近一次学习的整份原文：${last.sessionId}「${last.title}」（最后活动 ${localMinute(last.lastAt ?? last.openedAt)}；行号与只读区 学过的记录/${last.sessionId}-对话.md 相同，引用写 ${last.sessionId}:L行号）\n\n${text !== '' ? text : '（这次还没有对话）'}`;
+  }
+
   /** 项目说明一段（谈方向、找资料开场时程序附上）。 */
   private async instructionsBlock(mainId: string): Promise<string> {
     const t = (await this.instructions(mainId)).text;
@@ -1487,17 +1508,23 @@ export class Studium {
             title,
             anchorLine: cited.at(-1)?.line ?? 0,
           });
-          // 程序附上它自己一开始就该知道的：学习对话 = 只读区有什么；谈方向 = 项目说明；两边都附跨次记录（W13）
-          const facts = `\n\n（程序附）${
+          // 程序附上它自己一开始就该知道的：学习对话 = 只读区有什么；谈方向 = 项目说明；两边都附跨次记录（W13）；
+          // 学习对话再附本项目最近一次学习的整份原文（W14 §1）。都放 attached，不进这次的对话原文（W14 §1.2）
+          const attached = [
             kind === 'loop'
               ? describeSandbox(await this.sandboxes.forLoop(s.sessionId))
-              : await this.instructionsBlock(mainId)
-          }\n\n${await this.notes.render(mainId, s.sessionId)}`;
+              : await this.instructionsBlock(mainId),
+            await this.notes.render(mainId, s.sessionId),
+            ...(kind === 'loop' ? [await this.lastLearningBlock(mainId, s.sessionId)] : []),
+          ]
+            .filter((x) => x !== '')
+            .join('\n\n');
           await this.hub.message(s.sessionId, {
             from: mainId,
-            text: `${(a.instructions as string).trim()}${facts}`,
+            text: (a.instructions as string).trim(),
             cited,
             reply: true,
+            attached,
           });
           return ok(
             `已开：${s.sessionId}「${title}」，入口卡片在主对话里。跟学习者说一句就好；那边做完或有事会自己说，要看进展用 read_thread。`,

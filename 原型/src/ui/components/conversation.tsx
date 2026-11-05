@@ -12,6 +12,7 @@ import { ArrowRightIcon } from 'lucide-react';
 import { Thread } from '@/components/assistant-ui/thread';
 import type { SessionSummary } from '../../shared/protocol.ts';
 import type { NumberedRecord } from '../../shared/records.ts';
+import { latestContext } from '../../shared/usage.ts';
 import { api } from '../api.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { useOpenSession } from '../open-session.ts';
@@ -249,6 +250,7 @@ export function Conversation(props: {
       onSend={async (text, images) => {
         await api.send(sessionId, text, images);
       }}
+      contextTokens={latestContext(records)}
       // 主对话的输入框拖入非图片文件：不进输入，走项目的上传（工单 W9 §4.1）
       {...(isMain
         ? {
