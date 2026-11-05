@@ -17,7 +17,6 @@ import { DataDir, upgradeDataDir } from './log/data-dir.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
 import { SidebarStore } from './sidebar.ts';
-import { OFFICIAL_TOOLS_DIR, TeachingTools } from './teaching-tools.ts';
 import { Studium } from './studium.ts';
 import { Recorder } from './tape/recorder.ts';
 
@@ -116,7 +115,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     dir: join(dataDir.root, 'inputs'),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
-  const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
   const studium = new Studium({
     prompts: await loadPrompts(),
     // 学习对话提示词里“页面”那一段（W12 起竖流是唯一的学习页）
@@ -124,7 +122,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     materials,
     sources,
     dataDir: dataDir.root,
-    teaching,
     inputs,
     cross,
     ...(opts.now !== undefined ? { now: opts.now } : {}),

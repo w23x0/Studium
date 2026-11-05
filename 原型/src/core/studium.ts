@@ -34,7 +34,6 @@ import { Learned } from './learned.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { MaterialError, Materials } from './knowledge/materials.ts';
 import type { Sources } from './sources.ts';
-import type { TeachingTools } from './teaching-tools.ts';
 import { canDescend, canRead } from './model/sandbox-paths.ts';
 import type { ImageData, SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
@@ -63,8 +62,6 @@ export interface StudiumOptions {
   dataDir: string;
   /** 原文与出处（资料检索、教材出处核对）。 */
   sources: Sources;
-  /** 教学工具（官方 + 学习者自己的）。 */
-  teaching: TeachingTools;
   /** 附图存放处（W12 §5.6：图片原样送给模型）。 */
   inputs: Inputs;
   /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
@@ -118,7 +115,6 @@ export class Studium {
       hub: () => this.hub,
       learned: this.learned,
       materials: o.materials,
-      teaching: o.teaching,
       dataDir: o.dataDir,
       scopeOf: (id) => this.scopeOf(id),
       materialLines: (ids) => this.materialLines(ids),
@@ -1926,7 +1922,7 @@ export class Studium {
 
   /**
    * 学习对话的工具（W12 §2）：改自己的标题 + 竖流学习页的页面工具；结束用讨论串工具里的 close_thread（W19）；资料、
-   * 学过的记录、方向、项目说明、教学工具都在沙盒里当只读文件读；中途要先学别的，用 message_coordinator 请主对话另开。
+   * 学过的记录、方向、项目说明都在沙盒里当只读文件读；中途要先学别的，用 message_coordinator 请主对话另开。
    */
   private loopTools(loopId: string): ToolSpec[] {
     return [
