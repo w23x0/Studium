@@ -3,6 +3,7 @@
 // 行尾一个菜单，里面有删除（删前确认一次，W12 §4.3；主对话不带删除工具，只在这里删）。
 import { useState, type ReactNode } from 'react';
 import {
+  BarChart3Icon,
   BookOpenIcon,
   ChevronDownIcon,
   ChevronRightIcon,
@@ -20,6 +21,7 @@ import { Modal } from '@/components/input/modal';
 import { cn } from '@/lib/utils';
 import { api } from '../api.ts';
 import type { SessionSummary } from '../../shared/protocol.ts';
+import { UsagePanel } from './usage/usage-panel.tsx';
 import { threadGroups, type ThreadGroup, type ThreadRow } from '../threads-model.ts';
 import { W } from '../wording.ts';
 
@@ -42,6 +44,7 @@ export function ThreadsPanel(props: {
   onDeleted: (id: string) => void;
   onError: (e: unknown) => void;
 }) {
+  const [usage, setUsage] = useState(false);
   const groups = threadGroups(props.sessions, props.projectId);
   const total =
     groups.waiting.length + groups.running.length + groups.paused.length + groups.ended.length;
@@ -64,6 +67,24 @@ export function ThreadsPanel(props: {
         <Group group="paused" rows={groups.paused} {...props} />
         <Group group="ended" rows={groups.ended} foldable {...props} />
       </div>
+      <footer className="shrink-0 border-t px-2 py-2 text-sm">
+        <button
+          type="button"
+          data-testid="open-usage"
+          className="text-muted-foreground hover:bg-accent/60 hover:text-foreground flex w-full items-center gap-2 rounded-md px-2 py-1.5 [&_svg]:size-3.5"
+          onClick={() => setUsage(true)}
+        >
+          <BarChart3Icon />
+          {W.usage.open}
+        </button>
+      </footer>
+      {usage && (
+        <UsagePanel
+          projectId={props.projectId}
+          onOpen={props.onOpen}
+          onClose={() => setUsage(false)}
+        />
+      )}
     </div>
   );
 }

@@ -44,6 +44,7 @@ import type {
   UploadsResponse,
 } from '../../shared/protocol.ts';
 import type { MessageQuote } from '../../shared/records.ts';
+import type { QuotaResponse, UsageResponse } from '../../shared/usage.ts';
 import { MAX_UPLOAD_BYTES } from '../uploads.ts';
 import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
@@ -244,6 +245,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       const mainId = parts[2];
       if (parts[3] === 'uploads' && method === 'GET') {
         send(res, 200, { items: await studium.uploadsOf(mainId) } satisfies UploadsResponse);
+        return;
+      }
+      if (parts[3] === 'usage' && method === 'GET') {
+        send(res, 200, (await hub.usage(mainId)) satisfies UsageResponse);
         return;
       }
       if (parts[3] === 'uploads' && method === 'POST') {
@@ -615,6 +620,8 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, { objections } satisfies ObjectionsResponse);
     } else if (a === 'disclosure' && n === 2) {
       send(res, 200, ev.disclosure() satisfies DisclosureResponse);
+    } else if (a === 'quota' && n === 2) {
+      send(res, 200, (await opts.hub.quota()) satisfies QuotaResponse);
     } else {
       return false;
     }

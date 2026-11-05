@@ -4,6 +4,7 @@
 // · 交回原文（ModelEvent 里的 raw，由核心逐条记进正本）。
 import type { z } from 'zod';
 import type { ConversationKind } from '../../shared/records.ts';
+import type { QuotaWindow } from '../../shared/usage.ts';
 import type { ProfileKey, Profiles } from './profiles.ts';
 
 export interface ToolResult {
@@ -149,6 +150,17 @@ export interface ModelAdapter {
   /** 内容送往哪个服务；没有就是不外发（或还没声明）。 */
   readonly disclosure?: ModelDisclosure;
   open(spec: ConversationSpec): ModelConversation;
+  /**
+   * 订阅额度各窗口（W14 §3）：有活着的模型对话就问一次，再交回最后一次拿到的值（只在内存里）；
+   * 一次都没拿到 = undefined。只有走订阅额度的适配器实现，别家不实现（界面就不显示额度）。
+   */
+  quota?(): Promise<QuotaSnapshot | undefined>;
+}
+
+/** 最后一次拿到的额度与拿到的时间（ISO）。 */
+export interface QuotaSnapshot {
+  windows: QuotaWindow[];
+  at: string;
 }
 
 /** 一张图片：原样的字节与类型。 */

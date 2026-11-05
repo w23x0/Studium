@@ -3,10 +3,13 @@
 // 对照：右边注释是内部叫法，只给写代码的人看。
 import type { LoopStatus, SourceReportKind } from '../shared/protocol.ts';
 import { WS } from './wording-sidebar.ts';
+import { WU } from './wording-usage.ts';
 
 export const W = {
   /** 左栏、全部项目页、账号菜单与设置的叫法在 wording-sidebar.ts。 */
   sidebar: WS,
+  /** 上下文、额度与使用情况（W14）的叫法在 wording-usage.ts。 */
+  usage: WU,
   // ── 项目 ──
   projectHome: '项目页', // 项目页（Overview）
   projectChat: '项目对话', // 主对话

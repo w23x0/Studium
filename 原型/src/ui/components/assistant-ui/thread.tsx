@@ -99,6 +99,8 @@ export const Thread: FC<{
   onSend: SendInput;
   /** 拖进非图片文件时（只有主对话给）：走项目的上传，回给学习者看的（上传结果那一条，可点改）。 */
   onFiles?: (files: PickedFile[]) => Promise<ReactNode>;
+  /** 这个对话现在的上下文大小（W14 §2），输入框下方靠右显示。 */
+  contextTokens?: number | undefined;
 }> = ({
   welcome = '今天想学点什么？',
   header,
@@ -110,6 +112,7 @@ export const Thread: FC<{
   onEditLast,
   onSend,
   onFiles,
+  contextTokens,
 }) => {
   const isEmpty = useAuiState((s) => s.thread.messages.length === 0);
   const viewport = useStickToBottom();
@@ -175,6 +178,7 @@ export const Thread: FC<{
                 running={running}
                 {...(onStop !== undefined ? { onStop } : {})}
                 {...(onFiles !== undefined ? { onOtherFiles: onFiles } : {})}
+                {...(contextTokens !== undefined ? { contextTokens } : {})}
               />
             )}
           </ThreadPrimitive.ViewportFooter>

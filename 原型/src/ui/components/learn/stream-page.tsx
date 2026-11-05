@@ -20,6 +20,7 @@ import { MathPreview } from '@/components/input/math-preview';
 import type { MessageQuote, NumberedRecord } from '../../../shared/records.ts';
 import { inlineParts, replayStream, type StreamBlock } from '../../../shared/stream-page.ts';
 import { localMinute } from '../../../shared/time.ts';
+import { latestContext } from '../../../shared/usage.ts';
 import { api } from '../../api.ts';
 import { CurrentSessionContext } from '../../panel.ts';
 import { closeLine } from '../../screen-model.ts';
@@ -37,6 +38,7 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
   const { sessionId, onError } = props;
   const { records, draft, running, activity } = props.stream;
   const state = useMemo(() => loopState(records), [records]);
+  const context = useMemo(() => latestContext(records), [records]);
   const ended = state.kind === 'ended';
   const page = useMemo(() => replayStream(records), [records]);
   const atOf = useMemo(() => new Map(records.map((r) => [r.line, r.record.at])), [records]);
@@ -270,6 +272,7 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
                 setPending(undefined);
                 window.getSelection()?.removeAllRanges();
               }}
+              {...(context !== undefined ? { contextTokens: context } : {})}
             />
           </div>
         </div>

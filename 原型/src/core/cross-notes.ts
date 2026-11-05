@@ -185,7 +185,7 @@ function sessionMap(hub: Hub): Map<string, SessionSummary> {
 }
 
 /** 会话所属的项目（主对话 id）：沿 parent 往上找到 main；收掉、删掉的会话不在表里，算不属于任何项目。 */
-function projectIn(sessions: Map<string, SessionSummary>, id: string): string | undefined {
+export function projectIn(sessions: Map<string, SessionSummary>, id: string): string | undefined {
   let cur = sessions.get(id);
   for (let i = 0; i < 8 && cur !== undefined; i++) {
     if (cur.kind === 'main') return cur.sessionId;

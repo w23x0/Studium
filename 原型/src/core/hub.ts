@@ -3,6 +3,8 @@
 // 跑完它回的话再按同样方式送回发话方。
 // 不认识具体会话的职责：系统提示与工具由 kinds 按会话种类给出（studium.ts 组装）。
 // 事件（新记录、流式增量、进行中状态、正在做什么）推给订阅者（SSE）。
+import type { QuotaResponse, UsageResponse } from '../shared/usage.ts';
+import { projectUsage } from './usage.ts';
 import { randomBytes } from 'node:crypto';
 import {
   CONVERSATION_KIND_LABELS,
@@ -106,6 +108,8 @@ export interface PeerMessage {
   cited?: { session: string; line: number; at: string; text: string }[];
   /** 这是回它先前发来的话：收话方这一轮的话不再转回去。 */
   reply?: boolean;
+  /** 程序附给模型、不算对话原文的内容（W14 §1.2）：记进正本的 attached，发给模型时接在最后。 */
+  attached?: string;
 }
 
 export class NotFoundError extends Error {}
@@ -144,6 +148,23 @@ export class Hub {
   /** 同上，给界面用：拿不到实际模型时 known 为假并带兜底说明。 */
   async modelInfo(sessionId: string): Promise<ModelInfo> {
     return modelInfoOf(await this.executedModel(sessionId));
+  }
+
+  /** 订阅额度（W14 §3）：适配器没有额度 = available 为假（界面不显示）；一次都没拿到 = 没有 at。 */
+  async quota(): Promise<QuotaResponse> {
+    const m = this.opts.model;
+    if (m.quota === undefined) return { available: false, windows: [] };
+    const q = await m.quota();
+    return q === undefined ? { available: true, windows: [] } : { available: true, ...q };
+  }
+
+  /** 本项目的使用情况（W14 §4）：打开面板时从正本现算。 */
+  async usage(project: string): Promise<UsageResponse> {
+    const all = this.opts.index.listSessions();
+    if (!all.some((s) => s.sessionId === project && s.kind === 'main')) {
+      throw new NotFoundError(`没有这个项目：${project}`);
+    }
+    return projectUsage({ listSessions: () => all, records: (id) => this.records(id) }, project);
   }
 
   /** 内容送往哪个服务（外发披露）；适配器没声明就是 undefined。 */
@@ -326,6 +347,7 @@ export class Hub {
       text: m.text,
       ...(m.cited !== undefined && m.cited.length > 0 ? { cited: m.cited } : {}),
       ...(m.reply === true ? { reply: true as const } : {}),
+      ...(m.attached !== undefined && m.attached !== '' ? { attached: m.attached } : {}),
     });
     const who = `${this.labelOf(m.from)}${m.reply === true ? '回话' : '发来'}（${m.from}；学习者看不到这条）`;
     const cited = (m.cited ?? []).map(
@@ -336,7 +358,12 @@ export class Hub {
     const input: TurnInput = {
       role: 'peer',
       ...(timeline ? { plain: true } : {}),
-      text: [await this.head(to, line, who), m.text, ...cited].join('\n'),
+      text: [
+        await this.head(to, line, who),
+        m.text,
+        ...cited,
+        ...(m.attached !== undefined && m.attached !== '' ? [`\n（程序附）${m.attached}`] : []),
+      ].join('\n'),
     };
     void this.enqueue(to, live, { input, line, ...(m.reply === true ? {} : { replyTo: m.from }) });
     return line;

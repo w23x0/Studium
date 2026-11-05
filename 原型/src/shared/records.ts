@@ -664,6 +664,12 @@ export interface ThreadMessage {
   text: string;
   cited?: { session: string; line: number; at: string; text: string }[];
   reply?: true;
+  /**
+   * 程序附给模型、不算对话原文的内容（W14 §1.2：开场的沙盒说明、项目说明、跨次记录、上次学习的原文）。
+   * 发给模型时接在 text 和 cited 后面；对话原文（renderTranscript）、给人和别的对话看的地方都不带，免得一层套一层。
+   * 旧记录没有这一项，程序附的小段在 text 里，照旧。
+   */
+  attached?: string;
 }
 
 /**

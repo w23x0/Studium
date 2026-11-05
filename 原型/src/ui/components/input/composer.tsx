@@ -57,6 +57,8 @@ export function InputComposer(props: {
   onOtherFiles?: (files: PickedFile[]) => Promise<ReactNode>;
   /** 放进输入框里、跟这句话一起发的小块（学习页选中的几处，每块能删，11-05 #92）。 */
   attached?: ReactNode;
+  /** 这个对话现在的上下文大小（最新一条 context_used，W14 §2）；还没回过话不给。 */
+  contextTokens?: number;
 }) {
   const [text, setText] = useState('');
   const [images, setImages] = useState<PendingImage[]>([]);
@@ -358,6 +360,11 @@ export function InputComposer(props: {
           )}
         </div>
       </div>
+      {props.contextTokens !== undefined && (
+        <p data-testid="context-size" className="text-muted-foreground self-end px-2 pt-1 text-xs">
+          {W.usage.context(props.contextTokens)}
+        </p>
+      )}
       <input
         ref={files}
         type="file"
