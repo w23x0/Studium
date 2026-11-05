@@ -23,6 +23,9 @@ export const WP = {
   /** 学习者选中页面上一段再说话时，输入框上方那条。 */
   quoting: (text: string) => `回在：『${text}』`,
   quotingComponent: (name: string) => `回在：组件「${name}」`,
+  /** 大段删除折起来时那一行（11-05 #92）；n = 删掉的字数（不算空白）。 */
+  removedFolded: (n: number) => `删掉了一段（${String(n)} 字），点开看`,
+  removedFold: '收起删掉的这段',
   /** 学习者的话前面：他是选中哪处说的。 */
   quotedLine: (text: string) => `『${text}』`,
   /** 组件上方的名字（点一下 = 就这个组件说话）。 */

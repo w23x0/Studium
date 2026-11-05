@@ -139,9 +139,6 @@ export async function replayTape(path: string, opts: ReplayOptions): Promise<Rep
   return { problems, turns: used, actions: actions.length };
 }
 
-/** 本地服务放后台做的动作（申请收口），回放也放后台。 */
-const IN_BACKGROUND: readonly ActionName[] = ['requestClose'];
-
 /** 旧录带里可能有、现在已经没有的动作（工单 W1 §4.8、W2 §3、W3 §3；选卡 10-23 取消）。 */
 const REMOVED_ACTIONS = new Set<string>([
   // W9：笔记改从上传进学过的
@@ -173,23 +170,23 @@ const REMOVED_ACTIONS = new Set<string>([
   'practice.askHint',
   'practice.abandon',
   'practice.requestSummary',
+  // 11-05（#92）：学习页底栏的“我觉得懂了”“搁着，以后再学”拿掉，改由学习对话在对话里调
+  'requestClose',
+  'endUnclosed',
 ]);
 
 /** 重做一个学习者动作（Studium 的方法；带点的是旧录带里已撤掉的对象的动作）。 */
 async function perform(app: App, name: ActionName, args: unknown[]): Promise<void> {
   const target: object = app.studium;
+  // 已撤掉的界面动作：方法可能还在（模型那边用），但录带里那次调用的参数是旧的，不再重做
+  if (REMOVED_ACTIONS.has(name)) throw new Error(`录带版本过旧：${name} 这个动作已经没有了`);
   const fn = name.includes('.') ? undefined : (target as Record<string, unknown>)[name];
   if (typeof fn !== 'function') {
     // 这些动作随知识点编号库一起删了（工单 W1 §4.8）：旧录带回放到这里就停，说清是版本的事
     if (REMOVED_ACTIONS.has(name)) throw new Error(`录带版本过旧：${name} 这个动作已经没有了`);
     throw new Error(`回放不认识的动作：${name}`);
   }
-  const run = () => (fn as (...a: unknown[]) => Promise<unknown>).apply(target, args);
-  if (IN_BACKGROUND.includes(name)) {
-    app.studium.background(`回放 ${name}`, run);
-    return;
-  }
-  await run();
+  await (fn as (...a: unknown[]) => Promise<unknown>).apply(target, args);
 }
 
 async function waitUntil(ms: number, cond: () => Promise<boolean>): Promise<boolean> {

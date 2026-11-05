@@ -39,8 +39,8 @@ export interface StreamBlock {
   /** 组件：主模型起的名字与第几版。 */
   name?: string;
   version?: number;
-  /** 学习者：选中了页面上哪处再说的；或这句是在组件上的操作（组件名）。 */
-  quote?: MessageQuote;
+  /** 学习者：选中了页面上哪几处再说的；或这句是在组件上的操作（组件名）。 */
+  quotes?: MessageQuote[];
   op?: string;
   /** 以前的样子（W12 §4.7）：文字改过的改前各版、组件的前几版 HTML，早的在前。 */
   history?: string[];
@@ -89,7 +89,7 @@ export function replayStream(records: NumberedRecord[], until = Infinity): Strea
           kind: 'learner',
           line,
           text: r.text,
-          ...(r.quote !== undefined ? { quote: r.quote } : {}),
+          ...(quotesOf(r).length > 0 ? { quotes: quotesOf(r) } : {}),
         });
         break;
       case 'component_action':
@@ -337,7 +337,7 @@ export function streamPageText(
       case 'learner':
         return b.op !== undefined
           ? `[第 ${String(b.line)} 行 · 学习者在组件「${b.op}」上]`
-          : `[第 ${String(b.line)} 行 · 学习者${quoteHead(b.quote)}]`;
+          : `[第 ${String(b.line)} 行 · 学习者${quoteHead(b.quotes)}]`;
       case 'component':
         return `[组件「${b.name ?? ''}」· 第 ${String(b.version ?? 1)} 版${b.inline === true ? ' · 嵌在文字里' : ''}]`;
     }
@@ -355,10 +355,15 @@ export function streamPageText(
   return out.join('\n\n');
 }
 
-function quoteHead(q: MessageQuote | undefined): string {
-  if (q === undefined) return '';
-  if (q.component !== undefined) return ` · 选中了组件「${q.component}」`;
-  return q.line !== undefined ? ` · 选中了第 ${String(q.line)} 行里的一段` : '';
+function quoteHead(qs: MessageQuote[] | undefined): string {
+  const parts = (qs ?? []).map((q) =>
+    q.component !== undefined
+      ? `组件「${q.component}」`
+      : q.line !== undefined
+        ? `第 ${String(q.line)} 行里的一段`
+        : '一段',
+  );
+  return parts.length > 0 ? ` · 选中了${parts.join('、')}` : '';
 }
 
 function gist(text: string): string {
@@ -366,12 +371,24 @@ function gist(text: string): string {
   return t.length > 40 ? `${t.slice(0, 40)}……` : t;
 }
 
-/** 学习者选中的一段交给模型时怎么写（很长只带开头和结尾）。 */
-export function quotePrefix(q: MessageQuote): string {
-  if (q.component !== undefined) return `学习者选中了组件「${q.component}」\n\n`;
-  const t = q.text ?? '';
-  const shown = t.length > 300 ? `${t.slice(0, 160)}……${t.slice(-100)}` : t;
-  return q.line !== undefined
-    ? `学习者选中了第 ${String(q.line)} 行里的这段：\n「${shown}」\n\n`
-    : `学习者选中了这段：\n「${shown}」\n\n`;
+/** 一句学习者的话选中了哪几处：11-05 起记在 quotes，旧行只有一处 quote。 */
+export function quotesOf(r: { quote?: MessageQuote; quotes?: MessageQuote[] }): MessageQuote[] {
+  return r.quotes ?? (r.quote !== undefined ? [r.quote] : []);
+}
+
+/** 学习者选中的几处交给模型时怎么写（很长只带开头和结尾；带前后几个字的写明在哪两段字中间）。 */
+export function quotesPrefix(qs: readonly MessageQuote[]): string {
+  if (qs.length === 0) return '';
+  const one = (q: MessageQuote): string => {
+    if (q.component !== undefined) return `组件「${q.component}」`;
+    const t = q.text ?? '';
+    const shown = t.length > 300 ? `${t.slice(0, 160)}……${t.slice(-100)}` : t;
+    const where =
+      q.before !== undefined || q.after !== undefined
+        ? `（前面是“${q.before ?? ''}”，后面是“${q.after ?? ''}”）`
+        : '';
+    return `${q.line !== undefined ? `第 ${String(q.line)} 行里的这段` : '这段'}：\n「${shown}」${where}`;
+  };
+  if (qs.length === 1 && qs[0] !== undefined) return `学习者选中了${one(qs[0])}\n\n`;
+  return `学习者选中了 ${String(qs.length)} 处：\n${qs.map((q, i) => `${String(i + 1)}. ${one(q)}`).join('\n')}\n\n`;
 }

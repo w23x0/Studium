@@ -19,9 +19,7 @@ import { IdTokens } from './ids.ts';
 export const ACTIONS = [
   'createProject',
   'learnerSays',
-  'requestClose',
   'confirmClose',
-  'endUnclosed',
   'objectToVerdict',
   // 批 3a：项目资料、期限
   'changeMaterials',

@@ -1,8 +1,7 @@
 // 学习对话两种页面（新的学习页、旧版开的学习对话的消息流）共用的件：顶上的单子、底栏（界面说明 §2.6、§3）。
 import { useState } from 'react';
-import { ChevronDownIcon, ChevronRightIcon, EllipsisIcon, LoaderIcon } from 'lucide-react';
+import { ChevronDownIcon, ChevronRightIcon, LoaderIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Menu, MenuContent, MenuItem, MenuTrigger } from '@/components/ui/menu';
 import { MathPreview } from '@/components/input/math-preview';
 import type { NumberedRecord, Ticket } from '../../../shared/records.ts';
 import { api } from '../../api.ts';
@@ -127,7 +126,10 @@ export function EndedBar(props: { text: string; onBack: () => void }) {
   );
 }
 
-/** 学习对话底栏：主按钮“我觉得懂了”；“…”里是“搁着，以后再学”（界面说明 §2.6、§3）。 */
+/**
+ * 学习对话底栏（界面说明 §2.6、§3）：平时没有按钮——觉得懂了、想先停下都在对话里说，由学习对话判断后收尾或先结束
+ * （11-05 起，#92）；收尾那一句到了，在这里确认“学完了”；旧数据里搁置着的，在这里接着学。
+ */
 export function LoopBar(props: {
   sessionId: string;
   records: NumberedRecord[];
@@ -157,31 +159,8 @@ export function LoopBar(props: {
     }
     return <EndedBar text={W.loopDone} onBack={props.onBack} />;
   }
-  const endLater = (
-    <Menu>
-      <MenuTrigger
-        aria-label={W.moreActions}
-        data-testid="loop-more"
-        disabled={props.running}
-        className="text-muted-foreground hover:text-foreground hover:bg-muted flex size-7 items-center justify-center rounded-md disabled:opacity-50"
-      >
-        <EllipsisIcon className="size-4" />
-      </MenuTrigger>
-      <MenuContent side="top" align="end" className="max-w-72">
-        <MenuItem
-          data-testid="end-unclosed"
-          onClick={() => act(() => api.endUnclosed(props.sessionId))}
-        >
-          <span className="flex flex-col gap-0.5">
-            <span>{W.endLater}</span>
-            <span className="text-muted-foreground text-xs">{W.endLaterHint}</span>
-          </span>
-        </MenuItem>
-      </MenuContent>
-    </Menu>
-  );
   if (side.shelved !== undefined) {
-    // 以前点过“先放一放”的（旧数据）：接着学，或搁着
+    // 以前点过“先放一放”的（旧数据）：接着学；要结束就在对话里说
     return (
       <div
         data-testid="shelved-bar"
@@ -195,16 +174,13 @@ export function LoopBar(props: {
             </span>
           )}
         </span>
-        <div className="flex items-center gap-1">
-          <Button
-            size="sm"
-            disabled={props.running}
-            onClick={() => act(() => api.resume(props.sessionId))}
-          >
-            {W.resume}
-          </Button>
-          {endLater}
-        </div>
+        <Button
+          size="sm"
+          disabled={props.running}
+          onClick={() => act(() => api.resume(props.sessionId))}
+        >
+          {W.resume}
+        </Button>
       </div>
     );
   }
@@ -233,22 +209,10 @@ export function LoopBar(props: {
       </div>
     );
   }
-  return (
-    <div className="flex items-center justify-end gap-1">
-      <Button
-        size="sm"
-        data-testid="request-close"
-        disabled={props.running || state.closeRequested}
-        onClick={() => act(() => api.requestClose(props.sessionId))}
-      >
-        {state.closeRequested ? W.closingShort : W.understood}
-      </Button>
-      {endLater}
-    </div>
-  );
+  return null;
 }
 
-/** 旧版开的学习对话（W10 前，开场的提示词与工具已定死）的底栏：只看；“…”里留“搁着，以后再学”（W10 §9 第 1 条）。 */
+/** 旧版开的学习对话（W10 前，开场的提示词与工具已定死）的底栏：只看（要结束它，在项目对话里说，11-05 起没有按钮）。 */
 export function OldLoopBar(props: {
   sessionId: string;
   records: NumberedRecord[];
@@ -274,18 +238,9 @@ export function OldLoopBar(props: {
   return (
     <div
       data-testid="old-loop-bar"
-      className="bg-card flex flex-wrap items-center justify-between gap-3 rounded-2xl border p-3 text-sm"
+      className="bg-card flex flex-wrap items-center gap-3 rounded-2xl border p-3 text-sm"
     >
       <span>{WP.oldLoop}</span>
-      <Button
-        variant="outline"
-        size="sm"
-        onClick={() => {
-          api.endUnclosed(props.sessionId).catch(props.onError);
-        }}
-      >
-        {W.endLater}
-      </Button>
     </div>
   );
 }

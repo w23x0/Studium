@@ -41,11 +41,6 @@ export const W = {
   // ── 对话页 ──
   mainWelcome: '想学什么？说一句就行。',
   loopTopic: '这次学',
-  understood: '我觉得懂了',
-  closingShort: '在收尾…',
-  moreActions: '更多',
-  endLater: '搁着，以后再学', // 没合上就结束
-  endLaterHint: '没学完就先结束这次；以后的学习对话能读到这次的原文。',
   confirmBar: '收尾那一句写好了。还想补一句就接着说；不补就点“学完了”。',
   confirmMore: '再补一句',
   confirmGo: '学完了',

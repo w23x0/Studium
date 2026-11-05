@@ -55,9 +55,6 @@ export class BadRequestError extends Error {}
 
 /** 旧版开的学习对话（W12 前的区域图学习页与更早的）：只读看，要接着学另开一次。 */
 const OLD_LOOP = '这次学习是旧版开的，只能看；要接着学，请回项目另开一次。';
-/** 学习者点“我觉得懂了”时交给学习对话的程序事实（10-31 起不开守卫）。 */
-const LEARNER_WANTS_CLOSE =
-  '学习者点了“我觉得懂了”。你也觉得可以收，就调 request_close 写收尾那一句（这次做了什么、停在哪）；觉得还差，就直接跟学习者说差在哪，不调。';
 /** 项目说明上限（字；参照 Claude，`docs/设计/记录/项目说明.md`）。 */
 export const INSTRUCTIONS_LIMIT = 16000;
 /** 导入会话多久没交回算超时（W11 §4；实现细节，先定 60 分钟：几百页的 PDF 交 MinerU 要几分钟到十几分钟）。 */
@@ -1076,7 +1073,7 @@ export class Studium {
     text: string,
     images?: ImageInput[],
     replyTo?: { key: string; pointer: string },
-    quote?: MessageQuote,
+    quotes?: MessageQuote[],
   ): Promise<void> {
     const opened = await this.hub.opened(sessionId);
     if (opened.kind === 'loop' && opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
@@ -1086,7 +1083,7 @@ export class Studium {
     const meta = {
       ...(images !== undefined && images.length > 0 ? { images } : {}),
       ...(replyTo !== undefined && opened.kind === 'loop' ? { replyTo } : {}),
-      ...(quote !== undefined && opened.page === 'stream' ? { quote } : {}),
+      ...(quotes !== undefined && quotes.length > 0 && opened.page === 'stream' ? { quotes } : {}),
     };
     // 结束的讨论串只是收起来：学习者再说话就重开（照 Claude 项目的讨论串；W12 §2 学习对话也一样）
     if (opened.kind !== 'main') await this.reopenIfEnded(opened, 'learner', '学习者又说话了');
@@ -1123,26 +1120,18 @@ export class Studium {
   }
 
   /**
-   * 申请收口（10-31 起不开守卫）：模型申请时带收尾那一句，记下就等学习者确认“学完了”；
-   * 学习者点“我觉得懂了”时记一条，再把这件事作为程序事实交给学习对话，由它写收尾那一句或说还差在哪。
+   * 申请收口（10-31 起不开守卫）：学习对话调 request_close 时带收尾那一句，记下就等学习者确认“学完了”。
+   * 11-05 起（#92）学习页没有“我觉得懂了”按钮：学习者在对话里说，由学习对话判断后调；旧数据里学习者点按钮的那条照旧能读。
    */
-  async requestClose(
-    loopId: string,
-    by: 'model' | 'learner',
-    reason: string,
-    summary?: string,
-  ): Promise<void> {
+  async requestClose(loopId: string, reason: string, summary: string): Promise<void> {
     await this.assertActiveLoop(loopId);
     await this.hub.record(loopId, {
       type: 'close_requested',
       at: this.iso(),
-      by,
+      by: 'model',
       reason,
-      ...(summary !== undefined ? { summary } : {}),
+      summary,
     });
-    if (by === 'learner') {
-      await this.hub.send(loopId, { role: 'program', text: LEARNER_WANTS_CLOSE });
-    }
   }
 
   /** 收尾那一句到了之后，学习者确认结束 → 告诉主对话一句。 */
@@ -1150,9 +1139,9 @@ export class Studium {
     await this.assertActiveLoop(loopId);
     // 最后一次收口要有收尾那一句（旧数据：守卫写好的收尾记录也算）
     if (closeStatus(await this.hub.records(loopId))?.kind !== 'ready') {
-      // 收尾那一句还没写，不能确认结束；没学完要结束走“搁着，以后再学”
+      // 收尾那一句还没写，不能确认结束（11-05 起学习页没有按钮，学习者在对话里说）
       throw new BadRequestError(
-        '这次学到了什么还没写下：先点“我觉得懂了”；想先停下就点“…”里的“搁着，以后再学”。',
+        '这次学到了什么还没写下：在对话里说你觉得懂了；想先停下，就说先到这里、以后再学。',
       );
     }
     await this.hub.record(loopId, {
@@ -2065,7 +2054,7 @@ export class Studium {
         run: async (a) => {
           const summary = (a.summary as string).trim();
           if (summary === '') return err('收尾那一句不能是空的');
-          await this.requestClose(loopId, 'model', (a.reason as string | undefined) ?? '', summary);
+          await this.requestClose(loopId, (a.reason as string | undefined) ?? '', summary);
           return ok('已记下，等学习者确认“学完了”。');
         },
       },

@@ -67,12 +67,12 @@
 `session_opened`（旧数据里含单子 `ticket`）· `user_message`（异议带 `objection`，附图带 `images`）· `assistant_message` ·
 `model_raw`（适配层吐出的原始消息，含思考块）· `model_session`（续接凭据）· `model_used` · `turn_failed`（服务交回的报错句记在 `notice`，不记成 `assistant_message`）·
 `program_fact` · `tool_call` · `sandbox_action`（沙盒里的读 / 写 / 跑命令；`tag` 由程序按路径打：`教学工具:<文件名>`）·
-`close_requested`（10-31 起模型申请时带收尾那一句 `summary`：这次做了什么、停在哪；学习者点“我觉得懂了”那条没有）· 旧数据 `guard_verdict`（含 `understanding` 与实际执行的 `model`，10-31 起不再产生，照旧能读、能显示、能提异议）· `loop_ended` `after_loop_step`
+`close_requested`（10-31 起模型申请时带收尾那一句 `summary`：这次做了什么、停在哪；学习者点“我觉得懂了”那条没有；11-05 起学习页没有这个按钮，学习者点的那种只在旧数据里）· 旧数据 `guard_verdict`（含 `understanding` 与实际执行的 `model`，10-31 起不再产生，照旧能读、能显示、能提异议）· `loop_ended` `after_loop_step`
 （恢复 `loop_resumed`；旧数据：搁置 `loop_shelved`，11-04 起界面与模型都不再触发）·
 `project_goal` `project_title`（项目名随方向变，开头那行不改）· `turn_context`（这一轮输入前附上的事，有才记：学习者停止了生成 / 删了讨论串、主对话新接上时的“现在几点 + 最近的消息”、学习对话攒着的组件操作；`forLine` 指那轮输入的行）·
 `task_opened` `talk_ended`（畅谈）· 讨论串（`thread_closed` `thread_reopened` 结束与重开，`thread_title` 自起标题）· `project_material` `project_deadline`（项目资料与期限）· 旧数据：`branch_requested`（学习对话请开分叉，W12 换成 `message_coordinator`）`conversation_pointer`（只读）·
 `upload_routed`（上传的一份分到资料还是学过的、归谁，改判再记一条）· `material_owner`（资料改归属，W11）· `project_asked`（别的会话来问这个项目的主对话，记问答，不进它的上下文，W11 试验）· `project_instructions`（项目说明，每改一次一条，当前 = 最后一条）·
-学习页（`component_version` · `component_action`（学习者）· `component_error`；旧数据，只读：`layout`（10-29 区域图的布局版本、小模型耗时、打回次数）`screen` 第几屏与清单指纹 · `component_report`（框架另开的子代理交回的）· `screen_note`（框架回主模型的一句）；`session_opened.screens` 标按屏幕跑，`user_message.replyTo` 回在某块下；竖流学习页（10-29 #74 试验）：`session_opened.page = 'stream'`、`user_message.quote` 选中页面上一处再说、`component_action.state` 组件“现在的状态”（只留最后一次），页面改动就是成功的页面工具 `tool_call`）·
+学习页（`component_version` · `component_action`（学习者）· `component_error`；旧数据，只读：`layout`（10-29 区域图的布局版本、小模型耗时、打回次数）`screen` 第几屏与清单指纹 · `component_report`（框架另开的子代理交回的）· `screen_note`（框架回主模型的一句）；`session_opened.screens` 标按屏幕跑，`user_message.replyTo` 回在某块下；竖流学习页（10-29 #74 试验）：`session_opened.page = 'stream'`、`user_message.quotes` 选中页面上几处再说（11-05 #92 起可多处，带前后几个字 `before` `after`；旧行是单个 `quote`，读时用 `quotesOf`）、`component_action.state` 组件“现在的状态”（只留最后一次），页面改动就是成功的页面工具 `tool_call`）·
 `context_used`（每轮跑完时主模型上下文多大、这一轮输出多少，所有会话，10-29 起，只记不显示）·
 W13（试验中）：`cross_note`（跨次记录的一条：学到哪 / 学习者说过的长期的话 / 撤回，记在写它的会话里，编号 = `会话 id:L行号`，改主意、撤回都是新记一条用 `replaces` 指旧的）·
 W12：`thread_message`（别的会话发来的话，带附上的学习者原话 `cited`，`reply` = 回话）`thread_deleted`（学习者删了讨论串，记在主对话）`turn_stopped`（学习者点了停止）`message_edited`（学习者改最后一句 / 主对话改自己上一条）`message_reaction`（主对话回的表情）、`assistant_message.interim`（工具调用之间说的话）、`ImageInput.sentAs`（送给模型的缩小副本）·
