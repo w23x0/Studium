@@ -43,6 +43,7 @@ import type {
   RerouteRequest,
   UploadsResponse,
 } from '../../shared/protocol.ts';
+import type { MessageQuote } from '../../shared/records.ts';
 import { MAX_UPLOAD_BYTES } from '../uploads.ts';
 import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
@@ -358,6 +359,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           images?: unknown;
           replyTo?: unknown;
           quote?: unknown;
+          quotes?: unknown;
         };
         const note = typeof body.note === 'string' ? body.note : '学习者在界面上点了按钮';
         switch (action) {
@@ -370,41 +372,26 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
               typeof r?.key === 'string' && typeof r.pointer === 'string'
                 ? { key: r.key.slice(0, 100), pointer: r.pointer.slice(0, 200) }
                 : undefined;
-            // 竖流学习页：选中页面上一处再说的（10-29 #74）
-            const q = body.quote as
-              { line?: unknown; text?: unknown; component?: unknown } | null | undefined;
-            const quote =
-              q !== undefined && q !== null
-                ? {
-                    ...(typeof q.line === 'number' && Number.isInteger(q.line)
-                      ? { line: q.line }
-                      : {}),
-                    ...(typeof q.text === 'string' && q.text.trim() !== ''
-                      ? { text: q.text.slice(0, 4000) }
-                      : {}),
-                    ...(typeof q.component === 'string' && q.component.trim() !== ''
-                      ? { component: q.component.slice(0, 100) }
-                      : {}),
-                  }
-                : undefined;
+            // 竖流学习页：选中页面上几处再说的（10-29 #74；11-05 #92 起可多处，旧界面发的单个 quote 照收）
+            const raw = Array.isArray(body.quotes)
+              ? (body.quotes as unknown[])
+              : body.quote !== undefined && body.quote !== null
+                ? [body.quote]
+                : [];
+            const quotes = raw
+              .slice(0, 20)
+              .map(parseQuote)
+              .filter((q): q is MessageQuote => q !== undefined);
             await studium.learnerSays(
               id,
               m.text,
               m.images.length > 0 ? m.images : undefined,
               replyTo,
-              quote !== undefined && (quote.text !== undefined || quote.component !== undefined)
-                ? quote
-                : undefined,
+              quotes.length > 0 ? quotes : undefined,
             );
             send(res, 202, {});
             return;
           }
-          case 'close-request':
-            await hub.opened(id);
-            await studium.assertNotShelved(id);
-            background('申请收口', () => studium.requestClose(id, 'learner', note));
-            send(res, 202, {});
-            return;
           case 'objections': {
             const b = body as Partial<VerdictObjectionRequest>;
             if (typeof b.line !== 'number' || typeof b.text !== 'string') {
@@ -439,10 +426,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             return;
           case 'confirm-close':
             await studium.confirmClose(id, note);
-            send(res, 202, {});
-            return;
-          case 'end':
-            await studium.endUnclosed(id, note);
             send(res, 202, {});
             return;
           case 'resume':
@@ -636,10 +619,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return false;
     }
     return true;
-  }
-
-  function background(what: string, fn: () => Promise<unknown>): void {
-    opts.studium.background(what, fn);
   }
 
   function openSse(res: ServerResponse): void {
@@ -845,4 +824,34 @@ async function readUpload(req: IncomingMessage): Promise<{ path: string; data: B
       return { path: p, data: Buffer.from(await f.arrayBuffer()) };
     }),
   );
+}
+
+/** 学习者选中的一处（学习页发来的）：某一行里的一段原文（带前后几个字），或一个组件；什么都没有的不算。 */
+function parseQuote(raw: unknown): MessageQuote | undefined {
+  if (typeof raw !== 'object' || raw === null) return undefined;
+  const q = raw as {
+    line?: unknown;
+    text?: unknown;
+    component?: unknown;
+    before?: unknown;
+    after?: unknown;
+  };
+  const text =
+    typeof q.text === 'string' && q.text.trim() !== '' ? q.text.slice(0, 4000) : undefined;
+  const component =
+    typeof q.component === 'string' && q.component.trim() !== ''
+      ? q.component.slice(0, 100)
+      : undefined;
+  if (text === undefined && component === undefined) return undefined;
+  return {
+    ...(typeof q.line === 'number' && Number.isInteger(q.line) ? { line: q.line } : {}),
+    ...(text !== undefined ? { text } : {}),
+    ...(component !== undefined ? { component } : {}),
+    ...(text !== undefined && typeof q.before === 'string' && q.before !== ''
+      ? { before: q.before.slice(-40) }
+      : {}),
+    ...(text !== undefined && typeof q.after === 'string' && q.after !== ''
+      ? { after: q.after.slice(0, 40) }
+      : {}),
+  };
 }

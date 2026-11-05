@@ -289,11 +289,11 @@ export function toUiMessages(
 }
 
 export type LoopState =
-  | { kind: 'open'; closeRequested: boolean }
+  | { kind: 'open' }
   | { kind: 'awaiting_confirm'; summary: string; line: number; old?: true }
   | { kind: 'ended'; closed: boolean };
 
-/** 学习对话现在在哪一步：进行中（在等收尾那一句时 closeRequested）/ 收尾那一句到了、等学习者确认 / 已结束。 */
+/** 学习对话现在在哪一步：进行中 / 收尾那一句到了、等学习者确认 / 已结束。 */
 export function loopState(records: NumberedRecord[]): LoopState {
   // 结束后能重开（W12 §2）：最后一次结束之后没重开过才算结束着
   const ended = foldLoop(records).ended;
@@ -307,7 +307,7 @@ export function loopState(records: NumberedRecord[]): LoopState {
       ...(c.old === true ? { old: true as const } : {}),
     };
   }
-  return { kind: 'open', closeRequested: c?.kind === 'waiting' };
+  return { kind: 'open' };
 }
 
 /** 阶段复盘的对话：回看的时间窗口（开头那行记的）；谈方向的对话没有。 */

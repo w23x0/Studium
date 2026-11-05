@@ -3,7 +3,7 @@
 // 块编号、组件编号、版本号不进（会话/学习对话.md §11.2 主模型行）。
 import type { PageAction } from '../shared/page.ts';
 import type { LogRecord, NumberedRecord } from '../shared/records.ts';
-import { quotePrefix } from '../shared/stream-page.ts';
+import { quotesOf, quotesPrefix } from '../shared/stream-page.ts';
 import { localMinute } from '../shared/time.ts';
 
 /** labelOf：别的会话发来的话写谁发的（不给就写会话 id）。中途碎话（W12 §4.6）不放。 */
@@ -33,9 +33,7 @@ function speech(
         text:
           r.replyTo !== undefined
             ? `（回在「${r.replyTo.pointer}」下面）${r.text}`
-            : r.quote !== undefined
-              ? `${quotePrefix(r.quote)}${r.text}`
-              : r.text,
+            : `${quotesPrefix(quotesOf(r))}${r.text}`,
       };
     case 'assistant_message':
       return r.interim === true ? undefined : { who: '教学', text: r.text };

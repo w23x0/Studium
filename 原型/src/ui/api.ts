@@ -102,17 +102,10 @@ export const api = {
   sidebar: () => call<SidebarResponse>('/sidebar'),
   sidebarAct: (req: SidebarActionRequest) =>
     call<SidebarResponse>('/sidebar', { method: 'POST', body: JSON.stringify(req) }),
-  requestClose: (id: string) =>
-    call<object>(`/sessions/${id}/close-request`, { method: 'POST', body: '{}' }),
   confirmClose: (id: string) =>
     call<object>(`/sessions/${id}/confirm-close`, {
       method: 'POST',
       body: JSON.stringify({ note: '学习者在界面上确认结束' }),
-    }),
-  endUnclosed: (id: string) =>
-    call<object>(`/sessions/${id}/end`, {
-      method: 'POST',
-      body: JSON.stringify({ note: '学习者在界面上点了“结束（没合上）”' }),
     }),
   // ── 学到一半：先放一放、恢复 ──
   resume: (loopId: string) =>
@@ -150,8 +143,8 @@ export const api = {
     images?: MessageImageInput[],
     /** 学习页：回在某一块下面（W10）。 */
     replyTo?: { key: string; pointer: string },
-    /** 竖流学习页：选中页面上一处再说的（10-29 #74）。 */
-    quote?: MessageQuote,
+    /** 竖流学习页：选中页面上几处再说的（10-29 #74；11-05 #92 起可多处）。 */
+    quotes?: MessageQuote[],
   ) =>
     call<object>(`/sessions/${id}/messages`, {
       method: 'POST',
@@ -159,7 +152,7 @@ export const api = {
         text,
         ...(images !== undefined && images.length > 0 ? { images } : {}),
         ...(replyTo !== undefined ? { replyTo } : {}),
-        ...(quote !== undefined ? { quote } : {}),
+        ...(quotes !== undefined && quotes.length > 0 ? { quotes } : {}),
       }),
     }),
   // ── 设置：新开的学习用哪种学习页（10-29 #74）──

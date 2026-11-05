@@ -55,6 +55,8 @@ export function InputComposer(props: {
   /** 拖进 / 选了非图片文件时（只有主对话给）：不进输入，交给项目的上传；回一句给学习者看的话。 */
   /** 回给学习者看的：一句话，或上传结果那一条（可点改，W11 §2）。 */
   onOtherFiles?: (files: PickedFile[]) => Promise<ReactNode>;
+  /** 放进输入框里、跟这句话一起发的小块（学习页选中的几处，每块能删，11-05 #92）。 */
+  attached?: ReactNode;
 }) {
   const [text, setText] = useState('');
   const [images, setImages] = useState<PendingImage[]>([]);
@@ -215,6 +217,7 @@ export function InputComposer(props: {
         )}
       >
         {dragging && <p className="text-primary px-1.5 text-sm">{W.dropHere}</p>}
+        {props.attached}
         {images.length > 0 && (
           <div className="flex flex-wrap gap-2" data-testid="composer-images">
             {images.map((img, n) => (

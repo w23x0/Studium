@@ -25,7 +25,7 @@ import {
   type SessionOpened,
   type Ticket,
 } from '../shared/records.ts';
-import { quotePrefix } from '../shared/stream-page.ts';
+import { quotesPrefix } from '../shared/stream-page.ts';
 import { localMinute } from '../shared/time.ts';
 import type { DerivedIndex } from './index/derived-index.ts';
 import { isSessionId, type DataDir } from './log/data-dir.ts';
@@ -249,8 +249,8 @@ export class Hub {
       recorded?: number;
       /** 旧数据（区域图学习页）：学习者在某一块下面回的。 */
       replyTo?: { key: string; pointer: string };
-      /** 学习页：学习者选中页面上一处再说的（交给模型时开头写明选中了哪段）。 */
-      quote?: MessageQuote;
+      /** 学习页：学习者选中页面上几处再说的（交给模型时开头写明选中了哪几段，11-05 起可多处）。 */
+      quotes?: MessageQuote[];
       /** 学习者附图的字节（W12 §5.6，原样送给模型）与给模型的一句（图在沙盒哪里）。 */
       attach?: { data: ImageData[]; note?: string };
     } = {},
@@ -262,7 +262,7 @@ export class Hub {
     const objection = input.role === 'learner' ? meta.objection : undefined;
     const images = input.role === 'learner' ? meta.images : undefined;
     const replyTo = input.role === 'learner' ? meta.replyTo : undefined;
-    const quote = input.role === 'learner' ? meta.quote : undefined;
+    const quotes = input.role === 'learner' ? (meta.quotes ?? []) : [];
     const line =
       meta.recorded ??
       (await this.append(
@@ -275,7 +275,7 @@ export class Hub {
               ...(objection !== undefined ? { objection } : {}),
               ...(images !== undefined && images.length > 0 ? { images } : {}),
               ...(replyTo !== undefined ? { replyTo } : {}),
-              ...(quote !== undefined ? { quote } : {}),
+              ...(quotes.length > 0 ? { quotes } : {}),
             }
           : { type: 'program_fact', at: this.iso(), text: input.text },
       ));
@@ -289,9 +289,9 @@ export class Hub {
         objection !== undefined
           ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
           : ''
-      }${replyTo !== undefined ? `（回在「${replyTo.pointer}」下面）` : ''}${
-        quote !== undefined ? quotePrefix(quote) : ''
-      }${input.text}${meta.attach?.note !== undefined ? `\n${meta.attach.note}` : ''}`,
+      }${replyTo !== undefined ? `（回在「${replyTo.pointer}」下面）` : ''}${quotesPrefix(
+        quotes,
+      )}${input.text}${meta.attach?.note !== undefined ? `\n${meta.attach.note}` : ''}`,
       ...(meta.attach !== undefined && meta.attach.data.length > 0
         ? { images: meta.attach.data }
         : {}),

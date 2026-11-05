@@ -101,8 +101,10 @@ export interface UserMessage {
   images?: ImageInput[];
   /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3 学习者回话）：key 只在程序里用，pointer 是那块的一句话。 */
   replyTo?: { key: string; pointer: string };
-  /** 竖流学习页：学习者选中页面上一段再说的（第几行里的哪段原文，或哪个组件）。 */
+  /** 竖流学习页：学习者选中页面上一段再说的（第几行里的哪段原文，或哪个组件）。旧行用它；11-05 起写 quotes。 */
   quote?: MessageQuote;
+  /** 竖流学习页（11-05 起，#92）：学习者选中的几处，按选的先后；读时用 `quotesOf` 兼容旧行的 quote。 */
+  quotes?: MessageQuote[];
 }
 
 /** 学习者选中的页面上的一处：某一行里的一段原文，或一个组件（组件名 = 主模型起的名字）。 */
@@ -110,6 +112,9 @@ export interface MessageQuote {
   line?: number;
   text?: string;
   component?: string;
+  /** 选中那段前后各几个字（11-05 起，#92）：同一行里同样的字出现几次时，靠它认是哪一处。 */
+  before?: string;
+  after?: string;
 }
 
 /** 学习者消息里的一张图片：原图在输入存放处（只追加）。旧数据带转写（W12 起不再转写，图片原样送给模型）。 */
