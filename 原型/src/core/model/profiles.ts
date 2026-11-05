@@ -20,13 +20,12 @@ const PROFILE_KEYS: readonly string[] = [...CONVERSATION_KINDS, ...RETIRED_PROFI
 export type Profiles = Partial<Record<ProfileKey, Profile>>;
 
 /**
- * 默认：主对话 Opus、低强度；找资料中等；谈方向高强度；学习对话 Opus、高强度（W15）；导入会话用 Sonnet、中等强度（W11 §4）。
- * 不再开的种类（守卫、导航、检索子代理、状态整理、教法记录整理、写产出、页面编辑员）不设；STUDIUM_PROFILES 里
+ * 默认：主对话 Opus、低强度；找资料中等；学习对话 Opus、高强度（W15）；导入会话用 Sonnet、中等强度（W11 §4）。
+ * 不再开的种类（守卫、导航、检索子代理、状态整理、教法记录整理、写产出、页面编辑员、谈方向）不设；STUDIUM_PROFILES 里
  * 配了也不报错、不起作用。
  */
 export const DEFAULT_PROFILES: Profiles = {
   main: { model: 'opus', effort: 'low' },
-  talk: { effort: 'high' },
   // 学习对话固定 Opus（W15）：第一步“这一次学什么”全靠它判断；不写时随账号默认，历次 Opus、Sonnet 混着来
   loop: { model: 'opus', effort: 'high' },
   find: { effort: 'medium' },

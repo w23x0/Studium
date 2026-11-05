@@ -23,8 +23,8 @@ export interface SessionSummary {
 }
 
 /**
- * 派生层记下的对话状态（只记事实；有记号 = 已结束，W19）：ended 讨论串结束（学习对话 W19 起也是它；旧数据还有谈方向谈定、
- * 找资料勾完、写产出与阶段复盘）· closed / unclosed 旧数据：学习合上 / 没合上就结束（照旧显示当时的状态）。
+ * 派生层记下的对话状态（只记事实；有记号 = 已结束，W19）：ended 讨论串结束（学习对话 W19 起也是它；旧数据还有谈方向谈定或
+ * W20 起不再开、找资料勾完、写产出与阶段复盘）· closed / unclosed 旧数据：学习合上 / 没合上就结束（照旧显示当时的状态）。
  */
 export type SessionMark = 'closed' | 'unclosed' | 'ended';
 
@@ -35,10 +35,6 @@ export interface ProjectResponse {
 export interface ProjectSummary {
   mainSessionId: string;
   title: string;
-  /** 主对话里最近谈定的方向目标。 */
-  goal?: string;
-  /** 期限（YYYY-MM-DD）；没记就没有。 */
-  deadline?: string;
 }
 
 export interface ListProjectsResponse {
@@ -440,8 +436,6 @@ export interface ProjectMaterialsResponse {
   materials: ProjectMaterialView[];
   /** 恒为 true：各对话只在本项目能读的资料里查（按归属；别的项目的读不到）。 */
   restricted: boolean;
-  deadline?: string;
-  deadlineNote?: string;
 }
 
 export interface ProjectMaterialsRequest {

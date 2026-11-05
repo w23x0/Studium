@@ -88,9 +88,6 @@ export function ProjectsPage(props: {
                               </span>
                             )}
                           </span>
-                          <span className="text-muted-foreground line-clamp-2 text-sm">
-                            {p.goal ?? S.noGoalYet}
-                          </span>
                           {p.lastAt !== '' && (
                             <span className="text-muted-foreground text-xs">
                               {S.lastActive} {shortTime(p.lastAt)}

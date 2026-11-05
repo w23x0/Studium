@@ -31,13 +31,11 @@ import {
 import { formatRoute, parseRoute, sameRoute, type Route } from './route.ts';
 import { W } from './wording.ts';
 
-/** 这些记录到了要重读会话列表：新开对话、方向与项目名，以及会改讨论串分组的（见派生层 markOf）。 */
+/** 这些记录到了要重读会话列表：新开对话、项目名，以及会改讨论串分组的（见派生层 markOf）。 */
 const REFRESH_ON = new Set<string>([
   'session_opened',
-  'project_goal',
   'project_title',
   'loop_ended',
-  'talk_ended',
   'thread_closed',
   'thread_reopened',
   'thread_title',

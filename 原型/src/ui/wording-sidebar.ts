@@ -20,7 +20,6 @@ export const WS = {
   newAsk: '想学什么（可以不填）',
   newPlaceholder: '想学的东西、想做成的事…',
   newGo: '开始',
-  noGoalYet: '还没谈方向',
   pinned: '置顶',
   recents: '最近',
   noRecents: '还没有项目。',

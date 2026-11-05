@@ -21,13 +21,13 @@ export const W = {
     close: '收起讨论串',
     open: '开着',
     ended: '已结束',
-    empty: '还没开过。谈方向、学习都会在这里列一条。',
+    empty: '还没开过。每次学习都会在这里列一条。',
     more: '更多',
     end: '结束',
     delete: '删除',
     deleteTitle: '删掉这个讨论串？',
     deleteHint: (title: string) =>
-      `删掉「${title}」后它不再显示，之后的对话也读不到它；它找来的资料、谈定的方向留着。删了不能撤销。`,
+      `删掉「${title}」后它不再显示，之后的对话也读不到它。删了不能撤销。`,
     deleteGo: '删掉',
     cancel: '算了',
     tagClosed: '学完',
@@ -39,9 +39,6 @@ export const W = {
   whereAmI: '现在在哪',
   // ── 对话页 ──
   mainWelcome: '想学什么？说一句就行。',
-  talkDone: '方向记好了。还想改就接着说，会重新打开。',
-  talkIntro: '在这里说清想学到什么程度；谈定后方向会记进项目。',
-  talkFrom: '从你在项目对话里说的这句开始：',
   // 旧数据：导航会话只读看
   navIntro: '导航自己跑完，这里只看它怎么想的。',
   navResult: '下一次学',
@@ -170,8 +167,6 @@ export const W = {
 
   // ── 旧数据：单子改过、阶段复盘（W12 起不再产生，旧记录照旧显示） ──
   ticketEdited: '你改了这次要学的内容。',
-  reviewBanner: (since: string, until: string) => `复盘：回头看 ${since} 到 ${until} 学的`,
-  reviewWelcome: '我们回头看看这段时间学得怎么样。',
   // ── 讨论串栏里旧学习当时的状态（W19 起新学习只分开着 / 已结束） ──
   unclosedTag: '搁着',
 

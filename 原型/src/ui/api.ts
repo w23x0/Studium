@@ -198,7 +198,7 @@ export const api = {
     call<SourceReportsResponse>(`/sources/reports?${qs({ material, file })}`),
   report: (req: SourceReportRequest) =>
     call<SourceReportResponse>('/sources/reports', { method: 'POST', body: JSON.stringify(req) }),
-  // ── 资料范围：项目资料、期限 ──
+  // ── 资料范围：项目资料 ──
   materials: (projectId: string) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`),
   // ── 导入入口（工单 W9、W11）：上传、改判、改归属、重试、删、外部导入、项目说明 ──

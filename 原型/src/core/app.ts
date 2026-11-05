@@ -49,9 +49,10 @@ const KINDS: readonly ConversationKind[] = CONVERSATION_KINDS;
 
 /**
  * 不再开的会话种类：没有自己的提示词文件（守卫 10-31 起；导航、检索子代理、状态整理、教法记录整理、写产出、
- * 页面编辑员 W12 起）。旧会话照旧能打开看。
+ * 页面编辑员 W12 起；找资料 11-04 起；谈方向 W20 起）。旧会话照旧能打开看。
  */
 const RETIRED_PROMPT_KINDS: readonly ConversationKind[] = [
+  'talk',
   'guard',
   'nav',
   'retrieve',
@@ -63,7 +64,7 @@ const RETIRED_PROMPT_KINDS: readonly ConversationKind[] = [
 ];
 
 export async function loadPrompts(): Promise<Record<ConversationKind, string>> {
-  // 项目里各对话管哪一份（11-04）：主对话、学习对话、谈方向的提示词用 {{项目}} 接同一段，分工只写一处
+  // 项目里各对话管哪一份（11-04）：主对话、学习对话的提示词用 {{项目}} 接同一段，分工只写一处
   const project = (await readFile(join(here, 'prompts/project.md'), 'utf8')).trim();
   const entries = await Promise.all(
     KINDS.map(async (k) => {

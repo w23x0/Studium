@@ -54,7 +54,7 @@ export interface ConversationSpec {
   fork?: boolean;
   /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
   session?: { id: string; kind: ConversationKind };
-  /** 为真时放开模型服务自带的联网搜索与网页抓取（谈方向、找资料、学习对话；W12 起可与沙盒同时有）。 */
+  /** 为真时放开模型服务自带的联网搜索与网页抓取（学习对话；W12 起可与沙盒同时有）。 */
   webSearch?: boolean;
   /** 按哪一项配模型与强度；不给 = 按 `session.kind`。 */
   profile?: ProfileKey;

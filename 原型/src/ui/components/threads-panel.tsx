@@ -1,6 +1,6 @@
 // 讨论串：项目对话右边一栏（照 Claude 桌面版的讨论串），列这个项目开出去的任务对话。
 // 开着 → 已结束（默认收起），照 Claude 项目（W19）。每行只有标题（旧学习带当时的小状态），行尾一个菜单：
-// 开着的谈方向、学习有“结束”（结束了说话就重开）；删除删前确认一次（W12 §4.3；主对话不带删除工具，只在这里删）。
+// 开着的学习有“结束”（结束了说话就重开；旧的谈方向等只读，算已结束）；删除删前确认一次（W12 §4.3；主对话不带删除工具，只在这里删）。
 import { useState, type ReactNode } from 'react';
 import {
   BarChart3Icon,
@@ -145,7 +145,7 @@ function Group(props: {
               </button>
               <ThreadMenu
                 row={r}
-                canEnd={props.group === 'open' && (r.kind === 'talk' || r.kind === 'loop')}
+                canEnd={props.group === 'open' && r.kind === 'loop'}
                 onDeleted={props.onDeleted}
                 onError={props.onError}
               />
@@ -158,7 +158,7 @@ function Group(props: {
 }
 
 /**
- * 一行的菜单：结束（开着的谈方向、学习；只是收起，说话就重开，W19）；删除（删前确认一次；删了界面上不再显示，
+ * 一行的菜单：结束（开着的学习；只是收起，说话就重开，W19）；删除（删前确认一次；删了界面上不再显示，
  * 别的对话也读不到；不做撤销）。
  */
 function ThreadMenu(props: {

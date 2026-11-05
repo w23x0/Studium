@@ -6,7 +6,7 @@ import type { ConversationKind, LogRecord } from './records.ts';
 /** 讨论串的状态（卡片与右栏同一来源）：开着 / 已结束。 */
 export type ThreadGroup = 'open' | 'ended';
 
-/** 讨论串里列的对话种类（主对话本身、导入会话不列；找资料、写产出是旧数据，照旧列着只读看）。 */
+/** 讨论串里列的对话种类（主对话本身、导入会话不列；谈方向、找资料、写产出是旧数据，照旧列着只读看）。 */
 export const THREAD_KINDS: ReadonlySet<ConversationKind> = new Set<ConversationKind>([
   'talk',
   'loop',

@@ -14,9 +14,9 @@ export type * from './records-longterm.ts';
 export type * from './records-cross.ts';
 
 /**
- * main 主对话 · talk 谈方向 · loop 一次学习的对话 · find 找资料（联网找、自己定存哪些、直接存，W12）· import 导入处理
+ * main 主对话 · loop 一次学习的对话 · import 导入处理
  * · 旧数据（不再开）：guard 守卫（10-31）· editor 页面编辑员（10-26）· nav 导航 · retrieve 检索子代理 · state 整理学习者状态
- * · pedagogy 记教法效果 · output 写产出（这六种 W12 起）
+ * · pedagogy 记教法效果 · output 写产出（这六种 W12 起）· find 找资料（11-04 起）· talk 谈方向（W20 起；方向在学习对话里谈）
  */
 export const CONVERSATION_KINDS = [
   'main',
@@ -70,7 +70,7 @@ export interface SessionOpened {
   /** 从哪个会话开出来的（学习对话 → 主对话；旧数据：守卫 → 学习对话）。 */
   parent?: string;
   ticket?: Ticket;
-  /** 挂在父会话的哪一行下（畅谈对话 → 主对话里那条学习者消息）。 */
+  /** 挂在父会话的哪一行下（讨论串 → 主对话里那条学习者消息）。 */
   anchorLine?: number;
   /** 这次学习是接着一次没合上的学习学的（批 6）：记着原来那次，原来那次的正本不改。 */
   resumeOf?: ResumeOrigin;
@@ -325,7 +325,7 @@ export interface GoalAbility {
   confirmedReason?: string;
 }
 
-/** 方向目标（主对话里谈定；畅谈对话的输出契约暂缓，D-10）。 */
+/** 方向目标（旧数据：谈方向交回时写在主对话里；W20 起不再写，读侧见 `core/goal.ts`）。 */
 export interface ProjectGoal {
   type: 'project_goal';
   at: string;
@@ -405,7 +405,7 @@ export interface ChoiceMade {
   loopSessionId: string;
 }
 
-/** 主对话开出一个任务对话（畅谈对话），挂在某条学习者消息下（`docs/设计/会话/主对话.md`）。 */
+/** 主对话开出一个讨论串，挂在某条学习者消息下（`docs/设计/会话/主对话.md`）；W20 起 kind 都是 loop，旧数据里有 talk、find。 */
 export interface TaskOpened {
   type: 'task_opened';
   at: string;
@@ -425,7 +425,7 @@ export interface ProjectTitle {
   source: 'goal' | 'learner';
 }
 
-/** 畅谈对话交回：谈出的方向目标（已记进项目），本对话结束。 */
+/** 旧数据（W20 起不再写）：谈方向交回，谈出的方向目标（已记进项目），本对话结束。 */
 export interface TalkEnded {
   type: 'talk_ended';
   at: string;
@@ -499,7 +499,7 @@ export interface ProjectMaterial {
   material?: string;
 }
 
-/** 项目期限（可不填）。deadline 为 null = 清掉期限；取最新一条。 */
+/** 旧数据（W20 起不再写，期限只从谈方向来）：项目期限。deadline 为 null = 清掉期限。 */
 export interface ProjectDeadline {
   type: 'project_deadline';
   at: string;

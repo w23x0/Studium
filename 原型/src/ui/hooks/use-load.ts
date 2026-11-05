@@ -6,13 +6,11 @@ import { api } from '../api.ts';
 /** 这些记录写进来时，面板上的内容可能变了（只列现在还会写进来的种类）。 */
 const RELOAD_ON = new Set([
   'session_opened',
-  'project_goal',
   'project_title',
   'project_material',
   'tool_call',
   'user_message',
-  // 谈方向结束、讨论串结束 / 重开 / 改名 / 开出
-  'talk_ended',
+  // 讨论串结束 / 重开 / 改名 / 开出
   'thread_closed',
   'thread_reopened',
   'thread_title',
