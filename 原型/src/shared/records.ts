@@ -649,7 +649,8 @@ export type LogRecord =
   | TurnStopped
   | MessageEdited
   | MessageReaction
-  | CrossNote;
+  | CrossNote
+  | MessageTidied;
 
 // ───────────── W12：一个对话一个模型（发话、删除、停止与编辑、表情） ─────────────
 
@@ -1019,4 +1020,18 @@ export interface CrossNote {
   scope: 'project' | 'learner';
   /** 被替换 / 撤回的那条（`会话 id:L行号`）。 */
   replaces?: string;
+}
+
+// ───────────── W17：整理学习者的话（#91，试验中） ─────────────
+
+/**
+ * 学习对话对学习者一行话的整理（W17）：改转写错词、分开几件事、改口后的结论，只写他说了什么，不写判断。
+ * 原话不动、照旧是证据；同一行再整理以后写的为准。记在学习对话自己的正本里。
+ */
+export interface MessageTidied {
+  type: 'message_tidied';
+  at: string;
+  /** 学习者那句话在本会话正本里的行号。 */
+  line: number;
+  text: string;
 }

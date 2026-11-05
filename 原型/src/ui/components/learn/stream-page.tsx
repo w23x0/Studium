@@ -413,6 +413,7 @@ function StreamBlockView(props: {
               ))}
               <MathPreview text={b.text} />
             </div>
+            {b.tidied !== undefined && <Tidied text={b.tidied} />}
             {props.editable && (
               <button
                 type="button"
@@ -613,6 +614,28 @@ function Removed(props: { text: string; children: ReactNode }) {
         {open ? WP.removedFold : WP.removedFolded(props.text.replace(/\s+/g, '').length)}
       </button>
       {open && struck}
+    </div>
+  );
+}
+
+/** 学习者那句话下面：学习对话整理过的样子（W17），默认收着，点开看。 */
+function Tidied(props: { text: string }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <div className="flex w-full flex-col items-end gap-1" data-testid="learner-tidied">
+      <button
+        type="button"
+        className="text-muted-foreground hover:text-foreground flex items-center gap-1 text-xs"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {open ? <ChevronDownIcon className="size-3" /> : <ChevronRightIcon className="size-3" />}
+        {open ? WP.tidiedHide : WP.tidiedShow}
+      </button>
+      {open && (
+        <div className="text-muted-foreground border-s-2 ps-3 text-sm">
+          <MathPreview text={props.text} />
+        </div>
+      )}
     </div>
   );
 }

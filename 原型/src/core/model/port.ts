@@ -28,7 +28,10 @@ export interface ToolSpec {
 export interface SandboxSpec {
   /** 模型可写的工作区（绝对路径）。 */
   workdir: string;
-  /** 只读的目录或单个文件；模型看到的是 `只读/<name>/…`。`name` 可含 `/`；以 `.md` 结尾的是单个文件。 */
+  /**
+   * 只读的目录或单个文件；模型看到的是 `只读/<name>/…`。`name` 可含 `/`；以 `.md` 结尾的是单个文件。
+   * `name` 为空串 = 整个 `只读/`（学习对话把只读区按虚拟路径原样摆在一个目录里，W16）；别的条目按最长前缀优先。
+   */
   readOnly: { name: string; path: string }[];
   /** 默认 false：不给联网。 */
   network: boolean;
