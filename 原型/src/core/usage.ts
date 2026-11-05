@@ -32,15 +32,19 @@ export async function projectUsage(deps: UsageDeps, project: string): Promise<Us
     if (projectIn(sessions, s.sessionId) !== project) continue;
     const byModel = sessionUsage(await deps.records(s.sessionId));
     if (byModel.size === 0) continue;
+    // 导入会话界面上看不到：token 照算进总数与模型列，不进讨论串列表、不算讨论串数；主对话进列表、不算讨论串数
+    const hidden = s.kind === 'import';
+    const counted = !hidden && s.kind !== 'main';
     const parts = zero();
     for (const [model, p] of byModel) {
       add(parts, p);
       const col = columns.get(model) ?? { model, parts: zero(), threads: 0 };
       add(col.parts, p);
-      col.threads += 1;
+      if (counted) col.threads += 1;
       columns.set(model, col);
     }
     add(total, parts);
+    if (hidden) continue;
     threads.push({
       sessionId: s.sessionId,
       kind: s.kind,

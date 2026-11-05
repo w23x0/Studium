@@ -437,19 +437,26 @@ class QuotaStore {
   }
 
   /**
-   * 来源二：流里的 rate_limit_event。类型没写 utilization 的范围：≤ 1 当作比例（×100），大于 1 当作百分比；
+   * 来源二：流里的 rate_limit_event。类型没写 utilization 的范围，单位按来源一的值判断（见下）；
    * resetsAt 是数：小于 1e12 当作秒。只更新这一个窗口。
    */
   fromEvent(info: SDKRateLimitInfo): void {
     const key = info.rateLimitType;
     const label = key === undefined ? undefined : EVENT_LABELS[key];
     if (key === undefined || label === undefined || info.utilization === undefined) return;
-    const u = info.utilization;
+    // 单位按来源一（注释写明 0–100）上次给这个窗口的值判断：比例×100 与原值哪个离它近用哪个；
+    // 来源一还没给过这个窗口就不用这条的百分比（0–1 这段两种单位分不开，猜错会把 1% 显示成 100%）
+    const prev = this.windows.get(key)?.percent;
+    if (prev === undefined) return;
+    const u =
+      Math.abs(info.utilization * 100 - prev) < Math.abs(info.utilization - prev)
+        ? info.utilization * 100
+        : info.utilization;
     const resets =
       info.resetsAt === undefined
         ? undefined
         : new Date(info.resetsAt < 1e12 ? info.resetsAt * 1000 : info.resetsAt).toISOString();
-    this.set({ key, label, percent: u <= 1 ? u * 100 : u, resetsAt: resets });
+    this.set({ key, label, percent: u, resetsAt: resets });
     this.at = new Date().toISOString();
   }
 

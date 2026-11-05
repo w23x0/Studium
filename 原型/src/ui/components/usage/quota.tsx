@@ -39,6 +39,7 @@ export function QuotaMenuRow() {
       (w) =>
         `${w.label} ${U.quotaUsed(w.percent)}${w.resetsAt !== undefined ? `，${U.quotaResets(localMinute(w.resetsAt))}` : ''}`,
     )
+    .concat(q.at !== undefined ? [U.quotaAsOf(localMinute(q.at))] : [])
     .join('\n');
   return (
     <div

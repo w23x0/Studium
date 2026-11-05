@@ -14,6 +14,7 @@ import {
   type UsageResponse,
   type UsageThread,
 } from '../../../shared/usage.ts';
+import { localMinute } from '../../../shared/time.ts';
 import { W } from '../../wording.ts';
 import { QuotaBlock } from './quota.tsx';
 
@@ -134,7 +135,7 @@ function ModelTable(props: { data: UsageResponse }) {
     {
       label: U.threadCount,
       cells: models.map((m) => String(m.threads)),
-      sum: String(threads.length),
+      sum: String(threads.filter((t) => t.kind !== 'main').length),
     },
   ];
   return (
@@ -221,7 +222,7 @@ function ThreadList(props: { threads: UsageThread[]; all: number; onOpen: (id: s
                   {t.title}
                 </button>
                 <span className="text-muted-foreground">
-                  {t.models.map(modelLabel).join('、')} · {t.at.slice(0, 10)}
+                  {t.models.map(modelLabel).join('、')} · {localMinute(t.at).slice(0, 10)}
                 </span>
               </div>
               <div className="bg-muted h-1.5 w-full overflow-hidden rounded-full sm:w-24">

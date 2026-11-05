@@ -4,11 +4,19 @@ import type { ConversationKind, NumberedRecord } from './records.ts';
 
 /** token 数一律写成 k / M / B（照 Claude 项目设置的写法；学习者说过 M 比“万”好懂）。 */
 export function formatTokens(n: number): string {
-  if (n < 1000) return String(Math.round(n));
-  const [unit, div] = n >= 1e9 ? ['B', 1e9] : n >= 1e6 ? ['M', 1e6] : ['k', 1e3];
-  const v = n / div;
-  const s = v >= 100 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '');
-  return `${s}${unit}`;
+  if (Math.round(n) < 1000) return String(Math.round(n));
+  const units: [string, number][] = [
+    ['k', 1e3],
+    ['M', 1e6],
+    ['B', 1e9],
+  ];
+  for (const [i, [unit, div]] of units.entries()) {
+    const v = n / div;
+    const s = v >= 100 ? String(Math.round(v)) : v.toFixed(1).replace(/\.0$/, '');
+    // 进位到 1000 就换下一个单位（999.6k → 1M）
+    if (Number(s) < 1000 || i === units.length - 1) return `${s}${unit}`;
+  }
+  return String(n);
 }
 
 /** 这个会话现在的上下文大小：最新一条 context_used；还没回过话 = undefined。 */
