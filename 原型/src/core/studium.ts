@@ -144,9 +144,11 @@ export class Studium {
         const main = await this.projectOf(id);
         return main === undefined ? '' : this.notes.render(main, id);
       },
+      components: (loopId) => this.latestComponents(loopId),
       imagesDir: o.inputs.imagesDir,
       projectOf: (id) => this.projectOf(id),
       deleted: (id) => this.hub.isDeleted(id),
+      now: () => this.now(),
     });
     // 组件按块按指纹存在 `<数据>/screens/`（旧活页面的 `pages/` 原样留着，不再写）
     const screenStore = new PageStore(join(o.dataDir, 'screens'));
@@ -987,7 +989,7 @@ export class Studium {
 
   /**
    * 学习对话开场附的上一次（W14 §1.1）：本项目、不含本次、没删的学习里最后活动最新的那次，状态不限；整份原文，
-   * 与只读区 学过的记录/<id>-对话.md 同一份。一次都没有 = 空串（不附）。
+   * 与只读区 学过的记录/<项目>/<id>-<标题>.md 下半截同一份（W16）。一次都没有 = 空串（不附）。
    */
   private async lastLearningBlock(mainId: string, self: string): Promise<string> {
     const last = this.hub
@@ -1003,7 +1005,30 @@ export class Studium {
       .sort((a, b) => b.at.localeCompare(a.at))[0]?.s;
     if (last === undefined) return '';
     const text = await this.sandboxes.transcriptText(last.sessionId);
-    return `# 本项目最近一次学习的整份原文：${last.sessionId}「${last.title}」（最后活动 ${localMinute(last.lastAt ?? last.openedAt)}；行号与只读区 学过的记录/${last.sessionId}-对话.md 相同，引用写 ${last.sessionId}:L行号）\n\n${text !== '' ? text : '（这次还没有对话）'}`;
+    const file = await this.sandboxes.learningFile(last.sessionId);
+    return `# 本项目最近一次学习的整份原文：${last.sessionId}「${last.title}」（最后活动 ${localMinute(last.lastAt ?? last.openedAt)}；${file !== undefined ? `和只读区 ${file} 下半截同一份，` : ''}引用写 ${last.sessionId}:L行号）\n\n${text !== '' ? text : '（这次还没有对话）'}`;
+  }
+
+  /**
+   * 一次学习里每个组件的最新一版（W16：放进以后学习对话的只读区，学习者要上次那张图不用重画）。
+   * 存放处缺了块（旧数据被手动清过）就跳过那个组件。
+   */
+  private async latestComponents(loopId: string): Promise<{ name: string; html: string }[]> {
+    const last = new Map<string, string>();
+    for (const { record: r } of await this.hub.records(loopId)) {
+      if (r.type === 'component_version') last.set(r.component, r.manifest);
+    }
+    const out: { name: string; html: string }[] = [];
+    for (const [name, manifest] of last) {
+      try {
+        const blocks = await this.screens.componentBlocks(loopId, manifest);
+        out.push({ name, html: blocks.map((b) => b.html).join('\n') });
+      } catch (e) {
+        if ((e as { code?: string }).code !== 'ENOENT') throw e;
+        // 块文件不在了：这个组件不放，别的照放
+      }
+    }
+    return out;
   }
 
   /** 项目说明一段（谈方向、找资料开场时程序附上）。 */
@@ -1662,31 +1687,39 @@ export class Studium {
     ];
   }
 
+  /** 读项目主对话原文的工具（谈方向用；学习对话读只读区的文件）。 */
+  private readProjectChatTool(sessionId: string): ToolSpec {
+    return {
+      name: 'read_project_chat',
+      description:
+        '读项目主对话的原文（学习者和主对话说的话，带行号与时间）：要知道学习者在主对话里怎么说的、项目怎么来的。',
+      input: {
+        from_line: z.number().int().optional(),
+        to_line: z.number().int().optional(),
+      },
+      run: async (a) => {
+        const mainId = await this.projectOf(sessionId);
+        if (mainId === undefined) return err('找不到这个对话所属的项目');
+        return ok(
+          await this.transcriptOf(
+            mainId,
+            a.from_line as number | undefined,
+            a.to_line as number | undefined,
+          ),
+        );
+      },
+    };
+  }
+
   // ───────────── 讨论串之间（W12 §3.3，照 Claude 讨论串的工具） ─────────────
 
   /** 讨论串的工具（谈方向、学习对话都有）：读主对话 / 别的讨论串 / 列讨论串、给主对话或别的讨论串发话、改名、结束。 */
   private threadTools(sessionId: string, kind: 'talk' | 'loop'): ToolSpec[] {
+    // 学习对话的主对话原文在沙盒只读区（只读/主对话.md，每轮刷新，W16）：不再给读它的工具；谈方向没有沙盒，照旧
+    const readProjectChat: ToolSpec[] =
+      kind === 'loop' ? [] : [this.readProjectChatTool(sessionId)];
     return [
-      {
-        name: 'read_project_chat',
-        description:
-          '读项目主对话的原文（学习者和主对话说的话，带行号与时间）：要知道学习者在主对话里怎么说的、项目怎么来的。',
-        input: {
-          from_line: z.number().int().optional(),
-          to_line: z.number().int().optional(),
-        },
-        run: async (a) => {
-          const mainId = await this.projectOf(sessionId);
-          if (mainId === undefined) return err('找不到这个对话所属的项目');
-          return ok(
-            await this.transcriptOf(
-              mainId,
-              a.from_line as number | undefined,
-              a.to_line as number | undefined,
-            ),
-          );
-        },
-      },
+      ...readProjectChat,
       this.readThreadTool(sessionId),
       this.listThreadsTool(sessionId),
       {
@@ -1829,7 +1862,9 @@ export class Studium {
           (r.record.type === 'thread_message' && !this.hub.isDeleted(r.record.from)) ||
           (r.record.type === 'assistant_message' && r.record.interim !== true)),
     );
-    return renderTranscript(recs, (id) => this.hub.labelOf(id)) || '（这一段没有对话）';
+    const kind = this.hub.listSessions().find((s) => s.sessionId === sessionId)?.kind;
+    const self = kind === 'main' ? '主对话' : kind === 'talk' ? '谈方向' : '教学';
+    return renderTranscript(recs, (id) => this.hub.labelOf(id), self) || '（这一段没有对话）';
   }
 
   /** 本项目里的一个讨论串；不是就回一句原因。live = 要给它发话、重开它（旧版开的学习对话只能读、改名、结束）。 */
@@ -2092,6 +2127,26 @@ export class Studium {
         run: async (a) => {
           await this.endUnclosed(loopId, a.note as string);
           return ok('已结束（没学完，先搁着）。和学习者道别即可。');
+        },
+      },
+      {
+        name: 'tidy_message',
+        description:
+          '整理学习者的一句话（W17）：改转写错的词、把混在一起的几件事分开写、说到一半改口的写改后的；只写他说了什么，不写他懂没懂、水平怎样。写法按这段话的内容定。原话不动、照旧是证据；整理版另存，接在对话原文里（以“整理（”开头），学习者在页面上能点开看。同一行再整理，以后写的为准。',
+        input: {
+          line: z.number().int().describe('学习者那句话在本对话里的行号'),
+          text: z.string().describe('整理后的样子'),
+        },
+        run: async (a) => {
+          const line = a.line as number;
+          const text = (a.text as string).trim();
+          if (text === '') return err('text 不能是空的');
+          const rec = (await this.hub.records(loopId)).find((r) => r.line === line);
+          if (rec?.record.type !== 'user_message') {
+            return err(`第 ${String(line)} 行不是学习者在这里说的话`);
+          }
+          await this.hub.record(loopId, { type: 'message_tidied', at: this.iso(), line, text });
+          return ok('已记下。');
         },
       },
       this.threadTitleTool(loopId),

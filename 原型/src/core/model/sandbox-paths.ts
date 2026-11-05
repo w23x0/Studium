@@ -65,7 +65,7 @@ export function resolveSandboxPath(sb: SandboxSpec, p: string): string {
     const rest = norm.slice(READ_ONLY.length).replace(/^\//, '');
     const hit = matchReadOnly(sb, rest);
     if (hit !== undefined) {
-      const tail = rest.slice(hit.name.length).replace(/^\//, '');
+      const tail = (hit.name === '' ? rest : rest.slice(hit.name.length)).replace(/^\//, '');
       return tail === '' ? resolve(hit.path) : resolve(join(hit.path, tail));
     }
   }
@@ -88,7 +88,7 @@ export function virtualPath(sb: SandboxSpec, abs: string): string {
     }
   }
   if (best === undefined) return p;
-  return best.rel === '' ? `${READ_ONLY}/${best.name}` : `${READ_ONLY}/${best.name}/${best.rel}`;
+  return [READ_ONLY, best.name, best.rel].filter((s) => s !== '').join('/');
 }
 
 /** 能不能写：只在工作区之内（按解开链接后的真实路径）。 */
@@ -119,11 +119,11 @@ export function canRead(sb: SandboxSpec, abs: string): boolean {
   });
 }
 
-/** rest（虚拟路径里 `只读/` 之后的部分）落在哪个只读条目上；按 name 最长前缀匹配。 */
+/** rest（虚拟路径里 `只读/` 之后的部分）落在哪个只读条目上；按 name 最长前缀匹配（空 name = 整个只读区，兜底）。 */
 function matchReadOnly(sb: SandboxSpec, rest: string): { name: string; path: string } | undefined {
   let best: { name: string; path: string } | undefined;
   for (const e of sb.readOnly) {
-    if (rest !== e.name && !rest.startsWith(`${e.name}/`)) continue;
+    if (e.name !== '' && rest !== e.name && !rest.startsWith(`${e.name}/`)) continue;
     if (best === undefined || e.name.length > best.name.length) best = e;
   }
   return best;
