@@ -4,13 +4,6 @@ import type { BBox } from '../shared/protocol.ts';
 
 /** 面板里能看的东西。 */
 export type PanelTarget =
-  /**
-   * focusLine：滚到这一次收尾（收尾那一句所在行；旧数据是守卫判定所在行）；
-   */
-  | { kind: 'loop'; loopId: string; focusLine?: number }
-  /** 我学会的：不给 = 全部；给 loopId = 直接展开那一次学习。 */
-  | { kind: 'learned'; loopId?: string }
-  | { kind: 'disclosure' }
   /** 资料浏览：不给 material = 资料列表；给 material（资料 id）= 这份资料的文件清单。 */
   | { kind: 'materials'; material?: string }
   /** all = 不限项目资料、查全部。 */
@@ -39,11 +32,6 @@ export type PanelTarget =
       file?: string;
       line?: number;
     };
-
-/** 面板里看书的几类东西：面板放宽一些。 */
-export function isWideTarget(t: PanelTarget): boolean {
-  return t.kind === 'materials' || t.kind === 'search' || t.kind === 'source' || t.kind === 'page';
-}
 
 /** 对话里要高亮的几句；seq 每次跳转都变，好让同一处能再跳一次。 */
 export interface Focus {
@@ -76,13 +64,6 @@ export const ProjectContext = createContext<string | undefined>(undefined);
 
 export function useProject(): string | undefined {
   return useContext(ProjectContext);
-}
-
-/** 当前显示的对话 id（消息组件判断高亮、打开本对话的依据时用）。 */
-export const CurrentSessionContext = createContext<string | undefined>(undefined);
-
-export function useCurrentSession(): string | undefined {
-  return useContext(CurrentSessionContext);
 }
 
 /** 当前对话里要高亮的行（依据面板里引用到的原话）。 */

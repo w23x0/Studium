@@ -163,12 +163,9 @@ export interface ToolCall {
   isError: boolean;
 }
 
-/** 沙盒动作的标签（程序按路径打，不看模型说什么；工单 W4 §5.3）。 */
-export const TEACHING_TOOL_TAG = '教学工具:';
-
 /**
  * 沙盒里的一个动作（读 / 写 / 跑命令……），由程序当场记（记录/对话与事件记录.md §3），不靠模型自报。
- * `path` 是虚拟路径；`tag` 由程序按路径打（读 只读/教学工具/<文件> → 教学工具:<文件名>）。
+ * `path` 是虚拟路径；`tag` 是旧数据：W19 前读 只读/教学工具/<文件> 时程序打的 教学工具:<文件名>（教学工具撤掉，不再打）。
  */
 export interface SandboxAction {
   type: 'sandbox_action';
@@ -236,6 +233,7 @@ export interface TurnFailed {
   notice?: string;
 }
 
+/** 旧数据：申请收口（W19 起不再产生，学习对话照 Claude 讨论串结束：thread_closed）。 */
 export interface CloseRequested {
   type: 'close_requested';
   at: string;
@@ -296,7 +294,7 @@ export interface TicketEdited {
   after: Ticket;
 }
 
-/** 一次学习结束：合上（学习者确认）或没合上就结束。 */
+/** 旧数据：一次学习结束，合上（学习者确认）或没合上（W19 起学习对话结束也记 thread_closed，没有合上 / 没合上）。 */
 export interface LoopEnded {
   type: 'loop_ended';
   at: string;
@@ -439,14 +437,14 @@ export interface TalkEnded {
 
 /**
  * 讨论串结束 / 重开（10-28，照 Claude 项目的讨论串：结束只是收起，再说话就重开）。
- * 谈方向交回、找资料勾完（旧数据）照旧算结束；这两条是另外的：主对话或讨论串自己结束，学习者或主对话重开。
- * 一次学习结束有自己的记录（loop_ended）；W12 §2 起结束后也能重开（thread_reopened 接在后面）。
+ * 谈方向交回、找资料勾完（旧数据）照旧算结束；这两条是另外的：主对话、讨论串自己或学习者结束，学习者或主对话重开。
+ * 学习对话 W19 起也用它结束（旧数据是 loop_ended）。
  */
 export interface ThreadClosed {
   type: 'thread_closed';
   at: string;
-  /** main = 主对话结束的；self = 讨论串自己结束的（W12 §3.3）。 */
-  by: 'main' | 'self';
+  /** main = 主对话结束的；self = 讨论串自己结束的（W12 §3.3）；learner = 学习者在讨论串栏点的（W19）。 */
+  by: 'main' | 'self' | 'learner';
   reason: string;
 }
 
@@ -510,14 +508,14 @@ export interface ProjectDeadline {
   note?: string;
 }
 
-/** 学习者把这次学习搁置（可恢复；与“结束（没合上）”不同）。 */
+/** 旧数据：学习者把这次学习搁置（11-04 起不再产生，W19 起读时也不再算一种状态）。 */
 export interface LoopShelved {
   type: 'loop_shelved';
   at: string;
   note: string;
 }
 
-/** 搁置的学习恢复（学习者点“接着学”，或在里面又说话）。 */
+/** 旧数据：搁置的学习恢复（W19 起不再产生）。 */
 export interface LoopResumed {
   type: 'loop_resumed';
   at: string;

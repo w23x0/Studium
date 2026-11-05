@@ -1,6 +1,6 @@
-// 中间的对话页：主对话的外壳；旧数据（谈方向、导航、写产出、阶段复盘、找资料、W10 前的学习对话）在这里只读看。
+// 中间的对话页：主对话的外壳；旧数据（谈方向、导航、写产出、阶段复盘、找资料）在这里只读看。
 // 顶上面包屑（项目名回项目对话）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
-// 学习对话走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
+// 学习对话（含旧的）都走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AssistantRuntimeProvider,
@@ -16,12 +16,11 @@ import { latestContext } from '../../shared/usage.ts';
 import { api } from '../api.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { useOpenSession } from '../open-session.ts';
-import { CurrentSessionContext, HighlightContext, type Focus } from '../panel.ts';
+import { HighlightContext, type Focus } from '../panel.ts';
 import { toUiMessages, type UiMessage } from '../thread-model.ts';
 import { forLearner } from '../learner-text.ts';
 import type { ThreadGroup } from '../../shared/threads.ts';
 import { W } from '../wording.ts';
-import { currentTicket, OldLoopBar, TicketStrip } from './learn/loop-parts.tsx';
 import type { PickedFile } from '../files.ts';
 import { TopBar } from './top-bar.tsx';
 import { UploadResult } from './input/upload-result.tsx';
@@ -128,11 +127,7 @@ export function Conversation(props: {
           line: m.line,
           ...(m.lines ? { lines: m.lines } : {}),
           ...(m.link ? { link: m.link } : {}),
-          ...(m.verdict ? { verdict: m.verdict } : {}),
-          ...(m.objection ? { objection: m.objection } : {}),
           ...(m.images ? { images: m.images } : {}),
-          ...(m.candidates ? { candidates: m.candidates } : {}),
-          ...(m.pending ? { pending: m.pending } : {}),
           ...(m.at !== undefined ? { at: m.at } : {}),
           ...(m.edited ? { edited: m.edited } : {}),
           ...(m.reaction !== undefined ? { reaction: m.reaction } : {}),
@@ -158,26 +153,9 @@ export function Conversation(props: {
     },
   });
 
-  const ticket = useMemo(
-    () => (kind === 'loop' ? currentTicket(records) : undefined),
-    [kind, records],
-  );
   // 旧数据只看：导航、页面编辑员、写产出、阶段复盘（W12 撤掉）、找资料（11-04 收起）、谈方向（W20 起不再开）
   const watchOnly =
     kind === 'nav' || kind === 'editor' || kind === 'output' || kind === 'find' || kind === 'talk';
-  // 主对话不放按钮：要下一步、复盘这些都在对话里说（10-29）
-  const footer =
-    watchOnly || kind === 'main' ? undefined : (
-      // 旧版开的学习对话：只看，留“搁着”（W10 §9 第 1 条）
-      <OldLoopBar
-        sessionId={sessionId}
-        records={records}
-        onError={onError}
-        onBack={props.onBackToMain}
-        projectId={props.projectId}
-        projectTitle={props.projectTitle}
-      />
-    );
   const header = (
     <div className="shrink-0">
       <TopBar
@@ -191,11 +169,6 @@ export function Conversation(props: {
         ]}
         right={props.headerExtra}
       />
-      {kind === 'loop' && (
-        <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-1.5 px-4 pb-2 text-sm empty:hidden">
-          {ticket !== undefined && <TicketStrip ticket={ticket} />}
-        </div>
-      )}
       {kind === 'nav' && <NavIntro parent={props.parent} navId={sessionId} />}
     </div>
   );
@@ -204,8 +177,7 @@ export function Conversation(props: {
     <Thread
       header={header}
       welcome={isMain ? W.mainWelcome : kind === 'find' ? W.findWelcome : '马上开始…'}
-      footer={footer}
-      disabled={watchOnly || kind === 'loop'}
+      disabled={watchOnly}
       placeholder={running ? '可以接着说（这一轮说完再交给它）…' : '回复…'}
       running={running}
       onStop={async () => {
@@ -230,11 +202,9 @@ export function Conversation(props: {
     />
   );
   return (
-    <CurrentSessionContext.Provider value={sessionId}>
-      <HighlightContext.Provider value={focus?.lines ?? NO_LINES}>
-        <AssistantRuntimeProvider runtime={runtime}>{thread}</AssistantRuntimeProvider>
-      </HighlightContext.Provider>
-    </CurrentSessionContext.Provider>
+    <HighlightContext.Provider value={focus?.lines ?? NO_LINES}>
+      <AssistantRuntimeProvider runtime={runtime}>{thread}</AssistantRuntimeProvider>
+    </HighlightContext.Provider>
   );
 }
 

@@ -1,9 +1,5 @@
 // 与核心通话：口令从地址栏 ?token= 取一次，存进 localStorage（每台设备带一次口令，关页面也不丢）。
 import type {
-  DisclosureResponse,
-  LoopEvidenceResponse,
-  ObjectionResponse,
-  SessionModelResponse,
   ListProjectsResponse,
   ListSessionsResponse,
   ProjectResponse,
@@ -22,12 +18,7 @@ import type {
   MessageImageInput,
   UploadAttachmentResponse,
   ProjectMaterialsResponse,
-  ProjectMaterialsRequest,
   UploadsResponse,
-  ProjectInstructionsResponse,
-  ImportTextResponse,
-  LearnedResponse,
-  LearningResponse,
   SourceNoteField,
   SourceNoteResponse,
   SourceNotesResponse,
@@ -105,14 +96,6 @@ export const api = {
   sidebar: () => call<SidebarResponse>('/sidebar'),
   sidebarAct: (req: SidebarActionRequest) =>
     call<SidebarResponse>('/sidebar', { method: 'POST', body: JSON.stringify(req) }),
-  confirmClose: (id: string) =>
-    call<object>(`/sessions/${id}/confirm-close`, {
-      method: 'POST',
-      body: JSON.stringify({ note: '学习者在界面上确认结束' }),
-    }),
-  // ── 学到一半：先放一放、恢复 ──
-  resume: (loopId: string) =>
-    call<object>(`/sessions/${loopId}/resume`, { method: 'POST', body: '{}' }),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
   /** 旧的区域图学习只读看：每个组件最后一版。 */
   oldComponents: (loopId: string) => call<OldComponentsResponse>(`/sessions/${loopId}/screens`),
@@ -121,6 +104,8 @@ export const api = {
   /** 停下后改自己刚发的那句、重新生成（W12 §4.4）。 */
   editLast: (id: string, text: string) =>
     call<object>(`/sessions/${id}/edit`, { method: 'POST', body: JSON.stringify({ text }) }),
+  /** 学习者结束一个讨论串（W19，只是收起，说话就重开）。 */
+  endThread: (id: string) => call<object>(`/sessions/${id}/end`, { method: 'POST', body: '{}' }),
   /** 删一个讨论串（W12 §4.3）。 */
   deleteThread: (id: string) =>
     call<object>(`/sessions/${id}/delete`, { method: 'POST', body: '{}' }),
@@ -179,7 +164,6 @@ export const api = {
   /** 原图地址（给 <img src>）。 */
   imageUrl: (attachmentId: string) => withToken(`/api/attachments/${attachmentId}`),
   // ── 依据可见 ──
-  loopEvidence: (loopId: string) => call<LoopEvidenceResponse>(`/loops/${loopId}/evidence`),
   // ── 资料的来源说明、外发披露、会话用的模型、对旧守卫判定的异议 ──
   sourceNotes: () => call<SourceNotesResponse>('/sources/source-notes'),
   sourceNote: (material: string) =>
@@ -188,13 +172,6 @@ export const api = {
     call<SourceNoteResponse>('/sources/source-notes', {
       method: 'POST',
       body: JSON.stringify({ material, field, text }),
-    }),
-  disclosure: () => call<DisclosureResponse>('/disclosure'),
-  sessionModel: (id: string) => call<SessionModelResponse>(`/sessions/${id}/model`),
-  objectToVerdict: (loopId: string, line: number, text: string) =>
-    call<ObjectionResponse>(`/sessions/${loopId}/objections`, {
-      method: 'POST',
-      body: JSON.stringify({ line, text }),
     }),
   // ── 原文与出处 ──
   /** 各项目的资料；给了项目就标出哪些是这个项目的。 */
@@ -224,11 +201,6 @@ export const api = {
   // ── 资料范围：项目资料 ──
   materials: (projectId: string) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`),
-  changeMaterials: (projectId: string, req: ProjectMaterialsRequest) =>
-    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`, {
-      method: 'POST',
-      body: JSON.stringify(req),
-    }),
   // ── 导入入口（工单 W9、W11）：上传、改判、改归属、重试、删、外部导入、项目说明 ──
   /** 上传一批文件（文件夹按相对路径传）；核心收下后分流，回这次每份分到了哪。 */
   upload: async (projectId: string, files: { file: File; path: string }[]) => {
@@ -244,19 +216,10 @@ export const api = {
     if (!res.ok) throw new Error(body.error ?? `上传失败：${String(res.status)}`);
     return body;
   },
-  uploads: (projectId: string) => call<UploadsResponse>(`/projects/${projectId}/uploads`),
   reroute: (projectId: string, upload: string, file: string, to: '资料' | '学过的') =>
     call<UploadsResponse>(`/projects/${projectId}/uploads/reroute`, {
       method: 'POST',
       body: JSON.stringify({ upload, file, to }),
-    }),
-  addMaterial: (
-    projectId: string,
-    req: { kind: 'web' | 'repo'; origin: string; commit?: string },
-  ) =>
-    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`, {
-      method: 'POST',
-      body: JSON.stringify(req),
     }),
   /** 改一份资料归谁（W11 §2）：回本项目上传的现状。 */
   setMaterialOwner: (projectId: string, material: string, owner: 'learner' | 'project') =>
@@ -264,29 +227,7 @@ export const api = {
       `/projects/${projectId}/materials/${encodeURIComponent(material)}/owner`,
       { method: 'POST', body: JSON.stringify({ owner }) },
     ),
-  retryMaterial: (projectId: string, material: string) =>
-    call<ProjectMaterialsResponse>(`/projects/${projectId}/materials/retry`, {
-      method: 'POST',
-      body: JSON.stringify({ material }),
-    }),
-  removeImport: (projectId: string, id: string) =>
-    call<object>(`/projects/${projectId}/imports/remove`, {
-      method: 'POST',
-      body: JSON.stringify({ id }),
-    }),
-  importText: (id: string) =>
-    call<ImportTextResponse>(`/learned/imports/${encodeURIComponent(id)}`),
-  instructions: (projectId: string) =>
-    call<ProjectInstructionsResponse>(`/projects/${projectId}/instructions`),
-  setInstructions: (projectId: string, text: string) =>
-    call<ProjectInstructionsResponse>(`/projects/${projectId}/instructions`, {
-      method: 'PUT',
-      body: JSON.stringify({ text }),
-    }),
   // ── 学过的记录 ──
-  /** 学过的记录：按层读每次学习（收尾那一句；旧数据另有单子、守卫判定）与外部导入。 */
-  learned: (project?: string) => call<LearnedResponse>(`/learned?${qs({ project })}`),
-  learning: (loopId: string) => call<LearningResponse>(`/learned/${encodeURIComponent(loopId)}`),
   /** 订阅事件：整页共用一条事件连接（浏览器对同一地址的长连接数有限），最后一个退订时关掉。 */
   events(onEvent: (e: ServerEvent) => void): () => void {
     listeners.add(onEvent);

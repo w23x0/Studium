@@ -154,6 +154,13 @@ const REMOVED_ACTIONS = new Set<string>([
   'longterm.addReminder',
   'longterm.closeReminder',
   'shelveLoop',
+  // W19：确认学完了、接着学（搁置）撤掉
+  'confirmClose',
+  'resumeLoop',
+  // W19：没人调用的接口删掉（异议、期限、删外部导入）
+  'objectToVerdict',
+  'setDeadline',
+  'removeImport',
   'addStateExplanation',
   'outputs.create',
   'outputs.save',
@@ -173,8 +180,6 @@ const REMOVED_ACTIONS = new Set<string>([
   // 11-05（#92）：学习页底栏的“我觉得懂了”“搁着，以后再学”拿掉，改由学习对话在对话里调
   'requestClose',
   'endUnclosed',
-  // W20：项目期限只从谈方向来，随谈方向一起删
-  'setDeadline',
 ]);
 
 /** 重做一个学习者动作（Studium 的方法；带点的是旧录带里已撤掉的对象的动作）。 */

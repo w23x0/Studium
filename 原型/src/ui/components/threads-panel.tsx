@@ -1,10 +1,11 @@
 // 讨论串：项目对话右边一栏（照 Claude 桌面版的讨论串），列这个项目开出去的任务对话。
-// 等你 → 进行中 → 停着 → 已结束（默认收起）；分组规则在 threads-model.ts 的表里。每行只有标题和一个小状态，
-// 行尾一个菜单，里面有删除（删前确认一次，W12 §4.3；主对话不带删除工具，只在这里删）。
+// 开着 → 已结束（默认收起），照 Claude 项目（W19）。每行只有标题（旧学习带当时的小状态），行尾一个菜单：
+// 开着的学习有“结束”（结束了说话就重开；旧的谈方向等只读，算已结束）；删除删前确认一次（W12 §4.3；主对话不带删除工具，只在这里删）。
 import { useState, type ReactNode } from 'react';
 import {
   BarChart3Icon,
   BookOpenIcon,
+  CheckIcon,
   ChevronDownIcon,
   ChevronRightIcon,
   EllipsisIcon,
@@ -46,8 +47,7 @@ export function ThreadsPanel(props: {
 }) {
   const [usage, setUsage] = useState(false);
   const groups = threadGroups(props.sessions, props.projectId);
-  const total =
-    groups.waiting.length + groups.running.length + groups.paused.length + groups.ended.length;
+  const total = groups.open.length + groups.ended.length;
   return (
     <div data-testid="threads-panel" className="flex h-full flex-col">
       <header className="flex h-12 shrink-0 items-center px-3 text-sm">
@@ -62,9 +62,7 @@ export function ThreadsPanel(props: {
       </header>
       <div className="flex min-h-0 flex-1 flex-col gap-4 overflow-y-auto px-2 pb-4 text-sm">
         {total === 0 && <p className="text-muted-foreground px-2 text-xs">{T.empty}</p>}
-        <Group group="waiting" rows={groups.waiting} {...props} />
-        <Group group="running" rows={groups.running} {...props} />
-        <Group group="paused" rows={groups.paused} {...props} />
+        <Group group="open" rows={groups.open} {...props} />
         <Group group="ended" rows={groups.ended} foldable {...props} />
       </div>
       <footer className="shrink-0 border-t px-2 py-2 text-sm">
@@ -145,7 +143,12 @@ function Group(props: {
                   <span className="text-muted-foreground shrink-0 text-[0.7rem]">{r.tag}</span>
                 )}
               </button>
-              <ThreadMenu row={r} onDeleted={props.onDeleted} onError={props.onError} />
+              <ThreadMenu
+                row={r}
+                canEnd={props.group === 'open' && r.kind === 'loop'}
+                onDeleted={props.onDeleted}
+                onError={props.onError}
+              />
             </li>
           ))}
         </ul>
@@ -154,9 +157,13 @@ function Group(props: {
   );
 }
 
-/** 一行的菜单：删除（删前确认一次；删了界面上不再显示，别的对话也读不到；不做撤销）。 */
+/**
+ * 一行的菜单：结束（开着的学习；只是收起，说话就重开，W19）；删除（删前确认一次；删了界面上不再显示，
+ * 别的对话也读不到；不做撤销）。
+ */
 function ThreadMenu(props: {
   row: ThreadRow;
+  canEnd: boolean;
   onDeleted: (id: string) => void;
   onError: (e: unknown) => void;
 }) {
@@ -173,6 +180,17 @@ function ThreadMenu(props: {
           <EllipsisIcon className="size-4" />
         </MenuTrigger>
         <MenuContent align="end" side="bottom">
+          {props.canEnd && (
+            <MenuItem
+              data-testid="end-thread"
+              onClick={() => {
+                api.endThread(props.row.id).catch(props.onError);
+              }}
+            >
+              <CheckIcon />
+              {T.end}
+            </MenuItem>
+          )}
           <MenuItem destructive onClick={() => setConfirming(true)}>
             <Trash2Icon className="text-destructive" />
             {T.delete}

@@ -14,7 +14,6 @@ import type { Hub } from './hub.ts';
 import { NotFoundError } from './hub.ts';
 import type { Learned } from './learned.ts';
 import type { Materials } from './knowledge/materials.ts';
-import type { TeachingTools } from './teaching-tools.ts';
 import type { SandboxSpec } from './model/port.ts';
 import { renderTranscript } from './transcript.ts';
 import { localMinute } from '../shared/time.ts';
@@ -52,7 +51,6 @@ const RO = {
   goal: '方向.md',
   materials: '资料',
   images: '附图',
-  tools: '教学工具',
 } as const;
 
 /** 资料目录在 只读/资料/ 下的文件名。 */
@@ -103,7 +101,6 @@ function guideText(root: string, materials: number, old: OldItems): string {
       ? `- 只读/${RO.materials}/ —— 本项目能读的资料，共 ${String(materials)} 份：${MATERIAL_INDEX} 每份一行；正文在 只读/${RO.materials}/<资料id>/，按原目录`
       : `- 只读/${RO.materials}/ —— 这次没有可用的资料（缺资料依据）`,
     `- 只读/${RO.images}/ —— 学习者在这次学习里附过的图片原件（消息里写了是哪张）`,
-    `- 只读/${RO.tools}/ —— 教学工具：可选的做法参考，某个情形下用得上才拿来用`,
     '',
     transcriptFormat(old.talks),
   ].join('\n');
@@ -126,7 +123,6 @@ export interface SandboxDeps {
   materials: Materials;
   /** 资料清单的行（同 studium.materialLines）。 */
   materialLines: (ids: string[]) => Promise<string[]>;
-  teaching: TeachingTools;
   /** 数据目录；沙盒在 <数据>/sandbox/<会话 id>/。 */
   dataDir: string;
   /** 本项目能读的资料（按归属：本项目的 + 学习者的；没有 = 空）；同 studium.scopeOf。 */
@@ -243,7 +239,7 @@ export class Sandboxes {
   }
 
   /**
-   * 每轮发给模型之前重写只读区（说明、本次对话、学过的记录、主对话、项目说明、跨次记录、资料目录、教学工具、附图；
+   * 每轮发给模型之前重写只读区（说明、本次对话、学过的记录、主对话、项目说明、跨次记录、资料目录、附图；
    * 旧数据有才放：谈方向、方向）。
    */
   async refreshLoop(loopId: string): Promise<void> {
@@ -252,12 +248,9 @@ export class Sandboxes {
     // 工作区里的 只读 链接（模型删了下一轮补回来）
     await mkdir(this.workdir(loopId), { recursive: true });
     await linkReadOnly(this.workdir(loopId));
-    // W16 前的摆法留下的：资料目录曾在 只读/资料目录.md
+    // 以前的摆法留下的：资料目录曾在 只读/资料目录.md（W16 前）；教学工具 W19 撤掉
     await rm(join(ro, '资料目录.md'), { force: true });
-    await writeDir(
-      join(ro, RO.tools),
-      (await this.o.teaching.loadAll()).tools.map((t) => ({ name: t.file, text: t.text })),
-    );
+    await rm(join(ro, '教学工具'), { recursive: true, force: true });
     const project = await this.o.projectOf(loopId);
     await writeDir(join(ro, RO.learned), await this.learnedFiles(loopId, project));
     const records = await this.o.hub().records(loopId);
@@ -472,6 +465,7 @@ export class Sandboxes {
         : []),
     ];
     if (l.endNote !== undefined) {
+      // 旧数据：没合上就结束时的原话（loop_ended）
       const endLine = await this.lineOf(l.loopId, 'loop_ended');
       lines.push(
         `- 结束原话${endLine !== undefined ? `（L${String(endLine)}）` : ''}：${l.endNote}`,
@@ -485,7 +479,7 @@ export class Sandboxes {
     }
     if (l.closing !== undefined) {
       lines.push(
-        `- 收尾那一句（L${String(l.closing.line)}，学习对话写的，只是指针；学习者会什么以原文里他自己说的、做的为准）：${l.closing.summary}`,
+        `- 旧数据·收尾那一句（L${String(l.closing.line)}，学习对话写的，只是指针；学习者会什么以原文里他自己说的、做的为准）：${l.closing.summary}`,
       );
     }
     if (l.verdict !== undefined) {
@@ -627,7 +621,7 @@ async function writeDir(dir: string, files: { name: string; text: string }[]): P
   await mkdir(dir, { recursive: true });
   const written = new Set<string>();
   for (const f of files) {
-    if (written.has(f.name)) continue; // 同名以先写的为准（官方的教学工具在前）
+    if (written.has(f.name)) continue; // 同名以先写的为准
     written.add(f.name);
     await mkdir(dirname(join(dir, f.name)), { recursive: true });
     await writeFile(join(dir, f.name), f.text, 'utf8');

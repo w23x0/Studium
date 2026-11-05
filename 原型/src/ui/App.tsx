@@ -22,7 +22,6 @@ import { buildSidebar, withTitles } from './sidebar-model.ts';
 import { threadStatus } from './threads-model.ts';
 import { OpenSessionContext } from './open-session.ts';
 import {
-  isWideTarget,
   PanelContext,
   ProjectContext,
   type Focus,
@@ -36,11 +35,7 @@ import { W } from './wording.ts';
 const REFRESH_ON = new Set<string>([
   'session_opened',
   'project_title',
-  'guard_verdict',
   'loop_ended',
-  'loop_shelved',
-  'loop_resumed',
-  'close_requested',
   'thread_closed',
   'thread_reopened',
   'thread_title',
@@ -227,7 +222,7 @@ export function App() {
   const threadsShown = inChat && threadsOpen && !panel.open;
   const threadsButton = inChat && !threadsShown && (
     <TooltipIconButton
-      tooltip={W.threads.open}
+      tooltip={W.threads.show}
       data-testid="threads-toggle"
       className="size-8"
       onClick={() => {
@@ -319,7 +314,7 @@ export function App() {
                   project !== undefined &&
                   (current === projectId || currentSession !== undefined) &&
                   (currentSession?.kind === 'loop' ? (
-                    // 学习对话按屏幕跑（W10）；旧版开的学习对话交回消息流只看
+                    // 学习对话（旧的也在竖流里只读显示，W19）
                     <LearnPage
                       key={current}
                       sessionId={current}
@@ -331,24 +326,6 @@ export function App() {
                       onError={fail}
                       onBackToMain={() => openMain(projectId)}
                       onProject={() => openMain(projectId)}
-                      oldLoop={
-                        <Conversation
-                          key={current}
-                          sessionId={current}
-                          kind="loop"
-                          parent={currentSession.parent}
-                          title={currentSession.title}
-                          projectId={projectId}
-                          projectTitle={project.title}
-                          titleOf={titleOf}
-                          statusOf={statusOf}
-                          focus={focus?.sessionId === current ? focus : undefined}
-                          headerExtra={threadsButton}
-                          onError={fail}
-                          onBackToMain={() => openMain(projectId)}
-                          onProject={() => openMain(projectId)}
-                        />
-                      }
                     />
                   ) : (
                     <Conversation
@@ -399,11 +376,8 @@ export function App() {
                     'bg-sidebar flex shrink-0 flex-col',
                     narrow
                       ? 'fixed inset-0 z-50'
-                      : cn(
-                          'border-s',
-                          // 看书（原文、原件页面）时面板放宽
-                          isWideTarget(top) ? 'w-[min(44rem,50vw)]' : 'w-[min(28rem,40vw)]',
-                        ),
+                      : // 面板里都是看书的（资料、原文、原件页面），放宽一些
+                        'w-[min(44rem,50vw)] border-s',
                   )}
                 >
                   <EvidencePanel

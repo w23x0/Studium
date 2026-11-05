@@ -70,7 +70,7 @@ export interface SandboxActionEvent {
     /** 虚拟路径（工作区里的相对工作区；只读的 `只读/<name>/…`）。 */
     path?: string;
     command?: string;
-    /** 一句中文说明（如“读 只读/教学工具/提取练习.md”）。 */
+    /** 一句中文说明（如“读 只读/本次对话.md”）。 */
     summary: string;
     ok: boolean;
     /** 写进去的文字（整份写 = 全文；追加 = 追加的部分）。 */

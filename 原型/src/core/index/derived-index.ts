@@ -7,8 +7,8 @@ import type { LogRecord, NumberedRecord, SessionOpened } from '../../shared/reco
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-// 11：谈方向（W20 起不再开）在讨论串里一律算已结束
-const SCHEMA_VERSION = 11;
+// 12：谈方向（W20 起不再开）在讨论串里一律算已结束
+const SCHEMA_VERSION = 12;
 
 /** 不再开、只读看的讨论串种类：写产出（W12 起，含阶段复盘那种谈方向）、谈方向（W20 起）；在讨论串里一律算已结束。 */
 const RETIRED_THREAD_KINDS: ReadonlySet<string> = new Set(['output', 'talk']);
@@ -240,32 +240,21 @@ function createSchema(db: DatabaseSync): void {
 }
 
 /**
- * 会改对话状态的记录 → 记号；null = 回到进行中（停着的学习又接上、学习者点了“我觉得懂了”、结束的讨论串又重开）。
- * 别的记录不动记号。
+ * 会改对话状态的记录 → 记号；null = 回到开着（结束的讨论串又重开）。别的记录不动记号。
+ * W19 起只分开着和已结束：旧数据里的守卫判定、收尾那一句、搁置与恢复不再改状态。
  */
 function markOf(r: LogRecord): SessionMark | null | undefined {
   switch (r.type) {
-    case 'guard_verdict':
-      // 旧数据：守卫写好收尾记录，等学习者确认
-      return 'guarded';
-    case 'close_requested':
-      // 收尾那一句到了（10-31 起，学习对话写的）= 等学习者确认；学习者点“我觉得懂了”那条 = 还在学。
-      // 记号名 guarded 是守卫时期的旧名，存进索引的值不改，意思已与守卫无关
-      return r.summary !== undefined && r.summary.trim() !== '' ? 'guarded' : null;
     case 'loop_ended':
+      // 旧数据：学习合上 / 没合上就结束
       return r.closed ? 'closed' : 'unclosed';
-    case 'loop_shelved':
-      return 'shelved';
-    case 'loop_resumed':
-      return null;
     case 'talk_ended':
     case 'candidates_picked':
     case 'thread_closed':
       return 'ended';
     case 'thread_reopened':
-      return null;
     case 'find_candidates':
-      return 'candidates';
+      return null;
     default:
       return undefined;
   }

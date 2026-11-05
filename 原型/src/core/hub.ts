@@ -15,7 +15,6 @@ import {
   type ServerEvent,
 } from '../shared/protocol.ts';
 import {
-  TEACHING_TOOL_TAG,
   type ConversationKind,
   type ImageInput,
   type MessageQuote,
@@ -37,7 +36,6 @@ import type {
   ModelConversation,
   ModelDisclosure,
   ModelEvent,
-  SandboxActionEvent,
   SandboxSpec,
   ToolSpec,
   TurnInput,
@@ -637,7 +635,6 @@ export class Hub {
         break;
       case 'sandbox_action': {
         await this.flushPending(sessionId, live, true);
-        const tag = sandboxTag(ev.action);
         await this.append(sessionId, {
           type: 'sandbox_action',
           at: this.iso(),
@@ -648,7 +645,6 @@ export class Hub {
           summary: ev.action.summary,
           ok: ev.action.ok,
           ...(ev.action.content !== undefined ? { content: ev.action.content } : {}),
-          ...(tag !== undefined ? { tag } : {}),
         });
         break;
       }
@@ -833,21 +829,6 @@ export class Hub {
   private iso(): string {
     return this.now().toISOString();
   }
-}
-
-/** 教学工具在只读区里的虚拟路径前缀。 */
-const TEACHING_TOOLS_PREFIX = '只读/教学工具/';
-
-/**
- * 程序按路径给沙盒动作打的标签（工单 W4 §5.3）：读 `只读/教学工具/<文件>` → `教学工具:<文件名>`。其余不打（Bash 里 cat 的拿不准，先不打）。
- */
-function sandboxTag(action: SandboxActionEvent['action']): string | undefined {
-  const path = action.path;
-  if (path === undefined) return undefined;
-  if (action.op === 'read' && path.startsWith(TEACHING_TOOLS_PREFIX)) {
-    return `${TEACHING_TOOL_TAG}${path.slice(TEACHING_TOOLS_PREFIX.length)}`;
-  }
-  return undefined;
 }
 
 function newLive(log: SessionLog, kind: ConversationKind): Live {

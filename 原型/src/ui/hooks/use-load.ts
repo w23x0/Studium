@@ -1,22 +1,15 @@
-// 读一份只读视图；相关的记录写进来时（收尾、结束、讨论串变化……）自动重读。
+// 读一份只读视图；相关的记录写进来时（结束、讨论串变化、资料……）自动重读。
 import { useEffect, useState } from 'react';
 import type { ServerEvent } from '../../shared/protocol.ts';
 import { api } from '../api.ts';
 
-/** 这些记录写进来时，依据面板与学过的记录上的内容可能变了（只列现在还会写进来的种类）。 */
+/** 这些记录写进来时，面板上的内容可能变了（只列现在还会写进来的种类）。 */
 const RELOAD_ON = new Set([
   'session_opened',
-  'close_requested',
-  'loop_ended',
-  'after_loop_step',
   'project_title',
   'project_material',
   'tool_call',
-  // 沙盒动作：读了教学工具时，依据面板的“这次用过的教学工具”要重读
-  'sandbox_action',
   'user_message',
-  // 学到一半：接着学（旧数据里搁置着的）
-  'loop_resumed',
   // 讨论串结束 / 重开 / 改名 / 开出
   'thread_closed',
   'thread_reopened',

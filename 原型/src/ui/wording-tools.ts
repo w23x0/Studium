@@ -3,7 +3,6 @@
 
 export const WT = {
   writing: '在写…',
-  closing: '在收尾…',
   stopped: '停下了',
   stop: '停止',
   edit: '改这句',

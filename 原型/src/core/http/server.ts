@@ -8,18 +8,10 @@ import type {
   ErrorResponse,
   ListProjectsResponse,
   ProjectResponse,
-  CardResponse,
   ProjectMaterialsRequest,
   AddMaterialRequest,
   ProjectMaterialsResponse,
-  DisclosureResponse,
-  LearnedResponse,
-  LearningResponse,
-  LoopEvidenceResponse,
-  ObjectionResponse,
-  ObjectionsResponse,
   SessionModelResponse,
-  VerdictObjectionRequest,
   ListSessionsResponse,
   RecordsResponse,
   SearchResponse,
@@ -35,7 +27,6 @@ import type {
   SourceReportsResponse,
   TocResponse,
   SetMaterialOwnerRequest,
-  ImportTextResponse,
   ProjectInstructionsRequest,
   ProjectInstructionsResponse,
   RerouteRequest,
@@ -44,7 +35,6 @@ import type {
 import type { MessageQuote } from '../../shared/records.ts';
 import type { QuotaResponse, UsageResponse } from '../../shared/usage.ts';
 import { MAX_UPLOAD_BYTES } from '../uploads.ts';
-import type { Evidence } from '../evidence.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
 import { NoOriginalError, NoRendererError } from '../knowledge/originals.ts';
 import type { Sources } from '../sources.ts';
@@ -59,8 +49,6 @@ import type { SidebarStore } from '../sidebar.ts';
 export interface ServerOptions {
   hub: Hub;
   studium: Studium;
-  /** 依据可见的只读视图（批 1a）。 */
-  evidence: Evidence;
   /** 原文与出处（批 2a）：资料浏览、检索、原件页面、教材出处、资料报错。 */
   sources: Sources;
   /** 输入（批 4）：图片原样保存。 */
@@ -148,7 +136,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     parts: string[],
     method: string,
   ): Promise<void> {
-    const { hub, studium, evidence, sources } = opts;
+    const { hub, studium, sources } = opts;
     if (
       await crossRoute(
         req,
@@ -176,11 +164,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       )
     )
       return;
-    if (
-      method === 'GET' &&
-      (await readRoute(res, new URL(req.url ?? '/', 'http://localhost'), parts, evidence))
-    )
-      return;
+    if (method === 'GET' && (await readRoute(res, parts))) return;
     if (
       parts[1] === 'projects' &&
       parts.length === 6 &&
@@ -229,13 +213,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         if (b.to !== '资料' && b.to !== '学过的') throw new BadRequest('to 要是 资料 或 学过的');
         await studium.reroute(mainId, b.upload, b.file, b.to);
         send(res, 200, { items: await studium.uploadsOf(mainId) } satisfies UploadsResponse);
-        return;
-      }
-      if (method === 'POST' && what === 'imports/remove') {
-        const b = (await readJson(req)) as { id?: unknown };
-        if (typeof b.id !== 'string') throw new BadRequest('id 要是字符串');
-        await studium.removeImport(mainId, b.id);
-        send(res, 200, {});
         return;
       }
     }
@@ -335,13 +312,11 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         // 请求体是 JSON null 时当作什么都没给（各动作自己报缺什么）
         const body = ((await readJson(req)) ?? {}) as {
           text?: unknown;
-          note?: unknown;
           images?: unknown;
           replyTo?: unknown;
           quote?: unknown;
           quotes?: unknown;
         };
-        const note = typeof body.note === 'string' ? body.note : '学习者在界面上点了按钮';
         switch (action) {
           case 'messages': {
             // 附了图：记原图（与送给模型的缩小副本），图片原样随消息送给模型（W12 §5.6）
@@ -372,21 +347,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             send(res, 202, {});
             return;
           }
-          case 'objections': {
-            const b = body as Partial<VerdictObjectionRequest>;
-            if (typeof b.line !== 'number' || typeof b.text !== 'string') {
-              throw new BadRequest('line 要是数字、text 要是字符串');
-            }
-            const r = await studium.objectToVerdict(id, b.line, b.text);
-            send(res, 201, {
-              objection: {
-                ...r.objection,
-                inLoop: r.inLoop,
-                ...(r.line !== undefined ? { line: r.line } : {}),
-              },
-            } satisfies ObjectionResponse);
-            return;
-          }
           case 'stop':
             // 学习者在生成中途点了停止（W12 §4.4）
             await studium.stopTurn(id);
@@ -404,13 +364,10 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             await studium.deleteThread(id);
             send(res, 200, {});
             return;
-          case 'confirm-close':
-            await studium.confirmClose(id, note);
-            send(res, 202, {});
-            return;
-          case 'resume':
-            await studium.resumeLoop(id);
-            send(res, 202, {});
+          case 'end':
+            // 学习者在讨论串栏“⋯”里点结束（W19，照 Claude 项目的讨论串）
+            await studium.endThread(id);
+            send(res, 200, {});
             return;
         }
       }
@@ -551,56 +508,13 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     return false;
   }
 
-  /** 依据可见的只读接口（GET）；认出路径就回答并返回真。 */
-  async function readRoute(
-    res: ServerResponse,
-    url: URL,
-    parts: string[],
-    ev: Evidence,
-  ): Promise<boolean> {
-    const [, a, b, c] = parts;
-    const n = parts.length;
-    const q = url.searchParams;
-    if (a === 'loops' && c === 'evidence' && n === 4 && b !== undefined) {
-      send(res, 200, { loop: await ev.loop(b) } satisfies LoopEvidenceResponse);
-    } else if (a === 'cards' && n === 3 && b !== undefined) {
-      send(res, 200, { card: await ev.card(b) } satisfies CardResponse);
-    } else if (a === 'learned' && n === 2) {
-      // 学过的记录：不给 project 就是全部（按人，不按项目划界）
-      send(
-        res,
-        200,
-        (await opts.studium.learned.list(q.get('project') ?? undefined)) satisfies LearnedResponse,
-      );
-    } else if (a === 'learned' && b === 'imports' && n === 4 && parts[3] !== undefined) {
-      // 一条外部导入的 md 全文（项目页“我导入的学过的”点开看）
-      const id = decodeURIComponent(parts[3]);
-      const one = (await opts.studium.learned.imports()).find((x) => x.id === id);
-      if (one === undefined) throw new NotFoundError(`没有这条导入：${id}`);
-      send(res, 200, {
-        import: one,
-        text: (await opts.studium.learned.importText(one)) ?? '',
-      } satisfies ImportTextResponse);
-    } else if (a === 'learned' && n === 3 && b !== undefined) {
-      send(res, 200, {
-        learning: await opts.studium.learned.one(decodeURIComponent(b)),
-      } satisfies LearningResponse);
-    } else if (a === 'objections' && n === 2) {
-      // 只认对守卫判定的异议（对状态记录 / 教法记录的随它们 W12 撤掉）；别的回 400，不悄悄给空列表
-      const kind = q.get('kind') ?? undefined;
-      if (kind !== undefined && kind !== 'guard_verdict') {
-        throw new BadRequest('kind 要是 guard_verdict');
-      }
-      const objections = ev.objections(kind, q.get('record') ?? undefined);
-      send(res, 200, { objections } satisfies ObjectionsResponse);
-    } else if (a === 'disclosure' && n === 2) {
-      send(res, 200, ev.disclosure() satisfies DisclosureResponse);
-    } else if (a === 'quota' && n === 2) {
+  /** 只读接口（GET）；认出路径就回答并返回真。W19 起一次学习的依据面板、学过的记录面板撤掉，只剩额度。 */
+  async function readRoute(res: ServerResponse, parts: string[]): Promise<boolean> {
+    if (parts[1] === 'quota' && parts.length === 2) {
       send(res, 200, (await opts.hub.quota()) satisfies QuotaResponse);
-    } else {
-      return false;
+      return true;
     }
-    return true;
+    return false;
   }
 
   function openSse(res: ServerResponse): void {
