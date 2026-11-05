@@ -875,7 +875,10 @@ export function activityText(
     case 'WebFetch':
       return '正在读网页';
     case 'put_component':
+    case 'reuse_component':
       return '正在写组件';
+    case 'edit_component':
+      return '正在改组件';
     case 'edit_page':
     case 'move_on_page':
     case 'remove_from_page':

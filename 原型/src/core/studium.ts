@@ -1752,6 +1752,10 @@ export class Studium {
           store: this.screenStore,
           iso: () => this.iso(),
           assertOpen: (id) => this.assertActiveLoop(id),
+          readableLoop: (id) =>
+            !this.hub.isDeleted(id) &&
+            this.hub.listSessions().some((x) => x.sessionId === id && x.kind === 'loop'),
+          componentsOf: (id) => this.latestComponents(id),
         },
         loopId,
       ),
