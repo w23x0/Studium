@@ -48,6 +48,8 @@ export interface StreamBlock {
   inline?: true;
   /** 学习者停下后改过这一句（W12 §4.4）。 */
   edited?: true;
+  /** 学习者的话：学习对话整理过的样子（W17，同一句再整理以后的为准）；页面默认显示原话，点开看这个。 */
+  tidied?: string;
   /** 最后一次被放上、改、挪、拿回是哪一行、怎么动的。 */
   touched: { line: number; how: StreamMark };
 }
@@ -92,6 +94,13 @@ export function replayStream(records: NumberedRecord[], until = Infinity): Strea
           ...(quotesOf(r).length > 0 ? { quotes: quotesOf(r) } : {}),
         });
         break;
+      case 'message_tidied': {
+        // 学习对话整理了学习者的一句话（W17）：挂在那句话上，原话照旧
+        const tidy = (b: StreamBlock) =>
+          b.id === `u${String(r.line)}` ? { ...b, tidied: r.text } : b;
+        page = { on: page.on.map(tidy), off: page.off.map(tidy) };
+        break;
+      }
       case 'component_action':
         // 等回应的操作（如提交答案）以学习者的身份发出，和说的话一样上页面
         if (r.awaited && r.state !== true) {
