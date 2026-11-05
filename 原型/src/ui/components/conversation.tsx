@@ -1,6 +1,6 @@
-// 中间的对话页：主对话、谈方向共用一个外壳；旧数据（导航、写产出、阶段复盘、找资料、W10 前的学习对话）在这里只读看。
+// 中间的对话页：主对话、谈方向共用一个外壳；旧数据（导航、写产出、阶段复盘、找资料）在这里只读看。
 // 顶上面包屑（项目名回项目对话）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
-// 学习对话走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
+// 学习对话（含旧的）都走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   AssistantRuntimeProvider,
@@ -16,19 +16,13 @@ import { latestContext } from '../../shared/usage.ts';
 import { api } from '../api.ts';
 import { useLoad } from '../hooks/use-load.ts';
 import { useOpenSession } from '../open-session.ts';
-import { CurrentSessionContext, HighlightContext, type Focus } from '../panel.ts';
-import {
-  loopState,
-  reviewWindow,
-  talkEnded,
-  toUiMessages,
-  type UiMessage,
-} from '../thread-model.ts';
+import { HighlightContext, type Focus } from '../panel.ts';
+import { reviewWindow, talkEnded, toUiMessages, type UiMessage } from '../thread-model.ts';
 import { forLearner } from '../learner-text.ts';
 import type { ThreadGroup } from '../../shared/threads.ts';
 import { W } from '../wording.ts';
 import { ReviewBanner } from './longterm/loop-extras.tsx';
-import { currentTicket, EndedBar, OldLoopBar, TicketStrip } from './learn/loop-parts.tsx';
+import { Button } from '@/components/ui/button';
 import type { PickedFile } from '../files.ts';
 import { TopBar } from './top-bar.tsx';
 import { UploadResult } from './input/upload-result.tsx';
@@ -135,11 +129,7 @@ export function Conversation(props: {
           line: m.line,
           ...(m.lines ? { lines: m.lines } : {}),
           ...(m.link ? { link: m.link } : {}),
-          ...(m.verdict ? { verdict: m.verdict } : {}),
-          ...(m.objection ? { objection: m.objection } : {}),
           ...(m.images ? { images: m.images } : {}),
-          ...(m.candidates ? { candidates: m.candidates } : {}),
-          ...(m.pending ? { pending: m.pending } : {}),
           ...(m.at !== undefined ? { at: m.at } : {}),
           ...(m.edited ? { edited: m.edited } : {}),
           ...(m.reaction !== undefined ? { reaction: m.reaction } : {}),
@@ -165,13 +155,8 @@ export function Conversation(props: {
     },
   });
 
-  const ticket = useMemo(
-    () => (kind === 'loop' ? currentTicket(records) : undefined),
-    [kind, records],
-  );
   const review = kind === 'talk' ? reviewWindow(records) : undefined;
-  const ended =
-    kind === 'loop' ? loopState(records).kind === 'ended' : kind === 'talk' && talkEnded(records);
+  const ended = kind === 'talk' && talkEnded(records);
   // 旧数据只看：导航、页面编辑员、写产出、阶段复盘（W12 撤掉）、找资料（11-04 收起）
   const watchOnly =
     kind === 'nav' ||
@@ -181,21 +166,17 @@ export function Conversation(props: {
     review !== undefined;
   // 主对话不放按钮：要下一步、复盘这些都在对话里说（10-29）；旧的阶段复盘只看，不放底栏
   const footer =
-    watchOnly || kind === 'main' ? undefined : kind === 'talk' ? (
-      ended ? (
-        <EndedBar text={W.talkDone} onBack={props.onBackToMain} />
-      ) : undefined
-    ) : (
-      // 旧版开的学习对话：只看，留“搁着”（W10 §9 第 1 条）
-      <OldLoopBar
-        sessionId={sessionId}
-        records={records}
-        onError={onError}
-        onBack={props.onBackToMain}
-        projectId={props.projectId}
-        projectTitle={props.projectTitle}
-      />
-    );
+    !watchOnly && ended ? (
+      <div
+        data-testid="ended-bar"
+        className="text-muted-foreground flex flex-wrap items-center justify-center gap-3 text-sm"
+      >
+        {W.talkDone}
+        <Button size="sm" onClick={props.onBackToMain}>
+          {W.backToMain}
+        </Button>
+      </div>
+    ) : undefined;
   const header = (
     <div className="shrink-0">
       <TopBar
@@ -209,11 +190,6 @@ export function Conversation(props: {
         ]}
         right={props.headerExtra}
       />
-      {kind === 'loop' && (
-        <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-1.5 px-4 pb-2 text-sm empty:hidden">
-          {ticket !== undefined && <TicketStrip ticket={ticket} />}
-        </div>
-      )}
       {kind === 'talk' && review === undefined && (
         <TalkIntro parent={props.parent} sessionId={sessionId} />
       )}
@@ -238,7 +214,7 @@ export function Conversation(props: {
       }
       footer={footer}
       // 谈方向谈定只是收起：输入框留着，学习者再说话就重开（10-28）
-      disabled={watchOnly || kind === 'loop'}
+      disabled={watchOnly}
       placeholder={running ? '可以接着说（这一轮说完再交给它）…' : '回复…'}
       running={running}
       onStop={async () => {
@@ -263,11 +239,9 @@ export function Conversation(props: {
     />
   );
   return (
-    <CurrentSessionContext.Provider value={sessionId}>
-      <HighlightContext.Provider value={focus?.lines ?? NO_LINES}>
-        <AssistantRuntimeProvider runtime={runtime}>{thread}</AssistantRuntimeProvider>
-      </HighlightContext.Provider>
-    </CurrentSessionContext.Provider>
+    <HighlightContext.Provider value={focus?.lines ?? NO_LINES}>
+      <AssistantRuntimeProvider runtime={runtime}>{thread}</AssistantRuntimeProvider>
+    </HighlightContext.Provider>
   );
 }
 

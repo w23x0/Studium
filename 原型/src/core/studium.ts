@@ -1,6 +1,6 @@
 // Studium：每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（`docs/设计/记录/读写权限.md`）。
 // W12（一个对话一个模型）：主对话开讨论串（学习对话、谈方向、找资料）、给它们发话；讨论串自己读记录、互相发话
-// （照 Claude 项目的主对话与讨论串）。收口 10-31 起不开守卫：学习对话自己写收尾那一句，见 `requestClose`。
+// （照 Claude 项目的主对话与讨论串）。学习对话的结束 W19 起也照讨论串：一个 close_thread，见 `closeThread`。
 import { randomBytes } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
 import { homedir } from 'node:os';
@@ -13,7 +13,6 @@ import type {
   AddMaterialRequest,
   MaterialOwner,
   MaterialSource,
-  ProjectDeadlineResponse,
   ProjectInstructionsResponse,
   ProjectMaterialsResponse,
   ProjectMaterialView,
@@ -23,7 +22,6 @@ import {
   type ConversationKind,
   type GoalAbility,
   type ImageInput,
-  type LearnerObjection,
   type MessageQuote,
   type LogRecord,
   type NumberedRecord,
@@ -34,11 +32,8 @@ import { CrossNotes } from './cross-notes.ts';
 import { currentGoal, describeGoal, goalText } from './goal.ts';
 import { Learned } from './learned.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
-import { foldLoop } from '../shared/loop-flags.ts';
 import { MaterialError, Materials } from './knowledge/materials.ts';
 import type { Sources } from './sources.ts';
-import type { Objections } from './knowledge/objections.ts';
-import type { TeachingTools } from './teaching-tools.ts';
 import { canDescend, canRead } from './model/sandbox-paths.ts';
 import type { ImageData, SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
@@ -46,7 +41,6 @@ import { Screens } from './page/screens.ts';
 import { PageStore } from './page/store.ts';
 import { streamTools } from './page/stream-tools.ts';
 import { learnerLines, renderTranscript } from './transcript.ts';
-import { closeStatus, closingOf } from '../shared/closing.ts';
 import { Uploads } from './uploads.ts';
 import type { Inputs } from './inputs.ts';
 import { localMinute } from '../shared/time.ts';
@@ -66,12 +60,8 @@ export interface StudiumOptions {
   materials: Materials;
   /** 数据目录（学过的记录的导入存放处在其下）。 */
   dataDir: string;
-  /** 学习者异议存放处（旧数据：对守卫判定的异议）。 */
-  objections: Objections;
   /** 原文与出处（资料检索、教材出处核对）。 */
   sources: Sources;
-  /** 教学工具（官方 + 学习者自己的）。 */
-  teaching: TeachingTools;
   /** 附图存放处（W12 §5.6：图片原样送给模型）。 */
   inputs: Inputs;
   /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
@@ -125,7 +115,6 @@ export class Studium {
       hub: () => this.hub,
       learned: this.learned,
       materials: o.materials,
-      teaching: o.teaching,
       dataDir: o.dataDir,
       scopeOf: (id) => this.scopeOf(id),
       materialLines: (ids) => this.materialLines(ids),
@@ -939,15 +928,6 @@ export class Studium {
     return this.uploads.reroute(mainId, upload, file, to);
   }
 
-  /** 删一条外部导入（项目页“我导入的学过的”）：只能删本项目导入的；指向的资料一并标删。 */
-  async removeImport(mainId: string, id: string): Promise<void> {
-    await this.requireProject(mainId);
-    const one = (await this.learned.imports()).find((x) => x.id === id);
-    if (one?.project !== mainId) throw new BadRequestError(`本项目没有导入过这一份：${id}`);
-    await this.learned.removeImport(id);
-    if ('material' in one.ref) await this.o.materials.remove(one.ref.material);
-  }
-
   // ───────────── 项目说明（`docs/设计/记录/项目说明.md`；工单 W9 §4.6） ─────────────
 
   /** 项目说明：当前值（最后一条）+ 全部历史。 */
@@ -1075,40 +1055,6 @@ export class Studium {
     });
   }
 
-  /** 记 / 清项目期限（可不填）。 */
-  async setDeadline(
-    mainId: string,
-    deadline: string | null,
-    note?: string,
-  ): Promise<ProjectDeadlineResponse> {
-    await this.requireProject(mainId);
-    if (deadline !== null && !validDate(deadline)) {
-      throw new BadRequestError('期限要写成 YYYY-MM-DD 的真实日期，或传 null 清掉。');
-    }
-    await this.hub.record(mainId, {
-      type: 'project_deadline',
-      at: this.iso(),
-      deadline,
-      ...(note !== undefined && note.trim() !== '' ? { note: note.trim() } : {}),
-    });
-    return this.deadlineView(mainId);
-  }
-
-  async deadlineView(mainId: string): Promise<ProjectDeadlineResponse> {
-    const d = foldDeadline(await this.requireProject(mainId));
-    return {
-      mainSessionId: mainId,
-      ...(d.deadline !== undefined ? { deadline: d.deadline } : {}),
-      ...(d.note !== undefined ? { deadlineNote: d.note } : {}),
-      ...(d.deadline !== undefined ? { daysLeft: this.daysUntil(d.deadline) } : {}),
-    };
-  }
-
-  private daysUntil(date: string): number {
-    const today = this.now().toISOString().slice(0, 10);
-    return Math.round((Date.parse(date) - Date.parse(today)) / 86_400_000);
-  }
-
   /**
    * 学习者在某个对话里发话。隔了一阵回来：每条都带时间，模型自己看得出离开多久，不设门槛、不另推
    * （`docs/设计/01-流程.md`「暂停」）。
@@ -1133,10 +1079,6 @@ export class Studium {
     };
     // 结束的讨论串只是收起来：学习者再说话就重开（照 Claude 项目的讨论串；W12 §2 学习对话也一样）
     if (opened.kind !== 'main') await this.reopenIfEnded(opened, 'learner', '学习者又说话了');
-    // 搁置着的一次学习里学习者又说话 = 接着学（先恢复，再交这句话）
-    if (foldLoop(await this.hub.records(sessionId)).shelved !== undefined) {
-      await this.resumeShelved(sessionId, 'message');
-    }
     // 附图原样送给模型（W12 §5.6）；在沙盒里跑的会话还能在只读区打开原图
     const attach =
       images !== undefined && images.length > 0
@@ -1165,147 +1107,21 @@ export class Studium {
     };
   }
 
-  /**
-   * 申请收口（10-31 起不开守卫）：学习对话调 request_close 时带收尾那一句，记下就等学习者确认“学完了”。
-   * 11-05 起（#92）学习页没有“我觉得懂了”按钮：学习者在对话里说，由学习对话判断后调；旧数据里学习者点按钮的那条照旧能读。
-   */
-  async requestClose(loopId: string, reason: string, summary: string): Promise<void> {
-    await this.assertActiveLoop(loopId);
-    await this.hub.record(loopId, {
-      type: 'close_requested',
-      at: this.iso(),
-      by: 'model',
-      reason,
-      summary,
-    });
-  }
-
-  /** 收尾那一句到了之后，学习者确认结束 → 告诉主对话一句。 */
-  async confirmClose(loopId: string, note: string): Promise<void> {
-    await this.assertActiveLoop(loopId);
-    // 最后一次收口要有收尾那一句（旧数据：守卫写好的收尾记录也算）
-    if (closeStatus(await this.hub.records(loopId))?.kind !== 'ready') {
-      // 收尾那一句还没写，不能确认结束（11-05 起学习页没有按钮，学习者在对话里说）
-      throw new BadRequestError(
-        '这次学到了什么还没写下：在对话里说你觉得懂了；想先停下，就说先到这里、以后再学。',
-      );
-    }
-    await this.hub.record(loopId, {
-      type: 'loop_ended',
-      at: this.iso(),
-      closed: true,
-      note,
-    });
-    this.background('学完后告诉主对话', () => this.afterLoop(loopId, true));
-  }
-
-  /** 学习者要结束、没合上：先搁着（W12 §2 起能重开）。 */
-  async endUnclosed(loopId: string, note: string): Promise<void> {
-    await this.assertOpenLoop(loopId);
-    await this.hub.record(loopId, {
-      type: 'loop_ended',
-      at: this.iso(),
-      closed: false,
-      note,
-    });
-    this.background('没学完结束后告诉主对话', () => this.afterLoop(loopId, false));
-  }
-
-  // ───────────── 搁置与恢复（一次学习自己的状态）─────────────
-
-  /** 学习者点“接着学”，恢复搁置的那次学习（旧数据：搁置 `loop_shelved` 现在界面与模型都不再触发）。 */
-  resumeLoop(loopId: string): Promise<void> {
-    return this.resumeShelved(loopId, 'button');
-  }
-
-  /** 恢复搁置的那次学习（by = message 时是学习者在里面又说话了）；先把“恢复了”交给学习对话。 */
-  private async resumeShelved(loopId: string, by: 'button' | 'message'): Promise<void> {
-    const opened = await this.hub.opened(loopId);
-    if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
-    // 旧版开的学习对话不再跑新一轮
-    if (opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
-    const flags = foldLoop(await this.hub.records(loopId));
-    if (flags.ended !== undefined) throw new BadRequestError('这次学习已经结束了。');
-    if (flags.shelved === undefined) throw new BadRequestError('这次学习没有搁置。');
-    await this.hub.record(loopId, { type: 'loop_resumed', at: this.iso(), by });
-    await this.hub.send(loopId, {
-      role: 'program',
-      text: `学习者回来接着学（它在 ${flags.shelved.at} 被搁置：${flags.shelved.note}）。先简短接上：回到哪里、接着做什么。`,
-    });
-  }
-
-  // ───────────── 异议（学习者纠正系统的判断；只追加，不改原记录）─────────────
-
-  /**
-   * 对守卫的一次判定提异议。这次学习还开着：作为学习者原话（带标记）追加进那次学习，之后学习者可再申请收口；
-   * 那次已结束：记进异议存放处，不改正本里的判定。
-   */
-  async objectToVerdict(
-    loopId: string,
-    line: number,
-    text: string,
-  ): Promise<{ objection: LearnerObjection; inLoop: boolean; line?: number }> {
-    const opened = await this.hub.opened(loopId);
-    if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
-    const body = text.trim();
-    if (body === '') throw new BadRequestError('异议不能是空的。');
-    const recs = await this.hub.records(loopId);
-    if (recs.find((r) => r.line === line)?.record.type !== 'guard_verdict') {
-      throw new BadRequestError(`第 ${String(line)} 行不是一次判定，找不到要提异议的地方。`);
-    }
-    const target = { kind: 'guard_verdict', loopSessionId: loopId, line } as const;
-    if (foldLoop(recs).ended !== undefined) {
-      const objection: LearnerObjection = {
-        id: this.newId('obj'),
-        at: this.iso(),
-        text: body,
-        target,
-      };
-      await this.o.objections.add(objection);
-      return { objection, inLoop: false };
-    }
-    // 还开着的旧版学习对话：异议要进那次学习、会跑新一轮，旧的不再跑
-    if (opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
-    const sent = await this.hub.send(
-      loopId,
-      { role: 'learner', text: body },
-      { objection: { toLine: line } },
-    );
-    return {
-      objection: { id: `${loopId}:${String(sent.line)}`, at: this.iso(), text: body, target },
-      inLoop: true,
-      line: sent.line,
-    };
-  }
-
   // ───────────── 一次学习结束之后 ─────────────
 
   /**
-   * 一次学习结束（合上 / 没合上）：告诉主对话一句（带收尾那一句）。不自动开下一次，不再跑后台整理（W12 §1.2）。
+   * 讨论串不是主对话结束的（它自己、学习者点的）：告诉主对话一句“结束了”。只说这一句，不转述内容——
+   * 这次做了什么、停在哪就是那边最后说的话，主对话要看就读那边原文（照 Claude 项目，W19）。不自动开下一次。
    */
-  private async afterLoop(loopId: string, closed: boolean): Promise<void> {
-    const opened = await this.hub.opened(loopId);
-    const mainId = opened.parent;
-    // 学习对话总挂在项目的主对话下；没有就是坏数据，不替它新建项目
-    if (mainId === undefined) throw new Error(`学习对话 ${loopId} 没有挂在项目下`);
-    try {
-      const closing = closed ? closingOf(await this.hub.records(loopId)) : undefined;
-      const title = this.hub.labelOf(loopId);
-      await this.hub.send(mainId, {
-        role: 'program',
-        text: closed
-          ? `${title}（${loopId}）学完了（学习者已确认结束）。${closing !== undefined ? `收尾那一句：${closing.summary}` : ''}`
-          : `${title}（${loopId}）没学完就结束了，先搁着（能重开）。`,
-      });
-    } catch (err) {
-      console.error(`一次学习（${loopId}）结束后告诉主对话失败：`, err);
-      await this.hub.record(loopId, {
-        type: 'after_loop_step',
-        at: this.iso(),
-        step: 'failed',
-        detail: err instanceof Error ? err.message : String(err),
-      });
-    }
+  private async tellMainEnded(t: SessionOpened, by: 'self' | 'learner'): Promise<void> {
+    const mainId = t.parent;
+    // 讨论串总挂在项目的主对话下；没有就是坏数据，不替它新建项目
+    if (mainId === undefined) throw new Error(`讨论串 ${t.sessionId} 没有挂在项目下`);
+    const title = this.hub.labelOf(t.sessionId);
+    await this.hub.send(mainId, {
+      role: 'program',
+      text: `「${title}」（${t.sessionId}）${by === 'learner' ? '学习者点了结束' : '结束了'}。`,
+    });
   }
 
   // ───────────── 删除、停止与编辑（W12 §4.3 §4.4） ─────────────
@@ -1427,7 +1243,7 @@ export class Studium {
     return {
       name: 'list_learned',
       description:
-        '列出这个项目里学过的记录：方向目标；每次学习一行（合上的带收尾那一句——只是指针，学习者会什么以那次原文为准；没合上的带结束原话；W12 前的旧学习另带标着“旧数据”的单子、路线决定），以及外部导入（未验证）。',
+        '列出这个项目里学过的记录：方向目标；每次学习一行（状态与时间；旧学习另带标着“旧数据”的收尾那一句、结束原话、单子、路线决定——都只是指针，学习者会什么以那次原文为准），以及外部导入（未验证）。',
       input: {},
       run: async () => {
         const mainId = await this.projectOf(sessionId);
@@ -1597,7 +1413,7 @@ export class Studium {
       {
         name: 'close_thread',
         description:
-          '结束一个讨论串（只是收起，学习者再说话或你调 reopen_thread 就重开）：学习者说那件事不用再做了时用。学习对话结束 = 没学完先搁着。',
+          '结束一个讨论串（只是收起，学习者再说话或你调 reopen_thread 就重开）：学习者说那件事不用再做了时用。',
         input: {
           thread: z.string(),
           reason: z.string().describe('学习者怎么说的（主对话行号 + 一句）'),
@@ -1779,20 +1595,16 @@ export class Studium {
         },
       },
       ...(kind === 'loop' ? [] : [this.threadTitleTool(sessionId)]),
-      ...(kind === 'loop'
-        ? []
-        : [
-            {
-              name: 'close_thread',
-              description:
-                '这件事做完了、学习者也认可时结束这个对话（只是收起，学习者再说话就重开）。交了东西还在等学习者看的不结束。',
-              input: { reason: z.string() },
-              run: async (a: Record<string, unknown>) => {
-                const opened = await this.hub.opened(sessionId);
-                return this.closeThread(opened, 'self', a.reason as string);
-              },
-            },
-          ]),
+      {
+        name: 'close_thread',
+        description:
+          '这件事做完了、学习者也认可时结束这个对话（只是收起，学习者再说话就重开）。交了东西还在等学习者看、学习者还有话说的不结束。',
+        input: { reason: z.string().describe('一句：为什么结束（学习者怎么说的，带行号）') },
+        run: async (a: Record<string, unknown>) => {
+          const opened = await this.hub.opened(sessionId);
+          return this.closeThread(opened, 'self', a.reason as string);
+        },
+      },
     ];
   }
 
@@ -1827,13 +1639,12 @@ export class Studium {
   private listThreadsTool(selfId: string): ToolSpec {
     return {
       name: 'list_threads',
-      description:
-        '列出本项目的讨论串：会话 id、种类、标题、状态（等学习者 / 进行中 / 停着 / 已结束）、最后活动时间。',
+      description: '列出本项目的讨论串：会话 id、种类、标题、状态（开着 / 已结束）、最后活动时间。',
       input: {},
       run: async () => {
         const mainId = await this.projectOf(selfId);
         if (mainId === undefined) return err('找不到这个对话所属的项目');
-        const label = { waiting: '等学习者', running: '进行中', paused: '停着', ended: '已结束' };
+        const label = { open: '开着', ended: '已结束' };
         const rows = this.hub
           .listSessions()
           .filter((s) => s.parent === mainId && THREAD_KINDS.has(s.kind))
@@ -1912,28 +1723,38 @@ export class Studium {
     by: 'learner' | 'main',
     reason: string,
   ): Promise<boolean> {
-    const recs = await this.hub.records(t.sessionId);
-    const ended = t.kind === 'loop' ? foldLoop(recs).ended !== undefined : threadEnded(recs);
-    if (!ended) return false;
+    if (!threadEnded(await this.hub.records(t.sessionId))) return false;
     await this.hub.record(t.sessionId, { type: 'thread_reopened', at: this.iso(), by, reason });
     return true;
   }
 
-  /** 结束一个讨论串：学习对话 = 没学完先搁着（loop_ended，能重开）；别的 = 收起（thread_closed）。 */
+  /**
+   * 结束一个讨论串（只是收起，再说话就重开；学习对话也一样，W19 照 Claude 项目的 set_thread_resolved）。
+   * 不是主对话结束的，告诉主对话一句“结束了”。
+   */
   private async closeThread(
     t: SessionOpened,
-    by: 'main' | 'self',
+    by: 'main' | 'self' | 'learner',
     reason: string,
   ): Promise<ToolResult> {
-    const recs = await this.hub.records(t.sessionId);
-    if (t.kind === 'loop') {
-      if (foldLoop(recs).ended !== undefined) return err('它已经结束了。');
-      await this.endUnclosed(t.sessionId, reason);
-      return ok('已结束（没学完先搁着，能重开）。');
-    }
-    if (threadEnded(recs)) return err('它已经结束了。');
+    if (threadEnded(await this.hub.records(t.sessionId))) return err('它已经结束了。');
     await this.hub.record(t.sessionId, { type: 'thread_closed', at: this.iso(), by, reason });
+    if (by !== 'main') {
+      this.background('讨论串结束后告诉主对话', () => this.tellMainEnded(t, by));
+    }
     return ok('已结束。');
+  }
+
+  /** 学习者在讨论串栏“⋯”里点结束（W19）：谈方向、学习对话能结束；旧数据里只读的不用结束。 */
+  async endThread(threadId: string): Promise<void> {
+    const opened = await this.hub.opened(threadId);
+    if (opened.parent === undefined || (opened.kind !== 'talk' && opened.kind !== 'loop')) {
+      throw new BadRequestError('只能结束项目里的谈方向、学习对话');
+    }
+    if (this.hub.isDeleted(threadId)) throw new BadRequestError('已经删了');
+    await this.hub.stop(threadId);
+    const r = await this.closeThread(opened, 'learner', '学习者在讨论串栏点了结束');
+    if (r.isError === true) throw new BadRequestError(r.text);
   }
 
   private async setTitle(sessionId: string, raw: string): Promise<ToolResult> {
@@ -2100,35 +1921,11 @@ export class Studium {
   }
 
   /**
-   * 学习对话的工具（W12 §2）：收尾两个命令 + 改自己的标题 + 竖流学习页的页面工具；资料、学过的记录、方向、项目说明、
-   * 教学工具都在沙盒里当只读文件读；中途要先学别的，用讨论串工具里的 message_coordinator 请主对话另开。
+   * 学习对话的工具（W12 §2）：改自己的标题 + 竖流学习页的页面工具；结束用讨论串工具里的 close_thread（W19）；资料、
+   * 学过的记录、方向、项目说明都在沙盒里当只读文件读；中途要先学别的，用 message_coordinator 请主对话另开。
    */
   private loopTools(loopId: string): ToolSpec[] {
     return [
-      {
-        name: 'request_close',
-        description:
-          '你觉得这次可以收了时调用：写下收尾那一句，学习者在界面上确认“学完了”后这次学习结束（结束后能重开，重开再收尾就再写一句）。',
-        input: {
-          summary: z.string().describe('收尾那一句：这次做了什么、停在哪（写法你定）'),
-          reason: z.string().optional().describe('为什么觉得可以收了（可不写）'),
-        },
-        run: async (a) => {
-          const summary = (a.summary as string).trim();
-          if (summary === '') return err('收尾那一句不能是空的');
-          await this.requestClose(loopId, (a.reason as string | undefined) ?? '', summary);
-          return ok('已记下，等学习者确认“学完了”。');
-        },
-      },
-      {
-        name: 'end_loop_unclosed',
-        description: '学习者明确要结束、而这次没学完时调用：先搁着（之后能重开）。',
-        input: { note: z.string().describe('学习者要结束的话在哪一行、为什么') },
-        run: async (a) => {
-          await this.endUnclosed(loopId, a.note as string);
-          return ok('已结束（没学完，先搁着）。和学习者道别即可。');
-        },
-      },
       {
         name: 'tidy_message',
         description:
@@ -2171,7 +1968,7 @@ export class Studium {
       name: 'note_down',
       description: `记一条跨次记录（以后的对话开场都看得到）。kind：${
         kind === 'loop'
-          ? 'progress = 学到哪（这次的边界、停在哪、留下没讲的、学习者说下次再说的；收尾那一句程序会自己列，不用另记）；'
+          ? 'progress = 学到哪（这次的边界、停在哪、留下没讲的、学习者说下次再说的）；'
           : ''
       }learner = 学习者说过的长期的话（quote 照抄他原话里的一段，text 写当时在说什么）；withdraw = 学习者说某条不对或要忘掉（replaces 指那条，text 写他怎么说的）。只记事实，不记你对学习者的判断。lines = 这件事在本对话里的行号。学习者改了主意：新记一条，replaces 指旧的。`,
       input: {
@@ -2206,8 +2003,7 @@ export class Studium {
   private readNotesTool(sessionId: string): ToolSpec {
     return {
       name: 'read_notes',
-      description:
-        '读本项目的跨次记录：各次学习学到哪、收尾那一句、学习者说过的长期的话，每条带编号与出处。',
+      description: '读本项目的跨次记录：各次学习学到哪、学习者说过的长期的话，每条带编号与出处。',
       input: {},
       run: async () => {
         const mainId = await this.projectOf(sessionId);
@@ -2230,28 +2026,16 @@ export class Studium {
 
   // ───────────── 共用 ─────────────
 
-  /** 这次学习还开着、且不是搁置着（要收口 / 确认合上）。 */
+  /** 这次学习还开着、且是竖流学习页开的（页面工具、组件操作要它）。 */
   private async assertActiveLoop(loopId: string): Promise<void> {
-    await this.assertOpenLoop(loopId);
-    await this.assertNotShelved(loopId);
-    // 旧版开的学习对话（开场时提示词与工具已定死）只看，不再跑（W10 §9 第 1 条）
-    if ((await this.hub.opened(loopId)).screens !== true) throw new BadRequestError(OLD_LOOP);
-  }
-
-  /** 搁置着的那次不能收口 / 确认合上：先恢复。 */
-  async assertNotShelved(loopId: string): Promise<void> {
-    if (foldLoop(await this.hub.records(loopId)).shelved !== undefined) {
-      throw new BadRequestError('这部分搁置着，先点“接着学”再往下。');
-    }
-  }
-
-  private async assertOpenLoop(loopId: string): Promise<void> {
     const opened = await this.hub.opened(loopId);
     if (opened.kind !== 'loop') throw new BadRequestError('这段对话不是一次学习任务。');
     // 结束后能重开（W12 §2）：看最后一次结束之后有没有重开过
-    if (foldLoop(await this.hub.records(loopId)).ended !== undefined) {
+    if (threadEnded(await this.hub.records(loopId))) {
       throw new BadRequestError('这部分已经结束了。');
     }
+    // 旧版开的学习对话（开场时提示词与工具已定死）只看，不再跑（W10 §9 第 1 条）
+    if (opened.screens !== true) throw new BadRequestError(OLD_LOOP);
   }
 
   /** 资料范围的说明，接在工具结果后面。 */

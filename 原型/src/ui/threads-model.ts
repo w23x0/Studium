@@ -1,4 +1,4 @@
-// 讨论串（项目对话右边那一栏）的纯转换：一个项目开出去的任务对话 → 等你 / 进行中 / 停着 / 已结束。
+// 讨论串（项目对话右边那一栏）的纯转换：一个项目开出去的任务对话 → 开着 / 已结束（W19，照 Claude 项目）。
 // 分组规则在 `../shared/threads.ts`（主对话里的讨论串卡片也用它，W12 §4.1）；每行带什么小标签改下面 TAG_OF。
 // 学习者删掉的讨论串核心那边就不列了（W12 §4.3）。
 import type { SessionMark, SessionSummary } from '../shared/protocol.ts';
@@ -7,12 +7,10 @@ import { W } from './wording.ts';
 
 export type { ThreadGroup };
 
-/** 行尾的小标签（没有的不显示）。 */
+/** 行尾的小标签（没有的不显示）：只有旧数据的学习有（当时合上 / 没合上），照旧显示。 */
 const TAG_OF: Partial<Record<SessionMark, string>> = {
-  guarded: W.threads.tagGuarded,
-  candidates: W.threads.tagCandidates,
   closed: W.threads.tagClosed,
-  unclosed: W.learnedStatus.没合上,
+  unclosed: W.unclosedTag,
 };
 
 export interface ThreadRow {
@@ -28,7 +26,7 @@ export function threadGroups(
   sessions: readonly SessionSummary[],
   projectId: string,
 ): Record<ThreadGroup, ThreadRow[]> {
-  const out: Record<ThreadGroup, ThreadRow[]> = { waiting: [], running: [], paused: [], ended: [] };
+  const out: Record<ThreadGroup, ThreadRow[]> = { open: [], ended: [] };
   for (const s of sessions) {
     if (s.parent !== projectId || !THREAD_KINDS.has(s.kind)) continue;
     const tag = s.mark !== undefined ? TAG_OF[s.mark] : undefined;

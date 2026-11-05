@@ -5,11 +5,10 @@ import { dirname, join } from 'node:path';
 import type { Import, LearnedResponse, Learning } from '../shared/protocol-learned.ts';
 import type { NumberedRecord, Ticket } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
-import { foldLoop } from '../shared/loop-flags.ts';
+import { threadEnd } from '../shared/threads.ts';
 import { Materials } from './knowledge/materials.ts';
 import { isNotFound } from './log/session-log.ts';
 import { currentTicket, ticketEdits } from './ticket.ts';
-import { closingOf } from '../shared/closing.ts';
 
 export interface LearnedDeps {
   hub: () => Hub;
@@ -212,12 +211,17 @@ export class Learned {
     records: NumberedRecord[],
   ): Promise<Learning> {
     // 现在结束着的那次结束（W12 §2 起结束后能重开：重开过的看最后一次结束，重开后还没再结束 = 进行中）
-    const flags = foldLoop(records);
-    const ended =
-      flags.ended === undefined ? undefined : records.find((r) => r.record === flags.ended);
+    // W19 起结束记 thread_closed，只分进行中 / 已结束；旧数据的 loop_ended 照旧分合上 / 没合上
+    const ended = threadEnd(records);
     const ticket = await this.ticketOf(loopId, records);
     const status: Learning['status'] =
-      ended?.record.type !== 'loop_ended' ? '进行中' : ended.record.closed ? '合上' : '没合上';
+      ended === undefined
+        ? '进行中'
+        : ended.record.type !== 'loop_ended'
+          ? '已结束'
+          : ended.record.closed
+            ? '合上'
+            : '没合上';
     const edits = ticketEdits(records);
     const out: Learning = {
       loopId,
@@ -226,11 +230,11 @@ export class Learned {
       status,
       ticket,
       ...(edits.length > 0 ? { ticketEdits: edits } : {}),
-      ...(ended?.record.type === 'loop_ended' ? { endedAt: ended.record.at } : {}),
+      ...(ended !== undefined ? { endedAt: ended.record.at } : {}),
     };
     if (ended?.record.type === 'loop_ended') {
       if (ended.record.closed) {
-        // 中层：loop_ended 之前最后一句收尾那一句（10-31 起）
+        // 旧数据：loop_ended 之前最后一句收尾那一句（10-31 至 W19）
         const closing = closingOf(records, ended.line);
         if (closing !== undefined) out.closing = closing;
         // 旧数据：loop_ended 之前最后一条 closed: true 的守卫判定
@@ -274,7 +278,7 @@ export class Learned {
     loopId: string,
     records: NumberedRecord[],
   ): Promise<Learning['routeDecision']> {
-    const ended = foldLoop(records).ended;
+    const ended = threadEnd(records)?.record;
     if (ended === undefined) return undefined;
     const opened = await this.o.hub().opened(loopId);
     if (opened.parent === undefined) return undefined;
@@ -294,7 +298,7 @@ export class Learned {
       : `${x.id} ${x.channel}《${x.title ?? x.id}》：外部导入/${x.id}.md（原目录：资料 ${x.ref.material}）`;
   }
 
-  /** 一次学习一行（主对话的 list_learned 用）：收尾那一句、结束原话；旧数据（W12 前）另带单子、守卫判定、路线决定。 */
+  /** 一次学习一行（主对话的 list_learned 用）：状态与时间；旧数据另带收尾那一句、结束原话、单子、守卫判定、路线决定。 */
   line(l: Learning): string {
     const start = l.openedAt.slice(0, 10);
     const span = l.endedAt !== undefined ? `${start}–${l.endedAt.slice(0, 10)}` : start;
@@ -303,7 +307,7 @@ export class Learned {
       `${l.loopId}「${l.title}」${l.status}，${span}${t !== '' ? `：单子（旧数据）${t}` : ''}`,
     ];
     if (l.closing !== undefined) {
-      parts.push(`收尾那一句 L${String(l.closing.line)}：${l.closing.summary}`);
+      parts.push(`旧数据·收尾那一句 L${String(l.closing.line)}：${l.closing.summary}`);
     }
     if (l.verdict !== undefined) {
       parts.push(`旧数据·守卫判定 L${String(l.verdict.line)}：${l.verdict.basis}`);
@@ -332,4 +336,19 @@ function ticketText(t: Ticket): string {
     .map((s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`)
     .join('；');
   return `新点 ${t.newPoint}；预期理解 ${t.clause}；出发点 ${starts || '（无）'}`;
+}
+
+/** 旧数据（10-31 至 W19）：loop_ended 之前最后一句收尾那一句（学习对话调 request_close 写在 close_requested.summary）。 */
+function closingOf(
+  records: readonly NumberedRecord[],
+  before: number,
+): { line: number; at: string; summary: string } | undefined {
+  let out: { line: number; at: string; summary: string } | undefined;
+  for (const { line, record: r } of records) {
+    if (line >= before) break;
+    if (r.type === 'close_requested' && r.summary !== undefined && r.summary.trim() !== '') {
+      out = { line, at: r.at, summary: r.summary };
+    }
+  }
+  return out;
 }

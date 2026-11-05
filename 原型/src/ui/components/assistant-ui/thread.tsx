@@ -11,23 +11,15 @@ import {
   ThreadPrimitive,
   useAuiState,
 } from '@assistant-ui/react';
-import {
-  ArrowDownIcon,
-  ArrowRightIcon,
-  ChevronRightIcon,
-  LoaderIcon,
-  PencilIcon,
-} from 'lucide-react';
+import { ArrowDownIcon, ArrowRightIcon, LoaderIcon, PencilIcon } from 'lucide-react';
 import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
 import type { PickedFile } from '@/files';
-import { CandidateList } from '@/components/find-candidates';
-import type { CandidatesView } from '@/thread-model';
 import { ImageViewer } from '@/components/input/modal';
 import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
-import { useCurrentSession, useHighlight, usePanel } from '@/panel';
+import { useHighlight } from '@/panel';
 import { W } from '@/wording';
 import { WT } from '@/wording-tools';
 import type { ThreadGroup } from '../../../shared/threads.ts';
@@ -39,11 +31,7 @@ interface MessageMeta {
   line?: number;
   lines?: number[];
   link?: UiLink;
-  verdict?: { closed: boolean; said?: true };
-  objection?: { toLine: number; label: string };
   images?: string[];
-  candidates?: CandidatesView;
-  pending?: true;
   at?: string;
   edited?: true;
   reaction?: string;
@@ -255,9 +243,6 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
       data-lines={attr}
       className="group/message fade-in animate-in flex scroll-mt-16 flex-col items-end gap-1 px-1 duration-150"
     >
-      {meta.objection !== undefined && (
-        <span className="text-muted-foreground text-xs">{meta.objection.label}</span>
-      )}
       {meta.images !== undefined && <SentImages ids={meta.images} />}
       {editing !== undefined ? (
         <div className="flex w-full max-w-[85%] flex-col gap-1.5" data-testid="edit-last">
@@ -301,7 +286,6 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
           data-testid="user-message"
           className={cn(
             'bg-muted text-foreground relative max-w-[85%] rounded-(--composer-radius) px-4 py-2.5 whitespace-pre-wrap wrap-break-word transition-shadow',
-            meta.objection !== undefined && 'border-primary/40 border',
             lit && 'bg-primary/10 ring-primary/50 ring-2',
           )}
         >
@@ -365,28 +349,16 @@ const SentImages: FC<{ ids: string[] }> = ({ ids }) => {
   );
 };
 
-/** 程序给的一句结果（整理好了、学完了、记下方向）或去别的对话的入口：小字显示，不是谁说的话。 */
+/** 程序给的一句结果（记下方向、停止了）或去别的对话的入口（讨论串卡片）：小字显示，不是谁说的话。 */
 const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, verdict, line, candidates, pending, card } = useMeta();
+  const { link, card } = useMeta();
   const open = useOpenSession();
-  const panel = usePanel();
-  const sessionId = useCurrentSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
-      {pending === true ? (
-        <div
-          data-testid="pending-line"
-          className="text-muted-foreground flex items-center gap-2 text-sm"
-        >
-          <LoaderIcon className="size-3.5 animate-spin" />
-          {text}
-        </div>
-      ) : candidates !== undefined ? (
-        <CandidateList view={candidates} />
-      ) : card !== undefined ? (
+      {card !== undefined ? (
         <button
           type="button"
           data-testid="thread-card"
@@ -397,31 +369,12 @@ const SystemMessage: FC = () => {
           {card.group !== undefined && (
             <span
               data-testid="thread-card-status"
-              className={cn(
-                'shrink-0 rounded-full px-1.5 text-[0.7rem]',
-                card.group === 'waiting'
-                  ? 'bg-primary/10 text-primary'
-                  : 'bg-muted text-muted-foreground',
-              )}
+              className="bg-muted text-muted-foreground shrink-0 rounded-full px-1.5 text-[0.7rem]"
             >
               {W.threads[card.group]}
             </span>
           )}
           <ArrowRightIcon className="text-muted-foreground size-3.5 shrink-0" />
-        </button>
-      ) : verdict !== undefined && sessionId !== undefined && line !== undefined ? (
-        <button
-          type="button"
-          data-testid="judgement"
-          className="text-muted-foreground hover:text-foreground group flex items-center gap-2 text-sm"
-          onClick={() => panel.show({ kind: 'loop', loopId: sessionId, focusLine: line })}
-        >
-          <span className="bg-border h-px w-4" />
-          {text}
-          <span className="text-primary flex items-center text-xs opacity-80 group-hover:opacity-100">
-            {verdict.said === true ? W.seeClosingSaid : W.whyJudged}
-            <ChevronRightIcon className="size-3.5" />
-          </span>
         </button>
       ) : link ? (
         <button

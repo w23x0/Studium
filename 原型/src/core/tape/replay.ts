@@ -154,6 +154,13 @@ const REMOVED_ACTIONS = new Set<string>([
   'longterm.addReminder',
   'longterm.closeReminder',
   'shelveLoop',
+  // W19：确认学完了、接着学（搁置）撤掉
+  'confirmClose',
+  'resumeLoop',
+  // W19：没人调用的接口删掉（异议、期限、删外部导入）
+  'objectToVerdict',
+  'setDeadline',
+  'removeImport',
   'addStateExplanation',
   'outputs.create',
   'outputs.save',

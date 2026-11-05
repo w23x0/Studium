@@ -5,7 +5,6 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONVERSATION_KINDS, type ConversationKind } from '../shared/records.ts';
 import { Crosslinks } from './crosslinks.ts';
-import { Evidence } from './evidence.ts';
 import { Hub } from './hub.ts';
 import { Inputs } from './inputs.ts';
 import { startServer, type RunningServer } from './http/server.ts';
@@ -13,13 +12,11 @@ import { DerivedIndex } from './index/derived-index.ts';
 import { Materials } from './knowledge/materials.ts';
 import { Originals } from './knowledge/originals.ts';
 import { SourceReports } from './knowledge/source-reports.ts';
-import { Objections } from './knowledge/objections.ts';
 import { SourceNotes } from './knowledge/source-notes.ts';
 import { DataDir, upgradeDataDir } from './log/data-dir.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
 import { SidebarStore } from './sidebar.ts';
-import { OFFICIAL_TOOLS_DIR, TeachingTools } from './teaching-tools.ts';
 import { Studium } from './studium.ts';
 import { Recorder } from './tape/recorder.ts';
 
@@ -87,7 +84,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     throw err;
   }
   const index = await DerivedIndex.open(join(dataDir.root, 'index.sqlite'), dataDir);
-  const objections = await Objections.load(join(dataDir.root, 'knowledge', 'objections'));
   // 资料与外部导入存一处（工单 W8、W11）：读原文都经它
   const materials = new Materials({
     root: join(dataDir.root, '资料'),
@@ -119,7 +115,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     dir: join(dataDir.root, 'inputs'),
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
-  const teaching = new TeachingTools(OFFICIAL_TOOLS_DIR, join(dataDir.root, 'teaching-tools'));
   const studium = new Studium({
     prompts: await loadPrompts(),
     // 学习对话提示词里“页面”那一段（W12 起竖流是唯一的学习页）
@@ -127,8 +122,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     materials,
     sources,
     dataDir: dataDir.root,
-    objections,
-    teaching,
     inputs,
     cross,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
@@ -150,20 +143,10 @@ export async function createApp(opts: AppOptions): Promise<App> {
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
   // 第一次打开不自动建“项目 1”：没有项目时界面显示全部项目页的空状态，新建时先问想学什么（界面说明 §3）
-  const evidence = new Evidence({
-    hub,
-    learned: studium.learned,
-    objections,
-    sources,
-    inputs,
-    teaching,
-    webSearchKinds: () => studium.webSearchKinds(),
-  });
   const server = await startServer({
     hub,
     sidebar: await SidebarStore.load(join(dataDir.root, 'ui', 'sidebar.jsonl'), opts.now),
     sources,
-    evidence,
     cross: { links: cross },
     inputs,
     studium: recorder ? recorder.wrapStudium(studium) : studium,
@@ -178,7 +161,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
     dataDir,
     close: async () => {
       await server.close();
-      // 后台清单（合上之后、导入会话）跑完再关，免得写到一半
+      // 后台的事（讨论串结束后告诉主对话、导入会话）跑完再关，免得写到一半
       await studium.settled();
       await hub.close();
       index.close();

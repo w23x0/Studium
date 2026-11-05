@@ -1,4 +1,4 @@
-// 模型写给程序的记录原文（收尾那一句、方向理由；旧数据：守卫判断理由）在界面上显示前的一道整理（界面说明 §1.4）：
+// 模型写给程序的记录原文（旧数据：导航出卡的理由）在界面上显示前的一道整理（界面说明 §1.4）：
 // 对学习者说“你”，不露内部编号。记录本身不改，只改显示。纯函数。
 
 /** “学习者 / 他”→“你”；去掉 st-xxxxxxxx 这类内部编号。 */
@@ -12,9 +12,4 @@ export function forLearner(text: string): string {
       .replace(/(（|\()\s*[a-z]{2,4}-[0-9a-f]{6,}\s*[，,、]\s*/g, '$1')
       .replace(/\s*[a-z]{2,4}-[0-9a-f]{6,}\s*/g, '')
   );
-}
-
-/** 出处小标：第 n 处用 ①②③…，超过 20 用 [n]。 */
-export function refMark(n: number): string {
-  return n >= 1 && n <= 20 ? String.fromCodePoint(0x2460 + n - 1) : `[${String(n)}]`;
 }
