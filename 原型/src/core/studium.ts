@@ -30,6 +30,7 @@ import {
   type SessionOpened,
 } from '../shared/records.ts';
 import type { Crosslinks } from './crosslinks.ts';
+import { CrossNotes } from './cross-notes.ts';
 import { currentGoal, describeGoal, goalText } from './goal.ts';
 import { Learned } from './learned.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
@@ -94,6 +95,9 @@ export class Studium {
   /** 学过的记录（按层读每次学习）与外部导入存放处。 */
   readonly learned: Learned;
 
+  /** 跨次记录（W13，试验中）：各对话当场记下的学到哪、学习者说过的长期的话。 */
+  readonly notes: CrossNotes;
+
   /** 学习对话与导入会话的沙盒（只读的资料与记录、可写的工作区）。 */
   private readonly sandboxes: Sandboxes;
 
@@ -115,6 +119,11 @@ export class Studium {
       newId: (prefix) => this.newId(prefix),
       iso: () => this.iso(),
     });
+    this.notes = new CrossNotes({
+      hub: () => this.hub,
+      learned: this.learned,
+      iso: () => this.iso(),
+    });
     this.sandboxes = new Sandboxes({
       hub: () => this.hub,
       learned: this.learned,
@@ -133,6 +142,10 @@ export class Studium {
         return goal === undefined
           ? ''
           : `${describeGoal(goal.goal)}\n（谈定于 ${localMinute(goal.goal.at)}）`;
+      },
+      notesOf: async (id) => {
+        const main = await this.projectOf(id);
+        return main === undefined ? '' : this.notes.render(main, id);
       },
       imagesDir: o.inputs.imagesDir,
       projectOf: (id) => this.projectOf(id),
@@ -276,6 +289,8 @@ export class Studium {
             this.importLocalTool(sessionId),
             this.setOwnerTool(sessionId),
             await this.askProjectTool(sessionId),
+            this.noteTool(sessionId, 'main'),
+            this.readNotesTool(sessionId),
           ];
         case 'talk':
           return [
@@ -285,13 +300,17 @@ export class Studium {
             this.settleGoalTool(sessionId),
             ...this.threadTools(sessionId, 'talk'),
             await this.askProjectTool(sessionId),
+            this.noteTool(sessionId, 'talk'),
+            this.readNotesTool(sessionId),
           ];
         case 'loop':
-          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），自己读、自己定这次的边界（W12 §2）
+          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），自己读、自己定这次的边界（W12 §2）；
+          // 跨次记录在沙盒里当只读文件读（W13）
           return [
             ...this.loopTools(sessionId),
             ...this.threadTools(sessionId, 'loop'),
             await this.askProjectTool(sessionId),
+            this.noteTool(sessionId, 'loop'),
           ];
         case 'import':
           return this.importTools(sessionId);
@@ -1479,12 +1498,12 @@ export class Studium {
             title,
             anchorLine: cited.at(-1)?.line ?? 0,
           });
-          // 程序附上它自己一开始就该知道的：学习对话 = 只读区有什么；谈方向 = 项目说明
+          // 程序附上它自己一开始就该知道的：学习对话 = 只读区有什么；谈方向 = 项目说明；两边都附跨次记录（W13）
           const facts = `\n\n（程序附）${
             kind === 'loop'
               ? describeSandbox(await this.sandboxes.forLoop(s.sessionId))
               : await this.instructionsBlock(mainId)
-          }`;
+          }\n\n${await this.notes.render(mainId, s.sessionId)}`;
           await this.hub.message(s.sessionId, {
             from: mainId,
             text: `${(a.instructions as string).trim()}${facts}`,
@@ -2071,6 +2090,60 @@ export class Studium {
         loopId,
       ),
     ];
+  }
+
+  // ───────────── 跨次记录（W13，#83，试验中） ─────────────
+
+  /** 记一条跨次记录：主对话、谈方向、学习对话都有；学到哪只有学习对话能记（`cross-notes.ts` 核对）。 */
+  private noteTool(sessionId: string, kind: 'main' | 'talk' | 'loop'): ToolSpec {
+    return {
+      name: 'note_down',
+      description: `记一条跨次记录（以后的对话开场都看得到）。kind：${
+        kind === 'loop'
+          ? 'progress = 学到哪（这次的边界、停在哪、留下没讲的、学习者说下次再说的；收尾那一句程序会自己列，不用另记）；'
+          : ''
+      }learner = 学习者说过的长期的话（quote 照抄他原话里的一段，text 写当时在说什么）；withdraw = 学习者说某条不对或要忘掉（replaces 指那条，text 写他怎么说的）。只记事实，不记你对学习者的判断。lines = 这件事在本对话里的行号。学习者改了主意：新记一条，replaces 指旧的。`,
+      input: {
+        kind: z.enum(['progress', 'learner', 'withdraw']),
+        text: z.string().describe('一句话（200 字以内）'),
+        quote: z.string().optional().describe('kind = learner 时必填：学习者原话里的一段，照抄'),
+        lines: z.array(z.number().int()).min(1).describe('出处：本对话里的行号'),
+        scope: z
+          .enum(['project', 'learner'])
+          .optional()
+          .describe('learner = 学习者明说以后都这样、学什么都适用；不填就是本项目'),
+        replaces: z
+          .string()
+          .optional()
+          .describe('被替换或撤回的那条的编号（跨次记录里那条末尾的编号）'),
+      },
+      run: async (a) => {
+        const r = await this.notes.write(sessionId, {
+          kind: a.kind as 'progress' | 'learner' | 'withdraw',
+          text: a.text as string,
+          lines: a.lines as number[],
+          ...(typeof a.quote === 'string' ? { quote: a.quote } : {}),
+          ...(a.scope === 'project' || a.scope === 'learner' ? { scope: a.scope } : {}),
+          ...(typeof a.replaces === 'string' ? { replaces: a.replaces } : {}),
+        });
+        return typeof r === 'string' ? err(r) : ok(`已记：${r.id}`);
+      },
+    };
+  }
+
+  /** 读本项目的跨次记录（主对话、谈方向；学习对话在沙盒里读 只读/跨次记录.md）。 */
+  private readNotesTool(sessionId: string): ToolSpec {
+    return {
+      name: 'read_notes',
+      description:
+        '读本项目的跨次记录：各次学习学到哪、收尾那一句、学习者说过的长期的话，每条带编号与出处。',
+      input: {},
+      run: async () => {
+        const mainId = await this.projectOf(sessionId);
+        if (mainId === undefined) return err('找不到这个对话所属的项目');
+        return ok(await this.notes.render(mainId, sessionId));
+      },
+    };
   }
 
   /** 讨论串自己起的标题（照 Claude 项目的讨论串标题）：开头起一个，做的事变了再改。 */

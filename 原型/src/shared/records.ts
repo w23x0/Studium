@@ -642,7 +642,8 @@ export type LogRecord =
   | ThreadDeleted
   | TurnStopped
   | MessageEdited
-  | MessageReaction;
+  | MessageReaction
+  | CrossNote;
 
 // ───────────── W12：一个对话一个模型（发话、删除、停止与编辑、表情） ─────────────
 
@@ -983,4 +984,27 @@ export interface SourceReport {
 export interface NumberedRecord {
   line: number;
   record: LogRecord;
+}
+
+// ───────────── W13：跨次记录（#83，试验中） ─────────────
+
+/**
+ * 跨次记录的一条（W13）：对话当场记下的事实——学到哪（progress，只有学习对话记）、学习者说过的长期的话
+ * （learner，照原话），或撤回一条（withdraw）。记在写它的那个会话的正本里，编号 = `会话 id:L行号`；
+ * 只追加，改主意 / 撤回都是新记一条、用 replaces 指旧的。对学习者的判断不记，读的一方按出处读原文。
+ */
+export interface CrossNote {
+  type: 'cross_note';
+  at: string;
+  kind: 'progress' | 'learner' | 'withdraw';
+  /** progress：这次的边界、停在哪、留下没讲的；learner：当时在说什么；withdraw：学习者怎么说的。 */
+  text: string;
+  /** learner：学习者原话里的一段（程序核对它出现在 lines 里学习者那句话中）。 */
+  quote?: string;
+  /** 出处：本会话正本里的行号。 */
+  lines: number[];
+  /** 谁读得到：project = 本项目；learner = 学习者的所有项目（学习者明说以后都这样才用）。 */
+  scope: 'project' | 'learner';
+  /** 被替换 / 撤回的那条（`会话 id:L行号`）。 */
+  replaces?: string;
 }
