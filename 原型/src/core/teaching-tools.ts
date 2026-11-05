@@ -1,11 +1,10 @@
 // 教学工具：学习对话沙盒只读区里的可选做法参考（agent 起草、未经实验）；一份 = 一个 Markdown 文件。
 // 官方的在 原型/教学工具/（agent 起草），学习者自己的在 <数据>/teaching-tools/（可加，预留第三方）。
 // 每次列出 / 取用时现读目录，学习者放进新文件不用重启。学习对话不挂工具：这些是沙盒里的只读文件
-//（程序把 loadAll 的结果写进 只读/教学工具/）；读了哪几份由程序从沙盒动作里按路径标签取，不由模型自报。
+//（程序把 loadAll 的结果写进 只读/教学工具/）；读了哪几份由程序在沙盒动作上按路径打标签（hub.ts），不由模型自报。
 import { readFile, readdir } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { TEACHING_TOOL_TAG, type NumberedRecord } from '../shared/records.ts';
 import { isNotFound } from './log/session-log.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -138,18 +137,4 @@ export class TeachingTools {
     const all = (await this.loadAll()).tools;
     return all.find((t) => t.name === nameOrFile) ?? all.find((t) => t.file === nameOrFile);
   }
-}
-
-/**
- * 从一次学习的沙盒动作里读：读了哪几份教学工具、在哪一行（读失败的、Bash 里 cat 的都不算）。
- * 程序按路径打的标签，不是模型自报（记录/教法记录与教学工具.md「用了什么：程序照记」）。
- */
-export function toolUsesOf(recs: NumberedRecord[]): { name: string; line: number }[] {
-  return recs.flatMap((r) =>
-    r.record.type === 'sandbox_action' &&
-    r.record.ok &&
-    r.record.tag?.startsWith(TEACHING_TOOL_TAG) === true
-      ? [{ name: r.record.tag.slice(TEACHING_TOOL_TAG.length), line: r.line }]
-      : [],
-  );
 }

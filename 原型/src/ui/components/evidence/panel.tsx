@@ -4,9 +4,6 @@ import { ChevronLeftIcon, XIcon } from 'lucide-react';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import type { PanelTarget } from '../../panel.ts';
 import { W } from '../../wording.ts';
-import { DisclosureView } from './disclosure-view.tsx';
-import { LoopView } from './loop-view.tsx';
-import { LearnedView } from '../longterm/learned.tsx';
 import { MaterialsView, PageView, SearchView } from '../sources/materials-view.tsx';
 import { SourceView } from '../sources/source-view.tsx';
 
@@ -43,12 +40,6 @@ export function EvidencePanel(props: {
 /** 面板标题：当前看的是什么。 */
 function panelTitle(t: PanelTarget): string {
   switch (t.kind) {
-    case 'loop':
-      return W.panelLoopTitle;
-    case 'learned':
-      return W.learned;
-    case 'disclosure':
-      return W.disclosure;
     case 'materials':
     case 'search':
       return W.materialsNav;
@@ -61,12 +52,6 @@ function panelTitle(t: PanelTarget): string {
 function View(props: { target: PanelTarget }) {
   const t = props.target;
   switch (t.kind) {
-    case 'loop':
-      return <LoopView key={t.loopId} loopId={t.loopId} focusLine={t.focusLine} />;
-    case 'learned':
-      return <LearnedView key={t.loopId ?? ''} loopId={t.loopId} />;
-    case 'disclosure':
-      return <DisclosureView />;
     case 'materials':
       return <MaterialsView key={t.material ?? ''} material={t.material} />;
     case 'search':

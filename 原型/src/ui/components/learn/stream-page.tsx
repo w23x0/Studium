@@ -3,7 +3,8 @@
 // 改过的文字原地标出改了什么（11-04：删掉的划线、新加的接在后面并在左边标一道，`text-changes.ts`），换过版的组件一直标着“第 N 版”，都能点开看以前的样子（§4.7）。鼠标移到一块上左下角显示时间（§4.2）。
 // 学习者选中页面上的几段文字（或点组件上方的名字）再说话：每选一处，输入框里多一块（能删），光标回到输入框，发送时一起带上
 // （11-05 #92 起可多处；改过的文字里大段删除先折起来）。生成中途能停，停下后能改刚发的
-// 那句（§4.4）；在做什么由程序从工具调用得出一行（§4.5）。学习结束后照样能说话，说了就重开（§2）。
+// 那句（§4.4）；在做什么由程序从工具调用得出一行（§4.5）。学习结束后照样能说话，说了就重开（§2）；结束照 Claude 讨论串，
+// 页面上没有收尾那一句、没有确认条（W19）。旧的学习（不是竖流开的）只读：没有输入框，区域图那批的组件接在第一次交上那里。
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ChevronDownIcon,
@@ -18,13 +19,13 @@ import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
 import { InputComposer } from '@/components/input/composer';
 import { MathPreview } from '@/components/input/math-preview';
 import type { MessageQuote, NumberedRecord } from '../../../shared/records.ts';
+import type { OldComponentsResponse } from '../../../shared/screen.ts';
 import { inlineParts, replayStream, type StreamBlock } from '../../../shared/stream-page.ts';
+import { threadEnded } from '../../../shared/threads.ts';
 import { localMinute } from '../../../shared/time.ts';
 import { latestContext } from '../../../shared/usage.ts';
 import { api } from '../../api.ts';
-import { CurrentSessionContext } from '../../panel.ts';
-import { closeLine } from '../../screen-model.ts';
-import { lastEditable, loopSide, loopState } from '../../thread-model.ts';
+import { lastEditable } from '../../thread-model.ts';
 import { textChanges } from '../../text-changes.ts';
 import { W } from '../../wording.ts';
 import { WP } from '../../wording-page.ts';
@@ -32,14 +33,17 @@ import { WT } from '../../wording-tools.ts';
 import { TopBar } from '../top-bar.tsx';
 import { ComponentFrame } from './component-frame.tsx';
 import type { LearnPageProps, LearnStream } from './learn-page.tsx';
-import { CloseLineView, LoopBar } from './loop-parts.tsx';
 
 export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
   const { sessionId, onError } = props;
   const { records, draft, running, activity } = props.stream;
-  const state = useMemo(() => loopState(records), [records]);
+  const opened = records[0]?.record;
+  // 不是竖流开的旧学习只读（W19 起和竖流一起显示）
+  const old = opened?.type !== 'session_opened' || opened.page !== 'stream';
+  const grid = old && opened?.type === 'session_opened' && opened.screens === true;
   const context = useMemo(() => latestContext(records), [records]);
-  const ended = state.kind === 'ended';
+  const ended = useMemo(() => threadEnded(records), [records]);
+  const oldComponents = useOldComponents(sessionId, grid, onError);
   const page = useMemo(() => replayStream(records), [records]);
   const atOf = useMemo(() => new Map(records.map((r) => [r.line, r.record.at])), [records]);
   const components = useMemo(
@@ -52,8 +56,6 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
     [page],
   );
   const failed = useMemo(() => failedSinceText(records), [records]);
-  const side = useMemo(() => loopSide(records), [records]);
-  const close = useMemo(() => closeLine(records), [records]);
   const editable = useMemo(() => lastEditable(records, running), [records, running]);
   // 选中的几处：quotes = 已收进输入框的；pending = 正在选着的那段（选区没了、松开鼠标时收进来）。
   // 两个都另存一份 ref：事件里和发送时读的是最新的
@@ -146,79 +148,98 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
   };
 
   return (
-    <CurrentSessionContext.Provider value={sessionId}>
-      <div className="flex h-full min-h-0 flex-col" data-testid="learn-page" data-page="stream">
-        <div className="shrink-0">
-          <TopBar
-            crumbs={[
-              {
-                label: props.projectTitle || W.projectHome,
-                onClick: props.onProject,
-                testId: 'crumb-project',
-              },
-              { label: props.title, testId: 'crumb-current' },
-            ]}
-            right={props.headerExtra}
-          />
-        </div>
-        <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
-          <div
-            className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 py-4"
-            data-testid="learn-stream"
-          >
-            {page.on.length === 0 && draft === '' && !running && (
-              <p className="text-muted-foreground">{WP.starting}</p>
-            )}
-            {page.on
+    <div className="flex h-full min-h-0 flex-col" data-testid="learn-page" data-page="stream">
+      <div className="shrink-0">
+        <TopBar
+          crumbs={[
+            {
+              label: props.projectTitle || W.projectHome,
+              onClick: props.onProject,
+              testId: 'crumb-project',
+            },
+            { label: props.title, testId: 'crumb-current' },
+          ]}
+          right={props.headerExtra}
+        />
+      </div>
+      <div ref={scroller} className="min-h-0 flex-1 overflow-y-auto">
+        <div
+          className="mx-auto flex w-full max-w-[52rem] flex-col gap-4 px-4 py-4"
+          data-testid="learn-stream"
+        >
+          {page.on.length === 0 && draft === '' && !running && (
+            <p className="text-muted-foreground">{WP.starting}</p>
+          )}
+          {old && (
+            <p className="text-muted-foreground text-sm" data-testid="old-loop-note">
+              {WP.oldLoop}
+            </p>
+          )}
+          {[
+            ...page.on
               .filter((b) => b.inline !== true)
-              .map((b) => (
-                <StreamBlockView
-                  key={b.id}
-                  b={b}
-                  at={atOf.get(b.line)}
-                  components={components}
+              .map((b) => ({
+                line: b.line,
+                key: b.id,
+                node: (
+                  <StreamBlockView
+                    b={b}
+                    at={atOf.get(b.line)}
+                    components={components}
+                    loopId={sessionId}
+                    live={!ended && !old}
+                    editable={!old && b.kind === 'learner' && editable === b.line}
+                    onPickComponent={pick}
+                    onEdit={(text) => api.editLast(sessionId, text)}
+                    onError={onError}
+                  />
+                ),
+              })),
+            // 旧的区域图学习：组件放在第一次交上那里，显示最后一版
+            ...oldComponents.map((c) => ({
+              line: c.line,
+              key: `old:${c.component}`,
+              node: (
+                <ComponentFrame
                   loopId={sessionId}
-                  live={!ended}
-                  editable={b.kind === 'learner' && editable === b.line}
-                  onPickComponent={pick}
-                  onEdit={(text) => api.editLast(sessionId, text)}
+                  component={c.component}
+                  version={c.version}
+                  blocks={c.blocks}
+                  live={false}
+                  title={c.pointer}
                   onError={onError}
                 />
-              ))}
-            <CloseLineView sessionId={sessionId} close={close} />
-            {!running && failed !== undefined && (
-              <p className="text-destructive text-sm" data-testid="learn-failed">
-                {WP.failed(failed.notice)}
-              </p>
-            )}
-            {running && (
-              <div className="border-primary/30 border-s-2 ps-4" data-testid="learn-draft">
-                {draft !== '' ? (
-                  <PlainMarkdown text={draft} streaming />
-                ) : (
-                  <span
-                    className="text-muted-foreground flex items-center gap-2 text-sm"
-                    data-testid="learn-activity"
-                  >
-                    <LoaderIcon className="size-4 animate-spin" />
-                    {activity ?? WT.writing}
-                  </span>
-                )}
-              </div>
-            )}
-          </div>
+              ),
+            })),
+          ]
+            .sort((a, b) => a.line - b.line)
+            .map((x) => (
+              <Fragment key={x.key}>{x.node}</Fragment>
+            ))}
+          {!running && failed !== undefined && (
+            <p className="text-destructive text-sm" data-testid="learn-failed">
+              {WP.failed(failed.notice)}
+            </p>
+          )}
+          {running && (
+            <div className="border-primary/30 border-s-2 ps-4" data-testid="learn-draft">
+              {draft !== '' ? (
+                <PlainMarkdown text={draft} streaming />
+              ) : (
+                <span
+                  className="text-muted-foreground flex items-center gap-2 text-sm"
+                  data-testid="learn-activity"
+                >
+                  <LoaderIcon className="size-4 animate-spin" />
+                  {activity ?? WT.writing}
+                </span>
+              )}
+            </div>
+          )}
         </div>
-        <div className="mx-auto flex w-full max-w-[52rem] shrink-0 flex-col gap-2 px-4 pb-4">
-          <LoopBar
-            sessionId={sessionId}
-            records={records}
-            side={side}
-            running={running}
-            onError={onError}
-            onBack={props.onBackToMain}
-            projectId={props.projectId}
-            projectTitle={props.projectTitle}
-          />
+      </div>
+      <div className="mx-auto flex w-full max-w-[52rem] shrink-0 flex-col gap-2 px-4 pb-4">
+        {!old && (
           <div data-testid="learn-composer" className="flex flex-col gap-1">
             <InputComposer
               attached={
@@ -254,11 +275,9 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
               placeholder={
                 ended
                   ? WP.reopenPlaceholder
-                  : side.shelved !== undefined
-                    ? W.shelvedPlaceholder
-                    : running
-                      ? '可以接着说（这一轮说完再交给它）…'
-                      : '回复…（可先选中页面上的几段）'
+                  : running
+                    ? '可以接着说（这一轮说完再交给它）…'
+                    : '回复…（可先选中页面上的几段）'
               }
               running={running}
               onStop={async () => {
@@ -275,9 +294,9 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
               {...(context !== undefined ? { contextTokens: context } : {})}
             />
           </div>
-        </div>
+        )}
       </div>
-    </CurrentSessionContext.Provider>
+    </div>
   );
 }
 
@@ -640,4 +659,27 @@ function quoteOfSelection(
     ...(before !== '' ? { before } : {}),
     ...(after !== '' ? { after } : {}),
   };
+}
+
+/** 旧的区域图学习（10-28、10-29）的组件：每个一份最后一版；不是那批的不去取。 */
+function useOldComponents(
+  sessionId: string,
+  grid: boolean,
+  onError: (e: unknown) => void,
+): OldComponentsResponse['components'] {
+  const [components, setComponents] = useState<OldComponentsResponse['components']>([]);
+  useEffect(() => {
+    if (!grid) return;
+    let alive = true;
+    api
+      .oldComponents(sessionId)
+      .then((r) => {
+        if (alive) setComponents(r.components);
+      })
+      .catch(onError);
+    return () => {
+      alive = false;
+    };
+  }, [sessionId, grid, onError]);
+  return components;
 }

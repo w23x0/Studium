@@ -48,7 +48,7 @@ const TEACHING_TOOLS_DIR = '教学工具';
 const WHAT: Record<string, string> = {
   教学工具: '教学工具（可选的做法参考，不常驻提示词）',
   学过的记录:
-    '以往的学习（每次一份对话原文 <学习 id>-对话.md，带日期；收尾那一句；索引.md 列全部）与学习者在别处学过的（外部导入：笔记、对话记录）',
+    '以往的学习（每次一份对话原文 <学习 id>-对话.md，带日期；索引.md 列全部）与学习者在别处学过的（外部导入：笔记、对话记录）',
   '本次对话.md': '本次学习的对话原文，带行号（压缩后按行号读回）',
   '项目说明.md': '学习者写给这个项目的长期要求（项目说明）；与学习者当场说的冲突时以当场说的为准',
   '方向.md': '这个项目谈定的方向（学成后能做什么、每块为什么学），带日期',
@@ -320,6 +320,7 @@ export class Sandboxes {
         : []),
     ];
     if (l.endNote !== undefined) {
+      // 旧数据：没合上就结束时的原话（loop_ended）
       const endLine = await this.lineOf(l.loopId, 'loop_ended');
       lines.push(
         `- 结束原话${endLine !== undefined ? `（${l.loopId}:L${String(endLine)}）` : ''}：${l.endNote}`,
@@ -333,7 +334,7 @@ export class Sandboxes {
     }
     if (l.closing !== undefined) {
       lines.push(
-        `- 收尾那一句（${l.loopId}:L${String(l.closing.line)}，学习对话写的，只是指针；学习者会什么以对话原文里他自己说的、做的为准）：${l.closing.summary}`,
+        `- 旧数据·收尾那一句（${l.loopId}:L${String(l.closing.line)}，学习对话写的，只是指针；学习者会什么以对话原文里他自己说的、做的为准）：${l.closing.summary}`,
       );
     }
     if (l.verdict !== undefined) {

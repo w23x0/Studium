@@ -19,11 +19,8 @@ import { IdTokens } from './ids.ts';
 export const ACTIONS = [
   'createProject',
   'learnerSays',
-  'confirmClose',
-  'objectToVerdict',
   // 批 3a：项目资料、期限
   'changeMaterials',
-  'setDeadline',
   // W8 / W9 / W11：加资料、删、重试、改归属、上传改判、删导入、项目说明
   // （上传本身带文件内容，不进录带）
   'addMaterial',
@@ -31,10 +28,7 @@ export const ACTIONS = [
   'retryMaterial',
   'setMaterialOwner',
   'reroute',
-  'removeImport',
   'setInstructions',
-  // 批 5：恢复搁置的学习
-  'resumeLoop',
   // 批 10b：资料来源说明
   'addSourceNote',
   // 左栏：项目改名（置顶、从列表删掉、对话改名只记在 ui/sidebar.jsonl，不进正本，不录）
@@ -43,6 +37,8 @@ export const ACTIONS = [
   'stopTurn',
   'editLast',
   'deleteThread',
+  // W19：学习者在讨论串栏点结束
+  'endThread',
 ] as const;
 export type ActionName = (typeof ACTIONS)[number];
 

@@ -1,15 +1,11 @@
 // 核心与界面之间的 HTTP / SSE 协议。界面只认这里的类型，不碰核心实现。
 import type {
   ConversationKind,
-  LearnerObjection,
   NumberedRecord,
   ObjectionTarget,
-  Ticket,
   SourceReport,
   SourceReportKind,
-  Understanding,
 } from './records.ts';
-import type { Import } from './protocol-learned.ts';
 
 export type * from './protocol-learned.ts';
 export * from './protocol-cross.ts';
@@ -27,13 +23,10 @@ export interface SessionSummary {
 }
 
 /**
- * 派生层记下的对话状态（只记事实，不分组）：
- * guarded 收尾那一句到了（旧数据：守卫交回）、等学习者点“学完了” · closed / unclosed 学习合上 / 没合上就结束 · shelved 学习停着 ·
- * candidates 旧数据：找资料交回候选、等学习者勾 · ended 谈方向谈定、讨论串结束（旧数据还有找资料勾完、写产出与阶段复盘）。
- * `guarded` 这个名字是守卫时期留下的（存在派生索引的 mark 列里，值不改）：现在表示“收尾那一句到了、等学习者确认”，与守卫无关。
- * `shelved` 只来自旧数据的搁置（11-04 起界面与模型都不再触发）。
+ * 派生层记下的对话状态（只记事实；有记号 = 已结束，W19）：ended 讨论串结束（学习对话 W19 起也是它；旧数据还有谈方向谈定、
+ * 找资料勾完、写产出与阶段复盘）· closed / unclosed 旧数据：学习合上 / 没合上就结束（照旧显示当时的状态）。
  */
-export type SessionMark = 'guarded' | 'closed' | 'unclosed' | 'shelved' | 'candidates' | 'ended';
+export type SessionMark = 'closed' | 'unclosed' | 'ended';
 
 export interface ProjectResponse {
   mainSessionId: string;
@@ -94,221 +87,8 @@ export function modelInfoOf(stored: string): ModelInfo {
   };
 }
 
-/** 依据视图里的一次改动：改前、改后、时间（工单 W6 §4.2）。 */
-export interface TicketEditView {
-  line: number;
-  at: string;
-  before: Ticket;
-  after: Ticket;
-}
-
-/**
- * 依据视图里的单子：平铺 —— `Ticket` 各字段照给（现在的这张；卡选项上是卡上原样），
- * `refs` = 单子里每个依据串回查的结果（去重、按出现顺序），`edits` = 本次学习的改动（按行号升序）。
- */
-export type TicketView = Ticket & { refs: SourceView[]; edits: TicketEditView[] };
-
-/** 选项出处里的一条，已尽量回查。resolved 为假 = 查不到（原样给出 raw）。 */
-export interface SourceView {
-  raw: string;
-  kind: 'loop_line' | 'book_line' | 'unknown';
-  resolved: boolean;
-  label: string;
-  /** 回查到的内容：学习那一行的原话、书里那几行原文。 */
-  detail?: string;
-  sessionId?: string;
-  line?: number;
-  file?: string;
-  /** book_line 查到原文时：资料、行段、那几行（带行号）、小节标题；在资料浏览里打开用同一组值。 */
-  material?: string;
-  from?: number;
-  to?: number;
-  lines?: NumberedLine[];
-}
-
-export interface CardOptionView {
-  index: number;
-  title: string;
-  reason: string;
-  recommended: boolean;
-  chosen: boolean;
-  ticket: TicketView;
-  /** 旧卡没有出处：为空（不编）。 */
-  sources?: SourceView[];
-}
-
-export interface CardView {
-  cardId: string;
-  /** 卡贴在哪个项目的主对话、第几行。 */
-  mainSessionId: string;
-  line: number;
-  at: string;
-  trigger: string;
-  recommended: number;
-  navSessionId: string;
-  model: ModelInfo;
-  chosen?: { option: number; loopSessionId: string };
-  /** 这次出卡的路线决定（写在主对话里，紧挨着卡的前一行）；旧卡没有。 */
-  routeDecision?: RouteDecisionView;
-  options: CardOptionView[];
-}
-
-export interface CardResponse {
-  card: CardView;
-}
-
-/** 学习者异议的视图：inLoop = 已作为学习者原话进了这次学习（line 是它在那份正本里的行）。 */
-export interface ObjectionView extends LearnerObjection {
-  inLoop: boolean;
-  line?: number;
-}
-
-export interface QuoteView {
-  line: number;
-  at: string;
-  /** 这一行的原话；该行不是对话行时为空。 */
-  text?: string;
-}
-
-/** 一条实际理解带它引用的那几行的原话（工单 W6 §4.2）。 */
-export type UnderstandingView = Understanding & { quotes: QuoteView[] };
-
-/**
- * 这次出卡 / 这次学习中途改线时导航作出的路线决定与理由（记录/单子与路线.md「路线决定与理由」）。
- * `superseded` = 同一处之后还有别的路线决定（旧决定留着，标“已被取代”）。
- */
-export interface RouteDecisionView {
-  line: number;
-  at: string;
-  navSessionId: string;
-  /** 为什么出卡 / 改线：合上 / 没合上 / 学习者要求 / 补前置合上 …… */
-  trigger: string;
-  decision: string;
-  reason: string;
-  basis: SourceView[];
-  superseded: boolean;
-}
-
-/** 收尾那一句（10-31 起取代守卫判定）：学习对话调 request_close 写的。 */
-export interface ClosingView {
-  /** 那条 close_requested 在学习正本里的行号。 */
-  line: number;
-  at: string;
-  summary: string;
-  /** 模型申请时写的理由（可没有）。 */
-  reason?: string;
-  /** 这一句之前学习者点过“我觉得懂了”（那条 close_requested 的行号）。 */
-  learnerAsked?: number;
-}
-
-/** 旧数据：守卫判定（10-31 起不再产生）。 */
-export interface GuardVerdictView {
-  /** 判定在那次学习正本里的行号（异议指向它）。 */
-  line: number;
-  at: string;
-  closed: boolean;
-  basis: string;
-  /** 程序核对不过时的原因。 */
-  problem?: string;
-  guardSessionId: string;
-  /** 判定记录里记的实际执行模型；没有才退回会话模型。 */
-  model: ModelInfo;
-  /** 学习者实际表现出的理解与证据强度，逐条带依据行的原话；没写就是空数组。 */
-  understanding: UnderstandingView[];
-  /** 守卫引用的学习行与那几行的原文。 */
-  quotes: QuoteView[];
-  /** 触发这次判定的收口申请。 */
-  request?: { line: number; at: string; by: 'model' | 'learner'; reason: string };
-  objections: ObjectionView[];
-}
-
-/** 一次学习里取用的一份教学工具：哪份、在那份正本的哪一行（程序从工具调用里记的）。 */
-export interface TeachingToolUseView {
-  name: string;
-  line: number;
-}
-
-export type LoopStatus = 'in_progress' | 'closed' | 'unclosed';
-
-export interface LoopEvidence {
-  sessionId: string;
-  title: string;
-  mainSessionId?: string;
-  openedAt: string;
-  status: LoopStatus;
-  endedAt?: string;
-  endNote?: string;
-  /** 单子：现在的这张（学习者改过就是改后的）。 */
-  ticket?: TicketView;
-  /** 没合上就结束：导航读那次对话出下一张卡时写的路线决定与理由。 */
-  routeDecision?: RouteDecisionView;
-  /** 学习对话（教学侧）用的模型。 */
-  model: ModelInfo;
-  /** 收尾那一句，按行号升序（10-31 起）。 */
-  closings: ClosingView[];
-  /** 旧数据：守卫判定。 */
-  verdicts: GuardVerdictView[];
-  /** 这次学习取用过的教学工具（按取用顺序，含重复取用）。 */
-  teachingToolsUsed: TeachingToolUseView[];
-  /** 这次学习里的全部异议（含已结束后记在异议存放处的）。 */
-  objections: ObjectionView[];
-  /** 搁置着（可恢复）；与 status 无关：搁置的那次 status 仍是 in_progress。 */
-  shelved?: { at: string; note: string };
-  /** 旧数据（W12 前）：没合上的那次被哪些新学习接着学（导航开的“接着学”）。 */
-  resumedBy?: { loopSessionId: string; title: string }[];
-}
-
-export interface LoopEvidenceResponse {
-  loop: LoopEvidence;
-}
-
-/** 对守卫判定提异议：line = 判定在那次学习正本里的行号。 */
-export interface VerdictObjectionRequest {
-  line: number;
-  text: string;
-}
-
-export interface ObjectionResponse {
-  objection: ObjectionView;
-}
-
-export interface ObjectionsResponse {
-  /** 异议存放处里的异议（不含还在进行的学习里作为原话追加的那种）。 */
-  objections: ObjectionView[];
-}
-
 export interface SessionModelResponse {
   model: ModelInfo;
-}
-
-/** 外发披露：内容送往哪个服务、各类会话用的模型。 */
-export interface DisclosureResponse {
-  /** 内容送往的服务。 */
-  service: string;
-  /** 经什么通道。 */
-  route: string;
-  /** 适配器名。 */
-  adapter: string;
-  /** 会送出去的内容。 */
-  sends: string[];
-  /** 会联网搜索的会话种类与说明（来自程序实际放开的名单）。 */
-  webSearch?: {
-    sessions: { kind: ConversationKind; label: string }[];
-    note?: string;
-  };
-  /**
-   * 各类会话配的模型与强度；
-   * model 为空 = 没单独指定（用服务默认，实际执行的模型记在每条记录里）。
-   */
-  sessions: {
-    kind: DisclosureRowKind;
-    label: string;
-    model: string | null;
-    effort: string | null;
-  }[];
-  note: string;
-  /** 输入（图片、语音）各送往哪里（批 4）。 */
-  inputs: InputDisclosure[];
 }
 
 /** 各类会话的日常叫法（外发披露、记录出处里给学习者看）。 */
@@ -326,9 +106,6 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   editor: '页面编辑员（旧数据）',
   import: '导入处理',
 };
-
-/** 外发披露里一行是哪种会话（W12 起不再有会话之外单独配模型的：子代理、框架小模型随区域图学习页撤掉）。 */
-export type DisclosureRowKind = ConversationKind;
 
 export type { ObjectionTarget };
 
@@ -672,20 +449,6 @@ export interface ProjectMaterialsRequest {
   remove?: string[];
 }
 
-export interface ProjectDeadlineRequest {
-  /** YYYY-MM-DD；null = 清掉期限。 */
-  deadline: string | null;
-  note?: string;
-}
-
-export interface ProjectDeadlineResponse {
-  mainSessionId: string;
-  deadline?: string;
-  deadlineNote?: string;
-  /** 离期限还有几天（负数 = 已过）。 */
-  daysLeft?: number;
-}
-
 // ───────────── 导入入口与项目页（工单 W9） ─────────────
 
 /** 一次上传里的一份（单个文件，或整个笔记文件夹）分到了哪边、落到了哪。 */
@@ -727,12 +490,6 @@ export interface ProjectInstructionsResponse {
 }
 
 export interface ProjectInstructionsRequest {
-  text: string;
-}
-
-/** 一条外部导入（笔记 / 对话记录）的 md 全文。 */
-export interface ImportTextResponse {
-  import: Import;
   text: string;
 }
 

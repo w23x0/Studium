@@ -128,7 +128,8 @@ export class CrossNotes {
 
   /**
    * 给模型看的清单（学习对话、谈方向开场附上；学习对话沙盒里的 跨次记录.md；read_notes）。
-   * 本项目每次学习（程序从正本列：状态、时间、收尾那一句或结束原话，加学习对话记的学到哪）+ 学习者说过的长期的话。
+   * 本项目每次学习（程序从正本列：状态、时间，加学习对话记的学到哪；旧数据另列收尾那一句或结束原话）+ 学习者说过的长期的话。
+   * W19 起没有收尾那一句：这次做了什么、停在哪就是那次最后说的话（原文在沙盒里），这里只列学到哪。
    * self = 正在读的这个对话（列到它自己时标出来）。
    */
   async render(project: string, self?: string): Promise<string> {
@@ -158,10 +159,10 @@ export class CrossNotes {
       }
       if (l.closing !== undefined) {
         out.push(
-          `  - 收尾那一句：${l.closing.summary}〔出处 ${l.loopId}:L${String(l.closing.line)}〕`,
+          `  - 旧数据·收尾那一句：${l.closing.summary}〔出处 ${l.loopId}:L${String(l.closing.line)}〕`,
         );
       }
-      if (l.endNote !== undefined) out.push(`  - 没合上，结束时：${l.endNote}`);
+      if (l.endNote !== undefined) out.push(`  - 旧数据·没合上，结束时：${l.endNote}`);
     }
     const words = notes.filter((x) => x.note.kind === 'learner');
     const here = words.filter((x) => x.note.scope === 'project');
