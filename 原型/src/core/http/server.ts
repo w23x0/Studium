@@ -42,11 +42,14 @@ import { BadRequestError, type Studium } from '../studium.ts';
 import { InputError, type Inputs } from '../inputs.ts';
 import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { inputsRoute } from './inputs-routes.ts';
+import { modelRoute } from './model-routes.ts';
+import type { ModelSettings } from '../model/settings.ts';
 import { screenRoute } from './screen-routes.ts';
 import { sidebarRoute } from './sidebar-routes.ts';
 import type { SidebarStore } from '../sidebar.ts';
 
 export interface ServerOptions {
+  models?: ModelSettings;
   hub: Hub;
   studium: Studium;
   /** 原文与出处（批 2a）：资料浏览、检索、原件页面、教材出处、资料报错。 */
@@ -137,6 +140,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     method: string,
   ): Promise<void> {
     const { hub, studium, sources } = opts;
+    if (await modelRoute(req, res, parts, method, hub, opts.models)) return;
     if (
       await crossRoute(
         req,

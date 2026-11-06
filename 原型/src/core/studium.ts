@@ -634,13 +634,17 @@ export class Studium {
    * 读工具答一次；还没跑过的开一个临时会话，附上它的当前事实。被问的一方正本里记 project_asked，不进它的上下文。
    */
   private async askProject(from: string, target: string, question: string): Promise<string> {
-    const adapter = this.hub.modelName;
+    const selected = this.hub.selectedModel(target, 'main');
+    const adapter = selected.adapter.name;
     const token = (await this.hub.records(target))
       .map((r) => r.record)
-      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
+      .filter((r) => r.type === 'model_session')
       .at(-1);
-    const resume = token?.type === 'model_session' ? token.token : undefined;
-    const conv = this.hub.adapter.open({
+    const resume =
+      token?.type === 'model_session' && token.adapter === adapter ? token.token : undefined;
+    const conv = selected.adapter.open({
+      ...(selected.model !== undefined ? { model: selected.model } : {}),
+      ...(selected.effort !== undefined ? { effort: selected.effort } : {}),
       systemPrompt: this.o.prompts.main,
       tools: [
         ...this.readTools(target),
@@ -657,7 +661,9 @@ export class Studium {
       for await (const e of conv.send({
         role: 'program',
         text: ask,
-        ...(resume === undefined ? { preface: await this.mainPreface(target, 0, false) } : {}),
+        ...(resume === undefined
+          ? { preface: await this.mainPreface(target, Number.POSITIVE_INFINITY, true) }
+          : {}),
       })) {
         if (e.kind === 'assistant_text') texts.push(e.text);
         if (e.kind === 'turn_error') throw new Error(e.notice ?? e.reason);
@@ -960,7 +966,7 @@ export class Studium {
     if (last === undefined) return '';
     const text = await this.sandboxes.transcriptText(last.sessionId);
     const file = await this.sandboxes.learningFile(last.sessionId);
-    return `# 本项目最近一次学习的整份原文：${last.sessionId}「${last.title}」（最后活动 ${localMinute(last.lastAt ?? last.openedAt)}；${file !== undefined ? `和只读区 ${file} 下半截同一份，` : ''}引用写 ${last.sessionId}:L行号）\n\n${text !== '' ? text : '（这次还没有对话）'}`;
+    return `# 本项目最近一次学习的整份原文：${last.sessionId}「${last.title}」（最后活动 ${localMinute(last.lastAt ?? last.openedAt)}，现在 ${localMinute(this.iso())}，隔了 ${gap(Date.now() - Date.parse(last.lastAt ?? last.openedAt))}；${file !== undefined ? `和只读区 ${file} 下半截同一份，` : ''}引用写 ${last.sessionId}:L行号）\n\n${text !== '' ? text : '（这次还没有对话）'}`;
   }
 
   /**
@@ -1978,4 +1984,12 @@ function formatDuration(ms: number): string {
   if (h < 1) return `${String(Math.round(ms / 60_000))} 分钟`;
   if (h < 48) return `${String(Math.round(h))} 小时`;
   return `${String(Math.round(h / 24))} 天`;
+}
+
+/** 开场写“隔了多久”：上次学习到现在。 */
+function gap(ms: number): string {
+  const m = Math.round(ms / 60_000);
+  if (m < 60) return `${String(m)} 分钟`;
+  const h = Math.round(ms / 3_600_000);
+  return h < 48 ? `${String(h)} 小时` : `${String(Math.round(h / 24))} 天`;
 }

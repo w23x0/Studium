@@ -122,8 +122,24 @@ export class Recorder {
   }
 
   wrapModel(inner: ModelAdapter): ModelAdapter {
+    const select = inner.selection?.bind(inner);
+    const quota = inner.quota?.bind(inner);
     return {
-      name: inner.name,
+      get name() {
+        return inner.name;
+      },
+      ...(select !== undefined
+        ? {
+            selection: (
+              id: string,
+              kind: Parameters<NonNullable<ModelAdapter['selection']>>[1],
+            ) => {
+              const selected = select(id, kind);
+              return { ...selected, adapter: this.wrapModel(selected.adapter) };
+            },
+          }
+        : {}),
+      ...(quota !== undefined ? { quota } : {}),
       ...(inner.disclosure !== undefined ? { disclosure: inner.disclosure } : {}),
       open: (spec) => this.wrapConversation(inner, spec),
     };

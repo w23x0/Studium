@@ -83,12 +83,13 @@ export const Thread: FC<{
   onStop?: () => Promise<void>;
   /** 停下后改自己刚发的那句、重新生成。 */
   onEditLast?: (text: string) => Promise<void>;
-  /** 发一条消息（文字 + 附图）。 */
+  /** 发一条消息。 */
   onSend: SendInput;
-  /** 拖进非图片文件时（只有主对话给）：走项目的上传，回给学习者看的（上传结果那一条，可点改）。 */
+  /** 拖进文件时（只有主对话给）：走项目的上传，回给学习者看的（上传结果那一条，可点改）。 */
   onFiles?: (files: PickedFile[]) => Promise<ReactNode>;
   /** 这个对话现在的上下文大小（W14 §2），输入框下方靠右显示。 */
   contextTokens?: number | undefined;
+  modelControls?: ReactNode;
 }> = ({
   welcome = '今天想学点什么？',
   header,
@@ -101,6 +102,7 @@ export const Thread: FC<{
   onSend,
   onFiles,
   contextTokens,
+  modelControls,
 }) => {
   const isEmpty = useAuiState((s) => s.thread.messages.length === 0);
   const viewport = useStickToBottom();
@@ -161,6 +163,7 @@ export const Thread: FC<{
             {footer}
             {!disabled && (
               <InputComposer
+                modelControls={modelControls}
                 placeholder={placeholder}
                 onSend={onSend}
                 running={running}

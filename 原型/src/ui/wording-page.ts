@@ -11,8 +11,6 @@ export const WP = {
       : '这一轮没跑成，可以再说一次。',
   // ── 竖流学习页（10-29 #74 试验）──
   /** 学习者选中页面上一段再说话时，输入框上方那条。 */
-  quoting: (text: string) => `回在：『${text}』`,
-  quotingComponent: (name: string) => `回在：组件「${name}」`,
   /** 大段删除折起来时那一行（11-05 #92）；n = 删掉的字数（不算空白）。 */
   removedFolded: (n: number) => `删掉了一段（${String(n)} 字），点开看`,
   removedFold: '收起删掉的这段',
@@ -21,6 +19,20 @@ export const WP = {
   tidiedHide: '收起整理后的',
   /** 学习者的话前面：他是选中哪处说的。 */
   quotedLine: (text: string) => `『${text}』`,
+  /** 过程记录（11-06）折起来那一行。 */
+  processHead: (live: boolean, ms: number, thoughts: number, steps: number) => {
+    const time =
+      ms < 60_000
+        ? `${String(Math.round(ms / 1000))} 秒`
+        : `${String(Math.round(ms / 60_000))} 分钟`;
+    return [
+      live ? '正在进行' : '过程',
+      time,
+      ...(thoughts > 0 ? [`想了 ${String(thoughts)} 段`] : []),
+      ...(steps > 0 ? [`做了 ${String(steps)} 步`] : []),
+    ].join(' · ');
+  },
+  processFailed: '（没成功）',
   /** 组件上方的名字（点一下 = 就这个组件说话）。 */
   componentName: (name: string) => `组件「${name}」`,
   pickComponent: '就这个组件说',

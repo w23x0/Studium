@@ -1,7 +1,6 @@
 // W14 §3 额度：订阅各窗口的已用百分比与重置时间。打开账号菜单或使用情况面板时问一次（核心只放内存）；
 // 适配器没有额度（别家模型）就不显示；一次都没拿到写“暂时拿不到”。
 import { useEffect, useState } from 'react';
-import { GaugeIcon } from 'lucide-react';
 import { api } from '../../api.ts';
 import { localMinute } from '../../../shared/time.ts';
 import type { QuotaResponse } from '../../../shared/usage.ts';
@@ -30,39 +29,13 @@ function useQuota(): QuotaResponse | undefined {
   return q;
 }
 
-/** 账号菜单里的一行：额度 · 5 小时 23% · 7 天 41%。 */
-export function QuotaMenuRow() {
-  const q = useQuota();
-  if (q?.available === false) return null;
-  const title = q?.windows
-    .map(
-      (w) =>
-        `${w.label} ${U.quotaUsed(w.percent)}${w.resetsAt !== undefined ? `，${U.quotaResets(localMinute(w.resetsAt))}` : ''}`,
-    )
-    .concat(q.at !== undefined ? [U.quotaAsOf(localMinute(q.at))] : [])
-    .join('\n');
-  return (
-    <div
-      data-testid="quota-menu-row"
-      className="flex items-center gap-2 px-2 py-1.5 [&_svg]:size-4 [&_svg]:shrink-0"
-      title={title}
-    >
-      <GaugeIcon className="text-muted-foreground" />
-      <span className="flex-1">{U.quota}</span>
-      <span className="text-muted-foreground text-xs">
-        {q === undefined
-          ? U.quotaLoading
-          : q.windows.length === 0
-            ? U.quotaNone
-            : q.windows.map((w) => `${w.label} ${String(Math.round(w.percent))}%`).join(' · ')}
-      </span>
-    </div>
-  );
-}
-
 /** 使用情况面板最上面：每个窗口一行，带条和重置时间。 */
 export function QuotaBlock() {
   const q = useQuota();
+  return <QuotaDetails quota={q} />;
+}
+
+export function QuotaDetails({ quota: q }: { quota: QuotaResponse | undefined }) {
   if (q?.available === false) return null;
   return (
     <section data-testid="quota-block" className="flex flex-col gap-2">

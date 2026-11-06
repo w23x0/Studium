@@ -24,6 +24,8 @@ export interface LearnStream {
   running: boolean;
   /** 正在做什么（W12 §4.5：程序从工具调用得出的一行）。 */
   activity: string | undefined;
+  /** 正在流出来的思考概要（成块记进正本后清掉）。 */
+  thinking: string;
   loaded: boolean;
 }
 
@@ -39,6 +41,7 @@ function useStream(sessionId: string, onError: (e: unknown) => void): LearnStrea
   const [draft, setDraft] = useState('');
   const [running, setRunning] = useState(false);
   const [activity, setActivity] = useState<string | undefined>(undefined);
+  const [thinking, setThinking] = useState('');
   const [loaded, setLoaded] = useState(false);
   useEffect(() => {
     let alive = true;
@@ -53,16 +56,22 @@ function useStream(sessionId: string, onError: (e: unknown) => void): LearnStrea
         setActivity(e.text);
         setDraft('');
       }
+      if (e.type === 'thinking') {
+        setThinking((t) => t + e.text);
+        setActivity(undefined);
+      }
       if (e.type === 'running') {
         setRunning(e.running);
         if (!e.running) {
           setDraft('');
           setActivity(undefined);
+          setThinking('');
         }
       }
       if (e.type === 'record') {
         // 这一轮最后写的话记下就已经在页面上了，正在写的那段随之收起
         if (e.record.type === 'assistant_message') setDraft('');
+        if (e.record.type === 'model_raw') setThinking('');
         setRecords((rs) =>
           rs.some((r) => r.line === e.line) ? rs : [...rs, { line: e.line, record: e.record }],
         );
@@ -86,5 +95,5 @@ function useStream(sessionId: string, onError: (e: unknown) => void): LearnStrea
       stop();
     };
   }, [sessionId, onError]);
-  return { records, draft, running, activity, loaded };
+  return { records, draft, running, activity, thinking, loaded };
 }

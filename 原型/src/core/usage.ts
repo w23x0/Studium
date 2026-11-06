@@ -1,6 +1,7 @@
 // W14 §4 使用情况面板：本项目各会话的 token，打开面板时从正本现算（不缓存、不写正本）。
 // 输入、缓存写入、缓存读取取 model_raw 里助手消息的 usage（同一条消息一个内容块一行，按消息 id 去重）；
 // 输出取 context_used.output 按轮加总，算给那一轮的模型（model_raw 里的 output_tokens 只是流式开头的数）。
+// Codex 已在适配器归一：使用 context_used.parts，不把 app-server 事件当成 Claude 消息。
 import type { SessionSummary } from '../shared/protocol.ts';
 import type { NumberedRecord } from '../shared/records.ts';
 import type { TokenParts, UsageModelColumn, UsageResponse, UsageThread } from '../shared/usage.ts';
@@ -66,7 +67,7 @@ export async function projectUsage(deps: UsageDeps, project: string): Promise<Us
 /** 一个会话按模型分的四类 token。 */
 function sessionUsage(records: readonly NumberedRecord[]): Map<string, TokenParts> {
   const messages = new Map<string, { model: string; parts: Partial<TokenParts> }>();
-  const outputs: { model: string; output: number }[] = [];
+  const turns: { model: string; parts: Partial<TokenParts> }[] = [];
   let current: string | undefined;
   for (const { record: r } of records) {
     if (r.type === 'model_raw') {
@@ -76,8 +77,8 @@ function sessionUsage(records: readonly NumberedRecord[]): Map<string, TokenPart
       messages.set(m.id, { model: m.model, parts: m.parts });
     } else if (r.type === 'model_used') {
       current = r.model;
-    } else if (r.type === 'context_used' && r.output > 0) {
-      outputs.push({ model: current ?? '（模型未知）', output: r.output });
+    } else if (r.type === 'context_used') {
+      turns.push({ model: current ?? '（模型未知）', parts: r.parts ?? { output: r.output } });
     }
   }
   const out = new Map<string, TokenParts>();
@@ -90,7 +91,7 @@ function sessionUsage(records: readonly NumberedRecord[]): Map<string, TokenPart
     return p;
   };
   for (const m of messages.values()) add(at(m.model), m.parts);
-  for (const o of outputs) add(at(o.model), { output: o.output });
+  for (const t of turns) add(at(t.model), t.parts);
   return out;
 }
 

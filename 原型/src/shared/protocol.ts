@@ -291,8 +291,11 @@ export interface ErrorResponse {
 
 /** SSE 推给界面的事件。 */
 export type ServerEvent =
+  | { type: 'model_settings'; sessionId: string }
   | { type: 'record'; sessionId: string; line: number; record: NumberedRecord['record'] }
   | { type: 'delta'; sessionId: string; text: string }
+  /** 正在流出来的思考概要（学习页过程记录，11-06）。 */
+  | { type: 'thinking'; sessionId: string; text: string }
   | { type: 'running'; sessionId: string; running: boolean }
   /** 正在做什么（W12 §4.5）：程序从当前的工具调用得出的一行，不显示内容。 */
   | { type: 'activity'; sessionId: string; text: string }

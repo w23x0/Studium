@@ -7,7 +7,7 @@ export interface Profile {
   /** 不填用 SDK 默认模型（具体模型实现期按基准定）。 */
   model?: string;
   /** 不填用 SDK 默认强度。 */
-  effort?: Effort;
+  effort?: string;
 }
 
 export type ProfileKey = ConversationKind;
@@ -33,7 +33,12 @@ export const DEFAULT_PROFILES: Profiles = {
   import: { model: 'sonnet', effort: 'medium' },
 };
 
-const EFFORTS: readonly string[] = ['low', 'medium', 'high', 'xhigh', 'max'];
+/** Codex 的模型由账号返回的默认值或启动配置决定，不继承 Claude 的别名。 */
+export const CODEX_PROFILES: Profiles = {
+  main: { effort: 'low' },
+  loop: { effort: 'high' },
+  import: { effort: 'medium' },
+};
 
 /** 在默认之上叠加覆盖（如环境变量 STUDIUM_PROFILES 的 JSON）；写错的直接报错。 */
 export function mergeProfiles(overrides: unknown, base: Profiles = DEFAULT_PROFILES): Profiles {
@@ -49,9 +54,14 @@ export function mergeProfiles(overrides: unknown, base: Profiles = DEFAULT_PROFI
       );
     }
     if (RETIRED_PROFILE_KEYS.includes(kind)) continue;
+    if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
+      throw new Error(`STUDIUM_PROFILES.${kind} 要是包含 model / effort 的对象`);
+    }
     const p = raw as Profile;
-    if (p.effort !== undefined && !EFFORTS.includes(p.effort)) {
-      throw new Error(`强度只能是 ${EFFORTS.join(' / ')}，收到 ${p.effort}`);
+    for (const field of ['model', 'effort'] as const) {
+      if (p[field] !== undefined && (typeof p[field] !== 'string' || p[field].trim() === '')) {
+        throw new Error(`STUDIUM_PROFILES.${kind}.${field} 要是非空字符串`);
+      }
     }
     out[kind as ProfileKey] = { ...out[kind as ProfileKey], ...p };
   }

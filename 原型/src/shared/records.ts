@@ -9,6 +9,7 @@ import type {
 } from './records-longterm.ts';
 import type { CrossDomain } from './records-cross.ts';
 import type { PageAction, PageRollbackReason } from './page.ts';
+import type { TokenParts } from './usage.ts';
 
 export type * from './records-longterm.ts';
 export type * from './records-cross.ts';
@@ -216,6 +217,8 @@ export interface ContextOpened {
 
 /** 模型侧报告的实际执行模型名（不是别名、不是适配器名）；名字变了才追加一条。 */
 export interface ModelUsed {
+  /** 本轮采用的配置；用于重启后判断对话栏的待生效选择。 */
+  selection?: { model?: string; effort?: string };
   type: 'model_used';
   at: string;
   adapter: string;
@@ -734,12 +737,16 @@ export interface ProjectAsked {
 
 /** 一轮跑完时主模型上下文有多大（10-29 起，所有会话；只记、不显示）：最后一次回话的 input + 缓存读 + 缓存写。 */
 export interface ContextUsed {
+  /** 服务报告的上下文上限；旧记录或未报告时省略。 */
+  limit?: number;
   type: 'context_used';
   at: string;
   /** 上下文大小（token）。 */
   tokens: number;
   /** 这一轮主模型输出了多少（token，各次回话相加）。 */
   output: number;
+  /** 适配器已归一的本轮用量；旧记录没有时仍从 Claude 原始消息计算输入与缓存。 */
+  parts?: TokenParts;
 }
 
 /** 主模型派出的子代理开始了（框架自带的子代理机制，后台跑；会话/页面子代理.md）。 */

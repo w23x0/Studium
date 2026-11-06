@@ -4,7 +4,7 @@
 // · 交回原文（ModelEvent 里的 raw，由核心逐条记进正本）。
 import type { z } from 'zod';
 import type { ConversationKind } from '../../shared/records.ts';
-import type { QuotaWindow } from '../../shared/usage.ts';
+import type { QuotaWindow, TokenParts } from '../../shared/usage.ts';
 import type { ProfileKey, Profiles } from './profiles.ts';
 
 export interface ToolResult {
@@ -42,6 +42,8 @@ export interface SandboxSpec {
 }
 
 export interface ConversationSpec {
+  model?: string;
+  effort?: string;
   /** 系统提示：只写定义、边界、输出格式。 */
   systemPrompt: string;
   /** 本会话能用的工具；写权限靠给什么工具来卡。 */
@@ -96,8 +98,10 @@ export interface TurnInput {
 export type ModelEvent =
   /** 流式增量文字，只给界面显示，不进正本。 */
   | { kind: 'text_delta'; text: string }
-  /** 一条完整的助手消息（本轮可能有多条）。 */
-  | { kind: 'assistant_text'; text: string }
+  /** 正在流出来的思考概要：只推给界面（成块后在 raw 里记）。 */
+  | { kind: 'thinking_delta'; text: string }
+  /** 一条完整的助手消息（本轮可能有多条）；interim 有值时使用服务明确给出的阶段。 */
+  | { kind: 'assistant_text'; text: string; interim?: boolean }
   /** 适配层收到的原始消息，原样进正本。 */
   | { kind: 'raw'; payload: unknown }
   /** 续接凭据（第一次拿到或变化时报一次）。 */
@@ -109,7 +113,7 @@ export type ModelEvent =
   /** 主模型开始调一个工具（W12 §4.5 正在做什么）：工具名与参数，只给界面显示一行，不进正本。 */
   | { kind: 'activity'; tool: string; input: Record<string, unknown> }
   /** 一轮跑完时主模型上下文多大（最后一次回话的 input + 缓存读 + 缓存写）与这一轮输出了多少（token）。 */
-  | { kind: 'usage'; context: number; output: number }
+  | { kind: 'usage'; context: number; output: number; parts?: TokenParts; limit?: number }
   /** 本轮结束。 */
   | { kind: 'turn_end' }
   /** 本轮失败；对话仍可继续。notice = 服务交回的报错原句（不是模型的话，不当 assistant_text 交）。 */
@@ -152,6 +156,16 @@ export interface ModelAdapter {
   readonly name: string;
   /** 内容送往哪个服务；没有就是不外发（或还没声明）。 */
   readonly disclosure?: ModelDisclosure;
+  /** 在轮开始时取一次，整个轮固定使用这个适配器和配置。 */
+  selection?(
+    sessionId: string,
+    kind: ConversationKind,
+  ): {
+    adapter: ModelAdapter;
+    key: string;
+    model?: string;
+    effort?: string;
+  };
   open(spec: ConversationSpec): ModelConversation;
   /**
    * 订阅额度各窗口（W14 §3）：有活着的模型对话就问一次，再交回最后一次拿到的值（只在内存里）；

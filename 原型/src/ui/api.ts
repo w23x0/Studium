@@ -15,8 +15,6 @@ import type {
   SourceReportRequest,
   SourceReportResponse,
   SourceReportsResponse,
-  MessageImageInput,
-  UploadAttachmentResponse,
   ProjectMaterialsResponse,
   UploadsResponse,
   SourceNoteField,
@@ -24,6 +22,12 @@ import type {
   SourceNotesResponse,
   MineruTokenBody,
 } from '../shared/protocol.ts';
+import type {
+  Engine,
+  EngineSettings,
+  ConversationModelSettings,
+  ModelSelection,
+} from '../shared/model-settings.ts';
 import type { MessageQuote } from '../shared/records.ts';
 import type { QuotaResponse, UsageResponse } from '../shared/usage.ts';
 import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
@@ -82,6 +86,18 @@ const listeners = new Set<(e: ServerEvent) => void>();
 let source: EventSource | undefined;
 
 export const api = {
+  modelSettings: () => call<EngineSettings>('/settings/models'),
+  setEngine: (engine: Engine) =>
+    call<EngineSettings>('/settings/models', { method: 'PUT', body: JSON.stringify({ engine }) }),
+  accountAction: (engine: Engine, action: 'login' | 'logout' | 'cancel') =>
+    call<EngineSettings>(`/settings/models/${engine}/${action}`, { method: 'POST' }),
+  conversationModel: (id: string) =>
+    call<ConversationModelSettings>(`/sessions/${id}/model-settings`),
+  setConversationModel: (id: string, engine: Engine, selection: ModelSelection) =>
+    call<ConversationModelSettings>(`/sessions/${id}/model-settings`, {
+      method: 'PUT',
+      body: JSON.stringify({ engine, selection }),
+    }),
   listSessions: () => call<ListSessionsResponse>('/sessions'),
   // ── 额度与使用情况（W14） ──
   quota: () => call<QuotaResponse>('/quota'),
@@ -128,9 +144,6 @@ export const api = {
   send: (
     id: string,
     text: string,
-    images?: MessageImageInput[],
-    /** 学习页：回在某一块下面（W10）。 */
-    replyTo?: { key: string; pointer: string },
     /** 竖流学习页：选中页面上几处再说的（10-29 #74；11-05 #92 起可多处）。 */
     quotes?: MessageQuote[],
   ) =>
@@ -138,8 +151,6 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({
         text,
-        ...(images !== undefined && images.length > 0 ? { images } : {}),
-        ...(replyTo !== undefined ? { replyTo } : {}),
         ...(quotes !== undefined && quotes.length > 0 ? { quotes } : {}),
       }),
     }),
@@ -151,17 +162,6 @@ export const api = {
       body: JSON.stringify({ token }),
     }),
   // ── 输入：图片原样上传 ──
-  uploadImage: async (blob: Blob, name?: string, derivedFrom?: string) => {
-    const res = await fetch(`/api/attachments?${qs({ name, derivedFrom })}`, {
-      method: 'POST',
-      headers: { authorization: `Bearer ${TOKEN}`, 'content-type': blob.type },
-      body: blob,
-    });
-    const body = (await res.json()) as UploadAttachmentResponse & { error?: string };
-    if (!res.ok) throw new Error(body.error ?? `上传失败：${String(res.status)}`);
-    return body.attachment;
-  },
-  /** 原图地址（给 <img src>）。 */
   imageUrl: (attachmentId: string) => withToken(`/api/attachments/${attachmentId}`),
   // ── 依据可见 ──
   // ── 资料的来源说明、外发披露、会话用的模型、对旧守卫判定的异议 ──

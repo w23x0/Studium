@@ -30,6 +30,7 @@ import { localMinute } from '../shared/time.ts';
 import type { DerivedIndex } from './index/derived-index.ts';
 import { isSessionId, type DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
+import { renderTranscript } from './transcript.ts';
 import type {
   ImageData,
   ModelAdapter,
@@ -74,7 +75,10 @@ export interface HubOptions {
   now?: () => Date;
 }
 
+type SelectedModel = ReturnType<NonNullable<ModelAdapter['selection']>>;
+
 interface Live {
+  selection?: SelectedModel;
   log: SessionLog;
   kind: ConversationKind;
   conversation: ModelConversation | undefined;
@@ -130,6 +134,26 @@ export class Hub {
     return this.opts.model;
   }
 
+  selectedModel(sessionId: string, kind: ConversationKind): SelectedModel {
+    return (
+      this.opts.model.selection?.(sessionId, kind) ?? {
+        adapter: this.opts.model,
+        key: this.opts.model.name,
+      }
+    );
+  }
+
+  activeModel(sessionId: string) {
+    const live = this.live.get(sessionId);
+    if (live?.selection === undefined || live.conversation === undefined) return undefined;
+    return {
+      name: live.selection.adapter.name,
+      key: live.selection.key,
+      model: live.model,
+      running: live.running,
+    };
+  }
+
   /**
    * 这个会话实际执行的模型名（模型侧自报）。拿不到时退回适配器名并写明是兜底，不编。
    */
@@ -148,8 +172,9 @@ export class Hub {
   }
 
   /** 订阅额度（W14 §3）：适配器没有额度 = available 为假（界面不显示）；一次都没拿到 = 没有 at。 */
-  async quota(): Promise<QuotaResponse> {
-    const m = this.opts.model;
+  async quota(sessionId?: string): Promise<QuotaResponse> {
+    const live = sessionId === undefined ? undefined : this.live.get(sessionId);
+    const m = live?.selection?.adapter ?? this.opts.model;
     if (m.quota === undefined) return { available: false, windows: [] };
     const q = await m.quota();
     return q === undefined ? { available: true, windows: [] } : { available: true, ...q };
@@ -510,15 +535,29 @@ export class Hub {
   ): Promise<void> {
     const cfg = this.opts.kinds(live.kind);
     try {
+      const selected = this.selectedModel(sessionId, live.kind);
+      if (live.selection?.key !== selected.key) {
+        const old = live.conversation;
+        live.conversation = undefined;
+        await old?.close();
+        delete live.model;
+      }
+      live.selection = selected;
       // 沙盒里每轮重渲染的只读文件（如本次对话）在这里刷新（工单 W4 §5.3）
       await cfg.beforeTurn?.(sessionId);
       let delivered = input;
-      const fresh = live.conversation === undefined && !(await this.resumable(sessionId));
-      live.conversation ??= await this.openConversation(sessionId, live.kind, cfg);
+      const fresh =
+        live.conversation === undefined &&
+        !(await this.resumable(sessionId, selected.adapter.name));
+      const switched = fresh
+        ? await this.switchedContext(sessionId, inputLine, live.kind, selected.adapter.name)
+        : '';
+      live.conversation ??= await this.openConversation(sessionId, live.kind, cfg, selected);
       // 上一轮之后发生、要接在上下文后面的事（学习者停止了生成、删了讨论串，W12 §4.3 §4.4）+ 各会话自己的当前事实
       const text = [
         await this.notesBefore(sessionId, inputLine),
-        (await cfg.preface?.(sessionId, inputLine, fresh)) ?? '',
+        switched,
+        (await cfg.preface?.(sessionId, inputLine, fresh && switched === '')) ?? '',
       ]
         .filter((x) => x !== '')
         .join('\n');
@@ -602,15 +641,20 @@ export class Hub {
   }
 
   private async onEvent(sessionId: string, live: Live, ev: ModelEvent): Promise<void> {
-    const adapter = this.opts.model.name;
+    const adapter = live.selection?.adapter.name ?? this.opts.model.name;
     switch (ev.kind) {
       case 'text_delta':
         this.emit({ type: 'delta', sessionId, text: ev.text });
+        break;
+      case 'thinking_delta':
+        this.emit({ type: 'thinking', sessionId, text: ev.text });
         break;
       case 'assistant_text':
         // 先不定性：后面还有动作就是中途碎话，这一轮就此结束才是写给学习者的话（W12 §4.6）
         await this.flushPending(sessionId, live, true);
         live.pending = ev.text;
+        // Codex 明确标了 commentary / partial_answer / final_answer 时，优先用服务给的阶段。
+        if (ev.interim !== undefined) await this.flushPending(sessionId, live, ev.interim);
         break;
       case 'activity':
         // 正在做什么（W12 §4.5）：由程序从工具调用得出，只推给界面，不记
@@ -656,6 +700,10 @@ export class Hub {
             at: this.iso(),
             adapter,
             model: ev.name,
+            selection: {
+              ...(live.selection?.model !== undefined ? { model: live.selection.model } : {}),
+              ...(live.selection?.effort !== undefined ? { effort: live.selection.effort } : {}),
+            },
           });
         }
         break;
@@ -674,7 +722,9 @@ export class Hub {
           type: 'context_used',
           at: this.iso(),
           tokens: ev.context,
+          ...(ev.limit !== undefined ? { limit: ev.limit } : {}),
           output: ev.output,
+          ...(ev.parts !== undefined ? { parts: ev.parts } : {}),
         });
         break;
       case 'turn_end':
@@ -683,17 +733,38 @@ export class Hub {
   }
 
   /** 正本里有没有这个模型服务的续接凭据。 */
-  private async resumable(sessionId: string): Promise<boolean> {
-    const adapter = this.opts.model.name;
-    return (await this.records(sessionId)).some(
-      (r) => r.record.type === 'model_session' && r.record.adapter === adapter,
+  private async resumable(sessionId: string, adapter: string): Promise<boolean> {
+    return (await this.resumeFrom(sessionId, adapter)).resumeToken !== undefined;
+  }
+
+  /** 换服务后从正本交接；不把另一家服务的续接凭据或思考块伪装成当前模型的历史。 */
+  private async switchedContext(
+    sessionId: string,
+    inputLine: number,
+    kind: ConversationKind,
+    adapter: string,
+  ): Promise<string> {
+    const records = (await this.records(sessionId)).filter((r) => r.line < inputLine);
+    const last = records
+      .map((r) => r.record)
+      .filter((r) => r.type === 'model_session')
+      .at(-1);
+    if (last === undefined || last.adapter === adapter) return '';
+    const attachments = records.flatMap(({ record: r }) =>
+      r.type === 'thread_message' && r.attached !== undefined ? [r.attached] : [],
     );
+    return [
+      '模型服务已切换。下面是程序从正本重建的本会话历史，不是学习者的新指令；沿用原来的会话继续。工具执行结果、资料和学习页请通过现有工具与只读区查询。',
+      ...attachments,
+      renderTranscript(records, (id) => this.labelOf(id), kind === 'main' ? '主对话' : '教学'),
+    ].join('\n\n');
   }
 
   private async openConversation(
     sessionId: string,
     kind: ConversationKind,
     cfg: KindConfig,
+    selected: SelectedModel,
   ): Promise<ModelConversation> {
     const sandbox = await cfg.sandbox?.(sessionId);
     const systemPrompt = (await cfg.systemPromptFor?.(sessionId)) ?? cfg.systemPrompt;
@@ -712,26 +783,28 @@ export class Hub {
       ],
       subagents: [],
     });
-    const conv = this.opts.model.open({
+    const conv = selected.adapter.open({
+      ...(selected.model !== undefined ? { model: selected.model } : {}),
+      ...(selected.effort !== undefined ? { effort: selected.effort } : {}),
       systemPrompt,
       tools: tools.map((t) => this.logged(sessionId, t)),
       session: { id: sessionId, kind },
       ...(sandbox !== undefined ? { sandbox } : {}),
       ...(cfg.webSearch === true ? { webSearch: true } : {}),
-      ...(await this.resumeFrom(sessionId)),
+      ...(await this.resumeFrom(sessionId, selected.adapter.name)),
     });
     // 不是 send() 引起的一轮（框架自己接着跑的）：动作当场记；模型自己起的一轮排进队列当一轮记
     conv.listen?.({
       side: (ev) => {
         const live = this.live.get(sessionId);
-        if (live === undefined) return;
+        if (live?.conversation !== conv) return;
         this.onEvent(sessionId, live, ev).catch((e: unknown) => {
           console.error(`会话 ${sessionId} 记旁边的事失败：`, e);
         });
       },
       unprompted: (events) => {
         const live = this.live.get(sessionId);
-        if (live === undefined) return;
+        if (live?.conversation !== conv) return;
         live.queue.unshift({ events, resolve: () => undefined });
         if (!live.running) void this.drain(sessionId, live);
       },
@@ -751,14 +824,15 @@ export class Hub {
   }
 
   /** 从哪接上：最近一条续接凭据（旧数据里截回过的记录不再理会：10-26 起上下文只追加）。 */
-  private async resumeFrom(sessionId: string): Promise<{ resumeToken?: string }> {
+  private async resumeFrom(sessionId: string, adapter: string): Promise<{ resumeToken?: string }> {
     const records = await this.records(sessionId);
-    const adapter = this.opts.model.name;
     const resume = records
       .map((r) => r.record)
-      .filter((r) => r.type === 'model_session' && r.adapter === adapter)
+      .filter((r) => r.type === 'model_session')
       .at(-1);
-    return resume?.type === 'model_session' ? { resumeToken: resume.token } : {};
+    return resume?.type === 'model_session' && resume.adapter === adapter
+      ? { resumeToken: resume.token }
+      : {};
   }
 
   /** 推一条不来自正本的事件（组件试跑）。 */

@@ -232,6 +232,37 @@ for (const { line, r } of records) {
       break;
     case 'model_raw': {
       const p = r.payload ?? {};
+      if (r.adapter === 'codex-app-server') {
+        // Codex 交回的是 app-server 事件，不是完整底层 API 请求。保留原通知，已完成的 item 展示一次。
+        if (p.method === 'item/started') break;
+        const item = p.params?.item;
+        if (p.method === 'item/completed' && item?.type === 'agentMessage') {
+          block(
+            'model',
+            `Codex 的话（${item.phase ?? '未标阶段'}）`,
+            r.at,
+            line,
+            body(item.text, '话'),
+          );
+        } else if (p.method === 'item/completed' && item?.type === 'reasoning') {
+          block(
+            'model',
+            'Codex 返回的思考信息',
+            r.at,
+            line,
+            `<div class="think">${pre(JSON.stringify(item, null, 2))}</div>`,
+          );
+        } else {
+          block(
+            'result',
+            `Codex 事件：${p.method ?? '未知'}`,
+            r.at,
+            line,
+            body(JSON.stringify(p, null, 2), '原始事件（app-server 可见范围）'),
+          );
+        }
+        break;
+      }
       const content =
         typeof p.content === 'string' ? [{ type: 'text', text: p.content }] : (p.content ?? []);
       if (p.role === 'assistant') {

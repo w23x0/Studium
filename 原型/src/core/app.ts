@@ -14,6 +14,7 @@ import { Originals } from './knowledge/originals.ts';
 import { SourceReports } from './knowledge/source-reports.ts';
 import { SourceNotes } from './knowledge/source-notes.ts';
 import { DataDir, upgradeDataDir } from './log/data-dir.ts';
+import { ModelSettings } from './model/settings.ts';
 import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
 import { SidebarStore } from './sidebar.ts';
@@ -140,12 +141,15 @@ export async function createApp(opts: AppOptions): Promise<App> {
     kinds: studium.kind,
     ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
+  if (inner instanceof ModelSettings)
+    inner.onChange = () => hub.broadcast({ type: 'model_settings', sessionId: '' });
   studium.attach(hub);
   recorder?.attach(hub, studium, inner.name);
   opts.instrument?.(hub, studium);
   // 第一次打开不自动建“项目 1”：没有项目时界面显示全部项目页的空状态，新建时先问想学什么（界面说明 §3）
   const server = await startServer({
     hub,
+    ...(inner instanceof ModelSettings ? { models: inner } : {}),
     sidebar: await SidebarStore.load(join(dataDir.root, 'ui', 'sidebar.jsonl'), opts.now),
     sources,
     cross: { links: cross },
@@ -165,6 +169,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
       // 后台的事（讨论串结束后告诉主对话、导入会话）跑完再关，免得写到一半
       await studium.settled();
       await hub.close();
+      if (inner instanceof ModelSettings) await inner.close();
       index.close();
       await dataDir.release();
     },

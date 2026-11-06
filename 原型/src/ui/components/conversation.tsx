@@ -1,3 +1,4 @@
+import { ConversationControls } from './model/conversation-controls.tsx';
 // 中间的对话页：主对话的外壳；旧数据（谈方向、导航、写产出、阶段复盘、找资料）在这里只读看。
 // 顶上面包屑（项目名回项目对话）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
 // 学习对话（含旧的）都走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
@@ -186,10 +187,11 @@ export function Conversation(props: {
       onEditLast={async (text) => {
         await api.editLast(sessionId, text);
       }}
-      onSend={async (text, images) => {
-        await api.send(sessionId, text, images);
+      onSend={async (text) => {
+        await api.send(sessionId, text);
       }}
       contextTokens={latestContext(records)}
+      modelControls={<ConversationControls key={sessionId} sessionId={sessionId} />}
       // 主对话的输入框拖入非图片文件：不进输入，走项目的上传（工单 W9 §4.1）
       {...(isMain
         ? {

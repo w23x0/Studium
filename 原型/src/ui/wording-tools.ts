@@ -3,6 +3,7 @@
 
 export const WT = {
   writing: '在写…',
+  thinking: '在想…',
   stopped: '停下了',
   stop: '停止',
   edit: '改这句',

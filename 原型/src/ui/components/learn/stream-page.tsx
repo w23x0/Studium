@@ -1,9 +1,10 @@
+import { ConversationControls } from '../model/conversation-controls.tsx';
 // 竖流学习页（W12 起唯一的学习页）：学习对话一个人管页面。页面从正本放一遍算出来（shared/stream-page.ts），
 // 从上往下一列：学习对话每轮最后写的话、学习者的话、学习对话写的组件。组件可以嵌在文字中间（`[[组件:名字]]`，W12 §5.1）；
 // 改过的文字原地标出改了什么（11-04：删掉的划线、新加的接在后面并在左边标一道，`text-changes.ts`），换过版的组件一直标着“第 N 版”，都能点开看以前的样子（§4.7）。鼠标移到一块上左下角显示时间（§4.2）。
-// 学习者选中页面上的几段文字（或点组件上方的名字）再说话：每选一处，输入框里多一块（能删），光标回到输入框，发送时一起带上
-// （11-05 #92 起可多处；改过的文字里大段删除先折起来）。生成中途能停，停下后能改刚发的
-// 那句（§4.4）；在做什么由程序从工具调用得出一行（§4.5）。学习结束后照样能说话，说了就重开（§2）；结束照 Claude 讨论串，
+// 学习者选中页面上的几段文字（或点组件上方的名字）再说话：每选一处，输入框的文字里多一个引用块（能删，只显示开头，11-06），
+// 光标回到输入框，发送时一起带上（改过的文字里大段删除先折起来）。生成中途能停，停下后能改刚发的
+// 那句（§4.4）；在做什么由程序从工具调用得出一行（§4.5），过程留在对话里、能点开（process-fold.tsx）。学习结束后照样能说话，说了就重开（§2）；结束照 Claude 讨论串，
 // 页面上没有收尾那一句、没有确认条（W19）。旧的学习（不是竖流开的）只读：没有输入框，区域图那批的组件接在第一次交上那里。
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
@@ -12,11 +13,9 @@ import {
   HistoryIcon,
   LoaderIcon,
   PencilIcon,
-  QuoteIcon,
-  XIcon,
 } from 'lucide-react';
 import { PlainMarkdown } from '@/components/assistant-ui/markdown-text';
-import { InputComposer } from '@/components/input/composer';
+import { InputComposer, type ComposerHandle } from '@/components/input/composer';
 import { MathPreview } from '@/components/input/math-preview';
 import type { MessageQuote, NumberedRecord } from '../../../shared/records.ts';
 import type { OldComponentsResponse } from '../../../shared/screen.ts';
@@ -25,6 +24,7 @@ import { threadEnded } from '../../../shared/threads.ts';
 import { localMinute } from '../../../shared/time.ts';
 import { latestContext } from '../../../shared/usage.ts';
 import { api } from '../../api.ts';
+import { processGroups } from '../../process-model.ts';
 import { lastEditable } from '../../thread-model.ts';
 import { textChanges } from '../../text-changes.ts';
 import { W } from '../../wording.ts';
@@ -32,11 +32,12 @@ import { WP } from '../../wording-page.ts';
 import { WT } from '../../wording-tools.ts';
 import { TopBar } from '../top-bar.tsx';
 import { ComponentFrame } from './component-frame.tsx';
+import { ProcessFold } from './process-fold.tsx';
 import type { LearnPageProps, LearnStream } from './learn-page.tsx';
 
 export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
   const { sessionId, onError } = props;
-  const { records, draft, running, activity } = props.stream;
+  const { records, draft, running, activity, thinking } = props.stream;
   const opened = records[0]?.record;
   // 不是竖流开的旧学习只读（W19 起和竖流一起显示）
   const old = opened?.type !== 'session_opened' || opened.page !== 'stream';
@@ -57,12 +58,9 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
   );
   const failed = useMemo(() => failedSinceText(records), [records]);
   const editable = useMemo(() => lastEditable(records, running), [records, running]);
-  // 选中的几处：quotes = 已收进输入框的；pending = 正在选着的那段（选区没了、松开鼠标时收进来）。
-  // 两个都另存一份 ref：事件里和发送时读的是最新的
-  const [quotes, setQuotesState] = useState<MessageQuote[]>([]);
-  const [pending, setPendingState] = useState<MessageQuote | undefined>(undefined);
-  const quotesRef = useRef<MessageQuote[]>([]);
+  // 正在选着的那段：选区没了、松开鼠标、发送时收进输入框，变成文字里的一个引用块（11-06）
   const pendingRef = useRef<MessageQuote | undefined>(undefined);
+  const composer = useRef<ComposerHandle>(null);
   const scroller = useRef<HTMLDivElement>(null);
 
   // 学习对话动了页面：滚到这次动过的那块（新内容可能在中间，也可能在最下面）
@@ -80,50 +78,33 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
       ?.scrollIntoView({ block: 'start', behavior: 'smooth' });
   }, [touchKey]);
 
-  const setQuotes = (next: MessageQuote[]) => {
-    quotesRef.current = next;
-    setQuotesState(next);
-  };
-  const setPending = (q: MessageQuote | undefined) => {
-    pendingRef.current = q;
-    setPendingState(q);
-  };
-  const focusComposer = () =>
-    document.querySelector<HTMLTextAreaElement>('[data-testid="learn-composer"] textarea')?.focus();
-
   // 选中页面上一段文字：记成“第几行里的这段”加前后几个字（出自哪块由块上的 data-line 认）。选着的时候先挂着；
   // 选区没了（点进输入框、点别处、开始选下一段）或电脑上松开鼠标，就收进输入框；松开鼠标时光标回到输入框。
   // 手机上长按选字不出 mouseup，靠选区没了时收
+  const keepPending = () => {
+    const p = pendingRef.current;
+    if (p === undefined) return;
+    pendingRef.current = undefined;
+    composer.current?.addQuote(p);
+  };
+  const keepRef = useRef(keepPending);
+  keepRef.current = keepPending;
   useEffect(() => {
-    const keep = () => {
-      const p = pendingRef.current;
-      if (p === undefined) return;
-      pendingRef.current = undefined;
-      setPendingState(undefined);
-      if (!quotesRef.current.some((x) => sameQuote(x, p))) {
-        quotesRef.current = [...quotesRef.current, p];
-        setQuotesState(quotesRef.current);
-      }
-    };
     const onSelect = () => {
       const sel = window.getSelection();
       const text = sel?.toString().trim() ?? '';
       if (sel === null || text === '' || sel.rangeCount === 0) {
-        keep();
+        keepRef.current();
         return;
       }
       const q = quoteOfSelection(sel, text, scroller.current);
       if (q === undefined) return;
       pendingRef.current = q;
-      setPendingState(q);
     };
     const onUp = (e: MouseEvent) => {
       if (pendingRef.current === undefined) return;
       if (!(e.target instanceof Node) || !scroller.current?.contains(e.target)) return;
-      keep();
-      document
-        .querySelector<HTMLTextAreaElement>('[data-testid="learn-composer"] textarea')
-        ?.focus();
+      keepRef.current();
     };
     document.addEventListener('selectionchange', onSelect);
     document.addEventListener('mouseup', onUp);
@@ -133,19 +114,10 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
     };
   }, []);
   const pick = (name: string) => {
-    const q: MessageQuote = { component: name };
-    if (!quotesRef.current.some((x) => sameQuote(x, q))) setQuotes([...quotesRef.current, q]);
-    focusComposer();
+    composer.current?.addQuote({ component: name });
   };
-  const shownQuotes = pending !== undefined ? [...quotes, pending] : quotes;
-  const removeQuote = (i: number) => {
-    if (i < quotes.length) {
-      setQuotes(quotesRef.current.filter((_, k) => k !== i));
-      return;
-    }
-    setPending(undefined);
-    window.getSelection()?.removeAllRanges();
-  };
+  const groups = useMemo(() => (old ? [] : processGroups(records)), [old, records]);
+  const openGroup = running ? groups.find((g) => !g.done) : undefined;
 
   return (
     <div className="flex h-full min-h-0 flex-col" data-testid="learn-page" data-page="stream">
@@ -195,6 +167,18 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
                   />
                 ),
               })),
+            // 模型这一轮的过程记录：排在它开始的地方，留在对话里（11-06 试验）
+            ...groups.map((g) => ({
+              line: g.line,
+              key: `process:${String(g.line)}`,
+              node: (
+                <ProcessFold
+                  group={g}
+                  live={running && !g.done}
+                  thinking={running && !g.done ? thinking : ''}
+                />
+              ),
+            })),
             // 旧的区域图学习：组件放在第一次交上那里，显示最后一版
             ...oldComponents.map((c) => ({
               line: c.line,
@@ -231,8 +215,13 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
                   data-testid="learn-activity"
                 >
                   <LoaderIcon className="size-4 animate-spin" />
-                  {activity ?? WT.writing}
+                  {activity ?? (thinking !== '' ? WT.thinking : WT.writing)}
                 </span>
+              )}
+              {openGroup === undefined && thinking !== '' && (
+                <p className="text-muted-foreground mt-2 text-xs leading-5 whitespace-pre-wrap italic">
+                  {thinking}
+                </p>
               )}
             </div>
           )}
@@ -242,36 +231,9 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
         {!old && (
           <div data-testid="learn-composer" className="flex flex-col gap-1">
             <InputComposer
-              attached={
-                shownQuotes.length > 0 ? (
-                  <div className="flex flex-wrap gap-1.5" data-testid="learn-quotes">
-                    {shownQuotes.map((q, i) => (
-                      <span
-                        key={`${String(i)}:${q.component ?? q.text ?? ''}`}
-                        data-testid="learn-quote"
-                        className={`bg-muted text-muted-foreground flex max-w-full items-center gap-1.5 rounded-md px-2 py-1 text-xs ${
-                          i >= quotes.length ? 'border-foreground/20 border border-dashed' : ''
-                        }`}
-                      >
-                        <QuoteIcon className="size-3 shrink-0" />
-                        <span className="min-w-0 truncate">
-                          {q.component !== undefined
-                            ? WP.quotingComponent(q.component)
-                            : WP.quoting(short(q.text ?? ''))}
-                        </span>
-                        <button
-                          type="button"
-                          aria-label={WP.cancel}
-                          className="hover:text-foreground shrink-0"
-                          onClick={() => removeQuote(i)}
-                        >
-                          <XIcon className="size-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                ) : undefined
-              }
+              modelControls={<ConversationControls key={sessionId} sessionId={sessionId} />}
+              handle={composer}
+              beforeSend={keepPending}
               placeholder={
                 ended
                   ? WP.reopenPlaceholder
@@ -283,12 +245,8 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
               onStop={async () => {
                 await api.stop(sessionId);
               }}
-              onSend={async (text, images) => {
-                const p = pendingRef.current;
-                const all = p !== undefined ? [...quotesRef.current, p] : quotesRef.current;
-                await api.send(sessionId, text, images, undefined, all);
-                setQuotes([]);
-                setPending(undefined);
+              onSend={async (text, quotes) => {
+                await api.send(sessionId, text, quotes);
                 window.getSelection()?.removeAllRanges();
               }}
               {...(context !== undefined ? { contextTokens: context } : {})}
@@ -637,17 +595,6 @@ function Tidied(props: { text: string }) {
         </div>
       )}
     </div>
-  );
-}
-
-/** 同一处（同一行里同一段字、同一个组件）：重复选的不再多放一块。 */
-function sameQuote(a: MessageQuote, b: MessageQuote): boolean {
-  return (
-    a.component === b.component &&
-    a.line === b.line &&
-    a.text === b.text &&
-    a.before === b.before &&
-    a.after === b.after
   );
 }
 

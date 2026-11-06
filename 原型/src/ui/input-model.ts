@@ -1,5 +1,4 @@
-// 输入框的纯转换（批 4）：正在写的公式切段预览、在光标处插入公式、送给模型前要不要缩小。单测覆盖。
-import { MODEL_IMAGE_MAX_BYTES } from '../shared/protocol.ts';
+// 显示学习者的话时把公式切段（`math-preview.tsx`）。
 
 export type Segment =
   | { kind: 'text'; text: string }
@@ -57,56 +56,4 @@ function findClose(text: string, from: number, close: string): number {
     if (text.startsWith(close, j)) return j;
   }
   return -1;
-}
-
-/** 有没有要预览的公式（空公式不算）。 */
-export function hasMath(text: string): boolean {
-  return mathSegments(text).some((s) => s.kind === 'math' && s.tex.trim() !== '');
-}
-
-/** 在选区处插入文字，返回新文字与插入后光标位置。 */
-export function insertAt(
-  text: string,
-  start: number,
-  end: number,
-  insert: string,
-): { text: string; cursor: number } {
-  const a = Math.max(0, Math.min(start, text.length));
-  const b = Math.max(a, Math.min(end, text.length));
-  return { text: text.slice(0, a) + insert + text.slice(b), cursor: a + insert.length };
-}
-
-/** 插入一个公式：行内 `$…$`；单独一行 `$$…$$`，前后不在行首 / 行尾时补换行。 */
-export function insertFormula(
-  text: string,
-  start: number,
-  end: number,
-  latex: string,
-  display: boolean,
-): { text: string; cursor: number } {
-  const tex = latex.trim();
-  if (tex === '') return { text, cursor: end };
-  if (!display) return insertAt(text, start, end, `$${tex}$`);
-  const before = text.slice(0, start);
-  const after = text.slice(end);
-  const lead = before === '' || before.endsWith('\n') ? '' : '\n';
-  const tail = after === '' || after.startsWith('\n') ? '' : '\n';
-  return insertAt(text, start, end, `${lead}$$${tex}$$${tail}`);
-}
-
-/** 送给模型前要不要先缩小一份副本（原图照传、照存）。 */
-export function needsSmallerCopy(size: number): boolean {
-  return size > MODEL_IMAGE_MAX_BYTES;
-}
-
-/** 缩小副本的尺寸：长边不超过 limit，按比例缩。 */
-export function scaledSize(
-  width: number,
-  height: number,
-  limit = 2000,
-): { width: number; height: number } {
-  const long = Math.max(width, height);
-  if (long <= limit) return { width, height };
-  const k = limit / long;
-  return { width: Math.round(width * k), height: Math.round(height * k) };
 }

@@ -82,8 +82,10 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
   });
   const key = spec.profile ?? spec.session?.kind;
   const profile = key !== undefined ? o.profiles?.[key] : undefined;
-  const model = profile?.model ?? o.model;
-  const effort = profile?.effort ?? o.effort;
+  const model = spec.model ?? profile?.model ?? o.model;
+  const effort = claudeEffort(
+    spec.effort === 'default' ? undefined : (spec.effort ?? profile?.effort ?? o.effort),
+  );
   const sb = spec.sandbox;
   // 有沙盒的落到工作区；没有的（主对话等）是数据目录（续接按它找会话文件）
   const cwd = sb !== undefined ? sb.workdir : o.cwd;
@@ -105,7 +107,7 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
     allowedTools: [...spec.tools.map((t) => `mcp__${SERVER}__${t.name}`), ...webTools],
     strictMcpConfig: true,
     includePartialMessages: true,
-    // 思考概要（W12 §7.2）：只存进 model_raw、导出上下文时看，界面不显示、不进别的会话
+    // 思考概要（W12 §7.2）：存进 model_raw；学习页的过程记录显示（11-06），不进别的会话
     thinking: { type: 'adaptive', display: 'summarized' },
     ...(spec.resumeToken !== undefined ? { resume: spec.resumeToken } : {}),
     ...(spec.fork === true && spec.resumeToken !== undefined ? { forkSession: true } : {}),
@@ -149,6 +151,20 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
       : {}),
     env: cleanEnv(),
   };
+}
+
+/** 各家强度名称不同；Claude 的配置在送入 SDK 之前校验。 */
+function claudeEffort(value: string | undefined): Effort | undefined {
+  if (value === undefined) return undefined;
+  if (
+    value === 'low' ||
+    value === 'medium' ||
+    value === 'high' ||
+    value === 'xhigh' ||
+    value === 'max'
+  )
+    return value;
+  throw new Error(`Claude 不支持强度 ${value}；可用：low / medium / high / xhigh / max`);
 }
 
 /** 只读目录（单文件条目给它的父目录，去重）。 */
@@ -364,6 +380,26 @@ export class ClaudeAgentSdkModel implements ModelAdapter {
 
   open(spec: ConversationSpec): ModelConversation {
     return new SdkConversation(spec, this.options, { live: this.live, quota: this.quotaStore });
+  }
+
+  async catalog(): Promise<import('../../shared/model-settings.ts').ModelChoice[]> {
+    const input = new AsyncQueue<SDKUserMessage>();
+    const q = query({
+      prompt: input,
+      options: sdkOptionsFor({ systemPrompt: '', tools: [], ephemeral: true }, this.options),
+    });
+    try {
+      const models = await withTimeout(q.supportedModels(), 15_000);
+      return models.map((m) => ({
+        id: m.value,
+        label: m.displayName,
+        ...(m.resolvedModel !== undefined ? { resolvedModel: m.resolvedModel } : {}),
+        efforts: m.supportedEffortLevels ?? [],
+      }));
+    } finally {
+      input.end();
+      q.close();
+    }
   }
 
   async quota(): Promise<QuotaSnapshot | undefined> {
@@ -714,6 +750,12 @@ class SdkConversation implements ModelConversation {
         ev.delta.type === 'text_delta'
       ) {
         out.push({ kind: 'text_delta', text: ev.delta.text });
+      } else if (
+        msg.parent_tool_use_id === null &&
+        ev.type === 'content_block_delta' &&
+        ev.delta.type === 'thinking_delta'
+      ) {
+        out.push({ kind: 'thinking_delta', text: ev.delta.thinking });
       }
       return out;
     }
@@ -778,9 +820,11 @@ class SdkConversation implements ModelConversation {
       if (last !== undefined && last.context > 0) {
         // 输出取本轮结果里的总数（流式时每条回话上的用量只是开头那一刻的）；没有再按各次回话加
         const total = (msg as { usage?: { output_tokens?: number | null } }).usage?.output_tokens;
+        const limit = msg.modelUsage[this.reportedModel ?? '']?.contextWindow;
         out.push({
           kind: 'usage',
           context: last.context,
+          ...(limit !== undefined ? { limit } : {}),
           output: total ?? used.reduce((n, x) => n + x.output, 0),
         });
       }

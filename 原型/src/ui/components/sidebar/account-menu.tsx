@@ -1,7 +1,13 @@
-// 左栏底部的账号：弹出菜单——额度（W14 §3，打开时问一次）、外观（跟系统 / 浅色 / 深色）、语言（现在只有中文）。
+// 左栏设置：内核与登录、外观、语言；模型、思考强度与额度在对话输入区。
 // MinerU 密钥：临时入口，填了写进 书库处理/.env（PDF 导入要用）。没做的（退出登录）不摆出来。
 import { useEffect, useState } from 'react';
-import { ChevronsUpDownIcon, GlobeIcon, KeyRoundIcon, SunMoonIcon } from 'lucide-react';
+import {
+  ChevronsUpDownIcon,
+  GlobeIcon,
+  KeyRoundIcon,
+  SunMoonIcon,
+  SettingsIcon,
+} from 'lucide-react';
 import {
   Menu,
   MenuContent,
@@ -13,7 +19,7 @@ import {
   MenuTrigger,
 } from '@/components/ui/menu';
 import { cn } from '@/lib/utils';
-import { QuotaMenuRow } from '../usage/quota.tsx';
+import { ModelSettingsDialog } from '../model/settings.tsx';
 import { api } from '../../api.ts';
 import { useTheme, type Theme } from '../../theme.ts';
 import { W } from '../../wording.ts';
@@ -31,6 +37,7 @@ function Avatar() {
 const THEMES: Theme[] = ['system', 'light', 'dark'];
 
 export function AccountMenu(props: { collapsed: boolean }) {
+  const [settingsOpen, setSettingsOpen] = useState(false);
   const [theme, setTheme] = useTheme();
   const [mineru, setMineru] = useState<boolean | undefined>(undefined);
   useEffect(() => {
@@ -72,7 +79,10 @@ export function AccountMenu(props: { collapsed: boolean }) {
           )}
         </MenuTrigger>
         <MenuContent side="top" align="start" className="min-w-52">
-          <QuotaMenuRow />
+          <MenuItem onClick={() => setSettingsOpen(true)}>
+            <SettingsIcon />
+            <span>内核与登录</span>
+          </MenuItem>
           <MenuSubmenu>
             <MenuSubmenuTrigger data-testid="theme-menu">
               <SunMoonIcon />
@@ -112,6 +122,7 @@ export function AccountMenu(props: { collapsed: boolean }) {
           </MenuSubmenu>
         </MenuContent>
       </Menu>
+      {settingsOpen && <ModelSettingsDialog onClose={() => setSettingsOpen(false)} />}
     </>
   );
 }
