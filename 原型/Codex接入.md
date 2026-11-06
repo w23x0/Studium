@@ -38,7 +38,6 @@ Studium 可以经本机 Codex app-server 使用 GPT。当前按 `codex-cli 0.166
 | 换服务       | 不复用另一家服务的凭据，也不回到切换前的旧凭据；从正本附上历史对话与开场附件，另起模型侧会话；正本行号不变                   |
 | 询问别的项目 | `thread/fork` + `ephemeral`，继承上下文但回调只允许本次传入的读工具；不写回源线程                                            |
 | 停止         | `turn/interrupt`；请求失败或迟迟没有结束通知就关闭该进程，下一轮按已存凭据重接                                               |
-| 图片         | 上传的图片以 data URL 发送，不额外把 base64 写入 `model_raw`                                                                 |
 | 文字         | 增量沿用现有 SSE；Codex 明确给出 commentary / partial_answer / final_answer 时据此区分中途说明与回答                         |
 | 用量         | `context_used.parts` 保存本轮归一后的输入、缓存与输出；推理输出已含在输出中，不重复相加；旧 Claude 记录仍按原算法读          |
 | 额度         | 从 `account/rateLimits/read` 与更新通知读取；拿不到时保留上次值，不阻断对话                                                  |

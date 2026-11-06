@@ -5,7 +5,6 @@ import { fileURLToPath } from 'node:url';
 import { CONVERSATION_KINDS, type ConversationKind } from '../shared/records.ts';
 import { Crosslinks } from './crosslinks.ts';
 import { Hub } from './hub.ts';
-import { Inputs } from './inputs.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { Materials } from './knowledge/materials.ts';
@@ -97,8 +96,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     originals,
     notes: await SourceNotes.load(join(dataDir.root, 'knowledge', 'source-notes')),
   });
-  // 附图原样存（W12 §5.6 起原样随消息送给模型，不再转写）
-  const inputs = await Inputs.load({ dir: join(dataDir.root, 'inputs') });
   const studium = new Studium({
     prompts: await loadPrompts(),
     // 学习对话提示词里“页面”那一段（W12 起竖流是唯一的学习页）
@@ -106,7 +103,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     materials,
     sources,
     dataDir: dataDir.root,
-    inputs,
     cross,
   });
   const model = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
@@ -121,7 +117,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     sidebar: await SidebarStore.load(join(dataDir.root, 'ui', 'sidebar.jsonl')),
     sources,
     cross: { links: cross },
-    inputs,
     studium,
     token: opts.token,
     port: opts.port,

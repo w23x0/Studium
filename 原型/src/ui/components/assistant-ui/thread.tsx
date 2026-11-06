@@ -1,6 +1,6 @@
 // 由 assistant-ui 模板 0.0.121（MIT）的 thread.aui.tsx 删减而来：
 // 去掉分支、建议；文字改中文；版式往 Claude 桌面版靠。
-// 输入框换成自己的（components/input/composer.tsx）：图片原样送、语音、公式（批 4）；生成中途能停（W12 §4.4）。
+// 输入框换成自己的（components/input/composer.tsx）；生成中途能停（W12 §4.4）。
 // 鼠标移到消息上左下角显示时间（W12 §4.2）；停下后能改自己刚发的那句（W12 §4.4）；讨论串一张卡片带状态（§4.1）。
 import { MarkdownText } from '@/components/assistant-ui/markdown-text';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
@@ -12,11 +12,9 @@ import {
   useAuiState,
 } from '@assistant-ui/react';
 import { ArrowDownIcon, ArrowRightIcon, LoaderIcon, PencilIcon } from 'lucide-react';
-import { api } from '@/api';
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
 import type { PickedFile } from '@/files';
-import { ImageViewer } from '@/components/input/modal';
 import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
 import { useHighlight } from '@/panel';
@@ -31,7 +29,6 @@ interface MessageMeta {
   line?: number;
   lines?: number[];
   link?: UiLink;
-  images?: string[];
   at?: string;
   edited?: true;
   reaction?: string;
@@ -246,7 +243,6 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
       data-lines={attr}
       className="group/message fade-in animate-in flex scroll-mt-16 flex-col items-end gap-1 px-1 duration-150"
     >
-      {meta.images !== undefined && <SentImages ids={meta.images} />}
       {editing !== undefined ? (
         <div className="flex w-full max-w-[85%] flex-col gap-1.5" data-testid="edit-last">
           <textarea
@@ -321,34 +317,6 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
         )}
       </div>
     </MessagePrimitive.Root>
-  );
-};
-
-/** 学习者随消息附的图：缩略图，点开看原图。 */
-const SentImages: FC<{ ids: string[] }> = ({ ids }) => {
-  const [open, setOpen] = useState<number | undefined>(undefined);
-  const shown = open !== undefined ? ids[open] : undefined;
-  return (
-    <div className="flex max-w-[85%] flex-wrap justify-end gap-1.5" data-testid="message-images">
-      {ids.map((id, i) => (
-        <button
-          key={id}
-          type="button"
-          aria-label={W.viewImage}
-          className="overflow-hidden rounded-xl border"
-          onClick={() => setOpen(i)}
-        >
-          <img src={api.imageUrl(id)} alt={W.imageAlt(i + 1)} className="size-20 object-cover" />
-        </button>
-      ))}
-      {shown !== undefined && (
-        <ImageViewer
-          src={api.imageUrl(shown)}
-          alt={W.imageAlt((open ?? 0) + 1)}
-          onClose={() => setOpen(undefined)}
-        />
-      )}
-    </div>
   );
 };
 

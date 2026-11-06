@@ -39,9 +39,7 @@ import { NotFoundError, type Hub } from '../hub.ts';
 import { NoOriginalError, NoRendererError } from '../knowledge/originals.ts';
 import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
-import { InputError, type Inputs } from '../inputs.ts';
 import { crossRoute, type CrossServices } from './cross-routes.ts';
-import { inputsRoute } from './inputs-routes.ts';
 import { modelRoute } from './model-routes.ts';
 import type { ModelSettings } from '../model/settings.ts';
 import { screenRoute } from './screen-routes.ts';
@@ -54,8 +52,6 @@ export interface ServerOptions {
   studium: Studium;
   /** 原文与出处（批 2a）：资料浏览、检索、原件页面、教材出处、资料报错。 */
   sources: Sources;
-  /** 输入（批 4）：图片原样保存。 */
-  inputs: Inputs;
   /** 资料的来源说明、状态回看（批 10b）。 */
   cross: CrossServices;
   /** 左栏的界面操作（置顶、从列表删掉、对话改名）。 */
@@ -128,7 +124,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       else if (err instanceof NoRendererError) send(res, 501, { error: err.message });
       else if (err instanceof BadRequest || err instanceof BadRequestError)
         send(res, 400, { error: err.message });
-      else if (err instanceof InputError) send(res, err.status, { error: err.message });
       else throw err;
     }
   }
@@ -157,17 +152,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return;
     if (await sidebarRoute(req, res, parts, method, { store: opts.sidebar, hub, studium })) return;
     if (await screenRoute(req, res, parts, method, studium)) return;
-    if (
-      await inputsRoute(
-        req,
-        res,
-        new URL(req.url ?? '/', 'http://localhost'),
-        parts,
-        method,
-        opts.inputs,
-      )
-    )
-      return;
     if (method === 'GET' && (await readRoute(res, parts))) return;
     if (
       parts[1] === 'projects' &&
@@ -316,15 +300,15 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         // 请求体是 JSON null 时当作什么都没给（各动作自己报缺什么）
         const body = ((await readJson(req)) ?? {}) as {
           text?: unknown;
-          images?: unknown;
           replyTo?: unknown;
           quote?: unknown;
           quotes?: unknown;
         };
         switch (action) {
           case 'messages': {
-            // 附了图：记原图（与送给模型的缩小副本），图片原样随消息送给模型（W12 §5.6）
-            const m = opts.inputs.compose(body.text, body.images);
+            if (typeof body.text !== 'string' || body.text.trim() === '') {
+              throw new BadRequest('text 不能为空');
+            }
             // 学习页：在某一块下面回的（W10，会话/学习对话.md §11.3 学习者回话）
             const r = body.replyTo as { key?: unknown; pointer?: unknown } | undefined;
             const replyTo =
@@ -343,8 +327,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
               .filter((q): q is MessageQuote => q !== undefined);
             await studium.learnerSays(
               id,
-              m.text,
-              m.images.length > 0 ? m.images : undefined,
+              body.text,
               replyTo,
               quotes.length > 0 ? quotes : undefined,
             );

@@ -45,7 +45,6 @@ export const modelList = z.object({
       model: z.string(),
       isDefault: z.boolean(),
       supportedReasoningEfforts: z.array(z.object({ reasoningEffort: z.string() })),
-      inputModalities: z.array(z.string()).optional(),
     }),
   ),
   nextCursor: z.string().nullish(),

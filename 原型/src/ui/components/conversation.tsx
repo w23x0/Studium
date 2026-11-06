@@ -128,7 +128,6 @@ export function Conversation(props: {
           line: m.line,
           ...(m.lines ? { lines: m.lines } : {}),
           ...(m.link ? { link: m.link } : {}),
-          ...(m.images ? { images: m.images } : {}),
           ...(m.at !== undefined ? { at: m.at } : {}),
           ...(m.edited ? { edited: m.edited } : {}),
           ...(m.reaction !== undefined ? { reaction: m.reaction } : {}),
@@ -192,7 +191,7 @@ export function Conversation(props: {
       }}
       contextTokens={latestContext(records)}
       modelControls={<ConversationControls key={sessionId} sessionId={sessionId} />}
-      // 主对话的输入框拖入非图片文件：不进输入，走项目的上传（工单 W9 §4.1）
+      // 主对话的输入框拖入文件：不进输入，走项目的上传（工单 W9 §4.1）
       {...(isMain
         ? {
             onFiles: async (files: PickedFile[]) => {

@@ -95,11 +95,6 @@ export interface UserMessage {
   text: string;
   /** 有这一项 = 这句话是学习者对本次学习里第 toLine 行守卫判定提出的异议（原话照记，带标记）。 */
   objection?: { toLine: number };
-  /**
-   * 随这句话附的图片（拍照 / 手写，批 4）。W12 起图片原样随消息送给模型（`sentAs` = 送去的缩小副本）；
-   * 旧数据：转写文字已并进 text，这里记原图与转写的来历。
-   */
-  images?: ImageInput[];
   /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3 学习者回话）：key 只在程序里用，pointer 是那块的一句话。 */
   replyTo?: { key: string; pointer: string };
   /** 竖流学习页：学习者选中页面上一段再说的（第几行里的哪段原文，或哪个组件）。旧行用它；11-05 起写 quotes。 */
@@ -116,24 +111,6 @@ export interface MessageQuote {
   /** 选中那段前后各几个字（11-05 起，#92）：同一行里同样的字出现几次时，靠它认是哪一处。 */
   before?: string;
   after?: string;
-}
-
-/** 学习者消息里的一张图片：原图在输入存放处（只追加）。旧数据带转写（W12 起不再转写，图片原样送给模型）。 */
-export interface ImageInput {
-  /** 原图（学习者选的 / 拍的那张，原样保存）。 */
-  attachmentId: string;
-  /** W12：原图太大时界面缩小的副本，送给模型的是它。 */
-  sentAs?: string;
-  /** 用的哪次转写；学习者没转写、自己写说明时没有。 */
-  transcriptionId?: string;
-  /** 转写用的是界面为转写缩小的副本时，副本的 id（副本记着它出自原图）。 */
-  transcribedFrom?: string;
-  /** 模型转写出的原文（学习者改之前）。 */
-  transcript?: string;
-  /** 旧数据：并进消息里的文字（学习者改过的话与 transcript 不同）；W12 起是空串。 */
-  sent: string;
-  /** 转写用的实际执行模型；取不到时同 model_used 的兜底写法（含“未取到实际执行模型”）。 */
-  model?: string;
 }
 
 export interface AssistantMessage {

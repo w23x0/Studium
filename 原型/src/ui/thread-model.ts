@@ -29,8 +29,6 @@ export interface UiMessage {
   failed?: boolean;
   /** 去另一个对话的入口（开始学的任务、回到某个对话；旧数据里有谈方向）。 */
   link?: { sessionId: string; label: string };
-  /** 学习者随这句话附的图片（原图 id），对话里显示缩略图、可点开。 */
-  images?: string[];
 }
 
 export interface UiContext {
@@ -126,9 +124,6 @@ export function toUiMessages(
           ...(edits.text.has(line) ? { edited: true as const } : {}),
           ...(reactions.has(line) ? { reaction: reactions.get(line) ?? '' } : {}),
           ...(editable === line ? { editable: true as const } : {}),
-          ...(r.images !== undefined && r.images.length > 0
-            ? { images: r.images.map((i) => i.attachmentId) }
-            : {}),
         });
         break;
       case 'assistant_message':

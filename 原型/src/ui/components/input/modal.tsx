@@ -1,4 +1,4 @@
-// 简单的浮层：盖住整页，点背景或按 Esc 关上。看大图、写公式用。
+// 简单的浮层：盖住整页，点背景或按 Esc 关上。
 import { XIcon } from 'lucide-react';
 import { useEffect, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
@@ -47,14 +47,5 @@ export function Modal(props: {
       </div>
     </div>,
     document.body,
-  );
-}
-
-/** 看大图：原图原样显示。 */
-export function ImageViewer(props: { src: string; alt: string; onClose: () => void }) {
-  return (
-    <Modal onClose={props.onClose} label={props.alt} className="p-2 pt-9">
-      <img src={props.src} alt={props.alt} className="max-h-[85vh] max-w-[90vw] object-contain" />
-    </Modal>
   );
 }

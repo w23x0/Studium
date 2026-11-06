@@ -107,7 +107,6 @@ class CodexConversation implements ModelConversation {
   private token: string | undefined;
   private model: string | undefined;
   private effort: string | undefined;
-  private imageInput = true;
   private total = emptyUsage();
   private current: Turn | undefined;
   private closed = false;
@@ -211,7 +210,6 @@ class CodexConversation implements ModelConversation {
         `${selected.model} 不支持强度 ${this.effort}；可用：${selected.supportedReasoningEfforts.map((e) => e.reasoningEffort).join(' / ')}`,
       );
     }
-    this.imageInput = selected.inputModalities?.includes('image') ?? true;
     const base = {
       model: selected.model,
       modelProvider: this.options.api === undefined ? 'openai' : 'studium_api',
@@ -273,17 +271,9 @@ class CodexConversation implements ModelConversation {
       if (turn.stopping || turn.done || this.closed) {
         throw new Error('Codex 本轮在输入送达前已停止');
       }
-      if ((input.images?.length ?? 0) > 0 && !this.imageInput)
-        throw new Error(`${this.model ?? '当前模型'} 不支持图片输入`);
       const result = await this.rpc?.request('turn/start', {
         threadId: this.threadId,
-        input: [
-          ...(input.images ?? []).map((im) => ({
-            type: 'image',
-            url: `data:${im.mime};base64,${im.data.toString('base64')}`,
-          })),
-          { type: 'text', text: modelText(input) },
-        ],
+        input: [{ type: 'text', text: modelText(input) }],
         ...(this.effort !== undefined ? { effort: this.effort } : {}),
       });
       turn.id = z.object({ turn: z.object({ id: z.string() }) }).parse(result).turn.id;
@@ -447,7 +437,7 @@ class CodexConversation implements ModelConversation {
     }
     if (method === 'item/started' || method === 'item/completed') {
       const entry = itemNotification.parse(params).item;
-      if (entry.type === 'userMessage') return; // Hub 已记录输入；不把图片 base64 再存一遍。
+      if (entry.type === 'userMessage') return; // Hub 已记录输入，不再存一遍。
       if (method === 'item/started') {
         if (entry.type === 'agentMessage') turn.streamed.set(entry.id, { text: '' });
         if (entry.type !== 'agentMessage') this.flushText();

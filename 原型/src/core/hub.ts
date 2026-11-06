@@ -16,7 +16,6 @@ import {
 } from '../shared/protocol.ts';
 import {
   type ConversationKind,
-  type ImageInput,
   type MessageQuote,
   type ContextOpened,
   type LogRecord,
@@ -32,7 +31,6 @@ import { isSessionId, type DataDir } from './log/data-dir.ts';
 import { readRecords, SessionLog } from './log/session-log.ts';
 import { renderTranscript } from './transcript.ts';
 import type {
-  ImageData,
   ModelAdapter,
   ModelConversation,
   ModelDisclosure,
@@ -279,15 +277,12 @@ export class Hub {
     input: TurnInput,
     meta: {
       objection?: { toLine: number };
-      images?: ImageInput[];
       /** 这条输入已经记在正本这一行（如学习者在组件上的操作、改过的那句话）：不再另记，只交给模型。 */
       recorded?: number;
       /** 旧数据（区域图学习页）：学习者在某一块下面回的。 */
       replyTo?: { key: string; pointer: string };
       /** 学习页：学习者选中页面上几处再说的（交给模型时开头写明选中了哪几段，11-05 起可多处）。 */
       quotes?: MessageQuote[];
-      /** 学习者附图的字节（W12 §5.6，原样送给模型）与给模型的一句（图在沙盒哪里）。 */
-      attach?: { data: ImageData[]; note?: string };
     } = {},
   ): Promise<{ line: number; done: Promise<void> }> {
     if (this.opts.index.isDeleted(sessionId)) {
@@ -295,7 +290,6 @@ export class Hub {
     }
     const live = await this.ensureLive(sessionId);
     const objection = input.role === 'learner' ? meta.objection : undefined;
-    const images = input.role === 'learner' ? meta.images : undefined;
     const replyTo = input.role === 'learner' ? meta.replyTo : undefined;
     const quotes = input.role === 'learner' ? (meta.quotes ?? []) : [];
     const line =
@@ -308,7 +302,6 @@ export class Hub {
               at: this.iso(),
               text: input.text,
               ...(objection !== undefined ? { objection } : {}),
-              ...(images !== undefined && images.length > 0 ? { images } : {}),
               ...(replyTo !== undefined ? { replyTo } : {}),
               ...(quotes.length > 0 ? { quotes } : {}),
             }
@@ -326,10 +319,7 @@ export class Hub {
           : ''
       }${replyTo !== undefined ? `（回在「${replyTo.pointer}」下面）` : ''}${quotesPrefix(
         quotes,
-      )}${input.text}${meta.attach?.note !== undefined ? `\n${meta.attach.note}` : ''}`,
-      ...(meta.attach !== undefined && meta.attach.data.length > 0
-        ? { images: meta.attach.data }
-        : {}),
+      )}${input.text}`,
     };
     return { line, done: this.enqueue(sessionId, live, { input: delivered, line }) };
   }

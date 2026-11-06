@@ -91,8 +91,6 @@ export interface TurnInput {
    * （会话/学习对话.md §3「上下文里的身份与时间线」）。
    */
   plain?: boolean;
-  /** 学习者附的图片（W12 §5.6）：原样随这条输入送给模型；看不了图的模型按 text 里写的沙盒路径自己打开。 */
-  images?: ImageData[];
 }
 
 export type ModelEvent =
@@ -179,12 +177,6 @@ export interface ModelAdapter {
 export interface QuotaSnapshot {
   windows: QuotaWindow[];
   at: string;
-}
-
-/** 一张图片：原样的字节与类型。 */
-export interface ImageData {
-  mime: 'image/png' | 'image/jpeg' | 'image/gif' | 'image/webp';
-  data: Buffer;
 }
 
 /** 程序事实在各家模型那里都以一条用户消息送达，用固定标记与学习者的话区分。 */

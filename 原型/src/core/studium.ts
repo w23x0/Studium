@@ -21,7 +21,6 @@ import type {
 } from '../shared/protocol.ts';
 import {
   type ConversationKind,
-  type ImageInput,
   type MessageQuote,
   type LogRecord,
   type NumberedRecord,
@@ -35,14 +34,13 @@ import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { MaterialError, Materials } from './knowledge/materials.ts';
 import type { Sources } from './sources.ts';
 import { canDescend, canRead } from './model/sandbox-paths.ts';
-import type { ImageData, SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
+import type { SandboxSpec, ToolResult, ToolSpec } from './model/port.ts';
 import { describeSandbox, Sandboxes } from './sandbox.ts';
 import { Screens } from './page/screens.ts';
 import { PageStore } from './page/store.ts';
 import { streamTools } from './page/stream-tools.ts';
 import { renderTranscript } from './transcript.ts';
 import { Uploads } from './uploads.ts';
-import type { Inputs } from './inputs.ts';
 import { localMinute } from '../shared/time.ts';
 
 export class BadRequestError extends Error {}
@@ -64,8 +62,6 @@ export interface StudiumOptions {
   dataDir: string;
   /** 原文与出处（资料检索、教材出处核对）。 */
   sources: Sources;
-  /** 附图存放处（W12 §5.6：图片原样送给模型）。 */
-  inputs: Inputs;
   /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
   cross: Crosslinks;
   /** 学习对话提示词里“页面”那一段（loop-stream.md），接进 loop.md 的 {{页面}}。 */
@@ -131,7 +127,6 @@ export class Studium {
         return main === undefined ? '' : this.notes.render(main, id);
       },
       components: (loopId) => this.latestComponents(loopId),
-      imagesDir: o.inputs.imagesDir,
       projectOf: (id) => this.projectOf(id),
       deleted: (id) => this.hub.isDeleted(id),
     });
@@ -1034,12 +1029,10 @@ export class Studium {
   /**
    * 学习者在某个对话里发话。隔了一阵回来：每条都带时间，模型自己看得出离开多久，不设门槛、不另推
    * （`docs/设计/01-流程.md`「暂停」）。
-   * images = 附图的来历（批 4，文字已并进 text）。
    */
   async learnerSays(
     sessionId: string,
     text: string,
-    images?: ImageInput[],
     replyTo?: { key: string; pointer: string },
     quotes?: MessageQuote[],
   ): Promise<void> {
@@ -1050,38 +1043,12 @@ export class Studium {
       throw new BadRequestError('这段对话只能看，不能再说话。');
     }
     const meta = {
-      ...(images !== undefined && images.length > 0 ? { images } : {}),
       ...(replyTo !== undefined && opened.kind === 'loop' ? { replyTo } : {}),
       ...(quotes !== undefined && quotes.length > 0 && opened.page === 'stream' ? { quotes } : {}),
     };
     // 结束的讨论串只是收起来：学习者再说话就重开（照 Claude 项目的讨论串；W12 §2 学习对话也一样）
     if (opened.kind !== 'main') await this.reopenIfEnded(opened, 'learner', '学习者又说话了');
-    // 附图原样送给模型（W12 §5.6）；在沙盒里跑的会话还能在只读区打开原图
-    const attach =
-      images !== undefined && images.length > 0
-        ? await this.imagesForModel(sessionId, images)
-        : undefined;
-    await this.hub.send(
-      sessionId,
-      { role: 'learner', text },
-      { ...meta, ...(attach !== undefined ? { attach } : {}) },
-    );
-  }
-
-  /** 附图交给模型：字节，加一句图在沙盒哪里（只有带沙盒的会话有这一句）。 */
-  private async imagesForModel(
-    sessionId: string,
-    images: ImageInput[],
-  ): Promise<{ data: ImageData[]; note?: string }> {
-    const got = await Promise.all(images.map((r) => this.o.inputs.forModel(r)));
-    const kind = (await this.hub.opened(sessionId)).kind;
-    const inSandbox = kind === 'loop';
-    return {
-      data: got.map(({ mime, data }) => ({ mime, data })),
-      ...(inSandbox
-        ? { note: `（附图 ${got.map((g) => `只读/附图/${g.file}`).join('、')}）` }
-        : {}),
-    };
+    await this.hub.send(sessionId, { role: 'learner', text }, meta);
   }
 
   // ───────────── 一次学习结束之后 ─────────────

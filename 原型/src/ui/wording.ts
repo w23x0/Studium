@@ -103,11 +103,8 @@ export const W = {
   reportSent: '记下了。资料原件不会被改，这条会留着等以后修正。',
   reported: '你报过的错',
 
-  // ── 输入框：图片 / 拍照、语音、公式（批 4） ──
+  // ── 输入框 ──
   dropHere: '松开，传进这个项目',
-  removeImage: '移除这张图',
-  viewImage: '看大图',
-  imageAlt: (n: number) => `图片 ${String(n)}`,
   send: '发送',
   close: '关上',
 

@@ -628,21 +628,7 @@ class SdkConversation implements ModelConversation {
       type: 'user',
       message: {
         role: 'user',
-        // 学习者附的图原样送（W12 §5.6）：先图后字
-        content:
-          input.images !== undefined && input.images.length > 0
-            ? [
-                ...input.images.map((im) => ({
-                  type: 'image' as const,
-                  source: {
-                    type: 'base64' as const,
-                    media_type: im.mime,
-                    data: im.data.toString('base64'),
-                  },
-                })),
-                { type: 'text' as const, text: modelText(input) },
-              ]
-            : modelText(input),
+        content: modelText(input),
       },
       parent_tool_use_id: null,
       uuid,

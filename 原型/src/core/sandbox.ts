@@ -4,7 +4,7 @@
 // W12 §3.2 起主对话不再读本机（没有沙盒）。
 // 设计：会话/学习对话.md §2；记录/读写权限.md「执行方式」「权限表」。
 import { existsSync, readdirSync, realpathSync } from 'node:fs';
-import { copyFile, lstat, mkdir, readdir, rm, symlink, writeFile } from 'node:fs/promises';
+import { lstat, mkdir, rm, symlink, writeFile } from 'node:fs/promises';
 import { homedir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -50,7 +50,6 @@ const RO = {
   /** 旧数据：W20 前谈方向定下的方向（有才放）。 */
   goal: '方向.md',
   materials: '资料',
-  images: '附图',
 } as const;
 
 /** 资料目录在 只读/资料/ 下的文件名。 */
@@ -100,7 +99,6 @@ function guideText(root: string, materials: number, old: OldItems): string {
     materials > 0
       ? `- 只读/${RO.materials}/ —— 本项目能读的资料，共 ${String(materials)} 份：${MATERIAL_INDEX} 每份一行；正文在 只读/${RO.materials}/<资料id>/，按原目录`
       : `- 只读/${RO.materials}/ —— 这次没有可用的资料（缺资料依据）`,
-    `- 只读/${RO.images}/ —— 学习者在这次学习里附过的图片原件（消息里写了是哪张）`,
     '',
     transcriptFormat(old.talks),
   ].join('\n');
@@ -135,8 +133,6 @@ export interface SandboxDeps {
   notesOf: (sessionId: string) => Promise<string>;
   /** 一次学习里每个组件的最新一版（W16；名字 = 原文里 [[组件:名字]] 的名字）。 */
   components: (loopId: string) => Promise<{ name: string; html: string }[]>;
-  /** 附图原件所在的目录（W12 §5.6）。 */
-  imagesDir: string;
   /** 会话所属的项目（主对话 id）；外部导入按它过滤（指向的资料本项目读得到才给，W11）。 */
   projectOf: (sessionId: string) => Promise<string | undefined>;
   /** 学习者删掉的讨论串（W12 §4.3）：学过的记录里不再包含。 */
@@ -237,7 +233,7 @@ export class Sandboxes {
   }
 
   /**
-   * 每轮发给模型之前重写只读区（说明、本次对话、学过的记录、主对话、项目说明、跨次记录、资料目录、附图；
+   * 每轮发给模型之前重写只读区（说明、本次对话、学过的记录、主对话、项目说明、跨次记录、资料目录；
    * 旧数据有才放：谈方向、方向）。
    */
   async refreshLoop(loopId: string): Promise<void> {
@@ -246,13 +242,13 @@ export class Sandboxes {
     // 工作区里的 只读 链接（模型删了下一轮补回来）
     await mkdir(this.workdir(loopId), { recursive: true });
     await linkReadOnly(this.workdir(loopId));
-    // 以前的摆法留下的：资料目录曾在 只读/资料目录.md（W16 前）；教学工具 W19 撤掉
+    // 以前的摆法留下的：资料目录曾在 只读/资料目录.md（W16 前）；教学工具 W19 撤掉；附图 11-06 撤掉
     await rm(join(ro, '资料目录.md'), { force: true });
     await rm(join(ro, '教学工具'), { recursive: true, force: true });
+    await rm(join(ro, '附图'), { recursive: true, force: true });
     const project = await this.o.projectOf(loopId);
     await writeDir(join(ro, RO.learned), await this.learnedFiles(loopId, project));
     const records = await this.o.hub().records(loopId);
-    await this.copyImages(join(ro, RO.images), records);
     await writeFile(join(ro, RO.self), this.render(records, '教学'), 'utf8');
     await writeFile(join(ro, RO.main), await this.mainChatText(project), 'utf8');
     // 旧数据（W20 前单开的谈方向）：有才放，没有就拿掉（W20 前的只读区里可能留着空的）
@@ -567,28 +563,6 @@ export class Sandboxes {
       .map((r) => (r.record.type === 'user_message' ? r.record.text : ''))
       .join(' / ');
     return `- ${at}：${session} 第 ${lines.join('、')} 行${said !== '' ? `（原话：${said}）` : ''}（未验证）`;
-  }
-
-  /** 这次学习里学习者附过的图（原图与送给模型的副本）拷进只读区（只拷还没有的；别的对话的图不给）。 */
-  private async copyImages(dir: string, records: NumberedRecord[]): Promise<void> {
-    await mkdir(dir, { recursive: true });
-    const ids = new Set(
-      records.flatMap(({ record: r }) =>
-        r.type === 'user_message'
-          ? (r.images ?? []).flatMap((i) => [
-              i.attachmentId,
-              ...(i.sentAs !== undefined ? [i.sentAs] : []),
-            ])
-          : [],
-      ),
-    );
-    if (ids.size === 0) return;
-    const have = new Set(await readdir(dir));
-    for (const name of await readdir(this.o.imagesDir)) {
-      const id = name.slice(0, name.lastIndexOf('.'));
-      if (ids.has(id) && !have.has(name))
-        await copyFile(join(this.o.imagesDir, name), join(dir, name));
-    }
   }
 
   /** 删掉的讨论串发来的话不进沙盒（W12 §4.3）。 */

@@ -1,5 +1,5 @@
 // 输入框（照 Claude 的输入框）：打字；学习页选中页面上的一段，就在光标处多一个引用块，和文字排在一起，只显示开头（11-06）。
-// 主对话能把文件拖进来上传。图片、语音、公式 11-06 拿掉（暂时不设计的功能）；旧消息里的图片照旧显示。
+// 主对话能把文件拖进来上传。
 import { ArrowUpIcon, LoaderCircleIcon, SquareIcon } from 'lucide-react';
 import { useEffect, useImperativeHandle, useRef, useState, type ReactNode, type Ref } from 'react';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';

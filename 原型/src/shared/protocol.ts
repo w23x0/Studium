@@ -50,12 +50,6 @@ export interface RecordsResponse {
   running: boolean;
 }
 
-export interface SendMessageRequest {
-  text: string;
-  /** 随消息附的图片（批 4），见下方「输入」。 */
-  images?: MessageImageInput[];
-}
-
 export interface SearchResponse {
   hits: { sessionId: string; line: number; text: string }[];
 }
@@ -308,49 +302,6 @@ export type ServerEvent =
     };
 
 export const API_PREFIX = '/api';
-
-// ───────────── 输入（批 4）：图片 / 拍照手写、语音、公式 ─────────────
-
-/** 收的图片类型（与模型接口能看的一致）。 */
-export const IMAGE_MIME_TYPES = ['image/png', 'image/jpeg', 'image/gif', 'image/webp'] as const;
-export type ImageMime = (typeof IMAGE_MIME_TYPES)[number];
-
-/** 送给模型的图最大多少字节（模型接口单张图片有上限；超过的界面先缩小一份副本送去，原图照存）。 */
-export const MODEL_IMAGE_MAX_BYTES = 3.5 * 1024 * 1024;
-
-/** 输入存放处里的一张图片（只追加；原图原样保存，不改）。 */
-export interface AttachmentView {
-  id: string;
-  at: string;
-  mime: ImageMime;
-  size: number;
-  sha256: string;
-  /** 学习者那边的文件名（有就记）。 */
-  name?: string;
-  /** 这是界面为送给模型缩小的副本：出自哪张原图。 */
-  derivedFrom?: string;
-  /** 取图地址（带 ?token= 可直接做 <img src>）。 */
-  url: string;
-}
-
-export interface UploadAttachmentResponse {
-  attachment: AttachmentView;
-}
-
-/** 发消息时带的一张图：原图 id + 送给模型的缩小副本（原图太大时）。 */
-export interface MessageImageInput {
-  attachmentId: string;
-  sentAs?: string;
-}
-
-/** 一种输入送往哪里（外发披露）。 */
-export interface InputDisclosure {
-  what: string;
-  service: string;
-  /** 用的模型；null = 服务默认或不适用。 */
-  model: string | null;
-  note: string;
-}
 
 // ───────────── 项目资料（工单 W8；设计 docs/设计/记录/资料.md） ─────────────
 

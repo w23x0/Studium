@@ -167,8 +167,6 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ token }),
     }),
-  // ── 输入：图片原样上传 ──
-  imageUrl: (attachmentId: string) => withToken(`/api/attachments/${attachmentId}`),
   // ── 依据可见 ──
   // ── 资料的来源说明、外发披露、会话用的模型、对旧守卫判定的异议 ──
   sourceNotes: () => call<SourceNotesResponse>('/sources/source-notes'),
