@@ -8,7 +8,7 @@ import { localMinute } from '../shared/time.ts';
 
 /**
  * labelOf：别的会话发来的话写谁发的（不给就写会话 id）；self：这个会话自己的模型写作什么（学习对话 = 教学）。
- * 中途碎话（W12 §4.6）不放。学习对话对学习者话的整理（W17）同一行只放最后一次。
+ * 学习对话对学习者话的整理（W17）同一行只放最后一次。
  */
 export function renderTranscript(
   records: NumberedRecord[],
@@ -49,7 +49,7 @@ function speech(
             : `${quotesPrefix(quotesOf(r))}${r.text}`,
       };
     case 'assistant_message':
-      return r.interim === true ? undefined : { who: self, text: r.text };
+      return { who: self, text: r.text };
     case 'program_fact':
       return { who: '程序', text: r.text };
     case 'thread_message':

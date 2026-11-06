@@ -140,11 +140,6 @@ export interface AssistantMessage {
   type: 'assistant_message';
   at: string;
   text: string;
-  /**
-   * W12 §4.6：一轮里工具调用之间说的话（不是这一轮最后写给学习者的那段）。只作“正在做什么”的依据，
-   * 不上学习页、不进主对话的消息流、不转给别的会话。旧行没有这一项。
-   */
-  interim?: true;
 }
 
 /** 程序追加给模型的事实（开场交付、守卫结论、离开多久等）；不是学习者说的话。 */

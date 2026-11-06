@@ -281,7 +281,7 @@ export class Studium {
             this.readNotesTool(sessionId),
           ];
         case 'loop':
-          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），自己读、自己定这次的边界（W12 §2）；
+          // 学习对话在沙盒里跑（只读资料与记录、可写工作区），自己读（W12 §2），开场只定从哪接（#104 试验）；
           // 跨次记录在沙盒里当只读文件读（W13）
           return [
             ...this.loopTools(sessionId),
@@ -953,9 +953,12 @@ export class Studium {
 
   /**
    * 学习对话开场附的上一次（W14 §1.1）：本项目、不含本次、没删的学习里最后活动最新的那次，状态不限；整份原文，
-   * 与只读区 学过的记录/<项目>/<id>-<标题>.md 下半截同一份（W16）。一次都没有 = 空串（不附）。
+   * 与只读区 学过的记录/<项目>/<id>-<标题>.md 下半截同一份（W16）。一次都没有就不附。
    */
-  private async lastLearningBlock(mainId: string, self: string): Promise<string> {
+  private async lastLearning(
+    mainId: string,
+    self: string,
+  ): Promise<{ block: string; at: string } | undefined> {
     const last = this.hub
       .listSessions()
       .filter(
@@ -967,10 +970,23 @@ export class Studium {
       )
       .map((s) => ({ s, at: s.lastAt ?? s.openedAt }))
       .sort((a, b) => b.at.localeCompare(a.at))[0]?.s;
-    if (last === undefined) return '';
+    if (last === undefined) return undefined;
     const text = await this.sandboxes.transcriptText(last.sessionId);
     const file = await this.sandboxes.learningFile(last.sessionId);
-    return `# 本项目最近一次学习的整份原文：${last.sessionId}「${last.title}」（最后活动 ${localMinute(last.lastAt ?? last.openedAt)}，现在 ${localMinute(this.iso())}，隔了 ${gap(Date.now() - Date.parse(last.lastAt ?? last.openedAt))}；${file !== undefined ? `和只读区 ${file} 下半截同一份，` : ''}引用写 ${last.sessionId}:L行号）\n\n${text !== '' ? text : '（这次还没有对话）'}`;
+    const at = last.lastAt ?? last.openedAt;
+    return {
+      at,
+      block: `# 本项目最近一次学习的整份原文：${last.sessionId}「${last.title}」（最后活动 ${localMinute(at)}；${file !== undefined ? `和只读区 ${file} 下半截同一份，` : ''}引用写 ${last.sessionId}:L行号）\n\n${text !== '' ? text : '（这次还没有对话）'}`,
+    };
+  }
+
+  /** 开场给的“现在”（#104 试验）：排在以前的记录后面、学习者这次的话前面。 */
+  private openingNow(lastAt: string | undefined): string {
+    const since =
+      lastAt !== undefined
+        ? `，距他上次学习（${localMinute(lastAt)}）隔了 ${gap(Date.now() - Date.parse(lastAt))}`
+        : '';
+    return `# 现在\n\n现在 ${localMinute(this.iso())}${since}。这是一个新对话，他的页面是空的：以前对话里的话、图和组件都不在他眼前。他这次的话在下面。`;
   }
 
   /**
@@ -1147,7 +1163,6 @@ export class Studium {
       (r) =>
         r.line > last.line &&
         r.record.type === 'assistant_message' &&
-        r.record.interim !== true &&
         !recs.some((s) => s.line > r.line && s.record.type === 'turn_stopped'),
     );
     if (said) throw new BadRequestError('上一句已经有完整的回答了，直接接着说就好');
@@ -1274,7 +1289,7 @@ export class Studium {
       const who =
         record.type === 'user_message'
           ? '学习者'
-          : record.type === 'assistant_message' && record.interim !== true
+          : record.type === 'assistant_message'
             ? '主对话'
             : record.type === 'program_fact'
               ? '程序'
@@ -1329,10 +1344,12 @@ export class Studium {
           });
           // 程序附上它自己一开始就该知道的：只读区有什么、跨次记录（W13）、本项目最近一次学习的整份原文（W14 §1）；
           // 都放 attached，不进这次的对话原文（W14 §1.2）
+          const last = await this.lastLearning(mainId, s.sessionId);
           const attached = [
             describeSandbox(await this.sandboxes.forLoop(s.sessionId)),
             await this.notes.render(mainId, s.sessionId),
-            await this.lastLearningBlock(mainId, s.sessionId),
+            last?.block ?? '',
+            this.openingNow(last?.at),
           ]
             .filter((x) => x !== '')
             .join('\n\n');
@@ -1421,9 +1438,7 @@ export class Studium {
         input: { text: z.string().describe('改后的全文') },
         run: async (a) => {
           const recs = await this.hub.records(mainId);
-          const last = recs
-            .filter((r) => r.record.type === 'assistant_message' && r.record.interim !== true)
-            .at(-1);
+          const last = recs.filter((r) => r.record.type === 'assistant_message').at(-1);
           if (last === undefined) return err('你还没有说过话');
           const text = (a.text as string).trim();
           if (text === '') return err('改后的话不能是空的');
@@ -1608,7 +1623,7 @@ export class Studium {
     };
   }
 
-  /** 一个会话的对话原文：学习者、模型最后写的话（不含中途碎话）、别的会话发来的话；带行号与时间。 */
+  /** 一个会话的对话原文：学习者、模型写的话、别的会话发来的话；带行号与时间。 */
   private async transcriptOf(
     sessionId: string,
     from = 1,
@@ -1621,7 +1636,7 @@ export class Studium {
         (r.record.type === 'user_message' ||
           // 删掉的讨论串发来的话读不到（W12 §4.3）
           (r.record.type === 'thread_message' && !this.hub.isDeleted(r.record.from)) ||
-          (r.record.type === 'assistant_message' && r.record.interim !== true)),
+          r.record.type === 'assistant_message'),
     );
     const kind = this.hub.listSessions().find((s) => s.sessionId === sessionId)?.kind;
     const self = kind === 'main' ? '主对话' : kind === 'talk' ? '谈方向' : '教学';

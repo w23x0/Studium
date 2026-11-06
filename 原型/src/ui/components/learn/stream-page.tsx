@@ -530,7 +530,7 @@ function short(text: string): string {
 function failedSinceText(records: NumberedRecord[]): { notice?: string } | undefined {
   let last = 0;
   for (const { line, record: r } of records) {
-    if (r.type === 'assistant_message' && r.interim !== true) last = line;
+    if (r.type === 'assistant_message') last = line;
   }
   const f = records
     .flatMap(({ line, record: r }) => (line > last && r.type === 'turn_failed' ? [r] : []))

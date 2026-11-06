@@ -1,5 +1,5 @@
 // 竖流学习页（10-29 #74 起；W12 起是唯一的学习页）：学习对话一个人管页面。页面不另存，从正本放一遍算出来——
-// 学习对话每一轮最后写的话、学习者的每句话按时间接在最下面（工具调用之间说的话不上，W12 §4.6）；学习对话调页面工具
+// 学习对话写的话、学习者的每句话按时间接在最下面；学习对话调页面工具
 // （改、拿掉、挪、拿回、交组件）成功的那次 tool_call 照做。核心（工具）与界面都用这里的纯函数，算出来的一样。
 // 改法照 Claude Code 的 Edit：按一段原文替换，原文在页面上必须唯一。改过的文字、换过版的组件留着以前的样子（W12 §4.7）；
 // 文字里单独一行写 `[[组件:名字]]` 的，组件嵌在那里（W12 §5.1）。
@@ -108,8 +108,7 @@ export function replayStream(records: NumberedRecord[], until = Infinity): Strea
         }
         break;
       case 'assistant_message':
-        // 工具调用之间说的话不上页面（W12 §4.6）
-        if (r.interim !== true && r.text.trim() !== '') {
+        if (r.text.trim() !== '') {
           add({ id: `t${String(line)}`, kind: 'text', line, text: r.text });
         }
         break;

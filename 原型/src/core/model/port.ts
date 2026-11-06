@@ -100,8 +100,8 @@ export type ModelEvent =
   | { kind: 'text_delta'; text: string }
   /** 正在流出来的思考概要：只推给界面（成块后在 raw 里记）。 */
   | { kind: 'thinking_delta'; text: string }
-  /** 一条完整的助手消息（本轮可能有多条）；interim 有值时使用服务明确给出的阶段。 */
-  | { kind: 'assistant_text'; text: string; interim?: boolean }
+  /** 一条完整的助手消息（本轮可能有多条）。 */
+  | { kind: 'assistant_text'; text: string }
   /** 适配层收到的原始消息，原样进正本。 */
   | { kind: 'raw'; payload: unknown }
   /** 续接凭据（第一次拿到或变化时报一次）。 */

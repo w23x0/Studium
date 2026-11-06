@@ -1,12 +1,10 @@
 // 学习页的过程记录（11-06 试验）：模型一轮里读了什么、想了什么、做了什么，从正本算成一段，留在对话里。
-// 显示：思考概要原文、工具调用之间说的话、每一步一行。不显示：工具返回的内容、组件代码、脚本全文、提示词与程序附的上下文。
+// 显示：思考概要原文、每一步一行。不显示：工具返回的内容、组件代码、脚本全文、提示词与程序附的上下文。
 // 只给学习者看，不进任何模型的上下文。
 import type { NumberedRecord } from '../shared/records.ts';
 
 export type ProcessItem =
-  | { kind: 'thought'; text: string }
-  | { kind: 'said'; text: string }
-  | { kind: 'step'; text: string; failed: boolean };
+  { kind: 'thought'; text: string } | { kind: 'step'; text: string; failed: boolean };
 
 export interface ProcessGroup {
   /** 第一条的行号：在页面上排在这里。 */
@@ -41,8 +39,7 @@ export function processGroups(records: readonly NumberedRecord[]): ProcessGroup[
         close();
         break;
       case 'assistant_message':
-        if (r.interim === true) push(line, r.at, { kind: 'said', text: r.text });
-        else close();
+        close();
         break;
       case 'model_raw':
         for (const item of rawItems(r.payload)) push(line, r.at, item);

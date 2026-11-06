@@ -94,8 +94,6 @@ interface Live {
   idle: (() => void)[];
   /** 模型侧最近报告的实际执行模型。 */
   model?: string;
-  /** W12 §4.6：这一轮里最近一段还没定性的文字（后面又有动作就记成中途碎话，这一轮结束才是写给学习者的话）。 */
-  pending?: string | undefined;
   /** 学习者点了停止：这一轮按停下处理（不记成失败）。 */
   stopping?: boolean;
 }
@@ -109,7 +107,7 @@ export interface PeerMessage {
   cited?: { session: string; line: number; at: string; text: string }[];
   /** 这是回它先前发来的话：收话方这一轮的话不再转回去。 */
   reply?: boolean;
-  /** 程序附给模型、不算对话原文的内容（W14 §1.2）：记进正本的 attached，发给模型时接在最后。 */
+  /** 程序附给模型、不算对话原文的内容（W14 §1.2）：记进正本的 attached，发给模型时排在学习者这次的话前面。 */
   attached?: string;
 }
 
@@ -381,8 +379,9 @@ export class Hub {
       text: [
         await this.head(to, line, who),
         m.text,
+        // 按时间：以前的记录在前，学习者这次的话在最后（#104 试验）
+        ...(m.attached !== undefined && m.attached !== '' ? [`\n（程序附）${m.attached}\n`] : []),
         ...cited,
-        ...(m.attached !== undefined && m.attached !== '' ? [`\n（程序附）${m.attached}`] : []),
       ].join('\n'),
     };
     void this.enqueue(to, live, { input, line, ...(m.reply === true ? {} : { replyTo: m.from }) });
@@ -496,7 +495,6 @@ export class Hub {
           const reason = err instanceof Error ? err.message : String(err);
           await this.append(sessionId, { type: 'turn_failed', at: this.iso(), reason });
         });
-        await this.flushPending(sessionId, live, false);
       } else {
         // 这一轮从正本哪一行之后开始写（发来的话可能在上一轮还在跑时就记下了，它后面还有上一轮的话）
         const from = live.log.lines;
@@ -511,11 +509,11 @@ export class Hub {
     for (const r of live.idle.splice(0)) r();
   }
 
-  /** 别的会话发来的那一轮跑完：这一轮里它最后写的话（不含中途碎话）送回发话方；没说话就不送。fromLine = 这一轮开始前正本的最后一行。 */
+  /** 别的会话发来的那一轮跑完：这一轮里它写的话送回发话方；没说话就不送。fromLine = 这一轮开始前正本的最后一行。 */
   private async replyBack(sessionId: string, fromLine: number, to: string): Promise<void> {
     const said = (await this.records(sessionId))
       .flatMap(({ line, record: r }) =>
-        line > fromLine && r.type === 'assistant_message' && r.interim !== true ? [r.text] : [],
+        line > fromLine && r.type === 'assistant_message' ? [r.text] : [],
       )
       .join('\n\n')
       .trim();
@@ -569,9 +567,7 @@ export class Hub {
         delivered = { ...input, preface: text };
       }
       await this.consume(sessionId, live, live.conversation.send(delivered));
-      await this.flushPending(sessionId, live, false);
     } catch (err) {
-      await this.flushPending(sessionId, live, false);
       // 模型侧对话可能已坏：丢掉，下一轮按正本里的续接凭据重开
       await live.conversation?.close();
       live.conversation = undefined;
@@ -613,22 +609,6 @@ export class Hub {
       .join('\n');
   }
 
-  /**
-   * W12 §4.6：把这一轮里还没定性的那段文字记下。interim = 后面又有动作（工具调用、下一条消息）——它是中途碎话；
-   * 不是 = 这一轮结束了，它是最后写给学习者的话。
-   */
-  private async flushPending(sessionId: string, live: Live, interim: boolean): Promise<void> {
-    const text = live.pending;
-    if (text === undefined) return;
-    live.pending = undefined;
-    await this.append(sessionId, {
-      type: 'assistant_message',
-      at: this.iso(),
-      text,
-      ...(interim ? { interim: true as const } : {}),
-    });
-  }
-
   /** 一轮的事件逐条记进正本（send() 的一轮与模型自己起的一轮都经这里）。 */
   private async consume(
     sessionId: string,
@@ -648,18 +628,14 @@ export class Hub {
         this.emit({ type: 'thinking', sessionId, text: ev.text });
         break;
       case 'assistant_text':
-        // 先不定性：后面还有动作就是中途碎话，这一轮就此结束才是写给学习者的话（W12 §4.6）
-        await this.flushPending(sessionId, live, true);
-        live.pending = ev.text;
-        // Codex 明确标了 commentary / partial_answer / final_answer 时，优先用服务给的阶段。
-        if (ev.interim !== undefined) await this.flushPending(sessionId, live, ev.interim);
+        // 模型写的话都是写给学习者的，工具调用前后都一样（#103，11-06 试验）
+        await this.append(sessionId, { type: 'assistant_message', at: this.iso(), text: ev.text });
         break;
       case 'activity':
         // 正在做什么（W12 §4.5）：由程序从工具调用得出，只推给界面，不记
         this.emit({ type: 'activity', sessionId, text: activityText(ev.tool, ev.input, this) });
         break;
       case 'raw':
-        await this.flushPending(sessionId, live, true);
         await this.append(sessionId, {
           type: 'model_raw',
           at: this.iso(),
@@ -679,7 +655,6 @@ export class Hub {
         });
         break;
       case 'sandbox_action': {
-        await this.flushPending(sessionId, live, true);
         await this.append(sessionId, {
           type: 'sandbox_action',
           at: this.iso(),
@@ -858,9 +833,6 @@ export class Hub {
     return {
       ...t,
       run: async (args) => {
-        // 工具调用前说的话是中途碎话（W12 §4.6）：先记下，免得排在工具调用后面
-        const live = this.live.get(sessionId);
-        if (live !== undefined) await this.flushPending(sessionId, live, true);
         let r: Awaited<ReturnType<ToolSpec['run']>>;
         try {
           r = await t.run(args);

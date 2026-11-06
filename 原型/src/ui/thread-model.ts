@@ -1,6 +1,6 @@
 // 正本记录 → 界面上的消息列表与对话状态。纯函数，单测覆盖。
 // 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示。学习对话（含旧的）不走这里，走竖流学习页。
-// 模型用了什么工具、工具调用之间说的话（W12 §4.6 中途碎话）、别的对话发来的话（学习者看不到）都不显示。
+// 模型用了什么工具、别的对话发来的话（学习者看不到）都不显示。
 // 一个讨论串在主对话里只有一张卡片，标题与状态跟着它现在的样子（W12 §4.1）。
 import type { NumberedRecord } from '../shared/records.ts';
 import type { ThreadGroup } from '../shared/threads.ts';
@@ -73,8 +73,11 @@ export function lastEditable(records: NumberedRecord[], running: boolean): numbe
       lastUser = r.type === 'user_message' ? line : r.line;
       stopped = false;
       answered = false;
-    } else if (r.type === 'turn_stopped') stopped = true;
-    else if (r.type === 'assistant_message' && r.interim !== true && !stopped) answered = true;
+    } else if (r.type === 'turn_stopped') {
+      // 停之前写的半截不算答完（和核心 editLast 的判断一致）
+      stopped = true;
+      answered = false;
+    } else if (r.type === 'assistant_message' && !stopped) answered = true;
   }
   return lastUser !== undefined && stopped && !answered ? lastUser : undefined;
 }
@@ -130,8 +133,6 @@ export function toUiMessages(
         break;
       case 'assistant_message':
       case 'turn_failed': {
-        // 工具调用之间说的话（W12 §4.6）只作“正在做什么”的依据，不显示
-        if (r.type === 'assistant_message' && r.interim === true) break;
         const text =
           r.type === 'assistant_message'
             ? (edits.text.get(line) ?? r.text)

@@ -275,9 +275,9 @@ function searchableText(r: LogRecord): string {
     case 'project_goal':
     case 'message_edited':
       return r.text;
-    // 工具调用之间说的话（W12 §4.6）不搜；别的会话发来的话学习者看不到、发话的讨论串可能被删（§4.3），也不搜
     case 'assistant_message':
-      return r.interim === true ? '' : r.text;
+      return r.text;
+    // 别的会话发来的话学习者看不到、发话的讨论串可能被删（§4.3），不搜
     // 沙盒动作只在写文件时有内容（读 / 跑命令没有）
     case 'sandbox_action':
       return r.content ?? '';

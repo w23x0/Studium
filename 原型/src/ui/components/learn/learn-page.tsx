@@ -51,7 +51,7 @@ function useStream(sessionId: string, onError: (e: unknown) => void): LearnStrea
         setDraft((d) => d + e.text);
         setActivity(undefined);
       }
-      // 正在做什么（W12 §4.5）：工具调用之间说的话不上页面，正在写的那段收起、换成这一行（§4.6）
+      // 正在做什么（W12 §4.5）：正在写的那段记下后上页面，这里换成这一行
       if (e.type === 'activity') {
         setActivity(e.text);
         setDraft('');

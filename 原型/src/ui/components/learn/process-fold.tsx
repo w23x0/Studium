@@ -54,8 +54,6 @@ function ItemView({ item }: { item: ProcessItem }) {
   switch (item.kind) {
     case 'thought':
       return <p className="whitespace-pre-wrap italic">{item.text}</p>;
-    case 'said':
-      return <p className="text-foreground/80 whitespace-pre-wrap">{item.text}</p>;
     case 'step':
       return (
         <p className="font-mono text-[0.7rem] break-all">

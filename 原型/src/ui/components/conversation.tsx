@@ -60,7 +60,7 @@ export function Conversation(props: {
         setDraft((d) => d + e.text);
         setActivity(undefined);
       }
-      // 正在做什么（W12 §4.5）：工具调用之间说的话不上页面，换成这一行（§4.6）
+      // 正在做什么（W12 §4.5）
       if (e.type === 'activity') {
         setActivity(e.text);
         setDraft('');

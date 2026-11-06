@@ -94,8 +94,8 @@ interface Turn {
   before: CodexUsage;
   last?: CodexUsage;
   limit?: number;
-  text: { text: string; interim?: boolean }[];
-  streamed: Map<string, { text: string; interim?: boolean }>;
+  text: { text: string }[];
+  streamed: Map<string, { text: string }>;
   completedItems: Set<string>;
   calls: Map<string, Promise<ToolResult>>;
   interruptTimer?: NodeJS.Timeout;
@@ -375,7 +375,6 @@ class CodexConversation implements ModelConversation {
       if (message.text !== '') turn.text.push(message);
     }
     turn.streamed.clear();
-    // 最终文字必须在最后一条 raw 之后交；Hub 遇到后续 raw 会把待交文字当成中途说明。
     this.flushText();
     if (turn.last !== undefined) {
       const diff = (k: keyof CodexUsage) => Math.max(0, this.total[k] - turn.before[k]);
@@ -450,8 +449,7 @@ class CodexConversation implements ModelConversation {
       const entry = itemNotification.parse(params).item;
       if (entry.type === 'userMessage') return; // Hub 已记录输入；不把图片 base64 再存一遍。
       if (method === 'item/started') {
-        if (entry.type === 'agentMessage')
-          turn.streamed.set(entry.id, { text: '', ...phaseOf(entry.phase) });
+        if (entry.type === 'agentMessage') turn.streamed.set(entry.id, { text: '' });
         if (entry.type !== 'agentMessage') this.flushText();
         turn.queue.push({ kind: 'raw', payload: { method, params } });
         const activity = codexActivity(entry);
@@ -461,10 +459,7 @@ class CodexConversation implements ModelConversation {
         turn.streamed.delete(entry.id);
         turn.queue.push({ kind: 'raw', payload: { method, params } });
         if (entry.type === 'agentMessage' && entry.text !== undefined && entry.text !== '') {
-          turn.text.push({
-            text: entry.text,
-            ...phaseOf(entry.phase),
-          });
+          turn.text.push({ text: entry.text });
         }
         if (this.spec.sandbox !== undefined) {
           for (const action of codexActions(entry, this.spec.sandbox))
@@ -548,10 +543,4 @@ class CodexConversation implements ModelConversation {
     this.owner.closed(this);
     await this.rpc?.close();
   }
-}
-
-function phaseOf(phase: string | null | undefined): { interim?: boolean } {
-  return phase === 'commentary' || phase === 'partial_answer' || phase === 'final_answer'
-    ? { interim: phase === 'commentary' }
-    : {};
 }
