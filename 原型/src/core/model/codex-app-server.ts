@@ -1,3 +1,4 @@
+import { API_EFFORTS, type ApiConnection } from './api-connection.ts';
 // Codex 的完整 agent 循环由本机 app-server 执行；Studium 只接工具与事件。
 // 每个模型对话一个进程，权限、工具回调、临时分叉互不共用；stdio 协议按 0.166.0 核对。
 import { z } from 'zod';
@@ -31,6 +32,7 @@ import {
 import { codexActions, codexActivity } from './codex-events.ts';
 
 export interface CodexOptions {
+  api?: ApiConnection;
   cwd: string;
   binary?: string;
   model?: string;
@@ -46,7 +48,10 @@ export class CodexAppServerModel implements ModelAdapter {
   constructor(private readonly options: CodexOptions) {
     this.disclosure = {
       service: 'OpenAI 的 GPT',
-      route: '经本机 Codex 登录（Codex app-server）',
+      route:
+        options.api === undefined
+          ? '经本机 Codex 登录（Codex app-server）'
+          : `API：${options.api.baseUrl}`,
       profiles: options.profiles ?? {},
       ...(options.model !== undefined ? { defaultModel: options.model } : {}),
     };
@@ -68,6 +73,7 @@ export class CodexAppServerModel implements ModelAdapter {
   }
 
   async quota(): Promise<QuotaSnapshot | undefined> {
+    if (this.options.api !== undefined) return undefined;
     const conv = [...this.live].at(-1);
     if (conv !== undefined) {
       try {
@@ -130,12 +136,12 @@ class CodexConversation implements ModelConversation {
     await this.rpc?.close();
     this.assertOpen();
     this.broken = false;
-    const runtime = prepareCodexHome(this.options.cwd);
+    const runtime = prepareCodexHome(this.options.cwd, this.options.api !== undefined);
     const rpc: CodexRpc = new CodexRpc(
       this.options.binary ?? 'codex',
-      codexArgs(this.spec, this.options.cwd, runtime.loginHome),
+      codexArgs(this.spec, this.options.cwd, runtime.loginHome, this.options.api),
       runtime.cwd,
-      codexEnv(runtime.home),
+      codexEnv(runtime.home, this.options.api),
       {
         notification: (method, params) => this.notification(method, params),
         request: (id, method, params) => this.request(rpc, id, method, params),
@@ -152,30 +158,43 @@ class CodexConversation implements ModelConversation {
       capabilities: { experimentalApi: true },
     });
     rpc.notify('initialized');
-    const account = z
-      .object({ account: z.unknown().nullable() })
-      .parse(await rpc.request('account/read', {}));
-    if (account.account == null) {
-      throw new Error(
-        'Codex 尚未登录：请先在本机运行 codex login（需使用 auth.json 文件存储登录信息）',
-      );
+    if (this.options.api === undefined) {
+      const account = z
+        .object({ account: z.unknown().nullable() })
+        .parse(await rpc.request('account/read', {}));
+      if (account.account == null) {
+        throw new Error(
+          'Codex 尚未登录：请先在本机运行 codex login（需使用 auth.json 文件存储登录信息）',
+        );
+      }
     }
     const key = this.spec.profile ?? this.spec.session?.kind;
     const profile = key === undefined ? undefined : this.options.profiles?.[key];
     const requested = this.spec.model ?? profile?.model ?? this.options.model;
     const models: z.infer<typeof modelList>['data'] = [];
     let cursor: string | undefined;
-    do {
-      const page = modelList.parse(
-        await rpc.request('model/list', {
-          limit: 100,
-          includeHidden: true,
-          ...(cursor !== undefined ? { cursor } : {}),
-        }),
-      );
-      models.push(...page.data);
-      cursor = page.nextCursor ?? undefined;
-    } while (cursor !== undefined);
+    if (this.options.api !== undefined) {
+      if (!requested) throw new Error('请先在对话输入区选择或填写 API 模型 ID');
+      models.push({
+        id: requested,
+        model: requested,
+        isDefault: true,
+        supportedReasoningEfforts: API_EFFORTS.codex.map((reasoningEffort) => ({
+          reasoningEffort,
+        })),
+      });
+    } else
+      do {
+        const page = modelList.parse(
+          await rpc.request('model/list', {
+            limit: 100,
+            includeHidden: true,
+            ...(cursor !== undefined ? { cursor } : {}),
+          }),
+        );
+        models.push(...page.data);
+        cursor = page.nextCursor ?? undefined;
+      } while (cursor !== undefined);
     const selected =
       requested === undefined
         ? models.find((m) => m.isDefault)
@@ -195,7 +214,7 @@ class CodexConversation implements ModelConversation {
     this.imageInput = selected.inputModalities?.includes('image') ?? true;
     const base = {
       model: selected.model,
-      modelProvider: 'openai',
+      modelProvider: this.options.api === undefined ? 'openai' : 'studium_api',
       cwd: this.spec.sandbox?.workdir ?? runtime.cwd,
       baseInstructions: this.spec.systemPrompt,
       developerInstructions: '',

@@ -25,6 +25,7 @@ import type {
 import type {
   Engine,
   EngineSettings,
+  ConnectionInput,
   ConversationModelSettings,
   ModelSelection,
 } from '../shared/model-settings.ts';
@@ -89,14 +90,19 @@ export const api = {
   modelSettings: () => call<EngineSettings>('/settings/models'),
   setEngine: (engine: Engine) =>
     call<EngineSettings>('/settings/models', { method: 'PUT', body: JSON.stringify({ engine }) }),
+  setConnection: (engine: Engine, input: ConnectionInput) =>
+    call<EngineSettings>(`/settings/models/${engine}/connection`, {
+      method: 'PUT',
+      body: JSON.stringify(input),
+    }),
   accountAction: (engine: Engine, action: 'login' | 'logout' | 'cancel') =>
     call<EngineSettings>(`/settings/models/${engine}/${action}`, { method: 'POST' }),
   conversationModel: (id: string) =>
     call<ConversationModelSettings>(`/sessions/${id}/model-settings`),
-  setConversationModel: (id: string, engine: Engine, selection: ModelSelection) =>
+  setConversationModel: (id: string, engine: Engine, selection: ModelSelection, revision: string) =>
     call<ConversationModelSettings>(`/sessions/${id}/model-settings`, {
       method: 'PUT',
-      body: JSON.stringify({ engine, selection }),
+      body: JSON.stringify({ engine, selection, revision }),
     }),
   listSessions: () => call<ListSessionsResponse>('/sessions'),
   // ── 额度与使用情况（W14） ──

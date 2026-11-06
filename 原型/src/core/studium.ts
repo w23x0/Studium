@@ -641,7 +641,11 @@ export class Studium {
       .filter((r) => r.type === 'model_session')
       .at(-1);
     const resume =
-      token?.type === 'model_session' && token.adapter === adapter ? token.token : undefined;
+      token?.type === 'model_session' &&
+      token.adapter === adapter &&
+      token.connection === selected.connection
+        ? token.token
+        : undefined;
     const conv = selected.adapter.open({
       ...(selected.model !== undefined ? { model: selected.model } : {}),
       ...(selected.effort !== undefined ? { effort: selected.effort } : {}),

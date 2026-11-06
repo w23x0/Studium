@@ -196,6 +196,8 @@ export interface ModelRaw {
 
 /** 模型侧会话的续接凭据（如 Agent SDK 的 session_id），重启后接着同一份上下文。 */
 export interface ModelSession {
+  /** API 服务标识；旧记录未填表示账号登录通道。 */
+  connection?: string;
   type: 'model_session';
   at: string;
   adapter: string;
@@ -217,6 +219,7 @@ export interface ContextOpened {
 
 /** 模型侧报告的实际执行模型名（不是别名、不是适配器名）；名字变了才追加一条。 */
 export interface ModelUsed {
+  connection?: string;
   /** 本轮采用的配置；用于重启后判断对话栏的待生效选择。 */
   selection?: { model?: string; effort?: string };
   type: 'model_used';

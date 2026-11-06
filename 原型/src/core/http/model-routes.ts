@@ -1,3 +1,4 @@
+import { connectionInput, API_EFFORTS } from '../model/api-connection.ts';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { z } from 'zod';
 import type { ConversationModelSettings, ModelChoice } from '../../shared/model-settings.ts';
@@ -33,6 +34,14 @@ export async function modelRoute(
       send(res, 200, await models.settings());
       return true;
     }
+    if (global && parts.length === 5 && parts[4] === 'connection' && method === 'PUT') {
+      models.setConnection(
+        engineSchema.parse(parts[3]),
+        connectionInput.parse(await readJson(req)),
+      );
+      send(res, 200, await models.settings());
+      return true;
+    }
     if (global && parts.length === 5 && method === 'POST') {
       const engine = engineSchema.parse(parts[3]);
       const action = z.enum(['login', 'logout', 'cancel']).parse(parts[4]);
@@ -47,10 +56,10 @@ export async function modelRoute(
     if (summary === undefined) throw new NotFoundError('没有这个对话');
     if (method === 'PUT') {
       const body = z
-        .object({ engine: engineSchema, selection: selectionSchema })
+        .object({ engine: engineSchema, selection: selectionSchema, revision: z.string() })
         .strict()
         .parse(await readJson(req));
-      await models.setSelection(id, body.engine, body.selection);
+      await models.setSelection(id, body.engine, body.selection, body.revision);
       hub.broadcast({ type: 'model_settings', sessionId: id });
     } else if (method !== 'GET') return false;
     const selected = hub.selectedModel(id, summary.kind);
@@ -77,6 +86,8 @@ export async function modelRoute(
           : undefined;
     const result: ConversationModelSettings = {
       engine,
+      connection: models.connections.view(engine),
+      efforts: models.connections.view(engine).mode === 'api' ? API_EFFORTS[engine] : [],
       selection: {
         ...(selected.model !== undefined ? { model: selected.model } : {}),
         ...(selected.effort !== undefined ? { effort: selected.effort } : {}),
@@ -88,6 +99,7 @@ export async function modelRoute(
           ? active.key !== selected.key
           : used !== undefined &&
             (models.engineOf(used.adapter) !== engine ||
+              used.connection !== selected.connection ||
               (used.selection !== undefined &&
                 (used.selection.model !== selected.model ||
                   used.selection.effort !== selected.effort)) ||
@@ -114,7 +126,7 @@ async function readJson(req: IncomingMessage): Promise<unknown> {
   let size = 0;
   for await (const chunk of req as AsyncIterable<Buffer>) {
     size += chunk.length;
-    if (size > 8192) throw new BadRequestError('请求体太大');
+    if (size > 16384) throw new BadRequestError('请求体太大');
     chunks.push(chunk);
   }
   return JSON.parse(Buffer.concat(chunks).toString('utf8')) as unknown;

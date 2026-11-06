@@ -1,21 +1,25 @@
+import type { ApiConnection } from './api-connection.ts';
 import { existsSync, mkdirSync, readlinkSync, symlinkSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join, resolve } from 'node:path';
 import type { ConversationSpec } from './port.ts';
 
 /** 独立配置与会话存放处；只链接 CLI 的登录文件，不读取或复制凭据。 */
-export function prepareCodexHome(dataRoot: string): {
+export function prepareCodexHome(
+  dataRoot: string,
+  api = false,
+): {
   home: string;
   loginHome: string;
   cwd: string;
 } {
-  const home = join(dataRoot, 'codex-runtime');
+  const home = join(dataRoot, api ? 'codex-api-runtime' : 'codex-runtime');
   const cwd = join(home, 'empty');
   const loginHome = resolve(process.env.CODEX_HOME ?? join(homedir(), '.codex'));
   mkdirSync(cwd, { recursive: true, mode: 0o700 });
   const source = join(loginHome, 'auth.json');
   const target = join(home, 'auth.json');
-  if (existsSync(source)) {
+  if (!api && existsSync(source)) {
     try {
       symlinkSync(source, target);
     } catch (error) {
@@ -44,7 +48,12 @@ function toml(value: unknown): string {
   throw new Error('Codex 配置含不能表示的值');
 }
 
-export function codexArgs(spec: ConversationSpec, dataRoot: string, loginHome: string): string[] {
+export function codexArgs(
+  spec: ConversationSpec,
+  dataRoot: string,
+  loginHome: string,
+  api?: ApiConnection,
+): string[] {
   const sb = spec.sandbox;
   const filesystem: Record<string, string> = { ':root': sb === undefined ? 'deny' : 'read' };
   if (sb !== undefined) {
@@ -55,6 +64,20 @@ export function codexArgs(spec: ConversationSpec, dataRoot: string, loginHome: s
     filesystem[resolve(sb.workdir)] = 'write';
   }
   const config = {
+    ...(api !== undefined
+      ? {
+          model_provider: 'studium_api',
+          model_providers: {
+            studium_api: {
+              name: 'Studium API',
+              base_url: api.baseUrl,
+              env_key: 'STUDIUM_PROVIDER_API_KEY',
+              wire_api: 'responses',
+              requires_openai_auth: false,
+            },
+          },
+        }
+      : {}),
     // 不加载用户的 config.toml；项目指令、skills、插件、hooks、记忆也不混进 Studium。
     project_doc_max_bytes: 0,
     project_doc_fallback_filenames: [],
@@ -65,7 +88,12 @@ export function codexArgs(spec: ConversationSpec, dataRoot: string, loginHome: s
     permissions: { studium: { filesystem, network: { enabled: sb?.network === true } } },
     approval_policy: 'never',
     allow_login_shell: false,
-    shell_environment_policy: { inherit: 'core', set: {}, experimental_use_profile: false },
+    shell_environment_policy: {
+      inherit: 'core',
+      exclude: ['STUDIUM_PROVIDER_API_KEY'],
+      set: {},
+      experimental_use_profile: false,
+    },
     web_search: spec.webSearch === true ? 'live' : 'disabled',
     skills: { bundled: { enabled: false }, include_instructions: false },
     memories: { generate_memories: false, use_memories: false },
@@ -100,7 +128,7 @@ export function codexArgs(spec: ConversationSpec, dataRoot: string, loginHome: s
 }
 
 /** 登录由 app-server 管理；业务密钥和外层 agent 会话变量不传给它。 */
-export function codexEnv(home: string): NodeJS.ProcessEnv {
+export function codexEnv(home: string, api?: ApiConnection): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {};
   for (const name of [
     'PATH',
@@ -125,5 +153,6 @@ export function codexEnv(home: string): NodeJS.ProcessEnv {
     if (process.env[name] !== undefined) env[name] = process.env[name];
   }
   env.CODEX_HOME = home;
+  if (api !== undefined) env.STUDIUM_PROVIDER_API_KEY = api.apiKey;
   return env;
 }

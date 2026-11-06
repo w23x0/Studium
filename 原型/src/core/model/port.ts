@@ -163,6 +163,7 @@ export interface ModelAdapter {
   ): {
     adapter: ModelAdapter;
     key: string;
+    connection?: string;
     model?: string;
     effort?: string;
   };

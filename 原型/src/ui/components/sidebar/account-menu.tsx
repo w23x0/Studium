@@ -1,4 +1,4 @@
-// 左栏设置：内核与登录、外观、语言；模型、思考强度与额度在对话输入区。
+// 左栏设置：内核与连接、外观、语言；模型、思考强度与额度在对话输入区。
 // MinerU 密钥：临时入口，填了写进 书库处理/.env（PDF 导入要用）。没做的（退出登录）不摆出来。
 import { useEffect, useState } from 'react';
 import {
@@ -81,7 +81,7 @@ export function AccountMenu(props: { collapsed: boolean }) {
         <MenuContent side="top" align="start" className="min-w-52">
           <MenuItem onClick={() => setSettingsOpen(true)}>
             <SettingsIcon />
-            <span>内核与登录</span>
+            <span>内核与连接</span>
           </MenuItem>
           <MenuSubmenu>
             <MenuSubmenuTrigger data-testid="theme-menu">

@@ -546,11 +546,9 @@ export class Hub {
       // 沙盒里每轮重渲染的只读文件（如本次对话）在这里刷新（工单 W4 §5.3）
       await cfg.beforeTurn?.(sessionId);
       let delivered = input;
-      const fresh =
-        live.conversation === undefined &&
-        !(await this.resumable(sessionId, selected.adapter.name));
+      const fresh = live.conversation === undefined && !(await this.resumable(sessionId, selected));
       const switched = fresh
-        ? await this.switchedContext(sessionId, inputLine, live.kind, selected.adapter.name)
+        ? await this.switchedContext(sessionId, inputLine, live.kind, selected)
         : '';
       live.conversation ??= await this.openConversation(sessionId, live.kind, cfg, selected);
       // 上一轮之后发生、要接在上下文后面的事（学习者停止了生成、删了讨论串，W12 §4.3 §4.4）+ 各会话自己的当前事实
@@ -675,6 +673,9 @@ export class Hub {
           at: this.iso(),
           adapter,
           token: ev.token,
+          ...(live.selection?.connection !== undefined
+            ? { connection: live.selection.connection }
+            : {}),
         });
         break;
       case 'sandbox_action': {
@@ -700,6 +701,9 @@ export class Hub {
             at: this.iso(),
             adapter,
             model: ev.name,
+            ...(live.selection?.connection !== undefined
+              ? { connection: live.selection.connection }
+              : {}),
             selection: {
               ...(live.selection?.model !== undefined ? { model: live.selection.model } : {}),
               ...(live.selection?.effort !== undefined ? { effort: live.selection.effort } : {}),
@@ -733,8 +737,8 @@ export class Hub {
   }
 
   /** 正本里有没有这个模型服务的续接凭据。 */
-  private async resumable(sessionId: string, adapter: string): Promise<boolean> {
-    return (await this.resumeFrom(sessionId, adapter)).resumeToken !== undefined;
+  private async resumable(sessionId: string, selected: SelectedModel): Promise<boolean> {
+    return (await this.resumeFrom(sessionId, selected)).resumeToken !== undefined;
   }
 
   /** 换服务后从正本交接；不把另一家服务的续接凭据或思考块伪装成当前模型的历史。 */
@@ -742,14 +746,18 @@ export class Hub {
     sessionId: string,
     inputLine: number,
     kind: ConversationKind,
-    adapter: string,
+    selected: SelectedModel,
   ): Promise<string> {
     const records = (await this.records(sessionId)).filter((r) => r.line < inputLine);
     const last = records
       .map((r) => r.record)
       .filter((r) => r.type === 'model_session')
       .at(-1);
-    if (last === undefined || last.adapter === adapter) return '';
+    if (
+      last === undefined ||
+      (last.adapter === selected.adapter.name && last.connection === selected.connection)
+    )
+      return '';
     const attachments = records.flatMap(({ record: r }) =>
       r.type === 'thread_message' && r.attached !== undefined ? [r.attached] : [],
     );
@@ -791,7 +799,7 @@ export class Hub {
       session: { id: sessionId, kind },
       ...(sandbox !== undefined ? { sandbox } : {}),
       ...(cfg.webSearch === true ? { webSearch: true } : {}),
-      ...(await this.resumeFrom(sessionId, selected.adapter.name)),
+      ...(await this.resumeFrom(sessionId, selected)),
     });
     // 不是 send() 引起的一轮（框架自己接着跑的）：动作当场记；模型自己起的一轮排进队列当一轮记
     conv.listen?.({
@@ -824,13 +832,18 @@ export class Hub {
   }
 
   /** 从哪接上：最近一条续接凭据（旧数据里截回过的记录不再理会：10-26 起上下文只追加）。 */
-  private async resumeFrom(sessionId: string, adapter: string): Promise<{ resumeToken?: string }> {
+  private async resumeFrom(
+    sessionId: string,
+    selected: SelectedModel,
+  ): Promise<{ resumeToken?: string }> {
     const records = await this.records(sessionId);
     const resume = records
       .map((r) => r.record)
       .filter((r) => r.type === 'model_session')
       .at(-1);
-    return resume?.type === 'model_session' && resume.adapter === adapter
+    return resume?.type === 'model_session' &&
+      resume.adapter === selected.adapter.name &&
+      resume.connection === selected.connection
       ? { resumeToken: resume.token }
       : {};
   }

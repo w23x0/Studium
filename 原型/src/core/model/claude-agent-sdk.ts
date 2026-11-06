@@ -1,3 +1,4 @@
+import type { ApiConnection } from './api-connection.ts';
 // Claude Agent SDK 适配器：整个核心里唯一允许引用 @anthropic-ai/claude-agent-sdk 的文件
 // （依赖方向测试 tests/architecture.test.ts 会查）。
 // 按 04-实现选型：关掉内置工具、不读 CLAUDE.md 与设置、用我们自己的系统提示；
@@ -47,6 +48,7 @@ const SERVER = 'studium';
 const SANDBOX_TOOLS = ['Read', 'Write', 'Edit', 'Glob', 'Grep', 'Bash'];
 
 export interface ClaudeAgentSdkOptions {
+  api?: ApiConnection;
   /** 不填用 SDK 默认模型。 */
   model?: string;
   /** 按会话类分开配的模型与强度；没配的类用 SDK 默认。 */
@@ -84,6 +86,7 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
   const key = spec.profile ?? spec.session?.kind;
   const profile = key !== undefined ? o.profiles?.[key] : undefined;
   const model = spec.model ?? profile?.model ?? o.model;
+  if (o.api !== undefined && !model) throw new Error('请先在对话输入区选择或填写 API 模型 ID');
   const effort = claudeEffort(
     spec.effort === 'default' ? undefined : (spec.effort ?? profile?.effort ?? o.effort),
   );
@@ -150,7 +153,7 @@ export function sdkOptionsFor(spec: ConversationSpec, o: ClaudeAgentSdkOptions):
           },
         }
       : {}),
-    env: cleanEnv(),
+    env: claudeEnv(o.api),
   };
 }
 
@@ -370,7 +373,10 @@ export class ClaudeAgentSdkModel implements ModelAdapter {
   constructor(private readonly options: ClaudeAgentSdkOptions = {}) {
     this.disclosure = {
       service: 'Anthropic 的 Claude',
-      route: '经本机的 Claude 订阅（Claude Agent SDK）',
+      route:
+        options.api === undefined
+          ? '经本机的 Claude 订阅（Claude Agent SDK）'
+          : `API：${options.api.baseUrl}`,
       profiles: options.profiles ?? {},
       ...(options.model !== undefined ? { defaultModel: options.model } : {}),
     };
@@ -405,6 +411,7 @@ export class ClaudeAgentSdkModel implements ModelAdapter {
   }
 
   async quota(): Promise<QuotaSnapshot | undefined> {
+    if (this.options.api !== undefined) return undefined;
     const conv = [...this.live].at(-1);
     if (conv !== undefined) {
       // SDK 标明的实验接口（可能改名或撤掉）：失败只记一句，交回上次拿到的值，不影响别的功能
@@ -881,6 +888,20 @@ function failReason(msg: { subtype: string; errors?: string[] }): string {
   const detail =
     msg.errors !== undefined && msg.errors.length > 0 ? `（${msg.errors.join('；')}）` : '';
   return `Agent SDK 本轮失败：${msg.subtype}${detail}`;
+}
+
+function claudeEnv(api: ApiConnection | undefined): Record<string, string> {
+  const env = Object.fromEntries(
+    Object.entries(cleanEnv()).filter(
+      ([name]) =>
+        api === undefined || !/^(ANTHROPIC_|CLAUDE_CODE_OAUTH_|CLAUDE_CODE_USE_)/.test(name),
+    ),
+  );
+  if (api !== undefined) {
+    env.ANTHROPIC_BASE_URL = api.baseUrl;
+    env.ANTHROPIC_API_KEY = api.apiKey;
+  }
+  return env;
 }
 
 function cleanEnv(): Record<string, string> {

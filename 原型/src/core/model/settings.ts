@@ -1,8 +1,10 @@
+import { ApiConnections, apiModels, API_EFFORTS } from './api-connection.ts';
 import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { z } from 'zod';
 import type {
   AccountState,
+  ConnectionInput,
   Engine,
   EngineSettings,
   ModelChoice,
@@ -23,6 +25,8 @@ export const selectionSchema = z
   })
   .strict();
 const stateSchema = z.object({
+  apiSessions: z.record(z.string(), z.record(z.string(), selectionSchema)).default({}),
+  apiDefaults: z.record(z.string(), selectionSchema).default({}),
   engine: engineSchema,
   sessions: z.record(
     z.string(),
@@ -34,6 +38,8 @@ const stateSchema = z.object({
 export class ModelSettings implements ModelAdapter {
   private state: z.infer<typeof stateSchema>;
   private readonly file: string;
+  readonly connections: ApiConnections;
+  private readonly loginAdapters: Record<Engine, ClaudeAgentSdkModel | CodexAppServerModel>;
   private readonly adapters: Record<Engine, ClaudeAgentSdkModel | CodexAppServerModel>;
   private readonly claude: ClaudeAgentSdkModel;
   private readonly codexAccount: CodexAccount;
@@ -42,11 +48,17 @@ export class ModelSettings implements ModelAdapter {
   private readonly accountBusy = new Set<Engine>();
   private readonly revisions: Record<Engine, number> = { claude: 0, codex: 0 };
 
-  constructor(root: string) {
+  constructor(private readonly root: string) {
+    this.connections = new ApiConnections(root);
     this.file = join(root, 'model-settings.json');
     this.state = existsSync(this.file)
       ? stateSchema.parse(JSON.parse(readFileSync(this.file, 'utf8')) as unknown)
-      : { engine: engineSchema.parse(process.env.STUDIUM_MODEL_ADAPTER ?? 'claude'), sessions: {} };
+      : {
+          engine: engineSchema.parse(process.env.STUDIUM_MODEL_ADAPTER ?? 'claude'),
+          sessions: {},
+          apiSessions: {},
+          apiDefaults: {},
+        };
     const raw = process.env.STUDIUM_PROFILES;
     const overrides: unknown = raw === undefined ? undefined : JSON.parse(raw);
     this.claude = new ClaudeAgentSdkModel({
@@ -73,11 +85,36 @@ export class ModelSettings implements ModelAdapter {
           : {}),
       }),
     };
+    this.loginAdapters = { ...this.adapters };
+    this.updateAdapter('claude');
+    this.updateAdapter('codex');
     this.codexAccount = new CodexAccount(root, binary, () => {
       this.revisions.codex++;
       this.catalogs.delete('codex');
       this.onChange?.();
     });
+  }
+
+  private updateAdapter(engine: Engine): void {
+    const api = this.connections.api(engine);
+    this.adapters[engine] =
+      api === undefined
+        ? this.loginAdapters[engine]
+        : engine === 'claude'
+          ? new ClaudeAgentSdkModel({ cwd: this.root, api })
+          : new CodexAppServerModel({
+              cwd: this.root,
+              api,
+              binary: process.env.STUDIUM_CODEX_BIN ?? 'codex',
+            });
+  }
+
+  setConnection(engine: Engine, input: ConnectionInput): void {
+    this.connections.save(engine, input);
+    this.updateAdapter(engine);
+    this.catalogs.delete(engine);
+    this.revisions[engine]++;
+    this.onChange?.();
   }
 
   onChange: (() => void) | undefined;
@@ -98,17 +135,28 @@ export class ModelSettings implements ModelAdapter {
   selection(sessionId: string, kind: ConversationKind) {
     const engine = this.engine;
     const adapter = this.adapters[engine];
-    const profile = {
-      ...adapter.disclosure.profiles[kind],
-      ...this.state.sessions[sessionId]?.[engine],
-    };
+    const connection = this.connections.scope(engine);
+    const scope = `${engine}:${connection ?? 'login'}`;
+    const profile =
+      connection === undefined
+        ? {
+            ...adapter.disclosure.profiles[kind],
+            ...this.state.sessions[sessionId]?.[engine],
+          }
+        : { ...this.state.apiDefaults[scope], ...this.state.apiSessions[scope]?.[sessionId] };
     if (profile.model === undefined && adapter.disclosure.defaultModel !== undefined)
       profile.model = adapter.disclosure.defaultModel;
     return {
       adapter,
+      ...(connection !== undefined ? { connection } : {}),
       ...(profile.model !== undefined ? { model: profile.model } : {}),
       ...(profile.effort !== undefined ? { effort: profile.effort } : {}),
-      key: JSON.stringify([engine, profile, this.revisions[engine]]),
+      key: JSON.stringify([
+        engine,
+        profile,
+        this.revisions[engine],
+        this.connections.view(engine).revision,
+      ]),
     };
   }
 
@@ -124,6 +172,7 @@ export class ModelSettings implements ModelAdapter {
     });
   }
   quota() {
+    if (this.connections.view(this.engine).mode === 'api') return Promise.resolve(undefined);
     return this.adapters[this.engine].quota();
   }
 
@@ -140,22 +189,46 @@ export class ModelSettings implements ModelAdapter {
   catalog(engine: Engine): Promise<ModelChoice[]> {
     const cached = this.catalogs.get(engine);
     if (cached !== undefined && Date.now() - cached.at < 60_000) return cached.value;
-    const value = (engine === 'claude' ? this.claude.catalog() : this.codexAccount.catalog()).catch(
-      (error: unknown) => {
-        this.catalogs.delete(engine);
-        throw error;
-      },
-    );
+    const api = this.connections.api(engine);
+    const value = (
+      api !== undefined
+        ? apiModels(engine, api)
+        : engine === 'claude'
+          ? this.claude.catalog()
+          : this.codexAccount.catalog()
+    ).catch((error: unknown) => {
+      this.catalogs.delete(engine);
+      throw error;
+    });
     this.catalogs.set(engine, { at: Date.now(), value });
     return value;
   }
 
-  async setSelection(sessionId: string, engine: Engine, selection: ModelSelection): Promise<void> {
+  async setSelection(
+    sessionId: string,
+    engine: Engine,
+    selection: ModelSelection,
+    revision?: string,
+  ): Promise<void> {
+    const initialRevision = this.connections.view(engine).revision;
+    if (revision !== initialRevision) throw new Error('连接配置已改变，请刷新后重试');
+    const connection = this.connections.scope(engine);
     if (engine !== this.engine) throw new Error('内核已改变，请刷新后重新选择模型');
     if (selection.model !== undefined && selection.effort === undefined)
       selection = { ...selection, effort: 'default' };
     if (selection.model !== undefined || selection.effort !== undefined) {
-      const models = await this.catalog(engine);
+      const models =
+        connection === undefined
+          ? await this.catalog(engine)
+          : selection.model !== undefined
+            ? [
+                {
+                  id: selection.model,
+                  resolvedModel: selection.model,
+                  efforts: API_EFFORTS[engine],
+                },
+              ]
+            : [];
       const model = models.find(
         (m) => m.id === selection.model || m.resolvedModel === selection.model,
       );
@@ -168,6 +241,23 @@ export class ModelSettings implements ModelAdapter {
         throw new Error('这个模型不支持所选思考强度');
     }
     if (engine !== this.engine) throw new Error('内核已改变，请刷新后重试');
+    if (initialRevision !== this.connections.view(engine).revision)
+      throw new Error('连接配置已改变，请刷新后重试');
+    if (connection !== undefined) {
+      const scope = `${engine}:${connection}`;
+      this.save({
+        ...this.state,
+        apiSessions: {
+          ...this.state.apiSessions,
+          [scope]: { ...this.state.apiSessions[scope], [sessionId]: selection },
+        },
+        apiDefaults:
+          this.state.apiDefaults[scope] === undefined && selection.model !== undefined
+            ? { ...this.state.apiDefaults, [scope]: { model: selection.model, effort: 'default' } }
+            : this.state.apiDefaults,
+      });
+      return;
+    }
     this.save({
       ...this.state,
       sessions: {
@@ -179,6 +269,7 @@ export class ModelSettings implements ModelAdapter {
 
   async settings(): Promise<EngineSettings> {
     const status = async (engine: Engine): Promise<AccountState> => {
+      if (this.connections.view(engine).mode === 'api') return { loggedIn: false };
       try {
         const account = await (engine === 'claude'
           ? claudeAuth('status')
@@ -197,7 +288,14 @@ export class ModelSettings implements ModelAdapter {
       }
     };
     const [claude, codex] = await Promise.all([status('claude'), status('codex')]);
-    return { engine: this.engine, accounts: { claude, codex } };
+    return {
+      engine: this.engine,
+      accounts: { claude, codex },
+      connections: {
+        claude: this.connections.view('claude'),
+        codex: this.connections.view('codex'),
+      },
+    };
   }
 
   async accountAction(engine: Engine, action: 'login' | 'logout' | 'cancel'): Promise<void> {
