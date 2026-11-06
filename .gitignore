@@ -81,3 +81,6 @@ research_tree/logs/**
 # Obsidian 本机插件（各设备自装，不进仓库）
 .obsidian/plugins/
 .obsidian/community-plugins.json
+
+# 子代理的 git worktree
+.claude/worktrees/
