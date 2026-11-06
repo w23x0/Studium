@@ -37,36 +37,7 @@ export interface RecordsResponse {
   running: boolean;
 }
 
-export interface SearchResponse {
-  hits: { sessionId: string; line: number; text: string }[];
-}
-
 // ───────────── 依据可见（批 1a）：界面读的数据，都是只读视图 ─────────────
-
-/** 记录里实际执行的模型。取不到实际模型时 known 为假、name 是适配器名，note 写明这只是兜底。 */
-export interface ModelInfo {
-  name: string;
-  known: boolean;
-  note?: string;
-}
-
-/** 取不到实际执行模型时，存在记录 model 字段里的兜底说明里的固定字样。 */
-export const MODEL_FALLBACK_MARK = '未取到实际执行模型';
-
-/** 把记录里存的模型字符串还原成 ModelInfo。 */
-export function modelInfoOf(stored: string): ModelInfo {
-  if (!stored.includes(MODEL_FALLBACK_MARK)) return { name: stored, known: true };
-  const name = stored.split('（')[0] ?? stored;
-  return {
-    name,
-    known: false,
-    note: '没取到实际执行的模型；这里显示的是适配器名，不代表真正跑的是哪个模型。',
-  };
-}
-
-export interface SessionModelResponse {
-  model: ModelInfo;
-}
 
 /** 各类会话的日常叫法（外发披露、记录出处里给学习者看）。 */
 export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {

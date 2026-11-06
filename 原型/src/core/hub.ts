@@ -8,9 +8,6 @@ import { projectUsage } from './usage.ts';
 import { randomBytes } from 'node:crypto';
 import {
   CONVERSATION_KIND_LABELS,
-  MODEL_FALLBACK_MARK,
-  modelInfoOf,
-  type ModelInfo,
   type SessionSummary,
   type ServerEvent,
 } from '../shared/protocol.ts';
@@ -143,23 +140,6 @@ export class Hub {
     };
   }
 
-  /**
-   * 这个会话实际执行的模型名（模型侧自报）。拿不到时退回适配器名并写明是兜底，不编。
-   */
-  async executedModel(sessionId: string): Promise<string> {
-    const used = (await this.records(sessionId))
-      .map((r) => r.record)
-      .filter((r) => r.type === 'model_used')
-      .at(-1);
-    if (used?.type === 'model_used') return used.model;
-    return `${this.modelName}（适配器名；${MODEL_FALLBACK_MARK}）`;
-  }
-
-  /** 同上，给界面用：拿不到实际模型时 known 为假并带兜底说明。 */
-  async modelInfo(sessionId: string): Promise<ModelInfo> {
-    return modelInfoOf(await this.executedModel(sessionId));
-  }
-
   /** 订阅额度（W14 §3）：适配器没有额度 = available 为假（界面不显示）；一次都没拿到 = 没有 at。 */
   async quota(sessionId?: string): Promise<QuotaResponse> {
     const live = sessionId === undefined ? undefined : this.live.get(sessionId);
@@ -229,10 +209,6 @@ export class Hub {
   /** 有某种记录的会话（跨次记录现算用，W13）；删掉的讨论串不算。 */
   sessionsWith(type: LogRecord['type']): string[] {
     return this.opts.index.sessionsWith(type);
-  }
-
-  search(text: string): ReturnType<DerivedIndex['search']> {
-    return this.opts.index.search(text);
   }
 
   async records(sessionId: string): Promise<NumberedRecord[]> {

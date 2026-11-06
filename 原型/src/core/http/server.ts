@@ -11,10 +11,8 @@ import type {
   ProjectMaterialsRequest,
   AddMaterialRequest,
   ProjectMaterialsResponse,
-  SessionModelResponse,
   ListSessionsResponse,
   RecordsResponse,
-  SearchResponse,
   MaterialListResponse,
   SourceSearchResponse,
   ResolveCitationsResponse,
@@ -95,15 +93,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
 
     if (method === 'GET' && parts[1] === 'events' && parts.length === 2) {
       openSse(res);
-      return;
-    }
-    if (method === 'GET' && parts[1] === 'search' && parts.length === 2) {
-      const q = url.searchParams.get('q') ?? '';
-      if (q.trim() === '') {
-        send(res, 400, { error: 'q 不能为空' });
-        return;
-      }
-      send(res, 200, { hits: opts.hub.search(q) } satisfies SearchResponse);
       return;
     }
     try {
@@ -263,10 +252,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       return;
     }
     if (id !== undefined && parts.length === 4) {
-      if (action === 'model' && method === 'GET') {
-        send(res, 200, { model: await hub.modelInfo(id) } satisfies SessionModelResponse);
-        return;
-      }
       if (action === 'records' && method === 'GET') {
         const records = await hub.records(id);
         send(res, 200, { records, running: hub.isRunning(id) } satisfies RecordsResponse);

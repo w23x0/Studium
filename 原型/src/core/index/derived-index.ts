@@ -7,8 +7,8 @@ import { CONVERSATION_KINDS, type LogRecord, type NumberedRecord } from '../../s
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-// 13：只收 main、loop、import；旧种类（谈方向、导航……）的正本留在磁盘上，不进索引
-const SCHEMA_VERSION = 13;
+// 14：只收 main、loop、import（旧种类的正本留在磁盘上，不进索引）；不存正文，对话全文搜索没人调
+const SCHEMA_VERSION = 14;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -79,10 +79,8 @@ export class DerivedIndex {
       }
     }
     this.db
-      .prepare(
-        'INSERT OR REPLACE INTO records (session_id, line, type, at, text) VALUES (?, ?, ?, ?, ?)',
-      )
-      .run(sessionId, line, record.type, record.at, searchableText(record));
+      .prepare('INSERT OR REPLACE INTO records (session_id, line, type, at) VALUES (?, ?, ?, ?)')
+      .run(sessionId, line, record.type, record.at);
   }
 
   private touch(sessionId: string, at: string): void {
@@ -148,18 +146,6 @@ export class DerivedIndex {
   }
 
   /** 第一版检索：子串匹配（04「中文检索」先 grep）；删掉的讨论串不搜。 */
-  search(text: string, limit = 50): { sessionId: string; line: number; text: string }[] {
-    const rows = this.db
-      .prepare(
-        "SELECT session_id, line, text FROM records WHERE text LIKE ? ESCAPE '\\' AND session_id NOT IN (SELECT session_id FROM deleted) ORDER BY at DESC LIMIT ?",
-      )
-      .all(`%${text.replace(/[\\%_]/g, (c) => `\\${c}`)}%`, limit) as {
-      session_id: string;
-      line: number;
-      text: string;
-    }[];
-    return rows.map((r) => ({ sessionId: r.session_id, line: r.line, text: r.text }));
-  }
 
   indexedLines(sessionId: string): number {
     const row = this.db
@@ -203,7 +189,6 @@ function createSchema(db: DatabaseSync): void {
       line INTEGER NOT NULL,
       type TEXT NOT NULL,
       at TEXT NOT NULL,
-      text TEXT NOT NULL,
       PRIMARY KEY (session_id, line)
     );
     PRAGMA user_version = ${String(SCHEMA_VERSION)};
@@ -220,24 +205,5 @@ function markOf(r: LogRecord): 'ended' | null | undefined {
       return null;
     default:
       return undefined;
-  }
-}
-
-function searchableText(r: LogRecord): string {
-  switch (r.type) {
-    case 'user_message':
-    case 'program_fact':
-    case 'message_edited':
-      return r.text;
-    case 'assistant_message':
-      return r.text;
-    // 别的会话发来的话学习者看不到、发话的讨论串可能被删（§4.3），不搜
-    // 沙盒动作只在写文件时有内容（读 / 跑命令没有）
-    case 'sandbox_action':
-      return r.content ?? '';
-    case 'session_opened':
-      return r.title;
-    default:
-      return '';
   }
 }
