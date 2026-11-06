@@ -20,9 +20,7 @@ import {
   type ContextOpened,
   type LogRecord,
   type NumberedRecord,
-  type ResumeOrigin,
   type SessionOpened,
-  type Ticket,
 } from '../shared/records.ts';
 import { quotesPrefix } from '../shared/stream-page.ts';
 import { localMinute } from '../shared/time.ts';
@@ -33,7 +31,6 @@ import { renderTranscript } from './transcript.ts';
 import type {
   ModelAdapter,
   ModelConversation,
-  ModelDisclosure,
   ModelEvent,
   SandboxSpec,
   ToolSpec,
@@ -181,11 +178,6 @@ export class Hub {
     return projectUsage({ listSessions: () => all, records: (id) => this.records(id) }, project);
   }
 
-  /** 内容送往哪个服务（外发披露）；适配器没声明就是 undefined。 */
-  get disclosure(): ModelDisclosure | undefined {
-    return this.opts.model.disclosure;
-  }
-
   subscribe(fn: (e: ServerEvent) => void): () => void {
     this.listeners.add(fn);
     return () => this.listeners.delete(fn);
@@ -196,11 +188,7 @@ export class Hub {
     meta: {
       title: string;
       parent?: string;
-      ticket?: Ticket;
       anchorLine?: number;
-      resumeOf?: ResumeOrigin;
-      /** 学习对话按屏幕跑（W10）。 */
-      screens?: true;
       /** 学习页用竖流（10-29 #74 起；W12 起是唯一的学习页）。 */
       page?: 'stream';
     },
@@ -216,10 +204,7 @@ export class Hub {
       kind,
       title: meta.title,
       ...(meta.parent !== undefined ? { parent: meta.parent } : {}),
-      ...(meta.ticket !== undefined ? { ticket: meta.ticket } : {}),
       ...(meta.anchorLine !== undefined ? { anchorLine: meta.anchorLine } : {}),
-      ...(meta.resumeOf !== undefined ? { resumeOf: meta.resumeOf } : {}),
-      ...(meta.screens === true ? { screens: true as const } : {}),
       ...(meta.page !== undefined ? { page: meta.page } : {}),
     };
     await this.append(sessionId, opened);
@@ -234,6 +219,11 @@ export class Hub {
   /** 学习者删掉的讨论串（W12 §4.3）。 */
   isDeleted(sessionId: string): boolean {
     return this.opts.index.isDeleted(sessionId);
+  }
+
+  /** 磁盘上全部正本的会话 id（含索引不收的旧种类；读旧的谈方向用，`goal.ts`）。 */
+  sessionIdsOnDisk(): Promise<string[]> {
+    return this.opts.dataDir.listSessionIds();
   }
 
   /** 有某种记录的会话（跨次记录现算用，W13）；删掉的讨论串不算。 */
@@ -276,11 +266,8 @@ export class Hub {
     sessionId: string,
     input: TurnInput,
     meta: {
-      objection?: { toLine: number };
       /** 这条输入已经记在正本这一行（如学习者在组件上的操作、改过的那句话）：不再另记，只交给模型。 */
       recorded?: number;
-      /** 旧数据（区域图学习页）：学习者在某一块下面回的。 */
-      replyTo?: { key: string; pointer: string };
       /** 学习页：学习者选中页面上几处再说的（交给模型时开头写明选中了哪几段，11-05 起可多处）。 */
       quotes?: MessageQuote[];
     } = {},
@@ -289,8 +276,6 @@ export class Hub {
       throw new NotFoundError(`这个对话已经删了：${sessionId}`);
     }
     const live = await this.ensureLive(sessionId);
-    const objection = input.role === 'learner' ? meta.objection : undefined;
-    const replyTo = input.role === 'learner' ? meta.replyTo : undefined;
     const quotes = input.role === 'learner' ? (meta.quotes ?? []) : [];
     const line =
       meta.recorded ??
@@ -301,8 +286,6 @@ export class Hub {
               type: 'user_message',
               at: this.iso(),
               text: input.text,
-              ...(objection !== undefined ? { objection } : {}),
-              ...(replyTo !== undefined ? { replyTo } : {}),
               ...(quotes.length > 0 ? { quotes } : {}),
             }
           : { type: 'program_fact', at: this.iso(), text: input.text },
@@ -313,13 +296,7 @@ export class Hub {
     const delivered: TurnInput = {
       role: input.role,
       ...(timeline ? { plain: true } : {}),
-      text: `${await this.head(sessionId, line, input.role === 'learner' ? '学习者' : '程序')} ${
-        objection !== undefined
-          ? `（学习者对第 ${String(objection.toLine)} 行的守卫判定提出异议）`
-          : ''
-      }${replyTo !== undefined ? `（回在「${replyTo.pointer}」下面）` : ''}${quotesPrefix(
-        quotes,
-      )}${input.text}`,
+      text: `${await this.head(sessionId, line, input.role === 'learner' ? '学习者' : '程序')} ${quotesPrefix(quotes)}${input.text}`,
     };
     return { line, done: this.enqueue(sessionId, live, { input: delivered, line }) };
   }
@@ -792,7 +769,7 @@ export class Hub {
     await this.append(sessionId, rec);
   }
 
-  /** 从哪接上：最近一条续接凭据（旧数据里截回过的记录不再理会：10-26 起上下文只追加）。 */
+  /** 从哪接上：最近一条续接凭据。 */
   private async resumeFrom(
     sessionId: string,
     selected: SelectedModel,

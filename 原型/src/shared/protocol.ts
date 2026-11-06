@@ -2,7 +2,6 @@
 import type {
   ConversationKind,
   NumberedRecord,
-  ObjectionTarget,
   SourceReport,
   SourceReportKind,
 } from './records.ts';
@@ -18,15 +17,9 @@ export interface SessionSummary {
   /** 最近一条记录的时间（派生层算的；左栏“最近”按它排）。 */
   lastAt?: string;
   parent?: string;
-  /** 派生层记下的这条对话现在的状态记号；没有 = 还在进行。讨论串怎么分组由界面按它定。 */
-  mark?: SessionMark;
+  /** 派生层记下的状态：讨论串结束着；没有 = 开着。 */
+  mark?: 'ended';
 }
-
-/**
- * 派生层记下的对话状态（只记事实；有记号 = 已结束，W19）：ended 讨论串结束（学习对话 W19 起也是它；旧数据还有谈方向谈定或
- * W20 起不再开、找资料勾完、写产出与阶段复盘）· closed / unclosed 旧数据：学习合上 / 没合上就结束（照旧显示当时的状态）。
- */
-export type SessionMark = 'closed' | 'unclosed' | 'ended';
 
 export interface ProjectResponse {
   mainSessionId: string;
@@ -84,20 +77,9 @@ export interface SessionModelResponse {
 /** 各类会话的日常叫法（外发披露、记录出处里给学习者看）。 */
 export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   main: '项目主对话',
-  talk: '谈方向',
   loop: '学习对话',
-  guard: '守卫（旧数据）',
-  nav: '导航',
-  retrieve: '检索子代理',
-  state: '状态整理',
-  pedagogy: '教法记录整理',
-  output: '写产出',
-  find: '找资料',
-  editor: '页面编辑员（旧数据）',
   import: '导入处理',
 };
-
-export type { ObjectionTarget };
 
 // ───────────── 原文与出处（批 2a）：资料浏览、全文检索、原件页面、教材出处、资料报错 ─────────────
 

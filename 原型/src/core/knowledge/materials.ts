@@ -514,7 +514,7 @@ export class Materials {
     return walk(await this.bodyDir(id));
   }
 
-  /** 说明.md（导入会话写的学过的那段总结；旧数据里还有找资料对话写的说明；没有 = undefined），清单里带它的开头。 */
+  /** 说明.md（导入会话写的学过的那段总结；没有 = undefined），清单里带它的开头。 */
   async guide(id: string): Promise<string | undefined> {
     try {
       return await readFile(join(await this.bodyDir(id), GUIDE_FILE), 'utf8');
@@ -684,7 +684,7 @@ export class Materials {
         });
         if (!res.ok) throw new Error(`抓取失败：HTTP ${String(res.status)}`);
         if ((res.headers.get('content-type') ?? '').includes('application/pdf')) {
-          // 网址指向的是 PDF（找资料交回的讲义多是这样）：存原件，照新 PDF 转（工单 W9 进度页有记）
+          // 网址指向的是 PDF：存原件，照新 PDF 转（工单 W9 进度页有记）
           await mkdir(original, { recursive: true });
           const name = basename(new URL(src.origin).pathname) || '原件';
           const pdf = join(original, name.toLowerCase().endsWith('.pdf') ? name : `${name}.pdf`);

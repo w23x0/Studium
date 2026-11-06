@@ -21,13 +21,7 @@ import { useSetting } from './settings.ts';
 import { buildSidebar, withTitles } from './sidebar-model.ts';
 import { threadStatus } from './threads-model.ts';
 import { OpenSessionContext } from './open-session.ts';
-import {
-  PanelContext,
-  ProjectContext,
-  type Focus,
-  type PanelApi,
-  type PanelTarget,
-} from './panel.ts';
+import { PanelContext, ProjectContext, type PanelApi, type PanelTarget } from './panel.ts';
 import { formatRoute, parseRoute, sameRoute, type Route } from './route.ts';
 import { W } from './wording.ts';
 
@@ -35,7 +29,6 @@ import { W } from './wording.ts';
 const REFRESH_ON = new Set<string>([
   'session_opened',
   'project_title',
-  'loop_ended',
   'thread_closed',
   'thread_reopened',
   'thread_title',
@@ -55,7 +48,6 @@ export function App() {
   /** 中间显示什么；地址里有就照地址（刷新回原处），没有等项目读回来再定。 */
   const [route, setRoute] = useState<Route | undefined>(() => parseRoute(window.location.hash));
   const [panel, setPanel] = useState<PanelState>({ open: false, stack: [] });
-  const [focus, setFocus] = useState<Focus | undefined>();
   const [error, setError] = useState<string | undefined>();
   const [navOpen, setNavOpen] = useState(false);
   const narrow = useNarrow();
@@ -152,7 +144,7 @@ export function App() {
     }
     if (
       route.current !== route.projectId &&
-      !rawSessions.some((s) => s.sessionId === route.current)
+      !rawSessions.some((s) => s.sessionId === route.current && s.kind === 'loop')
     ) {
       go({ page: 'chat', projectId: route.projectId, current: route.projectId });
     }
@@ -187,9 +179,6 @@ export function App() {
     [refresh, fail, showSession],
   );
 
-  const currentRef = useRef({ current, page });
-  currentRef.current = { current, page };
-  const seq = useRef(0);
   const panelApi = useMemo<PanelApi>(
     () => ({
       show: (t) =>
@@ -204,14 +193,8 @@ export function App() {
           open: true,
           stack: p.open && p.stack.length > 0 ? [...p.stack.slice(0, -1), t] : [t],
         })),
-      jump: (sessionId, lines, scroll = true) => {
-        seq.current += 1;
-        setFocus({ sessionId, lines, seq: seq.current, scroll });
-        const now = currentRef.current;
-        if (scroll && (now.current !== sessionId || now.page !== 'chat')) open(sessionId);
-      },
     }),
-    [open],
+    [],
   );
 
   const top = panel.stack.at(-1);
@@ -312,39 +295,30 @@ export function App() {
                   page === 'chat' &&
                   // 列表读回来、认得出是哪种对话再画（不把还没认出的当学习对话显示）
                   project !== undefined &&
-                  (current === projectId || currentSession !== undefined) &&
                   (currentSession?.kind === 'loop' ? (
                     // 学习对话（旧的也在竖流里只读显示，W19）
                     <LearnPage
                       key={current}
                       sessionId={current}
                       title={currentSession.title}
-                      projectId={projectId}
                       projectTitle={project.title}
-                      titleOf={titleOf}
                       headerExtra={threadsButton}
                       onError={fail}
-                      onBackToMain={() => openMain(projectId)}
                       onProject={() => openMain(projectId)}
                     />
-                  ) : (
+                  ) : current === projectId ? (
                     <Conversation
                       key={current}
                       sessionId={current}
-                      kind={currentSession?.kind ?? 'main'}
-                      parent={currentSession?.parent}
-                      title={currentSession?.title ?? ''}
                       projectId={projectId}
                       projectTitle={project.title}
                       titleOf={titleOf}
                       statusOf={statusOf}
-                      focus={focus?.sessionId === current ? focus : undefined}
                       headerExtra={threadsButton}
                       onError={fail}
-                      onBackToMain={() => openMain(projectId)}
                       onProject={() => openMain(projectId)}
                     />
-                  ))}
+                  ) : null)}
               </main>
               {threadsShown && (
                 <aside

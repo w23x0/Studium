@@ -15,9 +15,7 @@ import { ArrowDownIcon, ArrowRightIcon, LoaderIcon, PencilIcon } from 'lucide-re
 import { CitationsProvider } from '@/components/sources/citation';
 import { InputComposer, type SendInput } from '@/components/input/composer';
 import type { PickedFile } from '@/files';
-import { coversAny } from '@/evidence-model';
 import { useOpenSession } from '@/open-session';
-import { useHighlight } from '@/panel';
 import { W } from '@/wording';
 import { WT } from '@/wording-tools';
 import type { ThreadGroup } from '../../../shared/threads.ts';
@@ -26,9 +24,6 @@ import { useEffect, useRef, useState, type FC, type ReactNode } from 'react';
 
 /** 消息带的附加信息（由 App 的 convertMessage 放进 metadata.custom）。 */
 interface MessageMeta {
-  line?: number;
-  lines?: number[];
-  link?: UiLink;
   at?: string;
   edited?: true;
   reaction?: string;
@@ -61,19 +56,9 @@ function useMeta(): MessageMeta {
   return useAuiState((s) => s.message.metadata.custom as MessageMeta);
 }
 
-/** 这条消息覆盖的行号（data-lines 用空格隔开，好用 [data-lines~="12"] 找）与是否高亮。 */
-function useLines(): { attr: string; lit: boolean } {
-  const meta = useMeta();
-  const lines = meta.lines ?? (meta.line !== undefined ? [meta.line] : []);
-  const wanted = useHighlight();
-  return { attr: lines.join(' '), lit: coversAny(lines, wanted) };
-}
-
 export const Thread: FC<{
   welcome?: string;
   header?: ReactNode;
-  footer?: ReactNode;
-  disabled?: boolean;
   placeholder?: string;
   /** 模型在生成：输入框换成停止键（W12 §4.4）。 */
   running?: boolean;
@@ -90,8 +75,6 @@ export const Thread: FC<{
 }> = ({
   welcome = '今天想学点什么？',
   header,
-  footer,
-  disabled = false,
   placeholder = '回复…',
   running = false,
   onStop,
@@ -157,18 +140,15 @@ export const Thread: FC<{
                 <ArrowDownIcon />
               </TooltipIconButton>
             </ThreadPrimitive.ScrollToBottom>
-            {footer}
-            {!disabled && (
-              <InputComposer
-                modelControls={modelControls}
-                placeholder={placeholder}
-                onSend={onSend}
-                running={running}
-                {...(onStop !== undefined ? { onStop } : {})}
-                {...(onFiles !== undefined ? { onOtherFiles: onFiles } : {})}
-                {...(contextTokens !== undefined ? { contextTokens } : {})}
-              />
-            )}
+            <InputComposer
+              modelControls={modelControls}
+              placeholder={placeholder}
+              onSend={onSend}
+              running={running}
+              {...(onStop !== undefined ? { onStop } : {})}
+              {...(onFiles !== undefined ? { onOtherFiles: onFiles } : {})}
+              {...(contextTokens !== undefined ? { contextTokens } : {})}
+            />
           </ThreadPrimitive.ViewportFooter>
         </div>
       </ThreadPrimitive.Viewport>
@@ -177,7 +157,6 @@ export const Thread: FC<{
 };
 
 const AssistantMessage: FC = () => {
-  const { attr, lit } = useLines();
   const meta = useMeta();
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
@@ -186,11 +165,7 @@ const AssistantMessage: FC = () => {
   return (
     <MessagePrimitive.Root
       data-role="assistant"
-      data-lines={attr}
-      className={cn(
-        'group/message fade-in animate-in relative flex scroll-mt-16 flex-col gap-1 duration-150',
-        lit && 'bg-primary/5 ring-primary/40 -mx-2 rounded-xl px-2 py-1 ring-2',
-      )}
+      className="group/message fade-in animate-in relative flex scroll-mt-16 flex-col gap-1 duration-150"
     >
       <div
         data-testid="assistant-message"
@@ -229,7 +204,6 @@ const AssistantMessage: FC = () => {
 const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefined }> = ({
   onEditLast,
 }) => {
-  const { attr, lit } = useLines();
   const meta = useMeta();
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
@@ -240,7 +214,6 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
   return (
     <MessagePrimitive.Root
       data-role="user"
-      data-lines={attr}
       className="group/message fade-in animate-in flex scroll-mt-16 flex-col items-end gap-1 px-1 duration-150"
     >
       {editing !== undefined ? (
@@ -283,10 +256,7 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
       ) : (
         <div
           data-testid="user-message"
-          className={cn(
-            'bg-muted text-foreground relative max-w-[85%] rounded-(--composer-radius) px-4 py-2.5 whitespace-pre-wrap wrap-break-word transition-shadow',
-            lit && 'bg-primary/10 ring-primary/50 ring-2',
-          )}
+          className="bg-muted text-foreground relative max-w-[85%] rounded-(--composer-radius) px-4 py-2.5 whitespace-pre-wrap wrap-break-word"
         >
           <MessagePrimitive.Parts />
           {meta.reaction !== undefined && (
@@ -320,12 +290,12 @@ const UserMessage: FC<{ onEditLast: ((text: string) => Promise<void>) | undefine
   );
 };
 
-/** 程序给的一句结果（记下方向、停止了）或去别的对话的入口（讨论串卡片）：小字显示，不是谁说的话。 */
+/** 程序给的一句结果（停止了）或去别的对话的入口（讨论串卡片）：小字显示，不是谁说的话。 */
 const SystemMessage: FC = () => {
   const text = useAuiState((s) =>
     s.message.parts.map((p) => (p.type === 'text' ? p.text : '')).join(''),
   );
-  const { link, card } = useMeta();
+  const { card } = useMeta();
   const open = useOpenSession();
   return (
     <MessagePrimitive.Root data-role="system" className="px-1">
@@ -347,16 +317,6 @@ const SystemMessage: FC = () => {
           )}
           <ArrowRightIcon className="text-muted-foreground size-3.5 shrink-0" />
         </button>
-      ) : link ? (
-        <button
-          type="button"
-          data-testid="conversation-link"
-          className="bg-card hover:bg-accent/60 text-foreground inline-flex items-center gap-1.5 rounded-xl border px-3 py-1.5 text-sm shadow-xs transition-colors"
-          onClick={() => open(link.sessionId)}
-        >
-          {link.label}
-          <ArrowRightIcon className="text-muted-foreground size-3.5" />
-        </button>
       ) : (
         <div className="text-muted-foreground flex items-center gap-2 text-sm">
           <span className="bg-border h-px w-4" />
@@ -366,11 +326,6 @@ const SystemMessage: FC = () => {
     </MessagePrimitive.Root>
   );
 };
-
-interface UiLink {
-  sessionId: string;
-  label: string;
-}
 
 /**
  * 自己发了消息就滚到底；看历史时（离底部远）来了新内容不打扰。

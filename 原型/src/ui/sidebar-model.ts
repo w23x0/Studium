@@ -3,8 +3,8 @@ import type { ProjectSummary, SessionSummary } from '../shared/protocol.ts';
 import type { SidebarRef, SidebarView } from '../shared/sidebar.ts';
 import { W } from './wording.ts';
 
-/** 左栏里列的对话种类（后台的判断、整理会话不列）。 */
-const LISTED = new Set<SessionSummary['kind']>(['main', 'talk', 'loop', 'output', 'nav', 'find']);
+/** 左栏里列的对话种类（导入会话不列）。 */
+const LISTED = new Set<SessionSummary['kind']>(['main', 'loop']);
 
 export interface ProjectItem {
   kind: 'project';
@@ -19,7 +19,7 @@ export interface ChatItem {
   id: string;
   /** 改过名用改的名；主对话没改过名时为空（界面上叫“项目对话”）。 */
   title: string;
-  chatKind: 'main' | 'talk' | 'loop' | 'output' | 'nav' | 'find';
+  chatKind: 'main' | 'loop';
   projectId: string;
   projectTitle: string;
   lastAt: string;

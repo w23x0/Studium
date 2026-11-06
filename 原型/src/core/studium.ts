@@ -1,6 +1,6 @@
 // Studium：每种会话的系统提示与工具在这里给；写权限靠给什么工具来卡（`docs/设计/记录/读写权限.md`）。
 // W12（一个对话一个模型）：主对话开讨论串、给它们发话；讨论串自己读记录、互相发话（照 Claude 项目的主对话与
-// 讨论串）。W20 起新开的讨论串都是学习对话（方向在哪个对话里都能谈，不再单开谈方向；旧的谈方向、找资料只读）。
+// 讨论串）。讨论串都是学习对话（方向在哪个对话里都能谈）。
 // 学习对话的结束 W19 起也照讨论串：一个 close_thread，见 `closeThread`。
 import { randomBytes } from 'node:crypto';
 import { realpath } from 'node:fs/promises';
@@ -9,7 +9,7 @@ import { join, resolve } from 'node:path';
 import { z } from 'zod';
 import { formatCitation } from '../shared/citation.ts';
 import { CONVERSATION_KIND_LABELS } from '../shared/protocol.ts';
-import { THREAD_KINDS, threadEnded, threadGroup } from '../shared/threads.ts';
+import { threadEnded, threadGroup } from '../shared/threads.ts';
 import type {
   AddMaterialRequest,
   MaterialOwner,
@@ -28,7 +28,7 @@ import {
 } from '../shared/records.ts';
 import type { Crosslinks } from './crosslinks.ts';
 import { CrossNotes } from './cross-notes.ts';
-import { currentGoal, oldGoalBlock } from './goal.ts';
+import { currentGoal, oldGoalBlock, oldTalks } from './goal.ts';
 import { Learned } from './learned.ts';
 import { NotFoundError, type Hub, type KindConfig } from './hub.ts';
 import { MaterialError, Materials } from './knowledge/materials.ts';
@@ -45,10 +45,8 @@ import { localMinute } from '../shared/time.ts';
 
 export class BadRequestError extends Error {}
 
-/** 旧版开的学习对话（W12 前的区域图学习页与更早的）：只读看，要接着学另开一次。 */
+/** 不是竖流开的旧学习（W12 前）：只读，要接着学另开一次。 */
 const OLD_LOOP = '这次学习是旧版开的，只能看；要接着学，请回项目另开一次。';
-/** 不再开的讨论串种类（谈方向 W20 起、找资料 11-04 起、写产出 W12 起）：只读，要接着谈另开一个。 */
-const OLD_THREAD = '这是旧版的对话（谈方向、找资料等），只能读；要接着谈，开一个新的讨论串。';
 /** 项目说明上限（字；参照 Claude，`docs/设计/记录/项目说明.md`）。 */
 export const INSTRUCTIONS_LIMIT = 16000;
 /** 导入会话多久没交回算超时（W11 §4；实现细节，先定 60 分钟：几百页的 PDF 交 MinerU 要几分钟到十几分钟）。 */
@@ -87,7 +85,7 @@ export class Studium {
   /** 上传与分流（工单 W9）。 */
   private readonly uploads: Uploads;
 
-  /** 学习页：学习者在组件上的操作、组件试跑、旧区域图学习的组件（会话/学习对话.md §11）。 */
+  /** 学习页：学习者在组件上的操作、组件试跑、旧学习的组件（会话/学习对话.md §11）。 */
   readonly screens: Screens;
 
   /** 组件的块（按指纹存）。 */
@@ -120,7 +118,7 @@ export class Studium {
       oldGoal: async (id) => {
         const main = await this.projectOf(id);
         const goal = main === undefined ? undefined : currentGoal(await this.hub.records(main));
-        return goal === undefined ? '' : oldGoalBlock(goal.goal);
+        return goal === undefined ? '' : oldGoalBlock(goal);
       },
       notesOf: async (id) => {
         const main = await this.projectOf(id);
@@ -130,7 +128,7 @@ export class Studium {
       projectOf: (id) => this.projectOf(id),
       deleted: (id) => this.hub.isDeleted(id),
     });
-    // 组件按块按指纹存在 `<数据>/screens/`（旧活页面的 `pages/` 原样留着，不再写）
+    // 组件按块按指纹存在 `<数据>/screens/`
     const screenStore = new PageStore(join(o.dataDir, 'screens'));
     this.screenStore = screenStore;
     this.screens = new Screens({
@@ -230,7 +228,7 @@ export class Studium {
             this.mainPreface(sessionId, inputLine, fresh),
         }
       : {}),
-    // 学习对话可联网搜索（W12 §2：沙盒照旧不联网；W20 起谈方向、搜前沿也在这里）
+    // 学习对话可联网搜索（W12 §2：沙盒照旧不联网；谈方向、搜前沿也在这里）
     ...(kind === 'loop' ? { webSearch: true } : {}),
     ...(kind === 'loop'
       ? {
@@ -268,9 +266,6 @@ export class Studium {
           ];
         case 'import':
           return this.importTools(sessionId);
-        default:
-          // 旧数据：守卫、导航、检索子代理、状态整理、教法记录整理、写产出、页面编辑员都不再开（W12 §1）；找资料 11-04 收起（docs/暂缓设计/找资料.md）；谈方向 W20 起不再开
-          return [];
       }
     },
   });
@@ -663,13 +658,6 @@ export class Studium {
     return answer;
   }
 
-  /** 会联网搜索的会话种类；外发披露只从这里取，不另写一份名单（工单 W5 §4.6）。 */
-  webSearchKinds(): ConversationKind[] {
-    return (Object.keys(CONVERSATION_KIND_LABELS) as ConversationKind[]).filter(
-      (k) => this.kind(k).webSearch === true,
-    );
-  }
-
   // ───────────── 事件 ─────────────
 
   /** 开一个新项目（= 一条新的主对话）。 */
@@ -1030,20 +1018,13 @@ export class Studium {
    * 学习者在某个对话里发话。隔了一阵回来：每条都带时间，模型自己看得出离开多久，不设门槛、不另推
    * （`docs/设计/01-流程.md`「暂停」）。
    */
-  async learnerSays(
-    sessionId: string,
-    text: string,
-    replyTo?: { key: string; pointer: string },
-    quotes?: MessageQuote[],
-  ): Promise<void> {
+  async learnerSays(sessionId: string, text: string, quotes?: MessageQuote[]): Promise<void> {
     const opened = await this.hub.opened(sessionId);
     if (opened.kind === 'loop' && opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
-    // 旧数据只读：谈方向（W20 起不再开）、找资料、写产出、导航等
-    if (!['main', 'loop'].includes(opened.kind)) {
+    if (opened.kind !== 'main' && opened.kind !== 'loop') {
       throw new BadRequestError('这段对话只能看，不能再说话。');
     }
     const meta = {
-      ...(replyTo !== undefined && opened.kind === 'loop' ? { replyTo } : {}),
       ...(quotes !== undefined && quotes.length > 0 && opened.page === 'stream' ? { quotes } : {}),
     };
     // 结束的讨论串只是收起来：学习者再说话就重开（照 Claude 项目的讨论串；W12 §2 学习对话也一样）
@@ -1072,12 +1053,12 @@ export class Studium {
 
   /**
    * 学习者删一个讨论串：正在跑的先停；主对话正本追加 thread_deleted（主对话下一轮前面接一句“学习者删了「…」”）。
-   * 之后界面不显示、别的会话读不到、学过的记录与沙盒里不再包含。找资料存下的资料、谈方向定下的方向不跟着删。不做撤销。
+   * 之后界面不显示、别的会话读不到、学过的记录与沙盒里不再包含。不做撤销。
    */
   async deleteThread(threadId: string): Promise<void> {
     const opened = await this.hub.opened(threadId);
     const mainId = opened.parent;
-    if (mainId === undefined || !THREAD_KINDS.has(opened.kind)) {
+    if (mainId === undefined || opened.kind !== 'loop') {
       throw new BadRequestError('只能删项目里的讨论串');
     }
     if (this.hub.isDeleted(threadId)) throw new BadRequestError('已经删了');
@@ -1179,19 +1160,20 @@ export class Studium {
   // ───────────── 主对话 ─────────────
 
   /**
-   * 主对话的只读工具（工单 W5 §4.5）：学过的记录每次一行（上层单子 + 中层判定里的实际理解），外部导入单列标未验证；
-   * 以前单开谈方向定下的方向（旧数据，W20 起不再写）有才列。被别的项目问到时（ask_project）也用它。
+   * 主对话的只读工具（工单 W5 §4.5）：学过的记录每次一行，外部导入单列标未验证；以前单开谈方向定下的方向与谈方向
+   * 对话（旧数据，W20 起不再写）有才列。被别的项目问到时（ask_project，importText 为真）也用它。
    */
   private listLearnedTool(sessionId: string, importText = false): ToolSpec {
     return {
       name: 'list_learned',
       description:
-        '列出这个项目里学过的记录：每次学习一行（状态与时间；旧学习另带标着“旧数据”的收尾那一句、结束原话、单子、路线决定——都只是指针，学习者会什么以那次原文为准），以及外部导入（未验证）；以前单开谈方向时定下的方向（旧记录）有就列在最前。',
+        '列出这个项目里学过的记录：每次学习一行（状态与时间；学习者会什么以那次原文为准），以及外部导入（未验证）；以前单开谈方向时定下的方向与谈方向对话（旧记录）有就列在最前。',
       input: {},
       run: async () => {
         const mainId = await this.projectOf(sessionId);
         if (mainId === undefined) return err('找不到这个对话所属的项目');
         const goal = currentGoal(await this.hub.records(mainId));
+        const talks = importText ? [] : await oldTalks(this.hub, mainId);
         const body = await this.learned.list(mainId);
         const rows = body.learnings.map((l) => `- ${this.learned.line(l)}`);
         const imports = body.imports.map(
@@ -1200,7 +1182,13 @@ export class Studium {
         );
         return ok(
           [
-            ...(goal !== undefined ? [oldGoalBlock(goal.goal), ''] : []),
+            ...(goal !== undefined ? [oldGoalBlock(goal), ''] : []),
+            ...(talks.length > 0
+              ? [
+                  `以前单开的谈方向对话（旧记录，原文用 read_thread 读）：\n${talks.map((t) => `- ${t.sessionId}「${t.title}」`).join('\n')}`,
+                  '',
+                ]
+              : []),
             `学过的记录（每次学习一行）：\n${rows.join('\n') || '（还没有）'}`,
             ...(imports.length > 0
               ? ['', `外部导入（学习者自述 / 笔记，未验证，不算学会）：\n${imports.join('\n')}`]
@@ -1275,12 +1263,10 @@ export class Studium {
           if (title === '') return err('title 不能是空的');
           const cited = await this.citeMain(mainId, a.learner_lines as number[]);
           if (typeof cited === 'string') return err(cited);
-          // W20 起新开的讨论串都是学习对话（谈方向不再单开）
           const s = await this.hub.createSession('loop', {
             title,
             parent: mainId,
             anchorLine: cited.at(-1)?.line ?? 0,
-            screens: true,
             page: 'stream',
           });
           await this.hub.record(mainId, {
@@ -1536,11 +1522,15 @@ export class Studium {
       run: async (a) => {
         const mainId = await this.projectOf(selfId);
         if (mainId === undefined) return err('找不到这个对话所属的项目');
-        const t = await this.threadOf(mainId, a.thread as string);
-        if (typeof t === 'string') return err(t);
+        const id = (a.thread as string).trim();
+        // 旧的谈方向（索引不收）也读得到原文；模型从 list_learned 知道 id
+        if (!(await oldTalks(this.hub, mainId)).some((t) => t.sessionId === id)) {
+          const t = await this.threadOf(mainId, id);
+          if (typeof t === 'string') return err(t);
+        }
         return ok(
           await this.transcriptOf(
-            t.sessionId,
+            id,
             a.from_line as number | undefined,
             a.to_line as number | undefined,
           ),
@@ -1561,7 +1551,7 @@ export class Studium {
         const label = { open: '开着', ended: '已结束' };
         const rows = this.hub
           .listSessions()
-          .filter((s) => s.parent === mainId && THREAD_KINDS.has(s.kind))
+          .filter((s) => s.parent === mainId && s.kind === 'loop')
           .sort((x, y) => (y.lastAt ?? y.openedAt).localeCompare(x.lastAt ?? x.openedAt))
           .map(
             (s) =>
@@ -1588,13 +1578,13 @@ export class Studium {
           r.record.type === 'assistant_message'),
     );
     const kind = this.hub.listSessions().find((s) => s.sessionId === sessionId)?.kind;
-    const self = kind === 'main' ? '主对话' : kind === 'talk' ? '谈方向' : '教学';
+    // 不在列表里的只会是旧的谈方向
+    const self = kind === 'main' ? '主对话' : kind === 'loop' ? '教学' : '谈方向';
     return renderTranscript(recs, (id) => this.hub.labelOf(id), self) || '（这一段没有对话）';
   }
 
   /**
-   * 本项目里的一个讨论串；不是就回一句原因。live = 要给它发话、重开它：只有学习对话能（旧版开的学习对话只能读、
-   * 改名、结束；谈方向、找资料等不再开的种类只能读、改名）。
+   * 本项目里的一个讨论串；不是就回一句原因。live = 要给它发话、重开它（不是竖流开的旧学习只能读、改名、结束）。
    */
   private async threadOf(
     mainId: string,
@@ -1605,10 +1595,9 @@ export class Studium {
       if (e instanceof NotFoundError) return undefined;
       throw e;
     });
-    if (opened?.parent !== mainId || !THREAD_KINDS.has(opened.kind) || this.hub.isDeleted(id)) {
+    if (opened?.parent !== mainId || opened.kind !== 'loop' || this.hub.isDeleted(id)) {
       return `本项目里没有这个讨论串：${id}`;
     }
-    if (live && opened.kind !== 'loop') return OLD_THREAD;
     if (live && opened.page !== 'stream') return OLD_LOOP;
     return opened;
   }
@@ -1635,13 +1624,12 @@ export class Studium {
     return out;
   }
 
-  /** 结束着的学习对话重开（结束后也能重开，W12 §2）；重开了返回真。别的种类不再开（threadOf 已挡）。 */
+  /** 结束着的学习对话重开（结束后也能重开，W12 §2）；重开了返回真。 */
   private async reopenIfEnded(
     t: SessionOpened,
     by: 'learner' | 'main',
     reason: string,
   ): Promise<boolean> {
-    if (t.kind !== 'loop') return false;
     if (!threadEnded(await this.hub.records(t.sessionId))) return false;
     await this.hub.record(t.sessionId, { type: 'thread_reopened', at: this.iso(), by, reason });
     return true;
@@ -1649,14 +1637,13 @@ export class Studium {
 
   /**
    * 结束一个学习对话（只是收起，再说话就重开；W19 照 Claude 项目的 set_thread_resolved）。不是主对话结束的，告诉主对话
-   * 一句“结束了”。不再开的种类（谈方向等）只读，在讨论串里已算结束。
+   * 一句“结束了”。
    */
   private async closeThread(
     t: SessionOpened,
     by: 'main' | 'self' | 'learner',
     reason: string,
   ): Promise<ToolResult> {
-    if (t.kind !== 'loop') return err(OLD_THREAD);
     if (threadEnded(await this.hub.records(t.sessionId))) return err('它已经结束了。');
     await this.hub.record(t.sessionId, { type: 'thread_closed', at: this.iso(), by, reason });
     if (by !== 'main') {
@@ -1665,7 +1652,7 @@ export class Studium {
     return ok('已结束。');
   }
 
-  /** 学习者在讨论串栏“⋯”里点结束（W19）：学习对话能结束；旧数据里只读的（谈方向、找资料等）不用结束。 */
+  /** 学习者在讨论串栏“⋯”里点结束（W19）。 */
   async endThread(threadId: string): Promise<void> {
     const opened = await this.hub.opened(threadId);
     if (opened.parent === undefined || opened.kind !== 'loop') {
@@ -1686,11 +1673,6 @@ export class Studium {
   }
 
   // ───────────── 学习对话 ─────────────
-
-  /** 这次学习用竖流学习页（W12 起新开的都是；更早的旧数据只读）。 */
-  async isStream(loopId: string): Promise<boolean> {
-    return (await this.hub.opened(loopId)).page === 'stream';
-  }
 
   /**
    * 学习对话的工具（W12 §2）：改自己的标题 + 竖流学习页的页面工具；结束用讨论串工具里的 close_thread（W19）；资料、
@@ -1810,8 +1792,8 @@ export class Studium {
     if (threadEnded(await this.hub.records(loopId))) {
       throw new BadRequestError('这部分已经结束了。');
     }
-    // 旧版开的学习对话（开场时提示词与工具已定死）只看，不再跑（W10 §9 第 1 条）
-    if (opened.screens !== true) throw new BadRequestError(OLD_LOOP);
+    // 不是竖流开的旧学习（开场时提示词与工具已定死）只看，不再跑
+    if (opened.page !== 'stream') throw new BadRequestError(OLD_LOOP);
   }
 
   /** 资料范围的说明，接在工具结果后面。 */

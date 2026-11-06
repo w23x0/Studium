@@ -1,4 +1,4 @@
-// 右侧依据面板与对话高亮的共用入口：消息、面板里的链接经它打开面板、跳到对话某句。
+// 右侧面板的共用入口：消息、面板里的链接经它打开面板。
 import { createContext, useContext } from 'react';
 import type { BBox } from '../shared/protocol.ts';
 
@@ -33,26 +33,15 @@ export type PanelTarget =
       line?: number;
     };
 
-/** 对话里要高亮的几句；seq 每次跳转都变，好让同一处能再跳一次。 */
-export interface Focus {
-  sessionId: string;
-  lines: number[];
-  seq: number;
-  scroll: boolean;
-}
-
 export interface PanelApi {
   show: (t: PanelTarget) => void;
   /** 换掉面板当前显示的这一项（翻页、翻小节，不多压一层返回）。 */
   replace: (t: PanelTarget) => void;
-  /** 打开那个对话（不在当前时），高亮这几句；scroll 为真时滚过去。 */
-  jump: (sessionId: string, lines: number[], scroll?: boolean) => void;
 }
 
 export const PanelContext = createContext<PanelApi>({
   show: () => undefined,
   replace: () => undefined,
-  jump: () => undefined,
 });
 
 export function usePanel(): PanelApi {
@@ -64,11 +53,4 @@ export const ProjectContext = createContext<string | undefined>(undefined);
 
 export function useProject(): string | undefined {
   return useContext(ProjectContext);
-}
-
-/** 当前对话里要高亮的行（依据面板里引用到的原话）。 */
-export const HighlightContext = createContext<readonly number[]>([]);
-
-export function useHighlight(): readonly number[] {
-  return useContext(HighlightContext);
 }

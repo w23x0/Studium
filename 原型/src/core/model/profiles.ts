@@ -11,24 +11,17 @@ export interface Profile {
 }
 
 export type ProfileKey = ConversationKind;
-/**
- * 旧配置里的两项（W10 的学习对话子代理、框架小模型，W12 随区域图学习页撤掉）：STUDIUM_PROFILES 里配了不报错、不起作用。
- */
-const RETIRED_PROFILE_KEYS: readonly string[] = ['subagent', 'framework'];
-const PROFILE_KEYS: readonly string[] = [...CONVERSATION_KINDS, ...RETIRED_PROFILE_KEYS];
+const PROFILE_KEYS: readonly string[] = CONVERSATION_KINDS;
 
 export type Profiles = Partial<Record<ProfileKey, Profile>>;
 
 /**
- * 默认：主对话 Opus、低强度；找资料中等；学习对话 Opus、高强度（W15）；导入会话用 Sonnet、中等强度（W11 §4）。
- * 不再开的种类（守卫、导航、检索子代理、状态整理、教法记录整理、写产出、页面编辑员、谈方向）不设；STUDIUM_PROFILES 里
- * 配了也不报错、不起作用。
+ * 默认：主对话 Opus、低强度；学习对话 Opus、中等强度；导入会话用 Sonnet、中等强度（W11 §4）。
  */
 export const DEFAULT_PROFILES: Profiles = {
   main: { model: 'opus', effort: 'low' },
   // 学习对话固定 Opus（W15）：第一步“这一次学什么”全靠它判断；不写时随账号默认，历次 Opus、Sonnet 混着来
   loop: { model: 'opus', effort: 'medium' },
-  find: { effort: 'medium' },
   // 导入会话（W11 §4，试验）：把原件里不是纯文字的东西处理成别的会话能读的文字
   import: { model: 'sonnet', effort: 'medium' },
 };
@@ -53,7 +46,6 @@ export function mergeProfiles(overrides: unknown, base: Profiles = DEFAULT_PROFI
         `STUDIUM_PROFILES 里没有这一项：${kind}（可用：${PROFILE_KEYS.join(' / ')}）`,
       );
     }
-    if (RETIRED_PROFILE_KEYS.includes(kind)) continue;
     if (typeof raw !== 'object' || raw === null || Array.isArray(raw)) {
       throw new Error(`STUDIUM_PROFILES.${kind} 要是包含 model / effort 的对象`);
     }

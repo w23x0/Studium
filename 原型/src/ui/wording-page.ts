@@ -47,9 +47,6 @@ export const WP = {
   componentMissing: (name: string) => `（组件「${name}」还没做好）`,
   /** 学习结束后：再说话就重开（W12 §2）。 */
   reopenPlaceholder: '这次学习结束了；再说话就接着学…',
-  /** 不是竖流开的旧学习（区域图、W10 前）只读（W19 起在竖流里显示）。 */
+  /** 不是竖流开的旧学习只读（W19 起在竖流里显示）。 */
   oldLoop: '这次学习是旧版开的，只能看：文字按时间排，组件显示最后一版。要接着学，回项目里说。',
-  /** 旧数据里的退回（10-26 前）。 */
-  rolledBackLine: (to: number, reason?: string) =>
-    `你把页面退回到第 ${String(to)} 版${reason !== undefined ? `（${reason}）` : ''}`,
 } as const;

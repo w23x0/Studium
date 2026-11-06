@@ -1,9 +1,8 @@
 // 对话原文 → 给模型读的带行号文本（00 原则 8）。行号 = 正本 JSONL 的行号，引用只写行号。
-// 只放对话本身（学习者、教学、程序推的事、子代理交回）与学习者在组件上的操作；沙盒动作、工具调用、原始消息不放。
+// 只放对话本身（学习者、教学、程序推的事）与学习者在组件上的操作；沙盒动作、工具调用、原始消息不放。
 // 块编号、组件编号、版本号不进（会话/学习对话.md §11.2 主模型行）。
-import type { PageAction } from '../shared/page.ts';
 import type { LogRecord, NumberedRecord } from '../shared/records.ts';
-import { quotesOf, quotesPrefix } from '../shared/stream-page.ts';
+import { quotesPrefix } from '../shared/stream-page.ts';
 import { localMinute } from '../shared/time.ts';
 
 /**
@@ -33,7 +32,7 @@ export function renderTranscript(
 /** W14 前开场时程序附的内容接在交代后面的写法。 */
 const OLD_ATTACHED = '\n\n（程序附）';
 
-/** 一条记录在对话原文里谁说了什么；学习者在组件上的操作与子代理交回也算（会话/学习对话.md §3）。 */
+/** 一条记录在对话原文里谁说了什么；学习者在组件上的操作也算（会话/学习对话.md §3）。 */
 function speech(
   r: LogRecord,
   labelOf: (sessionId: string) => string,
@@ -46,7 +45,7 @@ function speech(
         text:
           r.replyTo !== undefined
             ? `（回在「${r.replyTo.pointer}」下面）${r.text}`
-            : `${quotesPrefix(quotesOf(r))}${r.text}`,
+            : `${quotesPrefix(r.quotes ?? [])}${r.text}`,
       };
     case 'assistant_message':
       return { who: self, text: r.text };
@@ -74,40 +73,10 @@ function speech(
       };
     case 'component_action':
       return { who: '学习者', text: `（在组件上）${r.text}` };
-    case 'component_report':
-      return { who: '子代理交回', text: r.text };
-    case 'screen_note':
-      return { who: '框架', text: r.text };
-    // 旧数据（10-26 的活页面）：学习者在页面上的动作
-    case 'page_actions':
-      return { who: '学习者', text: `（在页面上）${describeActions(r.actions)}` };
+    // 旧数据：区域图学习页的子代理交回的话
     case 'subagent_result':
       return { who: '子代理交回', text: r.text };
-    // 以下是旧数据（10-26 前）：编辑员换版、退回、教训
-    case 'page_version':
-      return r.by === 'editor' ? { who: '页面', text: '页面改了一版（编辑员改的）' } : undefined;
-    case 'page_rollback':
-      return {
-        who: '学习者（退回页面）',
-        text: `退回到第 ${String(r.to)} 版（退掉 ${r.removed.join('、') || '无'}${r.added.length > 0 ? `，换回 ${r.added.join('、')}` : ''}；原因：${r.reason ?? '没选'}）`,
-      };
-    case 'page_lesson':
-      return {
-        who: r.by === 'model' ? '教训（模型写的，只作参考）' : '教训（程序拼的）',
-        text: r.text,
-      };
     default:
       return undefined;
   }
-}
-
-/** 旧数据：10-26 活页面上的动作各一句（块编号不进上下文，只说做了什么）。 */
-function describeActions(actions: PageAction[]): string {
-  return actions
-    .map((a) => {
-      if (a.kind === 'toggle') return `${a.open ? '展开' : '折起'}了一块`;
-      const detail = a.detail === undefined ? '' : `：${JSON.stringify(a.detail).slice(0, 600)}`;
-      return `「${a.name}」${detail}`;
-    })
-    .join('；');
 }

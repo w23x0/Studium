@@ -1,66 +1,10 @@
-// 会话正本（JSONL）里每一行的形状。正本只追加、永不改写：行号就是引用地址。
-// 加新类型只能加，不改旧类型的字段含义；读到不认识的类型要原样保留。
-import type {
-  ReminderAdded,
-  ReminderClosed,
-  ResumeOrigin,
-  Revisit,
-  ReviewWindow,
-} from './records-longterm.ts';
-import type { CrossDomain } from './records-cross.ts';
-import type { PageAction, PageRollbackReason } from './page.ts';
+// 会话正本（JSONL）里每一行的形状。正本只追加、永不改写：行号就是引用地址（等于文件行号）。
+// 加新类型只能加，不改旧类型的字段含义。磁盘上还有早就不再产生的类型（旧数据，文件不动）：读到不认识的类型跳过，不报错。
 import type { TokenParts } from './usage.ts';
 
-export type * from './records-longterm.ts';
-export type * from './records-cross.ts';
-
-/**
- * main 主对话 · loop 一次学习的对话 · import 导入处理
- * · 旧数据（不再开）：guard 守卫（10-31）· editor 页面编辑员（10-26）· nav 导航 · retrieve 检索子代理 · state 整理学习者状态
- * · pedagogy 记教法效果 · output 写产出（这六种 W12 起）· find 找资料（11-04 起）· talk 谈方向（W20 起；方向在学习对话里谈）
- */
-export const CONVERSATION_KINDS = [
-  'main',
-  'talk',
-  'loop',
-  'guard',
-  'nav',
-  'retrieve',
-  'state',
-  'pedagogy',
-  'output',
-  'find',
-  'editor',
-  'import',
-] as const;
+/** main 主对话 · loop 一次学习的对话 · import 导入处理。程序只认这三种；磁盘上别的种类是旧数据，不进索引、界面不列。 */
+export const CONVERSATION_KINDS = ['main', 'loop', 'import'] as const;
 export type ConversationKind = (typeof CONVERSATION_KINDS)[number];
-
-/** 出发点的来源：学过的记录 / 自述 / 假定（只是来源标注，不是证据）。 */
-export const START_SOURCES = ['学过的记录', '自述', '假定'] as const;
-
-/** 单子：这次打算学什么、从哪出发（记录/单子与路线.md）。各栏都是文字，不再查知识点编号库。 */
-export interface Ticket {
-  /** 新点，一句话。 */
-  newPoint: string;
-  /** 预期理解：出发点怎么接到新点，一两句。 */
-  clause: string;
-  /** 这次用的出发点及其来源；`ref` = 依据（`会话 id:行号`）。 */
-  startPoints: { point: string; source: (typeof START_SOURCES)[number]; ref?: string }[];
-  /** 路线动作：继续主线 / 补前置 / 复习 / 复检 / 接着学 …… */
-  routeAction: string;
-  /** 对资料核的结果：`at` = 教材出处（`书/文件:行号`）；资料里没有的标 `modelAdded`。 */
-  sourceCheck: { claim: string; at?: string; modelAdded?: boolean }[];
-  /** 复习 / 复检：回头看以前那次学习（批 6）；没有 = 学新点。 */
-  revisit?: Revisit;
-  /** 补前置：合上后回到哪次学习（学习会话 id）。 */
-  returnTo?: string;
-  /** 接着学：接着哪次没合上的学习（学习会话 id）。 */
-  resumeOf?: string;
-  /** 跨领域的单子：补习型 / 对比链接型；同领域内的没有。 */
-  crossDomain?: CrossDomain;
-  /** 阶段验收（批 9）：这次学习里的练习都标阶段验收、默认不给提示。没有 = 日常学习。 */
-  stageCheck?: boolean;
-}
 
 export interface SessionOpened {
   type: 'session_opened';
@@ -68,24 +12,11 @@ export interface SessionOpened {
   sessionId: string;
   kind: ConversationKind;
   title: string;
-  /** 从哪个会话开出来的（学习对话 → 主对话；旧数据：守卫 → 学习对话）。 */
+  /** 从哪个会话开出来的（学习对话、导入会话 → 主对话）。 */
   parent?: string;
-  ticket?: Ticket;
   /** 挂在父会话的哪一行下（讨论串 → 主对话里那条学习者消息）。 */
   anchorLine?: number;
-  /** 这次学习是接着一次没合上的学习学的（批 6）：记着原来那次，原来那次的正本不改。 */
-  resumeOf?: ResumeOrigin;
-  /** 这是一次阶段复盘（畅谈类会话的另一种活，批 6）：回看的时间窗口。 */
-  review?: ReviewWindow;
-  /**
-   * 学习对话按屏幕跑（W10，会话/学习对话.md §11）：每轮屏幕由主模型的输出定。没有这一项的学习对话是旧版开的
-   * （开场的提示词与工具已定死），只看、不再跑新一轮。
-   */
-  screens?: true;
-  /**
-   * 学习页用哪种：'stream' = 竖流，学习对话一个人管（页面从正本放一遍算出来，src/shared/stream-page.ts）；W12 起新开的都是。
-   * 没有 = 旧数据：区域图（10-28、10-29，主模型 + 子代理 + 框架小模型）或更早的消息流，只读。
-   */
+  /** 竖流学习页：页面从正本放一遍算出来（src/shared/stream-page.ts）；W12 起新开的都是。没有 = 更早的学习，只读。 */
   page?: 'stream';
 }
 
@@ -93,13 +24,9 @@ export interface UserMessage {
   type: 'user_message';
   at: string;
   text: string;
-  /** 有这一项 = 这句话是学习者对本次学习里第 toLine 行守卫判定提出的异议（原话照记，带标记）。 */
-  objection?: { toLine: number };
-  /** 学习者在屏幕上某一块下面回的（会话/学习对话.md §11.3 学习者回话）：key 只在程序里用，pointer 是那块的一句话。 */
-  replyTo?: { key: string; pointer: string };
-  /** 竖流学习页：学习者选中页面上一段再说的（第几行里的哪段原文，或哪个组件）。旧行用它；11-05 起写 quotes。 */
-  quote?: MessageQuote;
-  /** 竖流学习页（11-05 起，#92）：学习者选中的几处，按选的先后；读时用 `quotesOf` 兼容旧行的 quote。 */
+  /** 旧数据（区域图学习页）：学习者回在某一块下面的，对话原文里写明回在哪一块。 */
+  replyTo?: { pointer: string };
+  /** 竖流学习页（11-05 起，#92）：学习者选中的几处，按选的先后。 */
   quotes?: MessageQuote[];
 }
 
@@ -119,7 +46,7 @@ export interface AssistantMessage {
   text: string;
 }
 
-/** 程序追加给模型的事实（开场交付、守卫结论、离开多久等）；不是学习者说的话。 */
+/** 程序追加给模型的事实（一次学习结束了等）；不是学习者说的话。 */
 export interface ProgramFact {
   type: 'program_fact';
   at: string;
@@ -138,22 +65,17 @@ export interface ToolCall {
 
 /**
  * 沙盒里的一个动作（读 / 写 / 跑命令……），由程序当场记（记录/对话与事件记录.md §3），不靠模型自报。
- * `path` 是虚拟路径；`tag` 是旧数据：W19 前读 只读/教学工具/<文件> 时程序打的 教学工具:<文件名>（教学工具撤掉，不再打）。
+ * `path` 是虚拟路径。
  */
 export interface SandboxAction {
   type: 'sandbox_action';
   at: string;
   actor: 'model';
-  /** 子代理做的：它的名字（主模型自己做的不填；会话/页面子代理.md）。 */
-  agent?: string;
-  /** 子代理做的：它这件活的编号（同 subagent_started.taskId；框架另开的是 `maker-…`）。 */
-  task?: string;
   op: 'read' | 'write' | 'run' | 'search' | 'other';
   path?: string;
   command?: string;
   summary: string;
   ok: boolean;
-  tag?: string;
   /** 写类动作写进去的文字（整份写 = 全文；追加 = 追加的部分）。 */
   content?: string;
 }
@@ -206,94 +128,22 @@ export interface TurnFailed {
   reason: string;
   /**
    * 模型服务交回的报错原句（如额度用完时 SDK 把“You've hit your session limit…”当一条助手消息交回）。
-   * 它不是模型说的话：只记在这里，不记成 assistant_message。10-27 前的旧数据里这句仍在 assistant_message 里。
+   * 它不是模型说的话：只记在这里，不记成 assistant_message。
    */
   notice?: string;
 }
 
-/** 旧数据：申请收口（W19 起不再产生，学习对话照 Claude 讨论串结束：thread_closed）。 */
-export interface CloseRequested {
-  type: 'close_requested';
-  at: string;
-  by: 'model' | 'learner';
-  /** 模型申请时的理由（10-31 起可空；学习者申请时是程序代写的一句）。 */
-  reason: string;
-  /**
-   * 收尾那一句（10-31 起，取代守卫）：学习对话调 request_close 时写的——这次做了什么、停在哪。
-   * 只有模型申请时有；学习者点“我觉得懂了”的那条没有。旧行没有这一项。
-   */
-  summary?: string;
-}
-
-/** 一条证据的独立程度：独立完成 / 提示后完成 / 答案暴露后。 */
-export const INDEPENDENCE = ['独立', '提示后', '答案暴露后'] as const;
-/** 一条证据的持久程度：仅当场 / 含变式 / 含延迟。 */
-export const DURABILITY = ['仅当场', '含变式', '含延迟'] as const;
-
-/**
- * 学习者实际表现出的理解（守卫判定顺带写下，记录/学过的记录.md「守卫判定」）：
- * 可与单子的预期理解不同；指回学习者的行，并注明证据强度（独立程度 + 持久程度）。
- */
-export interface Understanding {
-  /** 学习者实际表现出的理解，一句到几句。 */
-  text: string;
-  /** 学习对话里学习者的行，≥ 1 条。 */
-  lines: number[];
-  independence: (typeof INDEPENDENCE)[number];
-  durability: (typeof DURABILITY)[number];
-}
-
-/** 旧数据：守卫判定，程序已核对引用行（10-31 起不再产生，收尾由学习对话写 close_requested.summary）。 */
-export interface GuardVerdict {
-  type: 'guard_verdict';
-  at: string;
-  guardSessionId: string;
-  closed: boolean;
-  basis: string;
-  /** 守卫引用的学习对话行号。 */
-  lines: number[];
-  /** 学习者实际表现出的理解：判合上时必有且 ≥ 1 条；判没合上时可有可无。 */
-  understanding?: Understanding[];
-  /** 守卫这一轮实际执行的模型（不是别名）。 */
-  model?: string;
-  /** 程序核对不过时写明原因；有这一项时 closed 一律为 false。 */
-  problem?: string;
-}
-
-/**
- * 学习者改这次学习的单子（记录/单子与路线.md「单子」规矩“可见可改”）：只追加一条，
- * 记改前、改后与时间；`session_opened` 里那张与卡上的那张都不改。
- */
-export interface TicketEdited {
-  type: 'ticket_edited';
-  at: string;
-  by: 'learner';
-  before: Ticket;
-  after: Ticket;
-}
-
-/** 旧数据：一次学习结束，合上（学习者确认）或没合上（W19 起学习对话结束也记 thread_closed，没有合上 / 没合上）。 */
+/** 旧数据：一次学习结束（W19 起学习对话结束记 thread_closed）；读时算已结束。 */
 export interface LoopEnded {
   type: 'loop_ended';
   at: string;
-  closed: boolean;
-  /** 学习者确认或要结束时说的话，或界面按钮。 */
-  note: string;
 }
 
-/** 收掉一个学习者还没开口的学习对话（学习者要换一个时）：正本留着，会话列表里不再出现。 */
-export interface SessionWithdrawn {
-  type: 'session_withdrawn';
+/** 旧数据：区域图学习页的子代理交回的话，是当时对话原文的一部分。 */
+export interface SubagentResult {
+  type: 'subagent_result';
   at: string;
-  reason: string;
-}
-
-/** 一次学习结束之后的清单出错时记一条；card_ready 是 10-23 前自动出选择卡留下的旧记录。 */
-export interface AfterLoopStep {
-  type: 'after_loop_step';
-  at: string;
-  step: 'card_ready' | 'failed';
-  detail: string;
+  text: string;
 }
 
 /** 方向目标的一块：学成后能做什么、为什么学、学习者确认时自己给的理由。 */
@@ -303,26 +153,22 @@ export interface GoalAbility {
   confirmedReason?: string;
 }
 
-/** 方向目标（旧数据：谈方向交回时写在主对话里；W20 起不再写，读侧见 `core/goal.ts`）。 */
+/**
+ * 旧数据（W20 起不再写）：谈方向交回时写在主对话里的方向目标。里面有学习者的长期想法，模型还要读（`core/goal.ts`）。
+ */
 export interface ProjectGoal {
   type: 'project_goal';
   at: string;
-  /** 旧字段，意思不变（方向目标一句话）；新记录 = abilities[].ability 用“；”连起来（程序拼）。 */
+  /** 方向目标一句话。 */
   text: string;
-  /** 方向目标短名，同时作项目名。 */
+  /** 方向目标短名。 */
   title?: string;
-  /** 目标能力与每块理由；旧形状没有。 */
+  /** 目标能力与每块理由。 */
   abilities?: GoalAbility[];
   /** 顺序参考，只作参考。 */
   orderHint?: string;
-  /** YYYY-MM-DD（同时照旧另写 project_deadline）。 */
-  deadline?: string;
   /** 冷启动临时版；只在 true 时带。 */
   provisional?: boolean;
-  /** 哪个畅谈交回的。 */
-  talkSessionId?: string;
-  /** 主对话里上一条 project_goal 的行号；第一条不带。 */
-  supersedes?: number;
 }
 
 /** 本轮附在输入前的当前事实（主对话每轮从记录给），可回查。 */
@@ -334,56 +180,7 @@ export interface TurnContext {
   text: string;
 }
 
-export interface ChoiceOption {
-  ticket: Ticket;
-  /** 给学习者看的一句话。 */
-  title: string;
-  reason: string;
-  /** 这个选项从哪来：学习对话里冒出的问题、导航现场说出的候选、现场判断的知识边缘（会话 id:行号）、书里 书名/文件:行号；须可回查。旧卡没有。 */
-  sources?: string[];
-}
-
-/** 导航出的选择卡，贴在主对话里。 */
-export interface ChoiceCard {
-  type: 'choice_card';
-  at: string;
-  cardId: string;
-  navSessionId: string;
-  options: ChoiceOption[];
-  recommended: number;
-  /** 触发原因：学习者要下一步 / 学习合上 / 没合上就结束。 */
-  trigger: string;
-}
-
-/**
- * 一次出卡时导航作出的路线决定与理由（记录/单子与路线.md「路线决定与理由」）。
- * 写在项目主对话的正本里，紧接它的是这次的选择卡；新决定取代旧决定时旧的留着，`supersedes` 指上一条的行号。
- */
-export interface RouteDecision {
-  type: 'route_decision';
-  at: string;
-  /** 交这次卡的导航会话。 */
-  navSessionId: string;
-  /** 为什么出卡：合上 / 没合上 / 学习者要求 / 补前置合上 …… */
-  trigger: string;
-  decision: string;
-  reason: string;
-  /** 理由的依据，每条 `会话 id:行号` 或 `书/文件:行号`；须可回查。 */
-  basis: string[];
-  /** 主对话里上一条路线决定的行号；第一条没有。 */
-  supersedes?: number;
-}
-
-/** 学习者在选择卡上选定（存成路线事实），并开出学习对话。 */
-export interface ChoiceMade {
-  type: 'choice_made';
-  at: string;
-  cardId: string;
-  option: number;
-  loopSessionId: string;
-}
-
-/** 主对话开出一个讨论串，挂在某条学习者消息下（`docs/设计/会话/主对话.md`）；W20 起 kind 都是 loop，旧数据里有 talk、find。 */
+/** 主对话开出一个讨论串，挂在某条学习者消息下（`docs/设计/会话/主对话.md`）。 */
 export interface TaskOpened {
   type: 'task_opened';
   at: string;
@@ -394,30 +191,16 @@ export interface TaskOpened {
   anchorLine: number;
 }
 
-/** 项目名（随方向目标变）。会话开头的名字不改，界面与列表取最新一条。 */
+/** 项目名。会话开头的名字不改，界面与列表取最新一条。 */
 export interface ProjectTitle {
   type: 'project_title';
   at: string;
   title: string;
-  /** goal = 谈定方向时一起定的；learner = 学习者在界面上改的名（左栏“重命名”）。 */
+  /** learner = 学习者在界面上改的名（左栏“重命名”）；goal = 旧数据：谈定方向时一起定的。 */
   source: 'goal' | 'learner';
 }
 
-/** 旧数据（W20 起不再写）：谈方向交回，谈出的方向目标（已记进项目），本对话结束。 */
-export interface TalkEnded {
-  type: 'talk_ended';
-  at: string;
-  goal: string;
-  title: string;
-  /** 阶段复盘交回时有：goal 是交回主对话的那一句（批 6）。 */
-  review?: ReviewWindow;
-}
-
-/**
- * 讨论串结束 / 重开（10-28，照 Claude 项目的讨论串：结束只是收起，再说话就重开）。
- * 谈方向交回、找资料勾完（旧数据）照旧算结束；这两条是另外的：主对话、讨论串自己或学习者结束，学习者或主对话重开。
- * 学习对话 W19 起也用它结束（旧数据是 loop_ended）。
- */
+/** 讨论串结束 / 重开（照 Claude 项目的讨论串：结束只是收起，再说话就重开）。 */
 export interface ThreadClosed {
   type: 'thread_closed';
   at: string;
@@ -442,30 +225,6 @@ export interface ThreadTitle {
 }
 
 /**
- * 学习对话请项目开分叉（补前置、旁支）：学习者同意后由学习对话提出，程序转给主对话，
- * 主对话开导航时程序照这条拼开场（不由主对话转述）。
- */
-export interface BranchRequested {
-  type: 'branch_requested';
-  at: string;
-  /** 要先学什么，一句话。 */
-  need: string;
-  /** 为什么要先学它（依据）。 */
-  why: string;
-  /** 回到这次学习前要满足什么。 */
-  returnCondition: string;
-  /** 依据在本学习对话里的行号（学习者的话或表现）。 */
-  lines: number[];
-}
-
-/** 主对话把学习者指向某个已有对话（跟进某次学习时）。 */
-export interface ConversationPointer {
-  type: 'conversation_pointer';
-  at: string;
-  sessionId: string;
-}
-
-/**
  * 项目加 / 去掉一份资料（只作记录）。W11 起本项目能读什么按资料的归属算（`<数据>/资料/<id>/source.json`），
  * 不再折叠这些记录；删 = 资料标删，各项目都读不到。
  */
@@ -475,29 +234,6 @@ export interface ProjectMaterial {
   op: 'add' | 'remove';
   /** 资料 id（项目资料区里的一份，工单 W8）。 */
   material?: string;
-}
-
-/** 旧数据（W20 起不再写，期限只从谈方向来）：项目期限。deadline 为 null = 清掉期限。 */
-export interface ProjectDeadline {
-  type: 'project_deadline';
-  at: string;
-  /** YYYY-MM-DD。 */
-  deadline: string | null;
-  note?: string;
-}
-
-/** 旧数据：学习者把这次学习搁置（11-04 起不再产生，W19 起读时也不再算一种状态）。 */
-export interface LoopShelved {
-  type: 'loop_shelved';
-  at: string;
-  note: string;
-}
-
-/** 旧数据：搁置的学习恢复（W19 起不再产生）。 */
-export interface LoopResumed {
-  type: 'loop_resumed';
-  at: string;
-  by: 'button' | 'message';
 }
 
 /**
@@ -521,33 +257,6 @@ export interface UploadRouted {
   problem?: string;
 }
 
-/** 找资料对话交回的一份候选（程序核过网址、去过重）。 */
-export interface FindCandidate {
-  title: string;
-  url: string;
-  why: string;
-  /** 已在本项目：那份资料的 id。 */
-  alreadyIn?: string;
-}
-
-/** 找资料对话交回的候选清单（程序核过的那份），界面拿它给学习者勾。 */
-export interface FindCandidates {
-  type: 'find_candidates';
-  at: string;
-  candidates: FindCandidate[];
-}
-
-/** 学习者在候选清单上勾了哪些（下标，从 0 起）；勾中的已存成本项目资料。 */
-export interface CandidatesPicked {
-  type: 'candidates_picked';
-  at: string;
-  /** 候选清单（find_candidates）所在行。 */
-  forLine: number;
-  picked: number[];
-  /** 存成的资料 id，与 picked 一一对应；存不进的是空串。 */
-  materials: string[];
-}
-
 /** 项目说明（记录/项目说明.md）：每次改动存一版，当前值 = 最后一条。记在项目主对话里。 */
 export interface ProjectInstructions {
   type: 'project_instructions';
@@ -560,7 +269,6 @@ export interface ProjectInstructions {
 
 export type LogRecord =
   | SessionOpened
-  | SessionWithdrawn
   | UserMessage
   | AssistantMessage
   | ProgramFact
@@ -571,51 +279,21 @@ export type LogRecord =
   | ContextOpened
   | SandboxAction
   | TurnFailed
-  | CloseRequested
-  | GuardVerdict
-  | TicketEdited
   | LoopEnded
-  | AfterLoopStep
+  | SubagentResult
   | ProjectGoal
   | TurnContext
-  | ChoiceCard
-  | RouteDecision
-  | ChoiceMade
   | TaskOpened
   | ProjectTitle
-  | TalkEnded
   | ThreadClosed
   | ThreadReopened
   | ThreadTitle
-  | BranchRequested
-  | ConversationPointer
   | ProjectMaterial
-  | ProjectDeadline
-  | LoopShelved
-  | LoopResumed
   | UploadRouted
-  | FindCandidates
-  | CandidatesPicked
   | ProjectInstructions
-  | ReminderAdded
-  | ReminderClosed
-  | ModelCheckpoint
-  | ContextRewound
-  | PageVersion
-  | PageActions
-  | PageView
-  | PageRollback
-  | PageLesson
-  | PageError
-  | SubagentStarted
-  | SubagentResult
-  | ScreenShown
   | ComponentVersion
   | ComponentAction
-  | ComponentReport
   | ComponentError
-  | ScreenNote
-  | LayoutChanged
   | ContextUsed
   | MaterialOwnerChanged
   | ProjectAsked
@@ -651,7 +329,7 @@ export interface ThreadMessage {
 
 /**
  * 学习者删了一个讨论串（W12 §4.3）：记在主对话里，只追加；之后界面不显示、别的会话读不到、学过的记录与沙盒里
- * 不再包含。被删的会话正本留着。找资料存下的资料、谈方向定下的方向不跟着删。
+ * 不再包含。被删的会话正本留着。
  */
 export interface ThreadDeleted {
   type: 'thread_deleted';
@@ -724,83 +402,18 @@ export interface ContextUsed {
   parts?: TokenParts;
 }
 
-/** 主模型派出的子代理开始了（框架自带的子代理机制，后台跑；会话/页面子代理.md）。 */
-export interface SubagentStarted {
-  type: 'subagent_started';
-  at: string;
-  agent: string;
-  taskId: string;
-  description?: string;
-  /** 主模型派它时给的交代原文（W10：学习者动了组件、框架另开子代理时带上它）。 */
-  brief?: string;
-}
+// ───────────── 学习页的组件（块与清单的形状在 screen.ts）─────────────
 
-/**
- * 子代理做完：它交回的那段话。模型那边由框架按时间接在主模型上下文后面（写明是子代理交回）；
- * 这里记一份给界面与审计。
- */
-export interface SubagentResult {
-  type: 'subagent_result';
-  at: string;
-  agent: string;
-  taskId: string;
-  status: string;
-  text: string;
-}
-
-// ───────────── 屏幕（W10，会话/学习对话.md §11；块与清单的形状在 screen.ts）─────────────
-
-/**
- * 旧数据（10-29 起不再产生，改记 layout）：第 n 屏：主模型一轮输出完、框架摆好的一屏。只记清单指纹，内容在 `<数据>/screens/<学习 id>/`。
- * fromLine = 这一轮从正本哪一行之后开始（这轮的输入行；模型自己起的一轮 = 开始前最后一行）。
- */
-export interface ScreenShown {
-  type: 'screen';
-  at: string;
-  n: number;
-  manifest: string;
-  fromLine: number;
-  /** 框架小模型这次花了多久（毫秒）；没调（这轮不用对、不用摆）就不填。 */
-  ms?: number;
-  /** 框架小模型实际执行的模型。 */
-  model?: string;
-  /** 主模型点名拿回的描述各对到了没有（对上的 key 只在程序里用）。 */
-  matched?: { desc: string; key?: string }[];
-}
-
-/**
- * 学习页布局的第 v 版（10-29 起，会话/学习对话.md §11）：主模型一轮输出完，框架照它的布局指令改好的区域图。
- * 只记布局指纹，布局（PageLayout）与块的内容在 `<数据>/screens/<学习 id>/`。fromLine 同 screen。
- */
-export interface LayoutChanged {
-  type: 'layout';
-  at: string;
-  v: number;
-  manifest: string;
-  fromLine: number;
-  /** 框架小模型这次花了多久（毫秒）；没调（只把新块接在最下面）就不填。 */
-  ms?: number;
-  model?: string;
-  /** 主模型点名拿回 / 拿掉的描述各对到了没有（对上的名字只在程序里用）。 */
-  matched?: { desc: string; key?: string }[];
-  /** 小模型交回的布局没过检查、打回重来的次数。 */
-  retries?: number;
-  /** 打回后仍不行：保留旧布局、新块接在最下面。 */
-  fallback?: string;
-}
-
-/** 组件换了一版：子代理交上、框架查过（试跑过没有见 trialed）。内容在 `<数据>/screens/<学习 id>/`。 */
+/** 组件换了一版：框架查过（试跑过没有见 trialed）。内容在 `<数据>/screens/<学习 id>/`。 */
 export interface ComponentVersion {
   type: 'component_version';
   at: string;
-  /** 框架发的组件编号（c1、c2……），不进主模型上下文。 */
+  /** 组件的名字。 */
   component: string;
   version: number;
   manifest: string;
-  /** 这个组件是什么（一句话，取主模型派活时的说明）。 */
+  /** 这个组件是什么（一句话）。 */
   pointer: string;
-  /** 哪件活交的（subagent_started.taskId，或框架另开的 `maker-…`）。 */
-  task?: string;
   trialed: boolean;
 }
 
@@ -811,23 +424,8 @@ export interface ComponentAction {
   component: string;
   text: string;
   awaited: boolean;
-  /** 先交给谁（子代理按交代做进组件代码）。 */
-  to: 'maker' | 'main' | 'both';
   /** 组件更新的“现在的状态”（竖流学习页，照 MCP Apps 的 update-model-context）：只留最后一次，下次学习者说话时带上。 */
   state?: true;
-}
-
-/** 框架另开的子代理（学习者动了它做的组件后）交回的一句：往上报的，或自己改了组件后报的。 */
-export interface ComponentReport {
-  type: 'component_report';
-  at: string;
-  component: string;
-  task: string;
-  text: string;
-  /** 等主对话回应：立刻跑一轮。 */
-  awaited: boolean;
-  /** 这次它改了组件。 */
-  changed: boolean;
 }
 
 /** 组件在学习者那边运行时报错（上屏后、学习者碰到时才出的）。 */
@@ -837,117 +435,6 @@ export interface ComponentError {
   component: string;
   version: number;
   message: string;
-}
-
-/** 框架回给主模型的一句（如点名的描述对不上）：程序确知的，下一轮按时间接在线后面。 */
-export interface ScreenNote {
-  type: 'screen_note';
-  at: string;
-  text: string;
-}
-
-/** 旧数据（10-26 起不再产生：不做退回，上下文只追加）：模型侧一轮结束时的位置。 */
-export interface ModelCheckpoint {
-  type: 'model_checkpoint';
-  at: string;
-  adapter: string;
-  /** 当时的续接凭据。 */
-  token: string;
-  point: string;
-}
-
-/** 旧数据（10-26 起不再产生）：模型侧上下文截回过。 */
-export interface ContextRewound {
-  type: 'context_rewound';
-  at: string;
-  adapter: string;
-  toLine?: number;
-  reason: string;
-}
-
-/**
- * 活页面换了一版（`会话/学习对话.md` §11 版本）：子代理改一次、学习者动一次都是新的一版（rollback 是旧数据）。
- * 版本号只在程序内部用，不进主模型上下文。只记版本号与块清单的指纹，页面内容在 `<数据>/pages/<学习 id>/`。
- */
-export interface PageVersion {
-  type: 'page_version';
-  at: string;
-  version: number;
-  /** 块清单的内容指纹。 */
-  manifest: string;
-  /** editor = 页面子代理改的（沿用旧名，旧数据里也是它）。 */
-  by: 'editor' | 'learner' | 'rollback';
-  /** 退回：回到的是第几版。 */
-  from?: number;
-  added: string[];
-  removed: string[];
-  changed: string[];
-  /** 编辑员改的：上页面前在学习者浏览器里试跑过没有（没人开着页面时没试跑）。 */
-  trialed?: boolean;
-  /** 到这一版为止发过的最大块号（新块编号由框架发）。 */
-  lastBlock: number;
-}
-
-/** 学习者在页面上的动作（连续的合成一条、算一版）；awaited = 等回应的，当场推给了学习对话。 */
-export interface PageActions {
-  type: 'page_actions';
-  at: string;
-  version: number;
-  actions: PageAction[];
-  awaited: boolean;
-}
-
-/** 旧数据（10-26 起不再记：看不到真注意力的不记）：学习者此刻看得到哪几块。 */
-export interface PageView {
-  type: 'page_view';
-  at: string;
-  version: number;
-  visible: string[];
-  dwell?: Record<string, number>;
-}
-
-/** 旧数据（10-26 起不做退回）：学习者把页面退回到第 to 版。 */
-export interface PageRollback {
-  type: 'page_rollback';
-  at: string;
-  to: number;
-  version: number;
-  removed: string[];
-  added: string[];
-  reason?: PageRollbackReason;
-}
-
-/** 旧数据（10-26 起不做退回）：退回时补的一句教训。 */
-export interface PageLesson {
-  type: 'page_lesson';
-  at: string;
-  rollbackLine: number;
-  text: string;
-  by: 'model' | 'program';
-}
-
-/** 页面在学习者那边运行时报错（上页面之后、学习者碰到时才出的）。 */
-export interface PageError {
-  type: 'page_error';
-  at: string;
-  version: number;
-  message: string;
-}
-
-/** 学习者异议指向什么：守卫的一次判定（旧数据，学习会话 + 判定所在行），或教法记录 / 状态记录的一条（记录 id）。 */
-export type ObjectionTarget =
-  | { kind: 'guard_verdict'; loopSessionId: string; line: number }
-  | { kind: 'pedagogy' | 'state'; recordId: string };
-
-/**
- * 学习者异议：只追加的一条独立记录，指向原记录，不改原记录（异议按自述来源记录，不覆盖可观察事实）。
- * 存在知识层的异议存放处（不在会话正本里）；对还开着的那次学习里守卫判定的异议则作为带标记的学习者原话进正本。
- */
-export interface LearnerObjection {
-  id: string;
-  at: string;
-  text: string;
-  target: ObjectionTarget;
 }
 
 export const SOURCE_REPORT_KINDS = ['转录错', '公式错', '定位错', '其他'] as const;

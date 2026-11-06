@@ -32,11 +32,11 @@ import type {
 import type { MessageQuote } from '../shared/records.ts';
 import type { QuotaResponse, UsageResponse } from '../shared/usage.ts';
 import type { SidebarActionRequest, SidebarResponse } from '../shared/sidebar.ts';
-import type { PageTrialResult } from '../shared/page.ts';
 import type {
   ComponentActionRequest,
   ComponentErrorRequest,
   OldComponentsResponse,
+  PageTrialResult,
 } from '../shared/screen.ts';
 
 function token(): string {
@@ -119,7 +119,7 @@ export const api = {
   sidebarAct: (req: SidebarActionRequest) =>
     call<SidebarResponse>('/sidebar', { method: 'POST', body: JSON.stringify(req) }),
   records: (id: string) => call<RecordsResponse>(`/sessions/${id}/records`),
-  /** 旧的区域图学习只读看：每个组件最后一版。 */
+  /** 不是竖流开的旧学习只读看：每个组件最后一版。 */
   oldComponents: (loopId: string) => call<OldComponentsResponse>(`/sessions/${loopId}/screens`),
   /** 生成中途停止（W12 §4.4）。 */
   stop: (id: string) => call<object>(`/sessions/${id}/stop`, { method: 'POST', body: '{}' }),
@@ -131,7 +131,7 @@ export const api = {
   /** 删一个讨论串（W12 §4.3）。 */
   deleteThread: (id: string) =>
     call<object>(`/sessions/${id}/delete`, { method: 'POST', body: '{}' }),
-  // ── 学习页：屏幕与组件（会话/学习对话.md §11） ──
+  // ── 学习页：组件（会话/学习对话.md §11） ──
   screenAction: (loopId: string, body: ComponentActionRequest) =>
     call<object>(`/sessions/${loopId}/screens/action`, {
       method: 'POST',
@@ -168,7 +168,7 @@ export const api = {
       body: JSON.stringify({ token }),
     }),
   // ── 依据可见 ──
-  // ── 资料的来源说明、外发披露、会话用的模型、对旧守卫判定的异议 ──
+  // ── 资料的来源说明 ──
   sourceNotes: () => call<SourceNotesResponse>('/sources/source-notes'),
   sourceNote: (material: string) =>
     call<SourceNoteResponse>(`/sources/source-notes?${qs({ material })}`),

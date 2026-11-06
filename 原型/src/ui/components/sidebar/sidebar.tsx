@@ -3,15 +3,11 @@
 import { useMemo, useState, type ReactNode } from 'react';
 import {
   BookOpenIcon,
-  CompassIcon,
-  LibraryIcon,
   FolderIcon,
   FoldersIcon,
   MessageCircleIcon,
-  MessagesSquareIcon,
   PanelLeftCloseIcon,
   PanelLeftOpenIcon,
-  PenLineIcon,
   PlusIcon,
   SearchIcon,
 } from 'lucide-react';
@@ -39,7 +35,7 @@ const S = W.sidebar;
 
 /** 中间正在看的东西（左栏据此标出当前那一行）。 */
 export interface SidebarActive {
-  page: 'chat' | 'overview' | 'projects' | 'new';
+  page: 'chat' | 'projects' | 'new';
   projectId?: string | undefined;
   current?: string | undefined;
 }
@@ -60,11 +56,7 @@ export interface SidebarProps {
 
 const CHAT_ICON: Record<ChatItem['chatKind'], ReactNode> = {
   main: <MessageCircleIcon />,
-  talk: <MessagesSquareIcon />,
   loop: <BookOpenIcon />,
-  output: <PenLineIcon />,
-  nav: <CompassIcon />,
-  find: <LibraryIcon />,
 };
 
 export function Sidebar(props: SidebarProps) {

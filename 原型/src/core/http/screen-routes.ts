@@ -1,5 +1,5 @@
 // 学习页的接口（会话/学习对话.md §11）：/api/sessions/<学习 id>/screens/…
-// 旧的区域图学习只读看的组件、学习者在组件上的操作、组件运行时报错、试跑结果。类型在 src/shared/screen.ts。
+// 旧学习只读看的组件、学习者在组件上的操作、组件运行时报错、试跑结果。类型在 src/shared/screen.ts。
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { MineruTokenBody } from '../../shared/protocol.ts';
 import type { OldComponentsResponse } from '../../shared/screen.ts';

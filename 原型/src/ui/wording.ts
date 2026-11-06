@@ -1,5 +1,5 @@
 // 界面上给学习者看的叫法，统一放这里（以后改叫法只改这一处）。
-// 内部词（选择卡、守卫、出发点、子句、新点、单子、M0x、M1x 等）不出现在这里的任何一句里（没有自动检查，改时自己留意）。
+// 内部词（出发点、子句、新点、M0x、M1x 等）不出现在这里的任何一句里（没有自动检查，改时自己留意）。
 // 对照：右边注释是内部叫法，只给写代码的人看。
 import type { SourceReportKind } from '../shared/protocol.ts';
 import { WS } from './wording-sidebar.ts';
@@ -13,7 +13,6 @@ export const W = {
   // ── 项目 ──
   projectHome: '项目页', // 项目页（Overview）
   projectChat: '项目对话', // 主对话
-  backToMain: '回项目对话',
   /** 讨论串：项目对话右边一栏，列这个项目开出去的任务对话。 */
   threads: {
     title: '讨论串',
@@ -30,7 +29,6 @@ export const W = {
       `删掉「${title}」后它不再显示，之后的对话也读不到它。删了不能撤销。`,
     deleteGo: '删掉',
     cancel: '算了',
-    tagClosed: '学完',
   },
 
   // ── 依据面板 ──
@@ -39,11 +37,6 @@ export const W = {
   whereAmI: '现在在哪',
   // ── 对话页 ──
   mainWelcome: '想学什么？说一句就行。',
-  // 旧数据：导航会话只读看
-  navIntro: '导航自己跑完，这里只看它怎么想的。',
-  navResult: '下一次学',
-  navStart: '开始学',
-  navWhy: '为什么：',
   panelBack: '返回',
   objectSubmit: '提交',
   objectCancel: '算了',
@@ -140,11 +133,6 @@ export const W = {
   searchScopeAll: '在全部资料里搜',
   searchAll: '查全部资料',
 
-  // ── 旧数据：单子改过、阶段复盘（W12 起不再产生，旧记录照旧显示） ──
-  ticketEdited: '你改了这次要学的内容。',
-  // ── 讨论串栏里旧学习当时的状态（W19 起新学习只分开着 / 已结束） ──
-  unclosedTag: '搁着',
-
   // ── 上传与分流（工单 W9、W11） ──
   filesUploading: (n: number) => `正在传 ${String(n)} 个文件…`,
   routedTo: { 资料: '资料', 学过的: '学过的' } as const,
@@ -153,10 +141,6 @@ export const W = {
   ownerTo: (o: string) => `改归${o}`,
   ownerHint: '归学习者 = 所有项目都能读；归项目 = 只给这个项目读',
   filesSent: (n: number) => `收下了 ${String(n)} 份`,
-  // 找资料（旧数据：候选清单）
-  findWelcome: '正在找资料…',
-  candidatesTitle: '找到的候选',
-
   // ── 通用 ──
   loading: '正在读…',
   loadFailed: '没读到：',

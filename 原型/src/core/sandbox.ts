@@ -10,6 +10,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import type { NumberedRecord } from '../shared/records.ts';
 import type { Import, Learning } from '../shared/protocol-learned.ts';
+import { oldTalks } from './goal.ts';
 import type { Hub } from './hub.ts';
 import { NotFoundError } from './hub.ts';
 import type { Learned } from './learned.ts';
@@ -56,9 +57,9 @@ const RO = {
 const MATERIAL_INDEX = '目录.md';
 
 /** 对话原文的格式（renderTranscript 的写法），只读区说明里写一句事实（W16）；有旧的谈方向对话才提它。 */
-function transcriptFormat(oldTalks: boolean): string {
-  const talk = oldTalks ? '、旧的谈方向' : '';
-  return `对话原文（本次对话、以往的学习、主对话${talk}）每条以 \`L行号 谁（年-月-日 时:分）：\` 开头，一条有多行时续行缩进 6 个空格；行号就是引用地址（引用写 会话id:L行号）。谁 = 学习者 / 教学 / 主对话${oldTalks ? ' / 谈方向' : ''} / 程序 / 某某发来、回话。学习者自己说的、做的只在 \`学习者（\` 开头的行（例：只看他说过的话，grep '学习者（' 文件；多行的话只出第一行）；\`整理（\` 开头的是学习对话对他某一行话的整理，不是原话。`;
+function transcriptFormat(talks: boolean): string {
+  const talk = talks ? '、旧的谈方向' : '';
+  return `对话原文（本次对话、以往的学习、主对话${talk}）每条以 \`L行号 谁（年-月-日 时:分）：\` 开头，一条有多行时续行缩进 6 个空格；行号就是引用地址（引用写 会话id:L行号）。谁 = 学习者 / 教学 / 主对话${talks ? ' / 谈方向' : ''} / 程序 / 某某发来、回话。学习者自己说的、做的只在 \`学习者（\` 开头的行（例：只看他说过的话，grep '学习者（' 文件；多行的话只出第一行）；\`整理（\` 开头的是学习对话对他某一行话的整理，不是原话。`;
 }
 
 /** 只读区里有没有旧数据的两项（W20 前单开的谈方向对话、谈定的方向）；新项目都没有。 */
@@ -82,7 +83,7 @@ function guideText(root: string, materials: number, old: OldItems): string {
     `只读区：程序准备的，每轮刷新，写不进去。当前目录是你的工作区（可写，你自己的草稿）；只读区在工作区里就是 只读/（完整路径 ${root}），下面的路径都从 只读/ 起。`,
     `- 只读/${RO.guide} —— 这份说明`,
     `- 只读/${RO.self} —— 本次学习的对话原文（上下文压缩后按行号读回）`,
-    `- 只读/${RO.learned}/ —— 以往的学习，按项目分目录，一次学习一个文件 <学习 id>-<标题>.md：头上是项目、状态、开始与最后活动时间、收尾那一句，下面是整份对话原文；那次用过的组件最新一版在同目录的 <学习 id>-组件/（原文里写作 [[组件:名字]]）。索引.md 按项目列全部（本项目在最后），带最后活动时间、距今多久。外部导入.md 与 外部导入/ 是学习者在别处学过的（笔记、和别的 AI 的对话），未验证`,
+    `- 只读/${RO.learned}/ —— 以往的学习，按项目分目录，一次学习一个文件 <学习 id>-<标题>.md：头上是项目、状态、开始与最后活动时间，下面是整份对话原文；那次用过的组件最新一版在同目录的 <学习 id>-组件/（原文里写作 [[组件:名字]]）。索引.md 按项目列全部（本项目在最后），带最后活动时间、距今多久。外部导入.md 与 外部导入/ 是学习者在别处学过的（笔记、和别的 AI 的对话），未验证`,
     `- 只读/${RO.main} —— 本项目主对话的原文`,
     ...(old.talks
       ? [
@@ -161,7 +162,7 @@ export class Sandboxes {
    * 挡掉不让读的位置（W11 §5）：家目录下所有以点开头的顶层条目（`~/.ssh` `~/.config` `~/.claude` `~/.local`
    * `~/.git-credentials` 等存密钥、存登录信息的地方一网打尽）+ 数据目录（含口令、别的项目的东西）与它的备份 +
    * `书库处理/.env`。每处都给原路径与解开链接后的真实路径。每次开沙盒时现算（新出现的隐藏条目下次开时挡上）。
-   * 主对话（读本机）按这一整套挡。学习对话、检索、导入会话（`allDots = false`）只挡已知存密钥的几处：它们要在
+   * 主对话（判本机路径）按这一整套挡。学习对话、导入会话（`allDots = false`）只挡已知存密钥的几处：它们要在
    * 命令行里跑代码，工具链常装在 `~/.local` `~/.cargo` 这类隐藏目录里（本机的 node 就在 `~/.local`）。
    * 工作区与只读区里本来就在数据目录下的条目照旧能读。
    */
@@ -397,7 +398,7 @@ export class Sandboxes {
     return files;
   }
 
-  /** 索引：按项目分组（别的项目在前，本项目在最后），组内旧的在上；每行带最后活动时间与距今多久、收尾那一句。 */
+  /** 索引：按项目分组（别的项目在前，本项目在最后），组内旧的在上；每行带最后活动时间与距今多久。 */
   private indexText(entries: LearnedEntry[], project: string | undefined): string {
     const now = Date.now();
     const groups = new Map<string, LearnedEntry[]>();
@@ -411,7 +412,7 @@ export class Sandboxes {
     const lines = [
       '# 以往的学习',
       '',
-      `现在 ${localMinute(new Date().toISOString())}。按项目分组，本项目在最后；组内按开始时间，旧的在上。每行：文件 · 状态 · 开始 · 最后活动（距今多久）；有收尾那一句的接在下一行。`,
+      `现在 ${localMinute(new Date().toISOString())}。按项目分组，本项目在最后；组内按开始时间，旧的在上。每行：文件 · 状态 · 开始 · 最后活动（距今多久）。`,
     ];
     if (entries.length === 0) lines.push('', '（还没有）');
     for (const dir of order) {
@@ -420,13 +421,12 @@ export class Sandboxes {
         lines.push(
           `- ${e.dir}/${e.base}.md · ${e.l.status} · 开始 ${localMinute(e.l.openedAt)} · 最后活动 ${localMinute(e.lastAt)}（${ago(now, e.lastAt)}）`,
         );
-        if (e.l.closing !== undefined) lines.push(`  收尾：${e.l.closing.summary}`);
       }
     }
     return lines.join('\n');
   }
 
-  /** 一次学习一个文件：头（项目、状态、时间、收尾那一句、组件在哪；旧数据另带单子、路线决定、判定）+ 整份原文。 */
+  /** 一次学习一个文件：头（项目、状态、时间、组件在哪）+ 整份原文。 */
   private async learningText(
     e: LearnedEntry,
     components: { name: string; path: string }[],
@@ -444,50 +444,7 @@ export class Sandboxes {
       '',
       `- 项目：${projectTitle}`,
       `- 状态：${l.status}；开始 ${localMinute(l.openedAt)}；最后活动 ${localMinute(e.lastAt)}${l.endedAt !== undefined ? `；结束 ${localMinute(l.endedAt)}` : ''}`,
-      // 旧数据才有单子（W12 起新开的学习没有）
-      ...(l.ticket.newPoint !== ''
-        ? [
-            `- 单子（旧数据）：新点 ${l.ticket.newPoint}；预期理解 ${l.ticket.clause}；出发点 ${
-              l.ticket.startPoints
-                .map(
-                  (s) =>
-                    `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`,
-                )
-                .join('；') || '（无）'
-            }；路线动作：${l.ticket.routeAction}`,
-          ]
-        : []),
     ];
-    if (l.endNote !== undefined) {
-      // 旧数据：没合上就结束时的原话（loop_ended）
-      const endLine = await this.lineOf(l.loopId, 'loop_ended');
-      lines.push(
-        `- 结束原话${endLine !== undefined ? `（L${String(endLine)}）` : ''}：${l.endNote}`,
-      );
-    }
-    if (l.routeDecision !== undefined) {
-      const main = (await this.o.hub().opened(l.loopId)).parent ?? '项目主对话';
-      lines.push(
-        `- 旧数据·当时的路线决定（${main}:L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（理由：${l.routeDecision.reason}）`,
-      );
-    }
-    if (l.closing !== undefined) {
-      lines.push(
-        `- 旧数据·收尾那一句（L${String(l.closing.line)}，学习对话写的，只是指针；学习者会什么以原文里他自己说的、做的为准）：${l.closing.summary}`,
-      );
-    }
-    if (l.verdict !== undefined) {
-      const u = l.verdict.understanding
-        .map(
-          (x) =>
-            `${x.text}（${x.independence}、${x.durability}${x.lines.length > 0 ? `，L${x.lines.join('、')}` : ''}）`,
-        )
-        .join('；');
-      lines.push(
-        `- 旧数据·通过的守卫判定（L${String(l.verdict.line)}）：${l.verdict.basis}${l.verdict.model !== undefined ? `（判定的模型：${l.verdict.model}）` : ''}`,
-      );
-      if (u !== '') lines.push(`- 学习者实际表现出的理解：${u}`);
-    }
     if (components.length > 0) {
       lines.push(
         `- 组件最新一版：${components.map((c) => `[[组件:${c.name}]] → ${c.path}`).join('；')}`,
@@ -517,21 +474,14 @@ export class Sandboxes {
   /** 只读/谈方向/（旧数据）：本项目 W20 前每次谈方向一个文件（头 + 原文）。 */
   private async talkFiles(project: string | undefined): Promise<{ name: string; text: string }[]> {
     if (project === undefined) return [];
-    const talks = this.o
-      .hub()
-      .listSessions()
-      .filter((s) => s.kind === 'talk' && s.parent === project && !this.o.deleted(s.sessionId))
-      .sort((a, b) => a.openedAt.localeCompare(b.openedAt));
-    return Promise.all(
-      talks.map(async (s) => {
-        const title = safeName(s.title);
-        const text = this.render(await this.o.hub().records(s.sessionId), '谈方向');
-        return {
-          name: `${title !== '' ? `${s.sessionId}-${title}` : s.sessionId}.md`,
-          text: `# 谈方向 ${s.sessionId}「${s.title}」\n\n- 开始 ${localMinute(s.openedAt)}；最后活动 ${localMinute(s.lastAt ?? s.openedAt)}\n\n## 对话原文（引用写 ${s.sessionId}:L行号）\n\n${text !== '' ? text : '（还没有对话）'}\n`,
-        };
-      }),
-    );
+    return (await oldTalks(this.o.hub(), project)).map((s) => {
+      const title = safeName(s.title);
+      const text = this.render(s.records, '谈方向');
+      return {
+        name: `${title !== '' ? `${s.sessionId}-${title}` : s.sessionId}.md`,
+        text: `# 谈方向 ${s.sessionId}「${s.title}」\n\n- 开始 ${localMinute(s.openedAt)}；最后活动 ${localMinute(s.lastAt)}\n\n## 对话原文（引用写 ${s.sessionId}:L行号）\n\n${text !== '' ? text : '（还没有对话）'}\n`,
+      };
+    });
   }
 
   private async importsText(imports: Import[]): Promise<string> {
@@ -568,12 +518,6 @@ export class Sandboxes {
   /** 删掉的讨论串发来的话不进沙盒（W12 §4.3）。 */
   private visible(r: NumberedRecord): boolean {
     return !(r.record.type === 'thread_message' && this.o.deleted(r.record.from));
-  }
-
-  private async lineOf(sessionId: string, type: 'loop_ended'): Promise<number | undefined> {
-    // 最后一次（结束后能重开，W12 §2）
-    return (await this.o.hub().records(sessionId)).filter((r) => r.record.type === type).at(-1)
-      ?.line;
   }
 }
 

@@ -5,7 +5,7 @@ import { ConversationControls } from '../model/conversation-controls.tsx';
 // 学习者选中页面上的几段文字（或点组件上方的名字）再说话：每选一处，输入框的文字里多一个引用块（能删，只显示开头，11-06），
 // 光标回到输入框，发送时一起带上（改过的文字里大段删除先折起来）。生成中途能停，停下后能改刚发的
 // 那句（§4.4）；在做什么由程序从工具调用得出一行（§4.5），过程留在对话里、能点开（process-fold.tsx）。学习结束后照样能说话，说了就重开（§2）；结束照 Claude 讨论串，
-// 页面上没有收尾那一句、没有确认条（W19）。旧的学习（不是竖流开的）只读：没有输入框，区域图那批的组件接在第一次交上那里。
+// 页面上没有收尾那一句、没有确认条（W19）。不是竖流开的旧学习只读：没有输入框，组件接在第一次交上那里。
 import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
   ChevronDownIcon,
@@ -41,10 +41,9 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
   const opened = records[0]?.record;
   // 不是竖流开的旧学习只读（W19 起和竖流一起显示）
   const old = opened?.type !== 'session_opened' || opened.page !== 'stream';
-  const grid = old && opened?.type === 'session_opened' && opened.screens === true;
   const context = useMemo(() => latestContext(records), [records]);
   const ended = useMemo(() => threadEnded(records), [records]);
-  const oldComponents = useOldComponents(sessionId, grid, onError);
+  const oldComponents = useOldComponents(sessionId, old, onError);
   const page = useMemo(() => replayStream(records), [records]);
   const atOf = useMemo(() => new Map(records.map((r) => [r.line, r.record.at])), [records]);
   const components = useMemo(
@@ -179,7 +178,7 @@ export function StreamPage(props: LearnPageProps & { stream: LearnStream }) {
                 />
               ),
             })),
-            // 旧的区域图学习：组件放在第一次交上那里，显示最后一版
+            // 旧学习：组件放在第一次交上那里，显示最后一版
             ...oldComponents.map((c) => ({
               line: c.line,
               key: `old:${c.component}`,
@@ -631,15 +630,15 @@ function quoteOfSelection(
   };
 }
 
-/** 旧的区域图学习（10-28、10-29）的组件：每个一份最后一版；不是那批的不去取。 */
+/** 不是竖流开的旧学习的组件：每个一份最后一版；竖流的不去取。 */
 function useOldComponents(
   sessionId: string,
-  grid: boolean,
+  old: boolean,
   onError: (e: unknown) => void,
 ): OldComponentsResponse['components'] {
   const [components, setComponents] = useState<OldComponentsResponse['components']>([]);
   useEffect(() => {
-    if (!grid) return;
+    if (!old) return;
     let alive = true;
     api
       .oldComponents(sessionId)
@@ -650,6 +649,6 @@ function useOldComponents(
     return () => {
       alive = false;
     };
-  }, [sessionId, grid, onError]);
+  }, [sessionId, old, onError]);
   return components;
 }

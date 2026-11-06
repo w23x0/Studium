@@ -22,7 +22,7 @@ function add(into: TokenParts, p: Partial<TokenParts>): void {
   into.cacheRead += p.cacheRead ?? 0;
 }
 
-/** 本项目（主对话 id）的用量：归属本项目的会话（含主对话与只读的旧种类；已删的不在会话表里）。 */
+/** 本项目（主对话 id）的用量：归属本项目的会话（含主对话；已删的不在会话表里）。 */
 export async function projectUsage(deps: UsageDeps, project: string): Promise<UsageResponse> {
   const all = deps.listSessions();
   const sessions = new Map(all.map((s) => [s.sessionId, s]));

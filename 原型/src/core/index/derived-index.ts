@@ -2,16 +2,13 @@
 // 启动时按每个正本已索引到的行号补齐；运行中由 Hub 每追加一行就同步写一行。
 import { DatabaseSync } from 'node:sqlite';
 import { rmSync } from 'node:fs';
-import type { SessionMark, SessionSummary } from '../../shared/protocol.ts';
-import type { LogRecord, NumberedRecord, SessionOpened } from '../../shared/records.ts';
+import type { SessionSummary } from '../../shared/protocol.ts';
+import { CONVERSATION_KINDS, type LogRecord, type NumberedRecord } from '../../shared/records.ts';
 import type { DataDir } from '../log/data-dir.ts';
 import { readRecords } from '../log/session-log.ts';
 
-// 12：谈方向（W20 起不再开）在讨论串里一律算已结束
-const SCHEMA_VERSION = 12;
-
-/** 不再开、只读看的讨论串种类：写产出（W12 起，含阶段复盘那种谈方向）、谈方向（W20 起）；在讨论串里一律算已结束。 */
-const RETIRED_THREAD_KINDS: ReadonlySet<string> = new Set(['output', 'talk']);
+// 13：只收 main、loop、import；旧种类（谈方向、导航……）的正本留在磁盘上，不进索引
+const SCHEMA_VERSION = 13;
 
 export class DerivedIndex {
   private constructor(private readonly db: DatabaseSync) {}
@@ -40,8 +37,10 @@ export class DerivedIndex {
   /** 按正本补齐：每个会话从已索引的最后一行之后读起。 */
   async catchUp(dataDir: DataDir): Promise<void> {
     for (const id of await dataDir.listSessionIds()) {
-      const done = this.indexedLines(id);
       const records = await readRecords(dataDir.sessionPath(id));
+      const first = records[0]?.record;
+      if (first?.type !== 'session_opened' || !CONVERSATION_KINDS.includes(first.kind)) continue;
+      const done = this.indexedLines(id);
       if (records.length < done) {
         // 正本比索引短：索引不可信（正本只追加，这不该发生），整会话重建
         this.db.prepare('DELETE FROM records WHERE session_id = ?').run(id);
@@ -57,39 +56,21 @@ export class DerivedIndex {
     if (record.type === 'session_opened') {
       this.db
         .prepare(
-          'INSERT OR REPLACE INTO sessions (session_id, kind, title, parent, from_kind, from_loop, opened_at, last_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+          'INSERT OR REPLACE INTO sessions (session_id, kind, title, parent, opened_at, last_at) VALUES (?, ?, ?, ?, ?, ?)',
         )
-        .run(
-          sessionId,
-          record.kind,
-          record.title,
-          record.parent ?? null,
-          ...fromOf(record),
-          record.at,
-          record.at,
-        );
-      // 旧数据：写产出、阶段复盘 W12 起撤掉，谈方向 W20 起不再开，只读看，在讨论串里算已结束
-      if (RETIRED_THREAD_KINDS.has(record.kind)) {
-        this.db.prepare("UPDATE sessions SET mark = 'ended' WHERE session_id = ?").run(sessionId);
-      }
-    } else if (record.type === 'session_withdrawn') {
-      // 收掉的会话：正本留着，列表里不再出现
-      this.db
-        .prepare('UPDATE sessions SET withdrawn = 1, last_at = ? WHERE session_id = ?')
-        .run(record.at, sessionId);
+        .run(sessionId, record.kind, record.title, record.parent ?? null, record.at, record.at);
     } else if (record.type === 'thread_deleted') {
       // 学习者删了一个讨论串（W12 §4.3）：记在主对话里；另记一张表，重建时不怕被删的那条还没建
       this.db.prepare('INSERT OR REPLACE INTO deleted (session_id) VALUES (?)').run(record.session);
       this.touch(sessionId, record.at);
     } else if (record.type === 'project_title' || record.type === 'thread_title') {
-      // 项目名随方向变、讨论串自己起的标题：正本开头那行不改，派生层取最新一条
+      // 项目改名、讨论串自己起的标题：正本开头那行不改，派生层取最新一条
       this.db
         .prepare('UPDATE sessions SET title = ?, last_at = ? WHERE session_id = ?')
         .run(record.title, record.at, sessionId);
     } else {
       const mark = markOf(record);
-      // 只读的旧种类不跟着结束 / 重开记录变（旧的谈方向重开过也算已结束）
-      if (mark !== undefined && !this.retired(sessionId)) {
+      if (mark !== undefined) {
         this.db
           .prepare('UPDATE sessions SET mark = ?, last_at = ? WHERE session_id = ?')
           .run(mark, record.at, sessionId);
@@ -104,13 +85,6 @@ export class DerivedIndex {
       .run(sessionId, line, record.type, record.at, searchableText(record));
   }
 
-  /** 这个会话是不是只读的旧种类（RETIRED_THREAD_KINDS）。 */
-  private retired(sessionId: string): boolean {
-    const row = this.db.prepare('SELECT kind FROM sessions WHERE session_id = ?').get(sessionId) as
-      { kind: string } | undefined;
-    return row !== undefined && RETIRED_THREAD_KINDS.has(row.kind);
-  }
-
   private touch(sessionId: string, at: string): void {
     this.db.prepare('UPDATE sessions SET last_at = ? WHERE session_id = ?').run(at, sessionId);
   }
@@ -120,7 +94,7 @@ export class DerivedIndex {
       .prepare(
         `SELECT s.session_id, s.kind, s.title, s.parent, s.opened_at, s.last_at, s.mark
          FROM sessions s
-         WHERE s.withdrawn = 0 AND s.session_id NOT IN (SELECT session_id FROM deleted)
+         WHERE s.session_id NOT IN (SELECT session_id FROM deleted)
          ORDER BY s.opened_at DESC`,
       )
       .all() as {
@@ -130,7 +104,7 @@ export class DerivedIndex {
       parent: string | null;
       opened_at: string;
       last_at: string | null;
-      mark: SessionMark | null;
+      mark: 'ended' | null;
     }[];
     return rows.map((r) => ({
       sessionId: r.session_id,
@@ -162,12 +136,12 @@ export class DerivedIndex {
     return row?.at ?? undefined;
   }
 
-  /** 有某种记录的会话（跨次记录现算时只读这些会话的正本，W13）；收掉的、学习者删掉的不算。 */
+  /** 有某种记录的会话（跨次记录现算时只读这些会话的正本，W13）；学习者删掉的不算。 */
   sessionsWith(type: LogRecord['type']): string[] {
     const rows = this.db
       .prepare(
         `SELECT DISTINCT r.session_id FROM records r JOIN sessions s ON s.session_id = r.session_id
-         WHERE r.type = ? AND s.withdrawn = 0 AND r.session_id NOT IN (SELECT session_id FROM deleted)`,
+         WHERE r.type = ? AND r.session_id NOT IN (SELECT session_id FROM deleted)`,
       )
       .all(type) as { session_id: string }[];
     return rows.map((r) => r.session_id);
@@ -217,11 +191,8 @@ function createSchema(db: DatabaseSync): void {
       kind TEXT NOT NULL,
       title TEXT NOT NULL,
       parent TEXT,
-      from_kind TEXT,
-      from_loop TEXT,
       opened_at TEXT NOT NULL,
       last_at TEXT NOT NULL,
-      withdrawn INTEGER NOT NULL DEFAULT 0,
       mark TEXT
     );
     CREATE TABLE deleted (
@@ -239,40 +210,23 @@ function createSchema(db: DatabaseSync): void {
   `);
 }
 
-/**
- * 会改对话状态的记录 → 记号；null = 回到开着（结束的讨论串又重开）。别的记录不动记号。
- * W19 起只分开着和已结束：旧数据里的守卫判定、收尾那一句、搁置与恢复不再改状态。
- */
-function markOf(r: LogRecord): SessionMark | null | undefined {
+/** 会改对话状态的记录 → 记号；null = 回到开着（结束的讨论串又重开）。别的记录不动记号。同 threadEnd（shared/threads.ts）。 */
+function markOf(r: LogRecord): 'ended' | null | undefined {
   switch (r.type) {
-    case 'loop_ended':
-      // 旧数据：学习合上 / 没合上就结束
-      return r.closed ? 'closed' : 'unclosed';
-    case 'talk_ended':
-    case 'candidates_picked':
     case 'thread_closed':
+    case 'loop_ended':
       return 'ended';
     case 'thread_reopened':
-    case 'find_candidates':
       return null;
     default:
       return undefined;
   }
 }
 
-/**
- * 旧数据：学习对话接着哪段没学完的学的（W12 前导航开的“接着学”）。界面已不读这两列；照旧写，
- * 是为了不改表结构、不为此升索引版本（`from_kind` `from_loop`）。
- */
-function fromOf(o: SessionOpened): [string | null, string | null] {
-  return o.resumeOf !== undefined ? ['resume', o.resumeOf.fromLoop] : [null, null];
-}
-
 function searchableText(r: LogRecord): string {
   switch (r.type) {
     case 'user_message':
     case 'program_fact':
-    case 'project_goal':
     case 'message_edited':
       return r.text;
     case 'assistant_message':

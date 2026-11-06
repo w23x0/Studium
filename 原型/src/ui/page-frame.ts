@@ -2,14 +2,13 @@
 // 一个组件一个小窗：各块拼成一页，放进只给脚本、不给同源的小窗（sandbox="allow-scripts"），内容安全策略不放外网，
 // 只能从本机取 KaTeX。框架的桥接脚本报：加载好了、报错、组件自己发出的一句话（studium.send，组件唯一能往外递
 // 东西的口）、内容高度（摆版用，不是观测）。只发组件代码里要观测的事；不报展开折起、滚动、看得到哪几块、停了多久。
-import type { ActionTarget } from '../shared/screen.ts';
 
 /** 小窗递给外面的话（都带 studium: 1）。 */
 export type FrameMessage =
   | { kind: 'ready' }
   | { kind: 'error'; message: string }
   | { kind: 'height'; h: number }
-  | { kind: 'action'; text: string; to: ActionTarget; wait: boolean }
+  | { kind: 'action'; text: string; wait: boolean }
   /** 竖流学习页：组件“现在的状态”（照 MCP Apps 的 update-model-context，只留最后一次）。 */
   | { kind: 'state'; text: string };
 
@@ -32,11 +31,9 @@ const BRIDGE = String.raw`(function () {
     { left: '$$', right: '$$', display: true }, { left: '\\[', right: '\\]', display: true },
     { left: '$', right: '$', display: false }, { left: '\\(', right: '\\)', display: false }
   ], throwOnError: false };
-  var TO = { maker: 1, main: 1, both: 1 };
   window.studium = {
     send: function (text, opts) {
-      var to = opts && TO[opts.to] ? opts.to : 'maker';
-      post({ kind: 'action', text: String(text).slice(0, 1000), to: to, wait: !!(opts && opts.wait) });
+      post({ kind: 'action', text: String(text).slice(0, 1000), wait: !!(opts && opts.wait) });
     },
     setState: function (text) {
       post({ kind: 'state', text: String(text).slice(0, 1000) });

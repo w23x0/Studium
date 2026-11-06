@@ -1,7 +1,7 @@
 // 讨论串：项目对话右边一栏（照 Claude 桌面版的讨论串），列这个项目开出去的任务对话。
-// 开着 → 已结束（默认收起），照 Claude 项目（W19）。每行只有标题（旧学习带当时的小状态），行尾一个菜单：
-// 开着的学习有“结束”（结束了说话就重开；旧的谈方向等只读，算已结束）；删除删前确认一次（W12 §4.3；主对话不带删除工具，只在这里删）。
-import { useState, type ReactNode } from 'react';
+// 开着 → 已结束（默认收起），照 Claude 项目（W19）。每行只有标题，行尾一个菜单：
+// 开着的有“结束”（结束了说话就重开）；删除删前确认一次（W12 §4.3；主对话不带删除工具，只在这里删）。
+import { useState } from 'react';
 import {
   BarChart3Icon,
   BookOpenIcon,
@@ -9,9 +9,6 @@ import {
   ChevronDownIcon,
   ChevronRightIcon,
   EllipsisIcon,
-  LibraryIcon,
-  MessagesSquareIcon,
-  PenLineIcon,
   Trash2Icon,
   XIcon,
 } from 'lucide-react';
@@ -27,13 +24,6 @@ import { threadGroups, type ThreadGroup, type ThreadRow } from '../threads-model
 import { W } from '../wording.ts';
 
 const T = W.threads;
-
-const ICON: Partial<Record<SessionSummary['kind'], ReactNode>> = {
-  talk: <MessagesSquareIcon />,
-  loop: <BookOpenIcon />,
-  find: <LibraryIcon />,
-  output: <PenLineIcon />,
-};
 
 export function ThreadsPanel(props: {
   projectId: string;
@@ -137,15 +127,14 @@ function Group(props: {
                 )}
                 onClick={() => props.onOpen(r.id)}
               >
-                <span className="text-muted-foreground flex">{ICON[r.kind]}</span>
+                <span className="text-muted-foreground flex">
+                  <BookOpenIcon />
+                </span>
                 <span className="min-w-0 flex-1 truncate">{r.title}</span>
-                {r.tag !== undefined && (
-                  <span className="text-muted-foreground shrink-0 text-[0.7rem]">{r.tag}</span>
-                )}
               </button>
               <ThreadMenu
                 row={r}
-                canEnd={props.group === 'open' && r.kind === 'loop'}
+                canEnd={props.group === 'open'}
                 onDeleted={props.onDeleted}
                 onError={props.onError}
               />
@@ -158,7 +147,7 @@ function Group(props: {
 }
 
 /**
- * 一行的菜单：结束（开着的学习；只是收起，说话就重开，W19）；删除（删前确认一次；删了界面上不再显示，
+ * 一行的菜单：结束（开着的；只是收起，说话就重开，W19）；删除（删前确认一次；删了界面上不再显示，
  * 别的对话也读不到；不做撤销）。
  */
 function ThreadMenu(props: {

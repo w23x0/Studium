@@ -1,23 +1,14 @@
 // 讨论串（项目对话右边那一栏）的纯转换：一个项目开出去的任务对话 → 开着 / 已结束（W19，照 Claude 项目）。
-// 分组规则在 `../shared/threads.ts`（主对话里的讨论串卡片也用它，W12 §4.1）；每行带什么小标签改下面 TAG_OF。
+// 分组规则在 `../shared/threads.ts`（主对话里的讨论串卡片也用它，W12 §4.1）。
 // 学习者删掉的讨论串核心那边就不列了（W12 §4.3）。
-import type { SessionMark, SessionSummary } from '../shared/protocol.ts';
-import { THREAD_KINDS, threadGroup, type ThreadGroup } from '../shared/threads.ts';
-import { W } from './wording.ts';
+import type { SessionSummary } from '../shared/protocol.ts';
+import { threadGroup, type ThreadGroup } from '../shared/threads.ts';
 
 export type { ThreadGroup };
 
-/** 行尾的小标签（没有的不显示）：只有旧数据的学习有（当时合上 / 没合上），照旧显示。 */
-const TAG_OF: Partial<Record<SessionMark, string>> = {
-  closed: W.threads.tagClosed,
-  unclosed: W.unclosedTag,
-};
-
 export interface ThreadRow {
   id: string;
-  kind: SessionSummary['kind'];
   title: string;
-  tag?: string;
   /** 排序与显示用：最近活动。 */
   at: string;
 }
@@ -28,15 +19,8 @@ export function threadGroups(
 ): Record<ThreadGroup, ThreadRow[]> {
   const out: Record<ThreadGroup, ThreadRow[]> = { open: [], ended: [] };
   for (const s of sessions) {
-    if (s.parent !== projectId || !THREAD_KINDS.has(s.kind)) continue;
-    const tag = s.mark !== undefined ? TAG_OF[s.mark] : undefined;
-    out[threadGroup(s)].push({
-      id: s.sessionId,
-      kind: s.kind,
-      title: s.title,
-      at: s.lastAt ?? s.openedAt,
-      ...(tag !== undefined ? { tag } : {}),
-    });
+    if (s.parent !== projectId || s.kind !== 'loop') continue;
+    out[threadGroup(s)].push({ id: s.sessionId, title: s.title, at: s.lastAt ?? s.openedAt });
   }
   for (const g of Object.values(out)) g.sort((a, b) => b.at.localeCompare(a.at));
   return out;
@@ -48,6 +32,6 @@ export function threadStatus(
   id: string,
 ): { title: string; group: ThreadGroup } | undefined {
   const s = sessions.find((x) => x.sessionId === id);
-  if (s === undefined || !THREAD_KINDS.has(s.kind)) return undefined;
+  if (s?.kind !== 'loop') return undefined;
   return { title: s.title, group: threadGroup(s) };
 }

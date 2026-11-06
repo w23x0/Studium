@@ -300,8 +300,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
         // 请求体是 JSON null 时当作什么都没给（各动作自己报缺什么）
         const body = ((await readJson(req)) ?? {}) as {
           text?: unknown;
-          replyTo?: unknown;
-          quote?: unknown;
           quotes?: unknown;
         };
         switch (action) {
@@ -309,28 +307,13 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
             if (typeof body.text !== 'string' || body.text.trim() === '') {
               throw new BadRequest('text 不能为空');
             }
-            // 学习页：在某一块下面回的（W10，会话/学习对话.md §11.3 学习者回话）
-            const r = body.replyTo as { key?: unknown; pointer?: unknown } | undefined;
-            const replyTo =
-              typeof r?.key === 'string' && typeof r.pointer === 'string'
-                ? { key: r.key.slice(0, 100), pointer: r.pointer.slice(0, 200) }
-                : undefined;
-            // 竖流学习页：选中页面上几处再说的（10-29 #74；11-05 #92 起可多处，旧界面发的单个 quote 照收）
-            const raw = Array.isArray(body.quotes)
-              ? (body.quotes as unknown[])
-              : body.quote !== undefined && body.quote !== null
-                ? [body.quote]
-                : [];
+            // 竖流学习页：选中页面上几处再说的（10-29 #74；11-05 #92 起可多处）
+            const raw = Array.isArray(body.quotes) ? (body.quotes as unknown[]) : [];
             const quotes = raw
               .slice(0, 20)
               .map(parseQuote)
               .filter((q): q is MessageQuote => q !== undefined);
-            await studium.learnerSays(
-              id,
-              body.text,
-              replyTo,
-              quotes.length > 0 ? quotes : undefined,
-            );
+            await studium.learnerSays(id, body.text, quotes.length > 0 ? quotes : undefined);
             send(res, 202, {});
             return;
           }

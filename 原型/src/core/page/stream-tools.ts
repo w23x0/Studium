@@ -61,7 +61,7 @@ export function streamTools(o: StreamToolDeps, loopId: string): ToolSpec[] {
     // 试跑要等几秒，这期间学习者可能说了话、页面变了：照最新的页面再试一次，和放正本时算的一样
     const next = await check();
     if ('error' in next) return err(`试跑期间页面变了：${next.error}`);
-    // 组件的每一版照样记进事件记录（按块按指纹存一份，同区域图那边的组件）
+    // 组件的每一版照样记进事件记录（按块按指纹存一份）
     const hash = await o.store.putBlock(loopId, html);
     const m: ComponentManifest = { blocks: [{ id: 'b1', hash, summary: name }] };
     const manifest = await o.store.putManifest(loopId, m);

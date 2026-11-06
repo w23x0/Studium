@@ -1,25 +1,18 @@
 import { ConversationControls } from './model/conversation-controls.tsx';
-// 中间的对话页：主对话的外壳；旧数据（谈方向、导航、写产出、阶段复盘、找资料）在这里只读看。
-// 顶上面包屑（项目名回项目对话）+ 各类对话自己的顶部说明与底栏（界面说明 §2.3–§2.6）。
-// 学习对话（含旧的）都走 learn/learn-page.tsx。生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+// 中间的对话页：主对话（界面说明 §2.3）。顶上面包屑，项目名回项目对话。学习对话（含旧的）都走 learn/learn-page.tsx。
+// 生成中途能停、停下后能改自己刚发的那句（W12 §4.4）；正在做什么一行（§4.5）。
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
   AssistantRuntimeProvider,
   useExternalStoreRuntime,
   type AppendMessage,
   type ThreadMessageLike,
 } from '@assistant-ui/react';
-import { ArrowRightIcon } from 'lucide-react';
 import { Thread } from '@/components/assistant-ui/thread';
-import type { SessionSummary } from '../../shared/protocol.ts';
 import type { NumberedRecord } from '../../shared/records.ts';
 import { latestContext } from '../../shared/usage.ts';
 import { api } from '../api.ts';
-import { useLoad } from '../hooks/use-load.ts';
-import { useOpenSession } from '../open-session.ts';
-import { HighlightContext, type Focus } from '../panel.ts';
 import { toUiMessages, type UiMessage } from '../thread-model.ts';
-import { forLearner } from '../learner-text.ts';
 import type { ThreadGroup } from '../../shared/threads.ts';
 import { W } from '../wording.ts';
 import type { PickedFile } from '../files.ts';
@@ -28,25 +21,17 @@ import { UploadResult } from './input/upload-result.tsx';
 
 export function Conversation(props: {
   sessionId: string;
-  kind: SessionSummary['kind'];
-  /** 开出这个对话的那个对话（旧数据：导航 → 主对话）。 */
-  parent: string | undefined;
-  title: string;
   projectId: string;
   projectTitle: string;
   titleOf: (id: string) => string | undefined;
   /** 讨论串现在的标题与状态（主对话里的卡片用，W12 §4.1）。 */
   statusOf: (id: string) => { title: string; group: ThreadGroup } | undefined;
-  focus: Focus | undefined;
   headerExtra: ReactNode;
   onError: (e: unknown) => void;
-  /** 回项目对话。 */
-  onBackToMain: () => void;
   /** 点面包屑上的项目名（回项目对话）。 */
   onProject: () => void;
 }) {
-  const { sessionId, kind, onError, titleOf, statusOf, focus } = props;
-  const isMain = kind === 'main';
+  const { sessionId, onError, titleOf, statusOf } = props;
   const [records, setRecords] = useState<NumberedRecord[]>([]);
   const [draft, setDraft] = useState('');
   const [running, setRunning] = useState(false);
@@ -103,18 +88,6 @@ export function Conversation(props: {
     [records, draft, running, titleOf, statusOf],
   );
 
-  // 从依据面板跳过来：滚到被引用的那句（记录还没读回来时等读回来再滚）
-  const scrolled = useRef(0);
-  useEffect(() => {
-    if (focus?.scroll !== true || scrolled.current === focus.seq) return;
-    const first = focus.lines[0];
-    if (first === undefined) return;
-    const el = document.querySelector(`[data-lines~="${String(first)}"]`);
-    if (!el) return;
-    scrolled.current = focus.seq;
-    el.scrollIntoView({ block: 'center', behavior: 'smooth' });
-  }, [focus, messages.length]);
-
   const runtime = useExternalStoreRuntime<UiMessage>({
     messages,
     // 不把“模型在答”告诉输入框：答到一半也能接着说（排到这一轮之后），“正在答”由最后一条占位显示
@@ -125,9 +98,6 @@ export function Conversation(props: {
       content: m.text,
       metadata: {
         custom: {
-          line: m.line,
-          ...(m.lines ? { lines: m.lines } : {}),
-          ...(m.link ? { link: m.link } : {}),
           ...(m.at !== undefined ? { at: m.at } : {}),
           ...(m.edited ? { edited: m.edited } : {}),
           ...(m.reaction !== undefined ? { reaction: m.reaction } : {}),
@@ -153,9 +123,6 @@ export function Conversation(props: {
     },
   });
 
-  // 旧数据只看：导航、页面编辑员、写产出、阶段复盘（W12 撤掉）、找资料（11-04 收起）、谈方向（W20 起不再开）
-  const watchOnly =
-    kind === 'nav' || kind === 'editor' || kind === 'output' || kind === 'find' || kind === 'talk';
   const header = (
     <div className="shrink-0">
       <TopBar
@@ -165,101 +132,37 @@ export function Conversation(props: {
             onClick: props.onProject,
             testId: 'crumb-project',
           },
-          { label: isMain ? W.projectChat : props.title, testId: 'crumb-current' },
+          { label: W.projectChat, testId: 'crumb-current' },
         ]}
         right={props.headerExtra}
       />
-      {kind === 'nav' && <NavIntro parent={props.parent} navId={sessionId} />}
     </div>
   );
 
-  const thread = (
-    <Thread
-      header={header}
-      welcome={isMain ? W.mainWelcome : kind === 'find' ? W.findWelcome : '马上开始…'}
-      disabled={watchOnly}
-      placeholder={running ? '可以接着说（这一轮说完再交给它）…' : '回复…'}
-      running={running}
-      onStop={async () => {
-        await api.stop(sessionId);
-      }}
-      onEditLast={async (text) => {
-        await api.editLast(sessionId, text);
-      }}
-      onSend={async (text) => {
-        await api.send(sessionId, text);
-      }}
-      contextTokens={latestContext(records)}
-      modelControls={<ConversationControls key={sessionId} sessionId={sessionId} />}
-      // 主对话的输入框拖入文件：不进输入，走项目的上传（工单 W9 §4.1）
-      {...(isMain
-        ? {
-            onFiles: async (files: PickedFile[]) => {
-              const r = await api.upload(props.projectId, files);
-              return <UploadResult projectId={props.projectId} items={r.items} />;
-            },
-          }
-        : {})}
-    />
-  );
   return (
-    <HighlightContext.Provider value={focus?.lines ?? NO_LINES}>
-      <AssistantRuntimeProvider runtime={runtime}>{thread}</AssistantRuntimeProvider>
-    </HighlightContext.Provider>
-  );
-}
-
-const NO_LINES: readonly number[] = [];
-
-/** 开出这个对话的那个对话的记录（旧数据：导航要回看主对话里的东西）。 */
-function useParentRecords(parent: string | undefined) {
-  return useLoad(`records:${parent ?? ''}`, () =>
-    parent !== undefined ? api.records(parent) : Promise.resolve({ records: [], running: false }),
-  );
-}
-
-/** 导航顶部：只看不聊；定好了就把结果放最上面，可直接去学（界面说明 §2.5）。 */
-function NavIntro(props: { parent: string | undefined; navId: string }) {
-  const r = useParentRecords(props.parent);
-  const open = useOpenSession();
-  const recs = r.data?.records ?? [];
-  const card = recs.find(
-    (x) => x.record.type === 'choice_card' && x.record.navSessionId === props.navId,
-  )?.record;
-  const made =
-    card?.type === 'choice_card'
-      ? recs.find((x) => x.record.type === 'choice_made' && x.record.cardId === card.cardId)?.record
-      : undefined;
-  const option =
-    card?.type === 'choice_card' && made?.type === 'choice_made'
-      ? card.options[made.option]
-      : undefined;
-  return (
-    <div className="mx-auto flex w-full max-w-[46rem] flex-col gap-1.5 px-4 pb-2 text-sm">
-      <span className="text-muted-foreground">{W.navIntro}</span>
-      {made?.type === 'choice_made' && option !== undefined && (
-        <button
-          type="button"
-          data-testid="nav-result"
-          className="bg-card hover:bg-accent/40 flex flex-col gap-1 rounded-xl border px-3 py-2 text-left"
-          onClick={() => open(made.loopSessionId)}
-        >
-          <span className="flex w-full items-center gap-2">
-            <span className="text-muted-foreground shrink-0">{W.navResult}</span>
-            <span className="min-w-0 flex-1 truncate font-medium">{option.title}</span>
-            <span className="text-primary flex shrink-0 items-center gap-1 text-xs">
-              {W.navStart}
-              <ArrowRightIcon className="size-3.5" />
-            </span>
-          </span>
-          {option.reason !== '' && (
-            <span className="text-muted-foreground line-clamp-2 text-xs">
-              {W.navWhy}
-              {forLearner(option.reason)}
-            </span>
-          )}
-        </button>
-      )}
-    </div>
+    <AssistantRuntimeProvider runtime={runtime}>
+      <Thread
+        header={header}
+        welcome={W.mainWelcome}
+        placeholder={running ? '可以接着说（这一轮说完再交给它）…' : '回复…'}
+        running={running}
+        onStop={async () => {
+          await api.stop(sessionId);
+        }}
+        onEditLast={async (text) => {
+          await api.editLast(sessionId, text);
+        }}
+        onSend={async (text) => {
+          await api.send(sessionId, text);
+        }}
+        contextTokens={latestContext(records)}
+        modelControls={<ConversationControls key={sessionId} sessionId={sessionId} />}
+        // 输入框拖入文件：不进输入，走项目的上传（工单 W9 §4.1）
+        onFiles={async (files: PickedFile[]) => {
+          const r = await api.upload(props.projectId, files);
+          return <UploadResult projectId={props.projectId} items={r.items} />;
+        }}
+      />
+    </AssistantRuntimeProvider>
   );
 }

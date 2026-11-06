@@ -91,7 +91,7 @@ export function replayStream(records: NumberedRecord[], until = Infinity): Strea
           kind: 'learner',
           line,
           text: r.text,
-          ...(quotesOf(r).length > 0 ? { quotes: quotesOf(r) } : {}),
+          ...(r.quotes !== undefined && r.quotes.length > 0 ? { quotes: r.quotes } : {}),
         });
         break;
       case 'message_tidied': {
@@ -377,11 +377,6 @@ function quoteHead(qs: MessageQuote[] | undefined): string {
 function gist(text: string): string {
   const t = text.replace(/\s+/g, ' ').trim();
   return t.length > 40 ? `${t.slice(0, 40)}……` : t;
-}
-
-/** 一句学习者的话选中了哪几处：11-05 起记在 quotes，旧行只有一处 quote。 */
-export function quotesOf(r: { quote?: MessageQuote; quotes?: MessageQuote[] }): MessageQuote[] {
-  return r.quotes ?? (r.quote !== undefined ? [r.quote] : []);
 }
 
 /** 学习者选中的几处交给模型时怎么写（很长只带开头和结尾；带前后几个字的写明在哪两段字中间）。 */

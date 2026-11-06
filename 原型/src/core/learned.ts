@@ -1,14 +1,12 @@
-// 学过的记录（docs/设计/记录/学过的记录.md）：按层读每次学习，加外部导入的存放处。
-// 只读、不缓存、不另存摘要：每次从正本现算；下层（事件记录）走 GET /api/sessions/<id>/records。
+// 学过的记录（docs/设计/记录/学过的记录.md）：读每次学习（进行中 / 已结束），加外部导入的存放处。
+// 只读、不缓存、不另存摘要：每次从正本现算。
 import { appendFile, mkdir, readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import type { Import, LearnedResponse, Learning } from '../shared/protocol-learned.ts';
-import type { NumberedRecord, Ticket } from '../shared/records.ts';
 import { NotFoundError, type Hub } from './hub.ts';
 import { threadEnd } from '../shared/threads.ts';
 import { Materials } from './knowledge/materials.ts';
 import { isNotFound } from './log/session-log.ts';
-import { currentTicket, ticketEdits } from './ticket.ts';
 
 export interface LearnedDeps {
   hub: () => Hub;
@@ -34,7 +32,7 @@ export class Learned {
     return join(this.o.dir, 'learned', 'imports.jsonl');
   }
 
-  /** 程序在导入时写一条原样指针（畅谈渠道）；只追加。 */
+  /** 写一条原样指针；只追加。 */
   async addImport(x: {
     channel: Import['channel'];
     ref: Import['ref'];
@@ -83,7 +81,7 @@ export class Learned {
 
   /**
    * 一条导入的 md 全文（笔记 / 对话记录）：那份资料正文的拼接，每个文件前标 `<!-- 文件：相对路径 -->`；
-   * 畅谈的、资料找不到的没有。
+   * 畅谈的（旧数据）、资料找不到的没有。
    */
   async importText(x: Import): Promise<string | undefined> {
     if (!('material' in x.ref)) return undefined;
@@ -155,18 +153,6 @@ export class Learned {
     return { learnings, imports: await this.imports(project) };
   }
 
-  /** 一次学习的两层；不是学习或没有这个会话 → 404。 */
-  async one(loopId: string): Promise<Learning> {
-    if (!/^[A-Za-z0-9_-]+$/.test(loopId)) throw new NotFoundError(`没有这个会话：${loopId}`);
-    const hub = this.o.hub();
-    const opened = await hub.opened(loopId).catch((err: unknown) => {
-      if (err instanceof NotFoundError) throw new NotFoundError(`没有这个会话：${loopId}`);
-      throw err;
-    });
-    if (opened.kind !== 'loop') throw new NotFoundError(`不是一次学习：${loopId}`);
-    return this.of(opened.sessionId, opened.title, opened.at, await hub.records(opened.sessionId));
-  }
-
   /** 全部学习，按开始时间升序。 */
   async all(): Promise<Learning[]> {
     return this.ofProject(undefined);
@@ -179,7 +165,14 @@ export class Learned {
       .filter((s) => s.kind === 'loop' && (project === undefined || s.parent === project));
     const out: Learning[] = [];
     for (const s of loops) {
-      out.push(await this.of(s.sessionId, s.title, s.openedAt, await hub.records(s.sessionId)));
+      const ended = threadEnd(await hub.records(s.sessionId));
+      out.push({
+        loopId: s.sessionId,
+        title: s.title,
+        openedAt: s.openedAt,
+        status: ended === undefined ? '进行中' : '已结束',
+        ...(ended !== undefined ? { endedAt: ended.record.at } : {}),
+      });
     }
     // 开始时间相同时保持开出来的先后（listSessions 的顺序）
     return out
@@ -203,93 +196,8 @@ export class Learned {
     return mainId;
   }
 
-  /** 从一次学习的正本算出它的两层；路线决定去项目主对话里回查。 */
-  private async of(
-    loopId: string,
-    title: string,
-    openedAt: string,
-    records: NumberedRecord[],
-  ): Promise<Learning> {
-    // 现在结束着的那次结束（W12 §2 起结束后能重开：重开过的看最后一次结束，重开后还没再结束 = 进行中）
-    // W19 起结束记 thread_closed，只分进行中 / 已结束；旧数据的 loop_ended 照旧分合上 / 没合上
-    const ended = threadEnd(records);
-    const ticket = await this.ticketOf(loopId, records);
-    const status: Learning['status'] =
-      ended === undefined
-        ? '进行中'
-        : ended.record.type !== 'loop_ended'
-          ? '已结束'
-          : ended.record.closed
-            ? '合上'
-            : '没合上';
-    const edits = ticketEdits(records);
-    const out: Learning = {
-      loopId,
-      title,
-      openedAt,
-      status,
-      ticket,
-      ...(edits.length > 0 ? { ticketEdits: edits } : {}),
-      ...(ended !== undefined ? { endedAt: ended.record.at } : {}),
-    };
-    if (ended?.record.type === 'loop_ended') {
-      if (ended.record.closed) {
-        // 旧数据：loop_ended 之前最后一句收尾那一句（10-31 至 W19）
-        const closing = closingOf(records, ended.line);
-        if (closing !== undefined) out.closing = closing;
-        // 旧数据：loop_ended 之前最后一条 closed: true 的守卫判定
-        const passed = records
-          .filter((r) => r.line < ended.line && r.record.type === 'guard_verdict')
-          .map((r) => ({ line: r.line, v: r.record }))
-          .filter((x) => x.v.type === 'guard_verdict' && x.v.closed)
-          .at(-1);
-        if (passed?.v.type === 'guard_verdict') {
-          out.verdict = {
-            line: passed.line,
-            closed: passed.v.closed,
-            basis: passed.v.basis,
-            understanding: passed.v.understanding ?? [],
-            ...(passed.v.model !== undefined ? { model: passed.v.model } : {}),
-          };
-        }
-      } else {
-        out.endNote = ended.record.note;
-        const rd = await this.routeDecisionOf(loopId, records);
-        if (rd !== undefined) out.routeDecision = rd;
-      }
-    }
-    return out;
-  }
-
-  /** 单子：现在的这张（改过就是改后的）；正本里没有就退回会话元信息，再没有给空单子。 */
-  private async ticketOf(loopId: string, records: NumberedRecord[]): Promise<Ticket> {
-    const now = currentTicket(records);
-    if (now !== undefined) return now;
-    const opened = await this.o.hub().opened(loopId);
-    if (opened.ticket !== undefined) return opened.ticket;
-    return { newPoint: '', clause: '', startPoints: [], routeAction: '', sourceCheck: [] };
-  }
-
   /**
-   * 旧数据（W12 前）：没合上那次的路线决定——那次结束之后、项目主对话里导航作出的第一条路线决定。
-   * W12 起导航撤掉、不再产生；找不到就不给这一栏。
-   */
-  private async routeDecisionOf(
-    loopId: string,
-    records: NumberedRecord[],
-  ): Promise<Learning['routeDecision']> {
-    const ended = threadEnd(records)?.record;
-    if (ended === undefined) return undefined;
-    const opened = await this.o.hub().opened(loopId);
-    if (opened.parent === undefined) return undefined;
-    const main = await this.o.hub().records(opened.parent);
-    const rd = main.find((r) => r.record.type === 'route_decision' && r.record.at >= ended.at);
-    if (rd?.record.type !== 'route_decision') return undefined;
-    return { line: rd.line, decision: rd.record.decision, reason: rd.record.reason };
-  }
-
-  /**
-   * 一条外部导入一行：畅谈 = 会话与行号；笔记 / 对话记录 = 标题 + 沙盒里的位置（只读/学过的记录/外部导入/<id>.md
+   * 一条外部导入一行：畅谈（旧数据）= 会话与行号；笔记 / 对话记录 = 标题 + 沙盒里的位置（只读/学过的记录/外部导入/<id>.md
    * 是拼成一份的；按原目录读在 只读/资料/<资料 id>/）。
    */
   importLine(x: Import): string {
@@ -298,57 +206,10 @@ export class Learned {
       : `${x.id} ${x.channel}《${x.title ?? x.id}》：外部导入/${x.id}.md（原目录：资料 ${x.ref.material}）`;
   }
 
-  /** 一次学习一行（主对话的 list_learned 用）：状态与时间；旧数据另带收尾那一句、结束原话、单子、守卫判定、路线决定。 */
+  /** 一次学习一行（主对话的 list_learned 用）：状态与时间。 */
   line(l: Learning): string {
     const start = l.openedAt.slice(0, 10);
     const span = l.endedAt !== undefined ? `${start}–${l.endedAt.slice(0, 10)}` : start;
-    const t = ticketText(l.ticket);
-    const parts = [
-      `${l.loopId}「${l.title}」${l.status}，${span}${t !== '' ? `：单子（旧数据）${t}` : ''}`,
-    ];
-    if (l.closing !== undefined) {
-      parts.push(`旧数据·收尾那一句 L${String(l.closing.line)}：${l.closing.summary}`);
-    }
-    if (l.verdict !== undefined) {
-      parts.push(`旧数据·守卫判定 L${String(l.verdict.line)}：${l.verdict.basis}`);
-      const u = l.verdict.understanding
-        .map(
-          (x) =>
-            `${x.text}（${x.independence}，${x.durability}${x.lines.length > 0 ? `，L${x.lines.join('、')}` : ''}）`,
-        )
-        .join('；');
-      if (u !== '') parts.push(`实际理解：${u}`);
-    }
-    if (l.endNote !== undefined) parts.push(`结束原话：${l.endNote}`);
-    if (l.routeDecision !== undefined) {
-      parts.push(
-        `旧数据·当时的路线决定（L${String(l.routeDecision.line)}）：${l.routeDecision.decision}（${l.routeDecision.reason}）`,
-      );
-    }
-    return parts.join('；');
+    return `${l.loopId}「${l.title}」${l.status}，${span}`;
   }
-}
-
-/** 旧数据（W12 前）单子的一句话：新点 + 预期理解 + 出发点各注来源（W12 起新开的学习没有单子：空串）。 */
-function ticketText(t: Ticket): string {
-  if (t.newPoint === '' && t.clause === '' && t.startPoints.length === 0) return '';
-  const starts = t.startPoints
-    .map((s) => `${s.point}（来源：${s.source}${s.ref !== undefined ? `，依据 ${s.ref}` : ''}）`)
-    .join('；');
-  return `新点 ${t.newPoint}；预期理解 ${t.clause}；出发点 ${starts || '（无）'}`;
-}
-
-/** 旧数据（10-31 至 W19）：loop_ended 之前最后一句收尾那一句（学习对话调 request_close 写在 close_requested.summary）。 */
-function closingOf(
-  records: readonly NumberedRecord[],
-  before: number,
-): { line: number; at: string; summary: string } | undefined {
-  let out: { line: number; at: string; summary: string } | undefined;
-  for (const { line, record: r } of records) {
-    if (line >= before) break;
-    if (r.type === 'close_requested' && r.summary !== undefined && r.summary.trim() !== '') {
-      out = { line, at: r.at, summary: r.summary };
-    }
-  }
-  return out;
 }

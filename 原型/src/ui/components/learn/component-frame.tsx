@@ -1,5 +1,5 @@
-// 页面上的一个组件：一个组件一个小窗（只给脚本、不联网）。组件发出的一句话经框架的发送口交给核心
-// （先回做它的子代理 / 直接给主对话，按组件代码里写的）；运行时报错报回（学习者碰到时才出的，同一句只报一次）。
+// 页面上的一个组件：一个组件一个小窗（只给脚本、不联网）。组件发出的一句话经框架的发送口交给核心；
+// 运行时报错报回（学习者碰到时才出的，同一句只报一次）。
 // 学习结束后只看：不交操作、不报错。小窗的颜色跟着界面的浅色 / 深色（换了就重新载入）。
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api } from '../../api.ts';
@@ -53,7 +53,6 @@ export function ComponentFrame(props: {
           .screenAction(loopId, {
             component,
             text: m.text,
-            to: m.to,
             ...(m.wait ? { awaited: true } : {}),
           })
           .catch(onError);

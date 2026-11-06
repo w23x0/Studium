@@ -62,14 +62,20 @@ const body = (s, summary) => {
   return `<details><summary>${esc(summary)}（${t.length} 字，点开）</summary>${pre(t)}</details>`;
 };
 const wrapFact = (t) => (timeline ? t : `<程序事实>\n${t}\n</程序事实>`);
-const quotePrefix = (q) => {
-  if (q === undefined) return '';
-  if (q.component !== undefined) return `学习者选中了组件「${q.component}」\n\n`;
-  const t = q.text ?? '';
-  const shown = t.length > 300 ? `${t.slice(0, 160)}……${t.slice(-100)}` : t;
-  return q.line !== undefined
-    ? `学习者选中了第 ${q.line} 行里的这段：\n「${shown}」\n\n`
-    : `学习者选中了这段：\n「${shown}」\n\n`;
+const quotesPrefix = (qs = []) => {
+  const one = (q) => {
+    if (q.component !== undefined) return `组件「${q.component}」`;
+    const t = q.text ?? '';
+    const shown = t.length > 300 ? `${t.slice(0, 160)}……${t.slice(-100)}` : t;
+    const where =
+      q.before !== undefined || q.after !== undefined
+        ? `（前面是“${q.before ?? ''}”，后面是“${q.after ?? ''}”）`
+        : '';
+    return `${q.line !== undefined ? `第 ${q.line} 行里的这段` : '这段'}：\n「${shown}」${where}`;
+  };
+  if (qs.length === 0) return '';
+  if (qs.length === 1) return `学习者选中了${one(qs[0])}\n\n`;
+  return `学习者选中了 ${qs.length} 处：\n${qs.map((q, i) => `${i + 1}. ${one(q)}`).join('\n')}\n\n`;
 };
 
 // ── 系统提示词：有记录用记录，没有就按 git 补 ──
@@ -179,7 +185,7 @@ for (const { line, r } of records) {
       const program = r.type === 'program_fact';
       const preface = prefaceFor.get(line);
       // W12 起每条前还写谁说的、距学习者上次说话多久（导出这里只重写行号、时间、谁）
-      const text = `[第 ${line} 行 · ${localMinute(r.at)} · ${program ? '程序' : '学习者'}] ${quotePrefix(r.quote)}${r.text}`;
+      const text = `[第 ${line} 行 · ${localMinute(r.at)} · ${program ? '程序' : '学习者'}] ${quotesPrefix(r.quotes)}${r.text}`;
       const delivered = `${preface !== undefined ? `${wrapFact(preface)}\n\n` : ''}${program ? wrapFact(text) : text}`;
       block(
         program ? 'input program' : 'input learner',

@@ -1,18 +1,16 @@
-// 正本记录 → 界面上的消息列表与对话状态。纯函数，单测覆盖。
-// 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示。学习对话（含旧的）不走这里，走竖流学习页。
+// 正本记录 → 界面上的消息列表与对话状态。纯函数。
+// 学习者看到的程序文字一律日常话：程序事实（给模型看的）不显示。主对话走这里，学习对话走竖流学习页。
 // 模型用了什么工具、别的对话发来的话（学习者看不到）都不显示。
 // 一个讨论串在主对话里只有一张卡片，标题与状态跟着它现在的样子（W12 §4.1）。
 import type { NumberedRecord } from '../shared/records.ts';
 import type { ThreadGroup } from '../shared/threads.ts';
-import { W } from './wording.ts';
-import { WP } from './wording-page.ts';
 import { WT } from './wording-tools.ts';
 
 export interface UiMessage {
   id: string;
   role: 'user' | 'assistant' | 'system';
   text: string;
-  /** 这条消息起始的正本行号，引用跳转用。 */
+  /** 这条消息起始的正本行号。 */
   line: number;
   /** 什么时候说的（鼠标移上去时左下角显示，W12 §4.2）。 */
   at?: string;
@@ -24,11 +22,7 @@ export interface UiMessage {
   editable?: true;
   /** 讨论串卡片（W12 §4.1）：点开去那边；标题与状态现取。 */
   card?: { sessionId: string; title: string; group?: ThreadGroup };
-  /** 同一轮多段回复合成一条时，合进来的全部行号（含 line）。 */
-  lines?: number[];
   failed?: boolean;
-  /** 去另一个对话的入口（开始学的任务、回到某个对话；旧数据里有谈方向）。 */
-  link?: { sessionId: string; label: string };
 }
 
 export interface UiContext {
@@ -99,7 +93,7 @@ export function toUiMessages(
     if (carded.has(sessionId)) return;
     carded.add(sessionId);
     const status = ctx.statusOf?.(sessionId);
-    // 删掉的讨论串（列表里没有了）不放卡片；没有状态函数时（单测）照旧放
+    // 删掉的讨论串、旧种类（列表里没有）不放卡片
     if (ctx.statusOf !== undefined && status === undefined) return;
     const title = status?.title ?? ctx.titleOf?.(sessionId) ?? fallback;
     push({
@@ -138,7 +132,6 @@ export function toUiMessages(
         // 同一轮里的多段助手文字合成一条显示
         if (prev?.role === 'assistant' && prev.failed !== true) {
           prev.text += `\n\n${text}`;
-          prev.lines = [...(prev.lines ?? [prev.line]), line];
         } else {
           push({
             id,
@@ -155,40 +148,11 @@ export function toUiMessages(
         }
         break;
       }
-      case 'ticket_edited':
-        push({ id, role: 'system', text: W.ticketEdited, line });
-        break;
-      case 'talk_ended':
-        // 旧数据：方向谈好了（W20 起不再有），对话里不另起一行
-        break;
       case 'task_opened':
-        // 旧数据：导航不给入口（W12 撤掉；只读看在讨论串之外）
-        if (r.kind === 'nav') break;
         card(line, r.sessionId, r.title);
         break;
       case 'turn_stopped':
         push({ id, role: 'system', text: WT.stopped, line });
-        break;
-      case 'find_candidates':
-        // 旧数据：找资料交回的候选（11-04 起不再开；勾选的界面 W19 撤掉），只列标题
-        push({
-          id,
-          role: 'system',
-          text: `${W.candidatesTitle}：${r.candidates.map((c) => c.title).join('；')}`,
-          line,
-        });
-        break;
-      case 'choice_made':
-        // 旧数据：导航定了单子、开出的学习
-        card(line, r.loopSessionId, '一次学习');
-        break;
-      case 'conversation_pointer':
-        // 旧数据：回到某个对话的入口（同一讨论串只放一张卡片）
-        card(line, r.sessionId, '之前那段对话');
-        break;
-      case 'page_rollback':
-        // 旧数据（10-26 起不做退回）：标一行退回到哪
-        push({ id, role: 'system', text: WP.rolledBackLine(r.to, r.reason), line });
         break;
       default:
         // 诊断记录、工具调用、原始消息等是给模型与审计用的，不显示

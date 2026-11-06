@@ -1,8 +1,11 @@
 // 学习页（`docs/设计/会话/学习对话.md` §11；W12 起竖流是唯一的学习页）：页面从正本算（src/shared/stream-page.ts），
 // 这里只管学习者在组件上的操作（攒着 / 等回应立刻推）、组件运行时报错、组件在浏览器里试跑、每轮附给主模型的事，
-// 以及旧的区域图学习只读看时要的组件（每个组件最后一版）。
-import type { ComponentManifest, OldComponentsResponse } from '../../shared/screen.ts';
-import type { PageTrialResult } from '../../shared/page.ts';
+// 以及不是竖流开的旧学习只读看时要的组件（每个组件最后一版）。
+import type {
+  ComponentManifest,
+  OldComponentsResponse,
+  PageTrialResult,
+} from '../../shared/screen.ts';
 import { localMinute } from '../../shared/time.ts';
 import type { Hub } from '../hub.ts';
 import type { PageStore } from './store.ts';
@@ -42,7 +45,7 @@ export class Screens {
 
   // ───────────── 给界面 ─────────────
 
-  /** 旧的区域图学习只读看：每个组件最后一版（内容按清单从存放处取）。 */
+  /** 不是竖流开的旧学习只读看：每个组件最后一版（内容按清单从存放处取）。 */
   async oldComponents(loopId: string): Promise<OldComponentsResponse> {
     const last = new Map<
       string,
@@ -139,7 +142,6 @@ export class Screens {
         component: g.component,
         text,
         awaited: awaited && !g.state,
-        to: 'main',
         ...(g.state ? { state: true as const } : {}),
       });
       if (g.state || !awaited) continue;
@@ -227,7 +229,7 @@ export class Screens {
         if (r.type === 'component_error') {
           return [`${head} 组件「${r.component}」在学习者那边报错：${r.message}`];
         }
-        if (r.type === 'component_action' && !r.awaited && r.to !== 'maker') {
+        if (r.type === 'component_action' && !r.awaited) {
           return [`${head} （在组件「${r.component}」上）${r.text}`];
         }
         return [];

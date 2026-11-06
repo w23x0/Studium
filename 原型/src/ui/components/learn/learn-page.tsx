@@ -1,5 +1,5 @@
 // 学习页（会话/学习对话.md §11）：一次学习只有一条上下文，学习者眼前是一份从上往下的页面（竖流，stream-page.tsx）。
-// 旧的学习（10-28、10-29 的区域图、更早的 W10 前）也在竖流里只读显示：文字按时间排，区域图那批的组件显示最后一版（W19）。
+// 不是竖流开的旧学习也在竖流里只读显示：文字按时间排，组件显示最后一版（W19）。
 import { useEffect, useState, type ReactNode } from 'react';
 import type { NumberedRecord } from '../../../shared/records.ts';
 import { api } from '../../api.ts';
@@ -8,12 +8,9 @@ import { StreamPage } from './stream-page.tsx';
 export interface LearnPageProps {
   sessionId: string;
   title: string;
-  projectId: string;
   projectTitle: string;
-  titleOf: (id: string) => string | undefined;
   headerExtra: ReactNode;
   onError: (e: unknown) => void;
-  onBackToMain: () => void;
   onProject: () => void;
 }
 
