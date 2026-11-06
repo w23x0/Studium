@@ -1,0 +1,30 @@
+{
+ "label": "a4",
+ "scene": "A",
+ "text": "上次你最后问的那句还没答：循环频率越低、晃得越小，频率快也是坏事吗？这次就把它弄明白。\n\n先从你当时说的一句话走起。你说输出越过 5 V 以后 D 还大着，所以“直到 D 降回原来那么大之前，电压一直在涨”。下面这张图是照那段 `while` 代码一圈一圈仿真出来的：200 kHz，一圈 5 μs，L = 10 μH，C = 22 μF，负载 2.5 Ω，从 ccr = 60、输出 4.9 V 开始。ccr = 60 正好对应 5 V，所以“原来的 D”就是 ccr = 60。上次那个 79、6.6 V 是我粗估的，不用管，这次的数全部直接从仿真读。\n\n[[组件:一圈一圈走]]\n\n点“下一圈”走到 25 μs，ccr 已经回到 60，输出是 5.15 V。再走两圈到 35 μs，ccr 掉到 58，D 已经比原来还小了，可输出还涨到了 5.23 V，到这里才开始往下掉。\n\n这和你那句话对不上：D 都比原来小了，电压凭什么还在涨？\n\n你学输出电容时有这两条：$i_C = i_L - I_{负载}$，$i_C = C\\,\\dfrac{dv}{dt}$。用它们想想这几圈里电路在干什么，不用算，说你怎么想的就行，想错了也没关系。",
+ "seconds": 103,
+ "tools": [
+  "run",
+  "run",
+  "run",
+  "run",
+  "run",
+  "set_title",
+  "put_component"
+ ],
+ "components": [
+  {
+   "name": "一圈一圈走",
+   "html": "<!DOCTYPE html><html><head><meta charset=\"utf-8\"><style>\nbody{margin:0;padding:8px;font-family:system-ui,sans-serif;color:var(--studium-fg);background:var(--studium-bg);font-size:14px}\ncanvas{width:100%;height:auto;display:block;border:1px solid var(--studium-border);border-radius:4px}\n.row{display:flex;gap:10px;align-items:center;margin:6px 0;flex-wrap:wrap}\ninput[type=range]{flex:1;min-width:140px}\nbutton{padding:3px 12px;background:transparent;color:var(--studium-fg);border:1px solid var(--studium-border);border-radius:4px;cursor:pointer;font-size:13px}\n.mut{color:var(--studium-muted);font-size:12px}\nb{color:var(--studium-accent)}\n</style></head><body>\n<div class=\"row\"><button id=\"p\">上一圈</button><button id=\"n\">下一圈</button><input id=\"s\" type=\"range\" min=\"0\" max=\"16\" step=\"1\" value=\"0\"></div>\n<div id=\"r\" style=\"margin:6px 0\"></div>\n<canvas id=\"c\" width=\"640\" height=\"300\"></canvas>\n<div class=\"mut\" style=\"margin-top:6px\">实线：输出电压。虚线：现在这个 ccr 对应的电压 ccr/144×12。开关纹波抹掉了，只看平均。</div>\n<script>\nvar L=10e-6,C=22e-6,R=2.5,dt=0.02e-6,tp=5e-6,T=85e-6;\nvar v=4.9,iL=4.9/R,ccr=60,nx=0,ticks=[],pts=[],N=Math.round(T/dt);\nfor(var k=0;k<N;k++){var t=k*dt;\n if(t>=nx-1e-12){ccr+=v<5?1:(v>5?-1:0);nx+=tp;ticks.push({t:t*1e6,v:v,ccr:ccr});}\n var D=ccr/144;iL+=(D*12-v)/L*dt;v+=(iL-v/R)/C*dt;\n if(k%25==0)pts.push({t:t*1e6,v:v,g:D*12});}\nvar cv=document.getElementById('c'),g=cv.getContext('2d'),s=document.getElementById('s');\nfunction col(n){return getComputedStyle(document.body).getPropertyValue(n).trim()||'#888'}\nvar lo=4.3,hi=5.5,W=cv.width,H=cv.height,x0=44,y0=10,pw=W-56,ph=H-36;\nfunction X(t){return x0+t/80*pw}function Y(a){return y0+ph-(a-lo)/(hi-lo)*ph}\nfunction draw(){var n=+s.value,tk=ticks[n],fg=col('--studium-fg'),mu=col('--studium-muted'),ac=col('--studium-accent'),bd=col('--studium-border');\n g.clearRect(0,0,W,H);g.font='12px sans-serif';g.strokeStyle=bd;g.lineWidth=1;g.strokeRect(x0,y0,pw,ph);\n g.fillStyle=mu;g.textAlign='right';\n for(var a=4.4;a<5.45;a+=0.2){var y=Y(a);g.fillText(a.toFixed(1),x0-5,y+4);g.globalAlpha=.35;g.beginPath();g.moveTo(x0,y);g.lineTo(x0+pw,y);g.stroke();g.globalAlpha=1}\n g.textAlign='center';for(var q=0;q<=80;q+=10)g.fillText(q+' μs',X(q),H-8);\n g.strokeStyle=mu;g.setLineDash([2,3]);g.beginPath();g.moveTo(x0,Y(5));g.lineTo(x0+pw,Y(5));g.stroke();\n g.setLineDash([6,4]);g.lineWidth=1.5;g.strokeStyle=fg;g.globalAlpha=.6;g.beginPath();var st=0;\n pts.forEach(function(p){if(p.t<=tk.t){if(!st){g.moveTo(X(p.t),Y(p.g));st=1}else g.lineTo(X(p.t),Y(p.g))}});g.stroke();g.globalAlpha=1;g.setLineDash([]);\n g.strokeStyle=ac;g.lineWidth=2.2;g.beginPath();st=0;\n pts.forEach(function(p){if(p.t<=tk.t){if(!st){g.moveTo(X(p.t),Y(p.v));st=1}else g.lineTo(X(p.t),Y(p.v))}});g.stroke();\n g.fillStyle=ac;g.beginPath();g.arc(X(tk.t),Y(tk.v),4,0,7);g.fill();\n var txt='第 '+(n+1)+' 圈，t = '+tk.t.toFixed(0)+' μs：读到输出 <b>'+tk.v.toFixed(2)+' V</b>，ccr 改成 <b>'+tk.ccr+'</b>（对应 '+(tk.ccr/144*12).toFixed(2)+' V）';\n document.getElementById('r').innerHTML=txt;\n try{studium.setState('组件「一圈一圈走」：第 '+(n+1)+' 圈，t='+tk.t.toFixed(0)+' μs，输出 '+tk.v.toFixed(2)+' V，ccr='+tk.ccr)}catch(e){}\n}\ns.oninput=draw;\ndocument.getElementById('n').onclick=function(){s.value=Math.min(16,+s.value+1);draw()};\ndocument.getElementById('p').onclick=function(){s.value=Math.max(0,+s.value-1);draw()};\ndraw();\n</script></body></html>"
+  }
+ ],
+ "context": [
+  53060,
+  9013
+ ],
+ "model": {
+  "model": "opus",
+  "effort": "medium"
+ },
+ "errors": []
+}

@@ -1,0 +1,34 @@
+{
+ "label": "b1",
+ "scene": "B",
+ "text": "今天我们去买那颗 10 μH 的电感。\n\n打开一颗真实电感的规格表（Coilcraft XAL6060-103）：除了 10 μH，还写着两个电流，$I_{sat}=7.6$ A，$I_{rms}=5$ A（温升 20 ℃ 时）。我们之前挑电感只用过 L，从没碰过这两个数。这次要答的是：**这两个电流各自在防什么事？拿到一颗电感，怎么判断它够不够你那个 2 A 的设计？** 先看 $I_{sat}$。\n\n有一个假设我之前没跟你交代：从 $v=L\\,di/dt$ 到 $\\Delta I$ 的公式，我们一直把 L 当成常数。真实带磁芯的电感不是这样，L 会随电流变。厂家的做法是一边通恒定电流一边测 L，L 比小电流时掉到一定程度（常见是掉 30%，各家标准不同）时的那个电流，就标成 $I_{sat}$。为什么会掉，是磁芯的事。第一次提到磁芯时你说不懂，当时我也只是一笔带过，这个后面专门拆，现在先把它当成测出来的事实。\n\n设计还是 12→5 V、500 kHz、负载 2 A。假设你为了省钱买了一颗小的：小电流时 10 μH，$I_{sat}=2.2$ A，L 随电流的变化是下图右边那条线（这颗是我假想的，曲线是示意）。左边是 L 一直等于 10 μH 时的电感电流，两张图的纵轴对齐，都是电流。\n\n[[组件:三角形与L曲线]]\n\n负载 2 A，没到 2.2 A。把这颗电感接上去，稳态下真实的 $i_L$ 波形和左边这个三角形比，会变吗？哪里变、怎么变？平均值和最高点又会怎样？\n\n用 $v=L\\,di/dt$ 想，说说你为什么这么觉得，猜错没关系。你说完，我给你看仿真出来的波形对照。\n\n这段的公式和判断项目资料里都没有，$I_{sat}$、$I_{rms}$ 的数和定义来自下面的网页。\n\nSources:\n- [Coilcraft XAL60xx 规格书](https://www.coilcraft.com/pdfs/xal60xx.pdf)\n- [Coilcraft：电流与温度额定值说明](https://coilcraft.com/zh-cn/resources/application-notes/current-and-temperature-ratings)",
+ "seconds": 139,
+ "tools": [
+  "run",
+  "run",
+  "run",
+  "run",
+  "run",
+  "run",
+  "run",
+  "run",
+  "run",
+  "set_title",
+  "put_component"
+ ],
+ "components": [
+  {
+   "name": "三角形与L曲线",
+   "html": "<!DOCTYPE html>\n<html><head><meta charset=\"utf-8\"><style>\nbody{margin:0;background:var(--studium-bg);color:var(--studium-fg);font-family:sans-serif}\nsvg{width:100%;max-width:680px;display:block;margin:0 auto}\ntext{fill:var(--studium-fg);font-size:13px}\n.m{fill:var(--studium-muted);font-size:12px}\n.ax{stroke:var(--studium-muted);stroke-width:1;fill:none}\n.grid{stroke:var(--studium-border);stroke-width:1}\n.main{stroke:var(--studium-accent);stroke-width:2.5;fill:none}\n.lim{stroke:#d9534f;stroke-width:1.5;stroke-dasharray:6 4;fill:none}\n.limt{fill:#d9534f;font-size:13px}\n.load{stroke:var(--studium-muted);stroke-width:1;stroke-dasharray:3 3}\n</style></head><body>\n<svg id=\"s\" viewBox=\"0 0 660 320\"></svg>\n<script>\nconst s=document.getElementById('s');\nconst NS='http://www.w3.org/2000/svg';\nfunction el(t,a,txt){const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);if(txt!==undefined)e.textContent=txt;s.appendChild(e);return e}\nconst Y=i=>270-(i-1)*(230/2.5);\nconst X1=t=>60+t*(290/4);\nconst X2=l=>400+l*(230/12);\nconst Lf=i=>10*(0.2+0.8/(1+Math.pow(i/2.271,16)));\n// 横向网格与 i 刻度\n[1,1.5,2,2.5,3,3.5].forEach(i=>{el('line',{x1:60,x2:630,y1:Y(i),y2:Y(i),class:'grid'});el('text',{x:52,y:Y(i)+4,'text-anchor':'end',class:'m'},i.toFixed(1))});\nel('text',{x:10,y:24},'电流 i（A）');\n// 左：10 μH 恒定时的三角形\nel('path',{class:'ax',d:`M60,40 V270 H350`});\nel('line',{x1:60,x2:350,y1:Y(2),y2:Y(2),class:'load'});\nel('text',{x:290,y:Y(2)+16,class:'m'},'平均 2 A');\nconst v=5.0/12, lo=2-0.2917, hi=2+0.2917;\nlet d=`M${X1(0)},${Y(lo)}`;\n[[v*2,hi],[2,lo],[2+v*2,hi],[4,lo]].forEach(p=>d+=` L${X1(p[0])},${Y(p[1])}`);\nel('path',{class:'main',d});\n[0,1,2,3,4].forEach(t=>el('text',{x:X1(t),y:288,'text-anchor':'middle',class:'m'},t));\nel('text',{x:205,y:308,'text-anchor':'middle',class:'m'},'时间（μs）｜L 恒为 10 μH 时的 i_L');\n// 右：L(i)\nel('path',{class:'ax',d:`M400,40 V270 H630`});\nlet c='';for(let i=1;i<=3.5001;i+=0.02){c+=(c?' L':'M')+X2(Lf(i)).toFixed(1)+','+Y(i).toFixed(1)}\nel('path',{class:'main',d:c});\n[0,2,4,6,8,10,12].forEach(l=>el('text',{x:X2(l),y:288,'text-anchor':'middle',class:'m'},l));\nel('text',{x:515,y:308,'text-anchor':'middle',class:'m'},'这颗电感的 L（μH）｜示意曲线');\n// Isat\nel('line',{x1:60,x2:630,y1:Y(2.2),y2:Y(2.2),class:'lim'});\nel('text',{x:68,y:Y(2.2)-6,class:'limt'},'Isat = 2.2 A');\n</script></body></html>"
+  }
+ ],
+ "context": [
+  72043,
+  11493
+ ],
+ "model": {
+  "model": "opus",
+  "effort": "medium"
+ },
+ "errors": []
+}

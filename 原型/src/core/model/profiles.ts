@@ -27,7 +27,7 @@ export type Profiles = Partial<Record<ProfileKey, Profile>>;
 export const DEFAULT_PROFILES: Profiles = {
   main: { model: 'opus', effort: 'low' },
   // 学习对话固定 Opus（W15）：第一步“这一次学什么”全靠它判断；不写时随账号默认，历次 Opus、Sonnet 混着来
-  loop: { model: 'opus', effort: 'high' },
+  loop: { model: 'opus', effort: 'medium' },
   find: { effort: 'medium' },
   // 导入会话（W11 §4，试验）：把原件里不是纯文字的东西处理成别的会话能读的文字
   import: { model: 'sonnet', effort: 'medium' },
@@ -36,7 +36,7 @@ export const DEFAULT_PROFILES: Profiles = {
 /** Codex 的模型由账号返回的默认值或启动配置决定，不继承 Claude 的别名。 */
 export const CODEX_PROFILES: Profiles = {
   main: { effort: 'low' },
-  loop: { effort: 'high' },
+  loop: { effort: 'medium' },
   import: { effort: 'medium' },
 };
 

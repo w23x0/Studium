@@ -36,6 +36,7 @@ import {
   canDescend,
   canRead,
   canWrite,
+  isOwnToolResult,
   resolveSandboxPath,
   virtualPath,
 } from './sandbox-paths.ts';
@@ -223,6 +224,7 @@ function decide(
   switch (toolName) {
     case 'Read': {
       const abs = pathOf(sb, input.file_path);
+      if (abs !== undefined && isOwnToolResult(sb, abs)) return allow(input);
       if (abs === undefined || !canRead(sb, abs)) return deny(`${shown(sb, abs, input)} 读不到`);
       return allow(input);
     }

@@ -2,6 +2,7 @@
 // 工作区里的文件 = 相对工作区（`笔记.md`）；只读的 = `只读/<name>/<相对>`（按 name 最长前缀匹配）；
 // 都不是 = 绝对路径原样。假模型与 SDK 适配器都用这里，不各写一套。
 import { lstatSync, realpathSync } from 'node:fs';
+import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import type { SandboxSpec } from './port.ts';
 
@@ -117,6 +118,17 @@ export function canRead(sb: SandboxSpec, abs: string): boolean {
     const root = real(e.path);
     return within(root, p) && !deny.some((d) => within(d, p) && within(root, d));
   });
+}
+
+/**
+ * 模型自己的工具输出存档：输出太长时 Claude Code 存到配置目录下、以工作目录命名的文件夹，并叫模型去读。
+ * 只放开这个工作目录自己的 tool-results，别的对话和配置目录其他地方照旧读不到。
+ */
+export function isOwnToolResult(sb: SandboxSpec, abs: string): boolean {
+  const config = process.env.CLAUDE_CONFIG_DIR ?? join(homedir(), '.claude');
+  const dir = join(config, 'projects', real(baseDir(sb)).replace(/[^a-zA-Z0-9]/g, '-'));
+  const p = real(abs);
+  return within(real(dir), p) && basename(dirname(p)) === 'tool-results';
 }
 
 /** rest（虚拟路径里 `只读/` 之后的部分）落在哪个只读条目上；按 name 最长前缀匹配（空 name = 整个只读区，兜底）。 */
