@@ -1,5 +1,4 @@
 // 组装核心：数据目录锁 → 派生索引 → 知识层 → Studium + Hub → 本地服务。
-// main 与验收测试都从这里起，内部怎么拆不影响它们。
 import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -19,7 +18,6 @@ import type { ModelAdapter } from './model/port.ts';
 import { Sources } from './sources.ts';
 import { SidebarStore } from './sidebar.ts';
 import { Studium } from './studium.ts';
-import { Recorder } from './tape/recorder.ts';
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -29,12 +27,6 @@ export interface AppOptions {
   token: string;
   port: number;
   uiDir?: string;
-  /** 时钟（测试与回放用）；记录时间、离开多久都按它算。 */
-  now?: () => Date;
-  /** 录带文件：给了就把这次运行的模型侧与学习者动作记进去，供离线回放（tape/）。 */
-  tape?: string;
-  /** 在开第一个会话之前接上 Hub 与 Studium（回放用来对编号）。 */
-  instrument?: (hub: Hub, studium: Studium) => void;
 }
 
 export interface App {
@@ -90,7 +82,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
   const materials = new Materials({
     root: join(dataDir.root, '资料'),
     pdfTool: join(here, '../../../书库处理'),
-    ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   // 上次处理被服务重启打断的（还标着“处理中”、导入会话也不在跑了）改成“失败”，可重试（W11 §4）
   const interrupted = await materials.recoverInterrupted();
@@ -99,24 +90,15 @@ export async function createApp(opts: AppOptions): Promise<App> {
   }
   const originals = new Originals(materials, join(dataDir.root, 'cache', 'pages'));
   const reports = await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports'));
-  const sources = new Sources({
-    materials,
-    originals,
-    reports,
-    ...(opts.now !== undefined ? { now: opts.now } : {}),
-  });
+  const sources = new Sources({ materials, originals, reports });
   const cross = new Crosslinks({
     materials,
     reports,
     originals,
     notes: await SourceNotes.load(join(dataDir.root, 'knowledge', 'source-notes')),
-    ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
   // 附图原样存（W12 §5.6 起原样随消息送给模型，不再转写）
-  const inputs = await Inputs.load({
-    dir: join(dataDir.root, 'inputs'),
-    ...(opts.now !== undefined ? { now: opts.now } : {}),
-  });
+  const inputs = await Inputs.load({ dir: join(dataDir.root, 'inputs') });
   const studium = new Studium({
     prompts: await loadPrompts(),
     // 学习对话提示词里“页面”那一段（W12 起竖流是唯一的学习页）
@@ -126,35 +108,21 @@ export async function createApp(opts: AppOptions): Promise<App> {
     dataDir: dataDir.root,
     inputs,
     cross,
-    ...(opts.now !== undefined ? { now: opts.now } : {}),
   });
-  const inner = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
-  const recorder =
-    opts.tape !== undefined
-      ? new Recorder(opts.tape, { now: opts.now ?? (() => new Date()) })
-      : undefined;
-  const model = recorder ? recorder.wrapModel(inner) : inner;
-  const hub = new Hub({
-    dataDir,
-    index,
-    model,
-    kinds: studium.kind,
-    ...(opts.now !== undefined ? { now: opts.now } : {}),
-  });
-  if (inner instanceof ModelSettings)
-    inner.onChange = () => hub.broadcast({ type: 'model_settings', sessionId: '' });
+  const model = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
+  const hub = new Hub({ dataDir, index, model, kinds: studium.kind });
+  if (model instanceof ModelSettings)
+    model.onChange = () => hub.broadcast({ type: 'model_settings', sessionId: '' });
   studium.attach(hub);
-  recorder?.attach(hub, studium, inner.name);
-  opts.instrument?.(hub, studium);
   // 第一次打开不自动建“项目 1”：没有项目时界面显示全部项目页的空状态，新建时先问想学什么（界面说明 §3）
   const server = await startServer({
     hub,
-    ...(inner instanceof ModelSettings ? { models: inner } : {}),
-    sidebar: await SidebarStore.load(join(dataDir.root, 'ui', 'sidebar.jsonl'), opts.now),
+    ...(model instanceof ModelSettings ? { models: model } : {}),
+    sidebar: await SidebarStore.load(join(dataDir.root, 'ui', 'sidebar.jsonl')),
     sources,
     cross: { links: cross },
     inputs,
-    studium: recorder ? recorder.wrapStudium(studium) : studium,
+    studium,
     token: opts.token,
     port: opts.port,
     ...(opts.uiDir !== undefined ? { uiDir: opts.uiDir } : {}),
@@ -169,7 +137,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
       // 后台的事（讨论串结束后告诉主对话、导入会话）跑完再关，免得写到一半
       await studium.settled();
       await hub.close();
-      if (inner instanceof ModelSettings) await inner.close();
+      if (model instanceof ModelSettings) await model.close();
       index.close();
       await dataDir.release();
     },

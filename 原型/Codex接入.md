@@ -24,7 +24,7 @@ Studium 可以经本机 Codex app-server 使用 GPT。当前按 `codex-cli 0.166
 - 模型仍在对话内选择：通过 API 的 models 接口读取目录，目录不可用时可以手填准确模型 ID。第一次选择也作为此内核、此地址下新对话的默认模型，让新开的学习与导入会话可继续工作；已有对话的单独选择仍保留。API 强度默认自动，实际支持由服务决定。
 - 配置保存不代表远端鉴权已验证；模型目录与实际请求的失败会分别显示。API 余额没有通用查询接口，去服务商处查看。
 - Key 单独存在数据目录的 `model-connections.json`，文件权限 `0600`；设置接口只返回“已保存”，不返回 Key。Key 留空保留原值，更换地址要重填对应 Key；“清除 API 配置”删除保存的 Key 并切回账号登录。
-- Claude 通过子进程环境传入 `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`；Codex 使用自定义 provider、`wire_api=responses` 和环境密钥。密钥不放命令行、会话配置或录带；Codex 的命令工具环境排除此密钥。
+- Claude 通过子进程环境传入 `ANTHROPIC_BASE_URL` / `ANTHROPIC_API_KEY`；Codex 使用自定义 provider、`wire_api=responses` 和环境密钥。密钥不放命令行、会话配置；Codex 的命令工具环境排除此密钥。
 - 账号登录与 API 地址各自保留模型选择。换连接类型或 API 地址时，正本的可选 `connection` 标识阻止续接另一服务的线程，从原对话记录重新交接。正在执行的一轮继续使用原配置。
 
 本次只运行 `npm run check`，未使用真实 Key 请求模型，兼容网关的实际工具、图像与强度支持待使用反馈。Codex 配置依据 [OpenAI Docs 配置参考](https://developers.openai.com/codex/config-reference/) 的 `model_providers`、`base_url`、`env_key`、`requires_openai_auth` 与 `wire_api`。

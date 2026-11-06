@@ -141,8 +141,6 @@ export interface SandboxDeps {
   projectOf: (sessionId: string) => Promise<string | undefined>;
   /** 学习者删掉的讨论串（W12 §4.3）：学过的记录里不再包含。 */
   deleted: (sessionId: string) => boolean;
-  /** 现在（索引里的“距今多久”）。 */
-  now: () => Date;
 }
 
 export class Sandboxes {
@@ -405,7 +403,7 @@ export class Sandboxes {
 
   /** 索引：按项目分组（别的项目在前，本项目在最后），组内旧的在上；每行带最后活动时间与距今多久、收尾那一句。 */
   private indexText(entries: LearnedEntry[], project: string | undefined): string {
-    const now = this.o.now().getTime();
+    const now = Date.now();
     const groups = new Map<string, LearnedEntry[]>();
     for (const e of entries) groups.set(e.dir, [...(groups.get(e.dir) ?? []), e]);
     const own = entries.find((e) => e.project === project && project !== undefined)?.dir;
@@ -417,7 +415,7 @@ export class Sandboxes {
     const lines = [
       '# 以往的学习',
       '',
-      `现在 ${localMinute(this.o.now().toISOString())}。按项目分组，本项目在最后；组内按开始时间，旧的在上。每行：文件 · 状态 · 开始 · 最后活动（距今多久）；有收尾那一句的接在下一行。`,
+      `现在 ${localMinute(new Date().toISOString())}。按项目分组，本项目在最后；组内按开始时间，旧的在上。每行：文件 · 状态 · 开始 · 最后活动（距今多久）；有收尾那一句的接在下一行。`,
     ];
     if (entries.length === 0) lines.push('', '（还没有）');
     for (const dir of order) {

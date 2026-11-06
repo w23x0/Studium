@@ -47,7 +47,6 @@ interface StoredImage {
 export interface InputsOptions {
   /** 存放处目录（<数据>/inputs）。 */
   dir: string;
-  now?: () => Date;
 }
 
 export class Inputs {
@@ -98,7 +97,7 @@ export class Inputs {
     if (meta.derivedFrom !== undefined) this.stored(meta.derivedFrom);
     const row: StoredImage = {
       id: `img-${randomBytes(6).toString('hex')}`,
-      at: this.iso(),
+      at: new Date().toISOString(),
       mime: type,
       size: data.length,
       sha256: createHash('sha256').update(data).digest('hex'),
@@ -185,10 +184,6 @@ export class Inputs {
 
   private file(row: StoredImage): string {
     return join(this.dir('images'), `${row.id}.${EXT[row.mime]}`);
-  }
-
-  private iso(): string {
-    return (this.o.now ?? (() => new Date()))().toISOString();
   }
 }
 

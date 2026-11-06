@@ -123,7 +123,6 @@ export type Importer = (id: string, files: string[]) => Promise<void>;
 export interface MaterialsOptions {
   /** <数据>/资料。 */
   root: string;
-  now?: () => Date;
   /** `书库处理/` 目录（PDF 走它的 MinerU 转换）；不给 = PDF 转不了，标失败。 */
   pdfTool?: string;
 }
@@ -132,14 +131,11 @@ export class Materials {
   private scanned: { at: number; map: Map<string, Entry> } | undefined;
   private readonly loaded = new Map<string, Loaded>();
   private readonly pending = new Map<string, Promise<void>>();
-  private readonly now: () => Date;
   private importer: Importer | undefined;
   /** 已报过的坏资料目录。 */
   private readonly reported = new Set<string>();
 
-  constructor(private readonly o: MaterialsOptions) {
-    this.now = o.now ?? (() => new Date());
-  }
+  constructor(private readonly o: MaterialsOptions) {}
 
   /** 接上导入会话（Studium 建好之后）。 */
   setImporter(fn: Importer): void {
@@ -192,11 +188,6 @@ export class Materials {
     return out;
   }
 
-  /** 处理完了没有（等后台转换；测试与入口界面用）。 */
-  async settled(id: string): Promise<void> {
-    await this.pending.get(id);
-  }
-
   /**
    * 建一份资料：先写 source.json（处理中），处理在后台跑，跑完改状态。不给归属 = 只归发起导入的项目。
    * 返回建好时的 source.json；调用方随后在主对话里记 project_material。
@@ -217,7 +208,7 @@ export class Materials {
       kind: req.kind,
       origin,
       version: '',
-      fetchedAt: this.now().toISOString(),
+      fetchedAt: new Date().toISOString(),
       status: '处理中',
       owner: req.owner ?? { kind: 'project', projects: [mainId] },
       importedFrom: mainId,
@@ -273,7 +264,7 @@ export class Materials {
   async remove(id: string): Promise<void> {
     const e = await this.require(id);
     if (e.src.removed !== undefined) return;
-    await this.write(e.dir, { ...e.src, removed: { at: this.now().toISOString() } });
+    await this.write(e.dir, { ...e.src, removed: { at: new Date().toISOString() } });
   }
 
   /** 在后台处理；失败写进 source.json（状态“失败”带原因），不伪装可用。 */
@@ -305,7 +296,7 @@ export class Materials {
       if (name === SOURCE_FILE || (keepOriginal && name === ORIGINAL_DIR)) continue;
       await rm(join(e.dir, name), { recursive: true, force: true });
     }
-    const src: MaterialSource = { ...e.src, status: '处理中', fetchedAt: this.now().toISOString() };
+    const src: MaterialSource = { ...e.src, status: '处理中', fetchedAt: new Date().toISOString() };
     delete src.problems;
     delete src.converter;
     await this.write(e.dir, src);
@@ -703,12 +694,12 @@ export class Materials {
           if (typeof r === 'string') {
             return this.write(dir, { ...src, version, status: '失败', problems: [r] });
           }
-          return done({ version, fetchedAt: this.now().toISOString(), converter: 'mineru' });
+          return done({ version, fetchedAt: new Date().toISOString(), converter: 'mineru' });
         }
         const html = await res.text();
         await mkdir(original, { recursive: true });
         await writeFile(join(original, '快照.html'), html, 'utf8');
-        const at = this.now().toISOString();
+        const at = new Date().toISOString();
         const md = htmlToMarkdown(html);
         await mkdir(body, { recursive: true });
         await writeFile(

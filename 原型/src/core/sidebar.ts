@@ -69,11 +69,10 @@ export class SidebarStore {
   private constructor(
     private readonly path: string,
     private readonly rows: SidebarEvent[],
-    private readonly now: () => Date,
   ) {}
 
-  static async load(path: string, now: () => Date = () => new Date()): Promise<SidebarStore> {
-    return new SidebarStore(path, await readJsonl<SidebarEvent>(path), now);
+  static async load(path: string): Promise<SidebarStore> {
+    return new SidebarStore(path, await readJsonl<SidebarEvent>(path));
   }
 
   view(): SidebarView {
@@ -83,7 +82,7 @@ export class SidebarStore {
   /** 记一条（已查过合法）。 */
   async add(req: SidebarActionRequest): Promise<SidebarView> {
     const e: SidebarEvent = {
-      at: this.now().toISOString(),
+      at: new Date().toISOString(),
       kind: req.kind,
       id: req.id,
       action: req.action,

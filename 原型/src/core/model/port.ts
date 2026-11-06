@@ -1,4 +1,4 @@
-// 模型适配层的接口。核心只认这里；具体框架（Agent SDK、假模型、以后别家）各写一个适配器。
+// 模型适配层的接口。核心只认这里；具体框架（Agent SDK、Codex、以后别家）各写一个适配器。
 // 对应 `docs/设计/会话/学习对话.md` 的四个接口：开场交付（systemPrompt + 第一条消息）· 工具（tools）
 // · 钩子（工具的 run 由核心实现，如“申请收口”；程序追加事实 = role 为 program 的输入）
 // · 交回原文（ModelEvent 里的 raw，由核心逐条记进正本）。
@@ -54,7 +54,7 @@ export interface ConversationSpec {
   resumeToken?: string;
   /** 为真时从 resumeToken 分叉：分出来的不写回原来那条线（W11 §6 问别的项目的主对话）。 */
   fork?: boolean;
-  /** 这个模型对话属于哪个会话（录带、回放用来对上号；适配器不必用）。 */
+  /** 这个模型对话属于哪个会话（适配器按种类取配置）。 */
   session?: { id: string; kind: ConversationKind };
   /** 为真时放开模型服务自带的联网搜索与网页抓取（学习对话；W12 起可与沙盒同时有）。 */
   webSearch?: boolean;
@@ -194,7 +194,7 @@ export function formatProgramFact(text: string): string {
 
 /**
  * 模型实际看到的一条输入：有 preface 时先给开场（空一行），再接这条输入本身
- * （程序事实包标记，plain 时不包；学习者的话原样）。适配器与假模型都只经这里拼，录带与回放的口径一致。
+ * （程序事实包标记，plain 时不包；学习者的话原样）。各适配器都只经这里拼。
  */
 export function modelText(input: TurnInput): string {
   const wrap = (t: string) => (input.plain === true ? t : formatProgramFact(t));

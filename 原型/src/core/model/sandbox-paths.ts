@@ -1,6 +1,6 @@
 // 沙盒的路径规则（工单 W4 §5.1）。模型侧与记录里的 path 一律是虚拟路径：
 // 工作区里的文件 = 相对工作区（`笔记.md`）；只读的 = `只读/<name>/<相对>`（按 name 最长前缀匹配）；
-// 都不是 = 绝对路径原样。假模型与 SDK 适配器都用这里，不各写一套。
+// 都不是 = 绝对路径原样。各适配器都用这里，不各写一套。
 import { lstatSync, realpathSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';

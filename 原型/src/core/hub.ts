@@ -72,7 +72,6 @@ export interface HubOptions {
   index: DerivedIndex;
   model: ModelAdapter;
   kinds: (kind: ConversationKind) => KindConfig;
-  now?: () => Date;
 }
 
 type SelectedModel = ReturnType<NonNullable<ModelAdapter['selection']>>;
@@ -117,11 +116,8 @@ export class Hub {
   private readonly live = new Map<string, Live>();
   private readonly loading = new Map<string, Promise<Live>>();
   private readonly listeners = new Set<(e: ServerEvent) => void>();
-  private readonly now: () => Date;
 
-  constructor(private readonly opts: HubOptions) {
-    this.now = opts.now ?? (() => new Date());
-  }
+  constructor(private readonly opts: HubOptions) {}
 
   get modelName(): string {
     return this.opts.model.name;
@@ -211,7 +207,7 @@ export class Hub {
       page?: 'stream';
     },
   ): Promise<SessionSummary> {
-    const at = this.now();
+    const at = new Date();
     const sessionId = `${stamp(at)}-${kind}-${randomBytes(3).toString('hex')}`;
     const log = await SessionLog.open(this.opts.dataDir.sessionPath(sessionId));
     this.live.set(sessionId, newLive(log, kind));
@@ -886,7 +882,7 @@ export class Hub {
   }
 
   private iso(): string {
-    return this.now().toISOString();
+    return new Date().toISOString();
   }
 }
 

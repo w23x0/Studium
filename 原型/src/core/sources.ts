@@ -29,7 +29,6 @@ export interface SourcesDeps {
   materials: SourceReader;
   originals: Originals;
   reports: SourceReports;
-  now?: () => Date;
 }
 
 /** 一次引用最多带回多少行（再多的行段只给前面这些，界面可再按行段读小节）。 */
@@ -38,11 +37,7 @@ const MAX_CITED_LINES = 60;
 const MAX_SECTION_LINES = 5000;
 
 export class Sources {
-  private readonly now: () => Date;
-
-  constructor(private readonly d: SourcesDeps) {
-    this.now = d.now ?? (() => new Date());
-  }
+  constructor(private readonly d: SourcesDeps) {}
 
   // ───────────── 浏览 ─────────────
 
@@ -241,7 +236,7 @@ export class Sources {
       throw new BadRequestError(`行号超出文件末尾（共 ${String(r.total)} 行）`);
     const report: SourceReport = {
       id: `sr-${randomBytes(4).toString('hex')}`,
-      at: this.now().toISOString(),
+      at: new Date().toISOString(),
       book: id,
       file: req.file,
       from: req.from,

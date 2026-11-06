@@ -1,7 +1,6 @@
 // 启动核心：npm start（先构建界面）或 npm run dev。
 // 环境变量：STUDIUM_MODEL_ADAPTER · STUDIUM_CLAUDE_MODEL · STUDIUM_CODEX_MODEL · STUDIUM_CODEX_BIN
 // · STUDIUM_PROFILES · STUDIUM_DATA · STUDIUM_PORT · STUDIUM_TOKEN
-// · STUDIUM_TAPE（录带文件：给了就录这次运行，供 npm run replay 离线回放；宜配一个新的空 STUDIUM_DATA）
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join, resolve } from 'node:path';
@@ -30,7 +29,6 @@ const app = await createApp({
   token,
   port: Number(process.env.STUDIUM_PORT ?? 4317),
   ...(existsSync(uiDir) ? { uiDir } : {}),
-  ...(process.env.STUDIUM_TAPE !== undefined ? { tape: resolve(process.env.STUDIUM_TAPE) } : {}),
 });
 console.log(`Studium 核心已启动（数据：${app.dataDir.root}）`);
 console.log(`在浏览器打开：${app.server.url}/?token=${token}`);

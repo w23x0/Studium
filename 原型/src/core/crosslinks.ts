@@ -25,15 +25,10 @@ export interface CrosslinksDeps {
   reports: SourceReports;
   originals: Originals;
   notes: SourceNotes;
-  now?: () => Date;
 }
 
 export class Crosslinks {
-  private readonly now: () => Date;
-
-  constructor(private readonly d: CrosslinksDeps) {
-    this.now = d.now ?? (() => new Date());
-  }
+  constructor(private readonly d: CrosslinksDeps) {}
 
   // ───────────── 来源可靠性与适用性说明 ─────────────
 
@@ -116,7 +111,7 @@ export class Crosslinks {
       throw new BadRequestError(`一句话说完，不超过 ${String(NOTE_MAX)} 字`);
     const row: SourceNoteAddition = {
       id: `sn-${randomBytes(4).toString('hex')}`,
-      at: this.now().toISOString(),
+      at: new Date().toISOString(),
       book: id,
       field: req.field as SourceNoteField,
       text,

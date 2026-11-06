@@ -70,13 +70,11 @@ export interface StudiumOptions {
   cross: Crosslinks;
   /** 学习对话提示词里“页面”那一段（loop-stream.md），接进 loop.md 的 {{页面}}。 */
   loopPage: string;
-  now?: () => Date;
 }
 
 export class Studium {
   private hubRef: Hub | undefined;
-  private readonly now: () => Date;
-  /** 后台跑着的事（结束后告诉主对话、导入会话……），回放用来等它们跑完。 */
+  /** 后台跑着的事（结束后告诉主对话、导入会话……），关服务时等它们跑完。 */
   private readonly tasks = new Set<Promise<unknown>>();
   /** 超时被停掉的导入会话（W11 §4）：之后它的工具一律不算数。 */
   private readonly stoppedImports = new Set<string>();
@@ -100,7 +98,6 @@ export class Studium {
   private readonly screenStore: PageStore;
 
   constructor(private readonly o: StudiumOptions) {
-    this.now = o.now ?? (() => new Date());
     this.learned = new Learned({
       hub: () => this.hub,
       dir: o.dataDir,
@@ -137,7 +134,6 @@ export class Studium {
       imagesDir: o.inputs.imagesDir,
       projectOf: (id) => this.projectOf(id),
       deleted: (id) => this.hub.isDeleted(id),
-      now: () => this.now(),
     });
     // 组件按块按指纹存在 `<数据>/screens/`（旧活页面的 `pages/` 原样留着，不再写）
     const screenStore = new PageStore(join(o.dataDir, 'screens'));
@@ -192,26 +188,12 @@ export class Studium {
   }
 
   private iso(): string {
-    return this.now().toISOString();
+    return new Date().toISOString();
   }
 
-  private readonly idListeners = new Set<(prefix: string, id: string) => void>();
-
-  /** 程序生成的编号（试跑、异议等）；录带按生成顺序给它们稳定记号。 */
+  /** 程序生成的编号（试跑、导入等）。 */
   private newId(prefix: string): string {
-    const id = `${prefix}-${randomBytes(4).toString('hex')}`;
-    for (const fn of this.idListeners) fn(prefix, id);
-    return id;
-  }
-
-  onNewId(fn: (prefix: string, id: string) => void): () => void {
-    this.idListeners.add(fn);
-    return () => this.idListeners.delete(fn);
-  }
-
-  /** 后台还有事在跑吗（录带记下学习者动作时系统是否空闲）。 */
-  busy(): boolean {
-    return this.tasks.size > 0 || this.hub.anyRunning();
+    return `${prefix}-${randomBytes(4).toString('hex')}`;
   }
 
   /** 在后台跑一件事，不挡调用方；失败写进核心日志（不吞）。 */
@@ -224,7 +206,7 @@ export class Studium {
     this.tasks.add(p);
   }
 
-  /** 等后台清单与所有会话都停下（回放、测试用）。 */
+  /** 等后台清单与所有会话都停下（关服务时）。 */
   async settled(): Promise<void> {
     for (;;) {
       await Promise.all([...this.tasks]);
