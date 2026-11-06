@@ -3,7 +3,6 @@
 export const WP = {
   /** 页面上还没有东西（开场还在写）。 */
   starting: '马上开始…',
-  cancel: '取消',
   /** 最后一屏之后有一轮没跑成（如额度用完）；notice = 服务交回的那句报错（不是模型的话）。 */
   failed: (notice?: string) =>
     notice !== undefined

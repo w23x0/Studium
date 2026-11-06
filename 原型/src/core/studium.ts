@@ -17,7 +17,6 @@ import type {
   ProjectInstructionsResponse,
   ProjectMaterialsResponse,
   ProjectMaterialView,
-  SourceNoteView,
 } from '../shared/protocol.ts';
 import {
   type ConversationKind,
@@ -26,7 +25,6 @@ import {
   type NumberedRecord,
   type SessionOpened,
 } from '../shared/records.ts';
-import type { Crosslinks } from './crosslinks.ts';
 import { CrossNotes } from './cross-notes.ts';
 import { currentGoal, oldGoalBlock, oldTalks } from './goal.ts';
 import { Learned } from './learned.ts';
@@ -58,10 +56,8 @@ export interface StudiumOptions {
   materials: Materials;
   /** 数据目录（学过的记录的导入存放处在其下）。 */
   dataDir: string;
-  /** 原文与出处（资料检索、教材出处核对）。 */
+  /** 原文与出处（资料检索）。 */
   sources: Sources;
-  /** 跨资料的重复线索 / 来源说明 / 跨领域核对（批 10b）。 */
-  cross: Crosslinks;
   /** 学习对话提示词里“页面”那一段（loop-stream.md），接进 loop.md 的 {{页面}}。 */
   loopPage: string;
 }
@@ -1110,12 +1106,6 @@ export class Studium {
     );
   }
 
-  /** 学习者给一本书 / 笔记补一句来源说明（只追加）。 */
-  async addSourceNote(material: string, field: string, text: string): Promise<SourceNoteView> {
-    await this.o.cross.addNote({ material, field, text, by: '学习者' });
-    return this.o.cross.sourceNote(material);
-  }
-
   /**
    * 读一条外部导入（笔记 / 别处 AI 对话记录）的正文，带行号；主对话没有沙盒，被别的项目问到（ask_project）时
    * 看学习者已储备什么要靠它。给 query 只列含它的行。
@@ -1844,9 +1834,7 @@ export class Studium {
           }
           const bad = await inScope(material);
           if (bad !== undefined) return err(bad);
-          return ok(
-            (await this.o.materials.index(material)) + (await this.o.cross.noteLines([material])),
-          );
+          return ok(await this.o.materials.index(material));
         },
       },
       {
@@ -1874,10 +1862,9 @@ export class Studium {
           );
           const body = r.lines.map((l) => `${String(l.n)}\t${l.text}`).join('\n');
           return ok(
-            (r.lines.length === 0
+            r.lines.length === 0
               ? `（这个文件共 ${String(r.total)} 行，没有第 ${String((a.from_line as number | undefined) ?? 1)} 行起的内容）`
-              : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ material, file, from: r.from, to: r.to })}；依据串写 ${material}/${file}:${String(r.from)}，行段按你实际引用的缩小）`) +
-              (await this.o.cross.noteLines([material])),
+              : `${body}\n\n（引用上面的话时，在那句话后附：${formatCitation({ material, file, from: r.from, to: r.to })}；依据串写 ${material}/${file}:${String(r.from)}，行段按你实际引用的缩小）`,
           );
         },
       },
@@ -1912,7 +1899,7 @@ export class Studium {
               `《${h.materialTitle || h.material}》${h.num} ${h.title}｜${h.file} 第 ${String(h.line)} 行\n  ${h.snippet}\n  出处标记：${formatCitation({ material: h.material, file: h.file, from: h.line })}`,
           );
           return ok(
-            `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}${await this.o.cross.noteLines(r.hits.map((h) => h.material))}`,
+            `共 ${String(r.total)} 段命中，列出前 ${String(r.hits.length)}：\n${rows.join('\n')}${this.scopeHint(scope)}`,
           );
         },
       },

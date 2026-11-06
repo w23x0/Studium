@@ -15,16 +15,10 @@ import type {
   ListSessionsResponse,
   RecordsResponse,
   SearchResponse,
-  BBox,
   MaterialListResponse,
   SourceSearchResponse,
-  LocateResponse,
-  PageResponse,
   ResolveCitationsResponse,
   SectionResponse,
-  SourceReportRequest,
-  SourceReportResponse,
-  SourceReportsResponse,
   TocResponse,
   SetMaterialOwnerRequest,
   ProjectInstructionsRequest,
@@ -36,10 +30,8 @@ import type { MessageQuote } from '../../shared/records.ts';
 import type { QuotaResponse, UsageResponse } from '../../shared/usage.ts';
 import { MAX_UPLOAD_BYTES } from '../uploads.ts';
 import { NotFoundError, type Hub } from '../hub.ts';
-import { NoOriginalError, NoRendererError } from '../knowledge/originals.ts';
 import type { Sources } from '../sources.ts';
 import { BadRequestError, type Studium } from '../studium.ts';
-import { crossRoute, type CrossServices } from './cross-routes.ts';
 import { modelRoute } from './model-routes.ts';
 import type { ModelSettings } from '../model/settings.ts';
 import { screenRoute } from './screen-routes.ts';
@@ -50,10 +42,8 @@ export interface ServerOptions {
   models?: ModelSettings;
   hub: Hub;
   studium: Studium;
-  /** 原文与出处（批 2a）：资料浏览、检索、原件页面、教材出处、资料报错。 */
+  /** 原文与出处（批 2a）：资料浏览、检索、资料出处。 */
   sources: Sources;
-  /** 资料的来源说明、状态回看（批 10b）。 */
-  cross: CrossServices;
   /** 左栏的界面操作（置顶、从列表删掉、对话改名）。 */
   sidebar: SidebarStore;
   token: string;
@@ -119,9 +109,7 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
     try {
       await route(req, res, parts, method);
     } catch (err) {
-      if (err instanceof NotFoundError || err instanceof NoOriginalError)
-        send(res, 404, { error: err.message });
-      else if (err instanceof NoRendererError) send(res, 501, { error: err.message });
+      if (err instanceof NotFoundError) send(res, 404, { error: err.message });
       else if (err instanceof BadRequest || err instanceof BadRequestError)
         send(res, 400, { error: err.message });
       else throw err;
@@ -136,18 +124,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
   ): Promise<void> {
     const { hub, studium, sources } = opts;
     if (await modelRoute(req, res, parts, method, hub, opts.models)) return;
-    if (
-      await crossRoute(
-        req,
-        res,
-        new URL(req.url ?? '/', 'http://localhost'),
-        parts,
-        method,
-        studium,
-        opts.cross,
-      )
-    )
-      return;
     if (parts[1] === 'sources' && (await sourcesRoute(req, res, parts, method, sources, studium)))
       return;
     if (await sidebarRoute(req, res, parts, method, { store: opts.sidebar, hub, studium })) return;
@@ -369,11 +345,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       if (!Number.isInteger(n)) throw new BadRequest(`${name} 要是整数`);
       return n;
     };
-    const need = (name: string): number => {
-      const n = int(name);
-      if (n === undefined) throw new BadRequest(`缺少参数 ${name}`);
-      return n;
-    };
     if (method === 'GET') {
       switch (what) {
         case 'materials': {
@@ -425,40 +396,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
           );
           return true;
         }
-        case 'page':
-          send(res, 200, (await src.page(str('material'), need('page'))) satisfies PageResponse);
-          return true;
-        case 'page/image': {
-          const png = await src.image(str('material'), need('page'), parseBBox(q.get('bbox')));
-          res.writeHead(200, {
-            'content-type': 'image/png',
-            'cache-control': 'private, max-age=3600',
-          });
-          res.end(png);
-          return true;
-        }
-        case 'locate': {
-          const from = need('from');
-          send(
-            res,
-            200,
-            (await src.locate(
-              str('material'),
-              str('file'),
-              from,
-              int('to') ?? from,
-            )) satisfies LocateResponse,
-          );
-          return true;
-        }
-        case 'reports': {
-          const reports = src.reports({
-            ...(q.get('material') ? { book: str('material') } : {}),
-            ...(q.get('file') ? { file: str('file') } : {}),
-          });
-          send(res, 200, { reports } satisfies SourceReportsResponse);
-          return true;
-        }
       }
       return false;
     }
@@ -468,11 +405,6 @@ export async function startServer(opts: ServerOptions): Promise<RunningServer> {
       send(res, 200, {
         citations: await src.citations(body.text),
       } satisfies ResolveCitationsResponse);
-      return true;
-    }
-    if (method === 'POST' && what === 'reports') {
-      const body = (await readJson(req)) as Partial<SourceReportRequest>;
-      send(res, 201, { report: await src.report(body) } satisfies SourceReportResponse);
       return true;
     }
     return false;
@@ -586,26 +518,6 @@ class BadRequest extends Error {}
 /** 组件能用的本机库的地址前缀（界面拼组件小窗时用同一个，见 src/ui/page-frame.ts）。 */
 const PAGE_LIB = '/page-lib';
 const KATEX_DIST = join(dirname(fileURLToPath(import.meta.resolve('katex/package.json'))), 'dist');
-
-/** ?bbox=x0,y0,x1,y1（千分比，0–1000）；没给返回空。 */
-function parseBBox(v: string | null): BBox | undefined {
-  if (v === null || v === '') return undefined;
-  const n = v.split(',').map(Number);
-  const [a, b, c, d] = n;
-  if (
-    n.length !== 4 ||
-    n.some((x) => !Number.isFinite(x)) ||
-    a === undefined ||
-    b === undefined ||
-    c === undefined ||
-    d === undefined ||
-    c <= a ||
-    d <= b
-  ) {
-    throw new BadRequest('bbox 要是 x0,y0,x1,y1 四个数（0–1000），且右下大于左上');
-  }
-  return [a, b, c, d];
-}
 
 const MIME: Record<string, string> = {
   '.html': 'text/html; charset=utf-8',

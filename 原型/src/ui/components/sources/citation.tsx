@@ -1,4 +1,4 @@
-// 回复里的书里出处（照 Claude 的引用）：标记画成小标签“书名 · 第几页”，悬停看引到的原文，点开在右侧面板看原文与原件。
+// 回复里的资料出处（照 Claude 的引用）：标记画成小标签“资料名 · 文件”，悬停看引到的原文，点开在右侧面板看原文。
 // 对不上的（核对没过）画成灰色、带提示符号，悬停与点开都写明原因，不藏。
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { BookOpenIcon, TriangleAlertIcon } from 'lucide-react';
@@ -7,7 +7,6 @@ import type { CitationView } from '../../../shared/protocol.ts';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';
-import { useSourceNoteSummaries } from '../../hooks/use-source-notes.ts';
 import { usePanel } from '../../panel.ts';
 import { citationLabel, citationTarget } from '../../source-model.ts';
 import { W } from '../../wording.ts';
@@ -74,7 +73,6 @@ export function CitationsProvider(props: { text: string; done: boolean; children
 export function CitationChip(props: { index: number }) {
   const { marks, views, error } = useContext(CitationContext);
   const panel = usePanel();
-  const notes = useSourceNoteSummaries();
   const mark = marks[props.index];
   const view = views?.[props.index];
   if (mark === undefined) return null;
@@ -94,14 +92,8 @@ export function CitationChip(props: { index: number }) {
       </span>
     ) : (
       <span className="flex flex-col gap-1">
-        {view.section !== undefined && <span className="font-medium">{view.section}</span>}
         {view.lines !== undefined && view.lines.length > 0 && (
           <span className="line-clamp-4 opacity-90">{view.lines.map((l) => l.text).join(' ')}</span>
-        )}
-        {notes.get(view.material) !== undefined && (
-          <span className="text-[0.7rem] opacity-70" data-testid="citation-note">
-            {notes.get(view.material)}
-          </span>
         )}
       </span>
     );

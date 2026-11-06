@@ -1,8 +1,8 @@
 // 资料（右侧面板）：资料列表（标出本项目的）→ 文件清单 → 文件原文；全文检索（默认只搜本项目资料，
-// 可切查全部项目的）；原件的一页。
+// 可切查全部项目的）。
 import { useState } from 'react';
 import { BookIcon, FileTextIcon, SearchIcon } from 'lucide-react';
-import type { BBox, TocEntry } from '../../../shared/protocol.ts';
+import type { TocEntry } from '../../../shared/protocol.ts';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import { api } from '../../api.ts';
@@ -12,8 +12,6 @@ import { usePanel, useProject } from '../../panel.ts';
 import { markTerms } from '../../source-model.ts';
 import { W } from '../../wording.ts';
 import { Badge, Loading, Section } from '../evidence/parts.tsx';
-import { OriginalPage } from './original-page.tsx';
-import { SourceNoteCard } from './source-note.tsx';
 
 export function MaterialsView(props: { material?: string | undefined }) {
   return (
@@ -133,7 +131,6 @@ function Books() {
               <span className="text-muted-foreground text-xs">{W.bookSections(b.sections)}</span>
             </span>
             {b.selected === true && <Badge tone="accent">{W.inProject}</Badge>}
-            {b.hasOriginal && <Badge>{W.hasOriginal}</Badge>}
           </button>
         ))}
     </Section>
@@ -148,7 +145,6 @@ function Toc(props: { material: string }) {
   return (
     <div className="flex flex-col gap-3">
       <h2 className="font-serif text-lg">{title}</h2>
-      <SourceNoteCard material={material} />
       <Section title={W.toc}>
         <ul className="flex flex-col">
           {entries.map((e, i) => (
@@ -239,7 +235,6 @@ export function SearchView(props: {
                     <span className="text-foreground font-medium">
                       {`${h.num} ${h.title}`.trim()}
                     </span>
-                    {h.pdfPage !== undefined && <span>{W.pageOf(h.pdfPage)}</span>}
                   </span>
                   <span className="line-clamp-3 font-serif">
                     {markTerms(h.snippet, props.q).map((s, j) =>
@@ -261,67 +256,6 @@ export function SearchView(props: {
           </ul>
         </>
       )}
-    </div>
-  );
-}
-
-/** 原件的一页（从出处点过来）：书里的原句 + 页面图上的位置框。 */
-export function PageView(props: {
-  material: string;
-  page: number;
-  bbox?: BBox | undefined;
-  quote?: string | undefined;
-  file?: string | undefined;
-  line?: number | undefined;
-}) {
-  const panel = usePanel();
-  const { material, file, line } = props;
-  // 标题用资料名；列表还没取到（或已经没有这份）时先用 id
-  const materials = useLoad('sources:materials', () => api.materialList(), false);
-  const title = materials.data?.materials.find((b) => b.id === material)?.title ?? material;
-  return (
-    <div className="flex flex-col gap-4" data-testid="page-view">
-      <div className="flex flex-col gap-1">
-        <button
-          type="button"
-          className="text-muted-foreground hover:text-foreground self-start text-xs"
-          onClick={() => panel.show({ kind: 'materials', material })}
-        >
-          {title} · {W.toc}
-        </button>
-        <h2 className="font-serif text-lg">{W.page(title, props.page)}</h2>
-      </div>
-      {props.quote !== undefined && props.quote !== '' && (
-        <Section title={W.quoteOnPage}>
-          <blockquote className="border-primary/40 border-s-2 ps-3 font-serif">
-            {props.quote}
-          </blockquote>
-        </Section>
-      )}
-      {file !== undefined && file !== '' && (
-        <Button
-          variant="outline"
-          size="sm"
-          className="self-start"
-          onClick={() =>
-            panel.show({
-              kind: 'source',
-              material,
-              file,
-              ...(line !== undefined ? { from: line, to: line } : {}),
-            })
-          }
-        >
-          <FileTextIcon />
-          {W.readText}
-        </Button>
-      )}
-      <OriginalPage
-        key={`${String(props.page)}:${props.bbox?.join(',') ?? ''}`}
-        material={material}
-        page={props.page}
-        {...(props.bbox !== undefined ? { boxes: [props.bbox] } : {})}
-      />
     </div>
   );
 }

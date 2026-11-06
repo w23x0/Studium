@@ -1,13 +1,7 @@
 // 核心与界面之间的 HTTP / SSE 协议。界面只认这里的类型，不碰核心实现。
-import type {
-  ConversationKind,
-  NumberedRecord,
-  SourceReport,
-  SourceReportKind,
-} from './records.ts';
+import type { ConversationKind, NumberedRecord } from './records.ts';
 
 export type * from './protocol-learned.ts';
-export * from './protocol-cross.ts';
 
 export interface SessionSummary {
   sessionId: string;
@@ -81,22 +75,7 @@ export const CONVERSATION_KIND_LABELS: Record<ConversationKind, string> = {
   import: '导入处理',
 };
 
-// ───────────── 原文与出处（批 2a）：资料浏览、全文检索、原件页面、教材出处、资料报错 ─────────────
-
-export type { SourceReport, SourceReportKind };
-
-/** PDF 页范围，1 起、含两端。 */
-export interface PageSpan {
-  from: number;
-  to: number;
-}
-
-/**
- * 页面上的位置框：[x0, y0, x1, y1]，各取 0–1000，是占整页宽（x）、高（y）的千分比，原点在页面左上角
- * （MinerU content_list 的坐标）。界面按渲染出的图的实际宽高乘 / 1000 就是像素位置，
- * 与渲染分辨率无关。
- */
-export type BBox = [number, number, number, number];
+// ───────────── 原文与出处（批 2a）：资料浏览、全文检索、资料出处 ─────────────
 
 export interface NumberedLine {
   /** 行号：小节文件里的行，从 1 数；与 read_material 印的行号一致。 */
@@ -104,13 +83,12 @@ export interface NumberedLine {
   text: string;
 }
 
-/** 一份项目资料（资料浏览的列表）。hasOriginal = 找得到 PDF 原件（页面能调出来）。 */
+/** 一份项目资料（资料浏览的列表）。 */
 export interface MaterialSummary {
   id: string;
   title: string;
   /** 正文文件数。 */
   sections: number;
-  hasOriginal: boolean;
   kind: MaterialKind;
   /** 来源：原路径 / URL / 仓库地址。 */
   source: string;
@@ -131,8 +109,6 @@ export interface TocEntry {
   file?: string;
   /** 所在目录（相对正文目录；顶层为空）。 */
   chapter: string;
-  /** 原 PDF 页范围：PDF 资料按页段转出的 p<起>-<止>.md 才有。 */
-  pdfPages?: PageSpan;
 }
 
 export interface TocResponse {
@@ -145,17 +121,12 @@ export interface SectionResponse {
   material: string;
   materialTitle: string;
   file: string;
-  /** 目录里的这一条；文件不在目录里时为空。 */
-  entry?: TocEntry;
   /** 文件总行数。 */
   totalLines: number;
   /** 实际返回的行段（含两端）。 */
   from: number;
   to: number;
   lines: NumberedLine[];
-  /** 目录顺序里前一个 / 后一个有正文的小节。 */
-  prev?: TocEntry;
-  next?: TocEntry;
 }
 
 export interface SearchHit {
@@ -167,8 +138,6 @@ export interface SearchHit {
   /** 命中段里第一个出现检索词的行。 */
   line: number;
   snippet: string;
-  /** 文件起页（原 PDF 页）；只有 PDF 资料的页段文件有。 */
-  pdfPage?: number;
 }
 
 export interface SourceSearchResponse {
@@ -178,41 +147,7 @@ export interface SourceSearchResponse {
   total: number;
 }
 
-/** 内容块在页面上的位置（MinerU content_list）；text 是块里的字（截短）。 */
-export interface PageBlock {
-  type: string;
-  bbox: BBox;
-  text?: string;
-}
-
-export interface PageResponse {
-  material: string;
-  page: number;
-  /** 找得到这一页的 PDF 原件。 */
-  available: boolean;
-  /** 本机能把这一页渲染成图（需要 pdftoppm）。 */
-  canRender: boolean;
-  /** 原件页面的图（PNG）；加 ?bbox=x0,y0,x1,y1（同上千分比）可只取这一块。带口令访问。 */
-  imageUrl?: string;
-  blocks: PageBlock[];
-  /** 没有原件时说明原因。 */
-  note?: string;
-}
-
-/** 一行原文在原件上的位置（按文字比对 content_list 块，比不出来的行不返回）。 */
-export interface LineLocation {
-  line: number;
-  page: number;
-  bbox: BBox;
-}
-
-export interface LocateResponse {
-  material: string;
-  file: string;
-  locations: LineLocation[];
-}
-
-/** 回复里的一个教材出处，核对过：resolved 为假 = 书 / 文件 / 行号对不上（原样给出，不编）。 */
+/** 回复里的一个资料出处，核对过：resolved 为假 = 资料 / 文件 / 行号对不上（原样给出，不编）。 */
 export interface CitationView {
   raw: string;
   /** 在被解析文本里的起止位置。 */
@@ -226,13 +161,8 @@ export interface CitationView {
   /** 对不上的原因。 */
   problem?: string;
   materialTitle?: string;
-  /** 小节编号与标题，如 “3.1 Spaces of Vectors”。 */
-  section?: string;
-  pdfPages?: PageSpan;
   /** 引到的那几行原文（超出文件末尾的截到末尾）。 */
   lines?: NumberedLine[];
-  /** 引文第一行在原件上的位置（比得出才有）。 */
-  location?: LineLocation;
 }
 
 export interface ResolveCitationsRequest {
@@ -241,24 +171,6 @@ export interface ResolveCitationsRequest {
 
 export interface ResolveCitationsResponse {
   citations: CitationView[];
-}
-
-export interface SourceReportRequest {
-  material: string;
-  file: string;
-  from: number;
-  to?: number;
-  kind: SourceReportKind;
-  text: string;
-  page?: number;
-}
-
-export interface SourceReportResponse {
-  report: SourceReport;
-}
-
-export interface SourceReportsResponse {
-  reports: SourceReport[];
 }
 
 export interface ErrorResponse {

@@ -1,60 +1,37 @@
-// 原文与出处（批 2a）：把资料的文件清单、正文、全文检索、原件页面、出处标记、资料报错整理成界面和模型能直接用的视图。
-// 只读资料；唯一会写的是资料报错存放处（只追加）。
-import { randomBytes } from 'node:crypto';
-import { parseMaterialLineRef, parseCitations, type CitationRef } from '../shared/citation.ts';
-import {
-  SOURCE_REPORT_KINDS,
-  type SourceReport,
-  type SourceReportKind,
-} from '../shared/records.ts';
+// 原文与出处（批 2a）：把资料的文件清单、正文、全文检索、出处标记整理成界面和模型能直接用的视图。只读资料。
+import { parseCitations, type CitationRef } from '../shared/citation.ts';
 import type {
-  BBox,
   MaterialListResponse,
   CitationView,
   SourceSearchResponse,
-  LocateResponse,
-  PageResponse,
   SectionResponse,
-  SourceReportRequest,
   TocResponse,
 } from '../shared/protocol.ts';
 import { NotFoundError } from './hub.ts';
 import type { SourceReader } from './knowledge/materials.ts';
-import type { Originals } from './knowledge/originals.ts';
-import type { SourceReports } from './knowledge/source-reports.ts';
 import { isNotFound } from './log/session-log.ts';
 import { BadRequestError } from './studium.ts';
 
-export interface SourcesDeps {
-  materials: SourceReader;
-  originals: Originals;
-  reports: SourceReports;
-}
-
-/** 一次引用最多带回多少行（再多的行段只给前面这些，界面可再按行段读小节）。 */
+/** 一次引用最多带回多少行（再多的行段只给前面这些，界面可再按行段读文件）。 */
 const MAX_CITED_LINES = 60;
-/** 一次最多读多少行（界面整节显示用）。 */
+/** 一次最多读多少行（界面整个文件显示用）。 */
 const MAX_SECTION_LINES = 5000;
 
 export class Sources {
-  constructor(private readonly d: SourcesDeps) {}
+  constructor(private readonly materialsReader: SourceReader) {}
 
   // ───────────── 浏览 ─────────────
 
   async materials(): Promise<MaterialListResponse> {
-    const list = [];
-    for (const b of await this.d.materials.summaries()) {
-      list.push({ ...b, hasOriginal: await this.d.originals.hasOriginal(b.id) });
-    }
-    return { materials: list };
+    return { materials: await this.materialsReader.summaries() };
   }
 
   async toc(material: string): Promise<TocResponse> {
     const id = await this.require(material);
     return {
       material: id,
-      title: await this.d.materials.title(id),
-      entries: await this.d.materials.toc(id),
+      title: await this.materialsReader.title(id),
+      entries: await this.materialsReader.toc(id),
     };
   }
 
@@ -71,18 +48,14 @@ export class Sources {
       throw new BadRequestError('from / to 要是正整数，且 to 不小于 from');
     }
     const r = await this.readLines(id, file, lo, Math.min(hi, lo + MAX_SECTION_LINES - 1));
-    const entry = await this.d.materials.entryOf(id, file);
-    const near = await this.d.materials.neighbors(id, file);
     return {
       material: id,
-      materialTitle: await this.d.materials.title(id),
+      materialTitle: await this.materialsReader.title(id),
       file,
-      ...(entry ? { entry } : {}),
       totalLines: r.total,
       from: r.from,
       to: r.to,
       lines: r.lines,
-      ...near,
     };
   }
 
@@ -95,75 +68,22 @@ export class Sources {
   ): Promise<SourceSearchResponse> {
     if (q.trim() === '') throw new BadRequestError('q 不能为空');
     const id = material !== undefined && material !== '' ? await this.require(material) : undefined;
-    const r = await this.d.materials.search(q, {
+    const r = await this.materialsReader.search(q, {
       ...(id !== undefined ? { material: id } : materials !== undefined ? { materials } : {}),
       ...(limit !== undefined ? { limit } : {}),
     });
     return { query: q, hits: r.hits, total: r.total };
   }
 
-  // ───────────── 原件 ─────────────
-
-  async page(material: string, page: number): Promise<PageResponse> {
-    const id = await this.require(material);
-    this.checkPage(page);
-    const canRender = await this.d.originals.canRender();
-    const where = await this.d.originals.locatePdf(id, page);
-    return {
-      material: id,
-      page,
-      available: where !== undefined,
-      canRender,
-      ...(where !== undefined && canRender
-        ? {
-            imageUrl: `/api/sources/page/image?material=${encodeURIComponent(id)}&page=${String(page)}`,
-          }
-        : {}),
-      blocks: where !== undefined ? await this.d.originals.blocks(id, page) : [],
-      ...(where === undefined
-        ? { note: '这份资料没有 PDF 原件（或这一页不在已转换的页段里），只能看转录的文字。' }
-        : !canRender
-          ? { note: '本机没有 pdftoppm，渲染不了原件页面。' }
-          : {}),
-    };
-  }
-
-  /** 原件页面的 PNG；bbox 给了只取那一块。 */
-  async image(material: string, page: number, bbox?: BBox): Promise<Buffer> {
-    const id = await this.require(material);
-    this.checkPage(page);
-    return this.d.originals.render(id, page, bbox);
-  }
-
-  async locate(material: string, file: string, from: number, to: number): Promise<LocateResponse> {
-    const id = await this.require(material);
-    if (!Number.isInteger(from) || !Number.isInteger(to) || from < 1 || to < from) {
-      throw new BadRequestError('from / to 要是正整数，且 to 不小于 from');
-    }
-    const r = await this.readLines(id, file, from, Math.min(to, from + MAX_CITED_LINES - 1));
-    const entry = await this.d.materials.entryOf(id, file);
-    return {
-      material: id,
-      file,
-      locations: await this.d.originals.locate(id, r.lines, entry?.pdfPages),
-    };
-  }
-
   // ───────────── 出处 ─────────────
 
-  /** 解析文本里的教材出处标记并核对；对不上的标 resolved:false（不编）。 */
+  /** 解析文本里的资料出处标记并核对；对不上的标 resolved:false（不编）。 */
   async citations(text: string): Promise<CitationView[]> {
     const out: CitationView[] = [];
     for (const c of parseCitations(text)) {
       out.push({ ...(await this.cite(c)), raw: c.raw, start: c.start, end: c.end });
     }
     return out;
-  }
-
-  /** 依据串里的“资料id/文件:行号”回查成原文；认不出（没有资料 id、没有这份资料）返回空。 */
-  async materialLine(raw: string): Promise<CitationView | undefined> {
-    const ref = parseMaterialLineRef(raw, await this.d.materials.ids());
-    return ref ? { ...(await this.cite(ref)), raw, start: 0, end: raw.length } : undefined;
   }
 
   private async cite(ref: CitationRef): Promise<CitationView> {
@@ -191,78 +111,18 @@ export class Sources {
     const b = { ...base, material: id };
     if (ref.from < 1) return view(b, { problem: '行号从 1 数' });
     if (ref.from > total) return view(b, { problem: `行号超出文件末尾（共 ${String(total)} 行）` });
-    const entry = await this.d.materials.entryOf(id, ref.file);
-    const loc = (await this.d.originals.hasOriginal(id))
-      ? (await this.d.originals.locate(id, lines.slice(0, 8), entry?.pdfPages))[0]
-      : undefined;
     return view(b, {
       resolved: true,
-      materialTitle: await this.d.materials.title(id),
-      ...(entry ? { section: `${entry.num} ${entry.title}`.trim() } : {}),
-      ...(entry?.pdfPages !== undefined ? { pdfPages: entry.pdfPages } : {}),
+      materialTitle: await this.materialsReader.title(id),
       lines,
-      ...(loc ? { location: loc } : {}),
     });
-  }
-
-  // ───────────── 资料报错 ─────────────
-
-  async report(req: Partial<SourceReportRequest>): Promise<SourceReport> {
-    if (typeof req.material !== 'string' || typeof req.file !== 'string') {
-      throw new BadRequestError('material 与 file 要是字符串');
-    }
-    if (typeof req.from !== 'number' || !Number.isInteger(req.from) || req.from < 1) {
-      throw new BadRequestError('from 要是正整数');
-    }
-    const to = req.to ?? req.from;
-    if (typeof to !== 'number' || !Number.isInteger(to) || to < req.from) {
-      throw new BadRequestError('to 要是不小于 from 的整数');
-    }
-    if (typeof req.text !== 'string' || req.text.trim() === '') {
-      throw new BadRequestError('text 不能为空：说一下哪里不对');
-    }
-    const kind: SourceReportKind = req.kind ?? '其他';
-    if (!SOURCE_REPORT_KINDS.includes(kind)) {
-      throw new BadRequestError(`kind 要是 ${SOURCE_REPORT_KINDS.join(' / ')} 之一`);
-    }
-    const id = await this.require(req.material);
-    const r = await this.readLines(
-      id,
-      req.file,
-      req.from,
-      Math.min(to, req.from + MAX_CITED_LINES - 1),
-    );
-    if (r.lines.length === 0)
-      throw new BadRequestError(`行号超出文件末尾（共 ${String(r.total)} 行）`);
-    const report: SourceReport = {
-      id: `sr-${randomBytes(4).toString('hex')}`,
-      at: new Date().toISOString(),
-      book: id,
-      file: req.file,
-      from: req.from,
-      to,
-      kind,
-      text: req.text.trim(),
-      quote: r.lines
-        .map((l) => l.text)
-        .join('\n')
-        .slice(0, 2000),
-      ...(typeof req.page === 'number' && Number.isInteger(req.page) ? { page: req.page } : {}),
-      status: 'open',
-    };
-    await this.d.reports.add(report);
-    return report;
-  }
-
-  reports(filter: { book?: string; file?: string } = {}): SourceReport[] {
-    return this.d.reports.list(filter);
   }
 
   // ───────────── 内部 ─────────────
 
   /** 资料 id；先精确匹配，再忽略首尾空白。 */
   private async find(name: string): Promise<string | undefined> {
-    const ids = await this.d.materials.ids();
+    const ids = await this.materialsReader.ids();
     return ids.includes(name) ? name : ids.find((b) => b.trim() === name.trim());
   }
 
@@ -274,7 +134,7 @@ export class Sources {
 
   private async readLines(material: string, file: string, from: number, to: number) {
     try {
-      return await this.d.materials.lines(material, file, from, to);
+      return await this.materialsReader.lines(material, file, from, to);
     } catch (err) {
       if (isNotFound(err)) throw new NotFoundError(`这份资料里没有这个文件：${file}`);
       if (err instanceof Error && err.message.startsWith('路径越界')) {
@@ -282,11 +142,6 @@ export class Sources {
       }
       throw err;
     }
-  }
-
-  private checkPage(page: number): void {
-    if (!Number.isInteger(page) || page < 1)
-      throw new BadRequestError('page 要是正整数（PDF 页，1 起）');
   }
 }
 

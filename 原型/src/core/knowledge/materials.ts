@@ -2,8 +2,8 @@
 // 所有导入存一处，每份带归属（学习者 / 项目），程序按归属算每个会话能读什么。存在 <数据>/资料/<资料 id>/：
 //   source.json · 原件/（导入时原样拷入，文件夹保留目录结构，之后不写）·
 //   正文/（工作层：模型能读的文字；纯文字由程序从原件拷或转，其余由导入会话写；仓库 = 固定提交的工作树）·
-//   mineru/（PDF 的 MinerU 转换产物：每段页码一个 p<起>-<止>/，原件页面从这里找）。
-// 原文、出处、沙盒、原件页面都经它读。不存摘要、路线、标签。
+//   mineru/（PDF 的 MinerU 转换产物：每段页码一个 p<起>-<止>/）。
+// 原文、出处、沙盒都经它读。不存摘要、路线、标签。
 import { execFile } from 'node:child_process';
 import { createHash, randomBytes } from 'node:crypto';
 import { constants } from 'node:fs';
@@ -44,21 +44,10 @@ import {
 
 const run = promisify(execFile);
 
-/** 读原文的接口（原文、出处、原件页面、来源说明共用）。 */
+/** 读原文的接口（原文、出处用）。 */
 export type SourceReader = Pick<
   Materials,
-  | 'ids'
-  | 'source'
-  | 'summaries'
-  | 'index'
-  | 'read'
-  | 'lines'
-  | 'title'
-  | 'toc'
-  | 'entryOf'
-  | 'neighbors'
-  | 'search'
-  | 'pagesDir'
+  'ids' | 'summaries' | 'lines' | 'title' | 'toc' | 'search'
 >;
 
 /** 资料目录里的子目录名。 */
@@ -337,7 +326,7 @@ export class Materials {
 
   /**
    * 导入会话调用 MinerU（W11 §4 的 `mineru` 工具）：`原件/<file>` 走现有的 PDF 转换（分页段、`书库处理/`），
-   * 产物进 `mineru/`、md 进 `正文/`。只有一个 PDF 的 pdf 资料照原来的位置放（原件页面按它找页）；
+   * 产物进 `mineru/`、md 进 `正文/`。只有一个 PDF 的 pdf 资料照原来的位置放；
    * 其余按原件里的相对路径分开放。返回写进正文的文件（相对正文目录），或转不了的原因。
    */
   async mineru(id: string, file: string): Promise<{ files: string[] } | { problem: string }> {
@@ -382,8 +371,8 @@ export class Materials {
   }
 
   /** 资料浏览的列表：全部资料都列（删掉的除外）。 */
-  async summaries(): Promise<Omit<MaterialSummary, 'hasOriginal'>[]> {
-    const out: Omit<MaterialSummary, 'hasOriginal'>[] = [];
+  async summaries(): Promise<MaterialSummary[]> {
+    const out: MaterialSummary[] = [];
     for (const e of (await this.scan()).values()) {
       if (e.src.removed !== undefined) continue;
       const sections =
@@ -409,12 +398,6 @@ export class Materials {
       `文件（共 ${String(l.entries.length)} 个；引用写 ${id}/<文件>:<行号>）：`,
     ];
     return [...head, ...l.entries.map((x) => `- ${x.file ?? ''}`)].join('\n');
-  }
-
-  async read(id: string, file: string, from = 1, to = Number.MAX_SAFE_INTEGER): Promise<string> {
-    return (await this.lines(id, file, from, to)).lines
-      .map((l) => `${String(l.n)}\t${l.text}`)
-      .join('\n');
   }
 
   async lines(
@@ -450,23 +433,6 @@ export class Materials {
     return (await this.load(id)).entries;
   }
 
-  async entryOf(id: string, file: string): Promise<TocEntry | undefined> {
-    const f = normalize(file);
-    return (await this.load(id)).entries.find(
-      (e) => e.file !== undefined && normalize(e.file) === f,
-    );
-  }
-
-  async neighbors(id: string, file: string): Promise<{ prev?: TocEntry; next?: TocEntry }> {
-    const withFile = (await this.load(id)).entries.filter((e) => e.file !== undefined);
-    const f = normalize(file);
-    const i = withFile.findIndex((e) => e.file !== undefined && normalize(e.file) === f);
-    if (i < 0) return {};
-    const prev = withFile[i - 1];
-    const next = withFile[i + 1];
-    return { ...(prev ? { prev } : {}), ...(next ? { next } : {}) };
-  }
-
   /** 全文检索；不给 material / materials = 搜全部资料。认不出的 id 跳过。 */
   async search(query: string, opt: SearchOptions = {}): Promise<SearchResult> {
     const ids =
@@ -480,11 +446,6 @@ export class Materials {
       sets.push({ material: id, title: l.title, files: await this.files(id) });
     }
     return searchSets(sets, query, opt);
-  }
-
-  /** PDF 页段所在的目录（MinerU 输出；原件页面从这里找）；不是 PDF 的资料没有这个目录。 */
-  async pagesDir(id: string): Promise<string> {
-    return join((await this.require(id)).dir, MINERU_DIR);
   }
 
   /** 正文目录（沙盒只读区挂这个；导入会话的工作区）。 */
@@ -593,17 +554,12 @@ export class Materials {
     const files = [...all.filter((f) => f === GUIDE_FILE), ...all.filter((f) => f !== GUIDE_FILE)];
     const l: Loaded = {
       title: e.src.title,
-      entries: files.map((f, i) => {
-        // PDF 按页段转出的 p<起>-<止>.md：记下原 PDF 页段（原件页面从这里起）
-        const span = e.src.kind === 'pdf' ? /^p(\d+)-(\d+)\.md$/.exec(f) : null;
-        return {
-          num: String(i + 1),
-          title: f,
-          file: f,
-          chapter: dirname(f) === '.' ? '' : dirname(f),
-          ...(span !== null ? { pdfPages: { from: Number(span[1]), to: Number(span[2]) } } : {}),
-        };
-      }),
+      entries: files.map((f, i) => ({
+        num: String(i + 1),
+        title: f,
+        file: f,
+        chapter: dirname(f) === '.' ? '' : dirname(f),
+      })),
     };
     if (e.src.status !== '处理中') this.loaded.set(id, l);
     return l;

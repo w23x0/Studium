@@ -88,7 +88,6 @@ export function searchSets(
               f.lower[at] ?? '',
               terms.find((t) => (f.lower[at] ?? '').includes(t)) ?? first,
             ),
-            ...(f.entry.pdfPages !== undefined ? { pdfPage: f.entry.pdfPages.from } : {}),
           },
         });
       }

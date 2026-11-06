@@ -9,17 +9,9 @@ import type {
   TocResponse,
   SectionResponse,
   SourceSearchResponse,
-  PageResponse,
-  LocateResponse,
   ResolveCitationsResponse,
-  SourceReportRequest,
-  SourceReportResponse,
-  SourceReportsResponse,
   ProjectMaterialsResponse,
   UploadsResponse,
-  SourceNoteField,
-  SourceNoteResponse,
-  SourceNotesResponse,
   MineruTokenBody,
 } from '../shared/protocol.ts';
 import type {
@@ -76,11 +68,6 @@ export function qs(params: Record<string, string | number | undefined>): string 
   const u = new URLSearchParams();
   for (const [k, v] of Object.entries(params)) if (v !== undefined) u.set(k, String(v));
   return u.toString();
-}
-
-/** 给 <img src> 用的地址：带上口令（图片请求带不了请求头）。 */
-export function withToken(url: string): string {
-  return `${url}${url.includes('?') ? '&' : '?'}token=${encodeURIComponent(TOKEN)}`;
 }
 
 const listeners = new Set<(e: ServerEvent) => void>();
@@ -167,41 +154,23 @@ export const api = {
       method: 'PUT',
       body: JSON.stringify({ token }),
     }),
-  // ── 依据可见 ──
-  // ── 资料的来源说明 ──
-  sourceNotes: () => call<SourceNotesResponse>('/sources/source-notes'),
-  sourceNote: (material: string) =>
-    call<SourceNoteResponse>(`/sources/source-notes?${qs({ material })}`),
-  addSourceNote: (material: string, field: SourceNoteField, text: string) =>
-    call<SourceNoteResponse>('/sources/source-notes', {
-      method: 'POST',
-      body: JSON.stringify({ material, field, text }),
-    }),
   // ── 原文与出处 ──
   /** 各项目的资料；给了项目就标出哪些是这个项目的。 */
   materialList: (project?: string) =>
     call<MaterialListResponse>(`/sources/materials?${qs({ project })}`),
   toc: (material: string) => call<TocResponse>(`/sources/toc?${qs({ material })}`),
-  section: (material: string, file: string) =>
-    call<SectionResponse>(`/sources/section?${qs({ material, file })}`),
+  section: (material: string, file: string, from?: number) =>
+    call<SectionResponse>(`/sources/section?${qs({ material, file, from })}`),
   /** 给了项目：默认只搜本项目资料；all = 查全部项目的。 */
   search: (q: string, material?: string, limit?: number, project?: string, all?: boolean) =>
     call<SourceSearchResponse>(
       `/sources/search?${qs({ q, material, limit, project, all: all === true ? 1 : undefined })}`,
     ),
-  page: (material: string, page: number) =>
-    call<PageResponse>(`/sources/page?${qs({ material, page })}`),
-  locate: (material: string, file: string, from: number, to: number) =>
-    call<LocateResponse>(`/sources/locate?${qs({ material, file, from, to })}`),
   citations: (text: string) =>
     call<ResolveCitationsResponse>('/sources/citations', {
       method: 'POST',
       body: JSON.stringify({ text }),
     }),
-  reports: (material: string, file: string) =>
-    call<SourceReportsResponse>(`/sources/reports?${qs({ material, file })}`),
-  report: (req: SourceReportRequest) =>
-    call<SourceReportResponse>('/sources/reports', { method: 'POST', body: JSON.stringify(req) }),
   // ── 资料范围：项目资料 ──
   materials: (projectId: string) =>
     call<ProjectMaterialsResponse>(`/projects/${projectId}/materials`),

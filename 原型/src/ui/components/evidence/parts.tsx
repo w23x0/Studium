@@ -1,7 +1,6 @@
-// 面板里反复用到的小块：小节、卡片、标签、读取中、时间（资料与出处那几页用；W19 起一次学习的依据面板撤掉）。
+// 面板里反复用到的小块：小节、卡片、标签、读取中（资料与出处那几页用）。
 import type { ReactNode } from 'react';
 import { cn } from '@/lib/utils';
-import { shortTime } from '../../evidence-model.ts';
 import { W } from '../../wording.ts';
 
 export function Section(props: {
@@ -69,8 +68,4 @@ export function Loading(props: { error?: string | undefined }) {
       {props.error !== undefined ? `${W.loadFailed}${props.error}` : W.loading}
     </div>
   );
-}
-
-export function Time(props: { at: string }) {
-  return <span className="text-muted-foreground text-xs">{shortTime(props.at)}</span>;
 }

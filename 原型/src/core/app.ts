@@ -3,14 +3,10 @@ import { readFile } from 'node:fs/promises';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { CONVERSATION_KINDS, type ConversationKind } from '../shared/records.ts';
-import { Crosslinks } from './crosslinks.ts';
 import { Hub } from './hub.ts';
 import { startServer, type RunningServer } from './http/server.ts';
 import { DerivedIndex } from './index/derived-index.ts';
 import { Materials } from './knowledge/materials.ts';
-import { Originals } from './knowledge/originals.ts';
-import { SourceReports } from './knowledge/source-reports.ts';
-import { SourceNotes } from './knowledge/source-notes.ts';
 import { DataDir, upgradeDataDir } from './log/data-dir.ts';
 import { ModelSettings } from './model/settings.ts';
 import type { ModelAdapter } from './model/port.ts';
@@ -67,15 +63,7 @@ export async function createApp(opts: AppOptions): Promise<App> {
   if (interrupted.length > 0) {
     console.log(`上次处理被重启打断、已标失败（可重试）的资料：${interrupted.join('、')}`);
   }
-  const originals = new Originals(materials, join(dataDir.root, 'cache', 'pages'));
-  const reports = await SourceReports.load(join(dataDir.root, 'knowledge', 'source-reports'));
-  const sources = new Sources({ materials, originals, reports });
-  const cross = new Crosslinks({
-    materials,
-    reports,
-    originals,
-    notes: await SourceNotes.load(join(dataDir.root, 'knowledge', 'source-notes')),
-  });
+  const sources = new Sources(materials);
   const studium = new Studium({
     prompts: await loadPrompts(),
     // 学习对话提示词里“页面”那一段（W12 起竖流是唯一的学习页）
@@ -83,7 +71,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     materials,
     sources,
     dataDir: dataDir.root,
-    cross,
   });
   const model = typeof opts.model === 'function' ? opts.model(dataDir.root) : opts.model;
   const hub = new Hub({ dataDir, index, model, kinds: studium.kind });
@@ -96,7 +83,6 @@ export async function createApp(opts: AppOptions): Promise<App> {
     ...(model instanceof ModelSettings ? { models: model } : {}),
     sidebar: await SidebarStore.load(join(dataDir.root, 'ui', 'sidebar.jsonl')),
     sources,
-    cross: { links: cross },
     studium,
     token: opts.token,
     port: opts.port,

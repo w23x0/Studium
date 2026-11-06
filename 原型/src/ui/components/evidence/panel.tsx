@@ -4,7 +4,7 @@ import { ChevronLeftIcon, XIcon } from 'lucide-react';
 import { TooltipIconButton } from '@/components/assistant-ui/tooltip-icon-button';
 import type { PanelTarget } from '../../panel.ts';
 import { W } from '../../wording.ts';
-import { MaterialsView, PageView, SearchView } from '../sources/materials-view.tsx';
+import { MaterialsView, SearchView } from '../sources/materials-view.tsx';
 import { SourceView } from '../sources/source-view.tsx';
 
 export function EvidencePanel(props: {
@@ -44,7 +44,6 @@ function panelTitle(t: PanelTarget): string {
     case 'search':
       return W.materialsNav;
     case 'source':
-    case 'page':
       return W.panelSourceTitle;
   }
 }
@@ -71,21 +70,7 @@ function View(props: { target: PanelTarget }) {
           file={t.file}
           from={t.from}
           to={t.to}
-          page={t.page}
-          bbox={t.bbox}
           problem={t.problem}
-        />
-      );
-    case 'page':
-      return (
-        <PageView
-          key={`${t.material}:${String(t.page)}:${t.bbox?.join(',') ?? ''}`}
-          material={t.material}
-          page={t.page}
-          bbox={t.bbox}
-          quote={t.quote}
-          file={t.file}
-          line={t.line}
         />
       );
   }

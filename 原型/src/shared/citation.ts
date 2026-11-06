@@ -58,25 +58,3 @@ export function parseCitations(text: string): CitationMatch[] {
   }
   return out;
 }
-
-/**
- * 资料里的一行：`资料id/文件:行号` 或 `资料id/文件:起行-止行`（也认整条就是一个出处标记）。
- * 没有资料 id 的“文件:行号”不认：不同资料里常有同名文件，认不出是哪一份。known 用来切开资料 id 与文件。
- */
-export function parseMaterialLineRef(raw: string, known: string[]): CitationRef | undefined {
-  const t = raw.trim();
-  const c = parseCitations(t)[0];
-  if (c !== undefined && c.start === 0 && c.end === t.length) return c;
-  const m = /^(.+):L?(\d+)(?:-L?(\d+))?$/.exec(t);
-  if (m?.[1] === undefined || m[2] === undefined) return undefined;
-  const body = m[1];
-  const material = [...known]
-    .sort((x, y) => y.length - x.length)
-    .find((b) => body.startsWith(`${b}/`));
-  if (material === undefined) return undefined;
-  const file = body.slice(material.length + 1);
-  if (file === '') return undefined;
-  const a = Number(m[2]);
-  const b = m[3] !== undefined ? Number(m[3]) : a;
-  return { material, file, from: Math.min(a, b), to: Math.max(a, b) };
-}

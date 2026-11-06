@@ -1,7 +1,6 @@
 // 界面上给学习者看的叫法，统一放这里（以后改叫法只改这一处）。
 // 内部词（出发点、子句、新点、M0x、M1x 等）不出现在这里的任何一句里（没有自动检查，改时自己留意）。
 // 对照：右边注释是内部叫法，只给写代码的人看。
-import type { SourceReportKind } from '../shared/protocol.ts';
 import { WS } from './wording-sidebar.ts';
 import { WU } from './wording-usage.ts';
 
@@ -31,24 +30,19 @@ export const W = {
     cancel: '算了',
   },
 
-  // ── 依据面板 ──
+  // ── 右侧面板 ──
   panelClose: '关上',
   panelSourceTitle: '出处',
   whereAmI: '现在在哪',
   // ── 对话页 ──
   mainWelcome: '想学什么？说一句就行。',
   panelBack: '返回',
-  objectSubmit: '提交',
-  objectCancel: '算了',
 
-  page: (book: string, page?: number) => (page !== undefined ? `${book} · 第 ${page} 页` : book),
-
-  // ── 书里的原文与原件（资料） ──
+  // ── 书里的原文（资料） ──
   materialsNav: '资料', // 资料浏览
   materialsEmpty: '还没有资料。',
   materialList: '资料',
   bookSections: (n: number) => `${String(n)} 节`,
-  hasOriginal: '有原件',
   toc: '目录',
   noText: '（这一条没有单独的正文）',
   search: '在书里搜',
@@ -58,23 +52,8 @@ export const W = {
   searchFound: (n: number) => `找到 ${String(n)} 处`,
   searchShown: (n: number) => `，先列出前 ${String(n)} 处`,
   searchNone: '没搜到。换个说法，或少写几个词试试。',
-  bookText: '原文', // 小节转录文字
-  original: '原件页面', // PDF 原件页
-  prevSection: '上一节',
-  nextSection: '下一节',
-  prevPage: '上一页',
-  nextPage: '下一页',
-  pageOf: (n: number) => `第 ${String(n)} 页`,
   lineSpan: (from: number, to: number) =>
     to > from ? `第 ${String(from)}–${String(to)} 行` : `第 ${String(from)} 行`,
-  showOnOriginal: '看原件上的位置',
-  thisSpot: '书上的这一处',
-  wholePage: '整页',
-  noOriginal: '这本书没有原件页面，只能看转录的文字。',
-  notLocated: '这一段在原件上没比对出位置，先显示本节的第一页。',
-  imageFailed: '原件页面没显示出来。',
-  readText: '看转录的原文',
-  quoteOnPage: '书里的原句',
 
   // ── 回复里的书里出处 ──
   citation: '书里的出处',
@@ -84,18 +63,6 @@ export const W = {
   citationWritten: '回复里写的位置',
   citationCheckFailed: '没能核对这个出处：',
 
-  // ── 资料报错 ──
-  reportIssue: '这里有错',
-  reportKinds: {
-    转录错: '文字转错了',
-    公式错: '公式不对',
-    定位错: '位置对不上',
-    其他: '其他',
-  } satisfies Record<SourceReportKind, string>,
-  reportPlaceholder: '说说哪里不对，正确的应该是什么…',
-  reportSent: '记下了。资料原件不会被改，这条会留着等以后修正。',
-  reported: '你报过的错',
-
   // ── 输入框 ──
   dropHere: '松开，传进这个项目',
   send: '发送',
@@ -103,31 +70,6 @@ export const W = {
 
   // ── 资料范围 ──
   inProject: '项目资料', // 资料列表里的标记
-  // ── 资料的来源说明（批 10b） ──
-  sourceNote: '这份资料的说明',
-  sourceNoteHint: '只是已知的情况，不是打分；还没写的就是还没人说明。',
-  noteField: {
-    type: '类型',
-    level: '层次',
-    author: '作者',
-    scope: '适用范围',
-    remark: '已知限制',
-  } as const,
-  noteFieldHint: {
-    type: '教材 / 讲义 / 论文 / 网页',
-    level: '入门 / 进阶 …',
-    author: '作者或机构',
-    scope: '这份资料适合用来做什么，一句话',
-    remark: '已知的问题，一句话',
-  } as const,
-  noteFrom: { 学习者: '你补的', 模型: '老师补的' } as const,
-  noteUnset: '还没说明',
-  noteQuality: '转写质量',
-  noteAdd: '补一句',
-  notePlaceholder: '写一句话…',
-  noteSave: '记下',
-  noteEarlier: '以前补过的',
-  noteAdded: '只会追加，旧的留着。',
   // ── 资料检索的范围 ──
   searchScopeProject: (n: number) => `在项目资料里搜（${String(n)} 份）`,
   searchScopeAll: '在全部资料里搜',
